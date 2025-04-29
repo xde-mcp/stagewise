@@ -15,10 +15,10 @@ export {
   type PendingRequest,
 } from './src/core';
 
-// Export server
+// Export the server
 export { WebSocketRpcServer } from './src/server';
 
-// Export client
+// Export the client
 export { WebSocketRpcClient } from './src/client';
 
 // Export type helpers
