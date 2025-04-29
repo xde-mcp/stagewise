@@ -22,5 +22,10 @@
   },
   "dependencies": {
     "biome": "^0.3.3"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@headlessui/react": "patches/@headlessui__react.patch"
+    }
   }
 }
