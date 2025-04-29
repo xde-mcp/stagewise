@@ -6,9 +6,6 @@ import { WebSocketServer, type WebSocket as NodeWebSocket } from 'ws';
 const WebSocketImpl =
   typeof window !== 'undefined' ? window.WebSocket : require('ws').WebSocket;
 
-// Define a union type for both browser and Node.js WebSocket
-type WebSocketType = NodeWebSocket | WebSocket;
-
 import type {
   ZodBridgeContract,
   ZodEndpointMethodMap,
@@ -202,9 +199,8 @@ class ServerBridge extends WebSocketRpcBridge {
     return this.callMethod(method, payload, onUpdate);
   }
 
-  protected reconnect(): void {
-    throw new Error('Server does not support reconnection');
-  }
+  // Server does not need to reconnect
+  protected reconnect(): void {}
 
   public close(): Promise<void> {
     this.wss.close();

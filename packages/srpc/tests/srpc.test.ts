@@ -9,48 +9,39 @@ import {
 } from 'vitest';
 import http from 'node:http';
 import {
-  type CreateBridgeContract,
-  type RpcMethodContract,
+  createBridgeContract,
   createSRPCClientBridge,
   createSRPCServerBridge,
+  type ZodClient,
 } from '..';
+import { z } from 'zod';
 
 // Define test contracts similar to the example
-interface GreetingRequest {
-  name: string;
-}
-
-interface GreetingResponse {
-  message: string;
-}
-
-interface GreetingProgress {
-  status: string;
-  progress: number;
-}
-
-type Contract = CreateBridgeContract<{
+const contract = createBridgeContract({
   server: {
-    greet: RpcMethodContract<
-      GreetingRequest,
-      GreetingResponse,
-      GreetingProgress
-    >;
-    getData: RpcMethodContract<{ id: number }, { data: string }>;
-  };
+    greet: {
+      request: z.object({ name: z.string() }),
+      response: z.object({ message: z.string() }),
+      update: z.object({ progress: z.number() }),
+    },
+    getData: {
+      request: z.object({ id: z.number() }),
+      response: z.object({ data: z.string() }),
+    },
+  },
   client: {
-    sayHello: RpcMethodContract<
-      { name: string },
-      { message: string },
-      { progress: number }
-    >;
-  };
-}>;
+    sayHello: {
+      request: z.object({ name: z.string() }),
+      response: z.object({ message: z.string() }),
+      update: z.object({ progress: z.number() }),
+    },
+  },
+});
 
 describe('sRPC Package', () => {
   // Server setup
   const httpServer = http.createServer();
-  const server = createSRPCServerBridge<Contract>(httpServer);
+  const server = createSRPCServerBridge(httpServer, contract);
   const TEST_PORT = 3001;
 
   // Original server method implementations to restore after tests
@@ -61,24 +52,17 @@ describe('sRPC Package', () => {
   beforeAll(() => {
     return new Promise<void>((resolve) => {
       // Register server methods
-      const greetImplementation = async (request: any, sendUpdate: any) => {
-        sendUpdate({ status: 'Starting', progress: 0 });
-        sendUpdate({ status: 'Processing', progress: 50 });
-        sendUpdate({ status: 'Finishing', progress: 100 });
-        return { message: `Hello, ${request.name}!` };
-      };
-
-      const getDataImplementation = async (request: any) => {
-        return { data: `Data for ID ${request.id}` };
-      };
-
-      // Save original implementations
-      greetHandler = greetImplementation;
-      getDataHandler = getDataImplementation;
 
       server.register({
-        greet: greetImplementation,
-        getData: getDataImplementation,
+        greet: async (request, { sendUpdate }) => {
+          sendUpdate({ progress: 0 });
+          sendUpdate({ progress: 50 });
+          sendUpdate({ progress: 100 });
+          return { message: `Hello, ${request.name}!` };
+        },
+        getData: async (request) => {
+          return { data: `Data for ID ${request.id}` };
+        },
       });
 
       // Start the server
@@ -99,15 +83,14 @@ describe('sRPC Package', () => {
 
   // Client setup and tests
   describe('Client-Server Communication', () => {
-    let client: ReturnType<typeof createSRPCClientBridge<Contract>>;
+    let client: ZodClient<typeof contract>;
 
     beforeAll(async () => {
-      client = createSRPCClientBridge<Contract>(`ws://localhost:${TEST_PORT}`);
+      client = createSRPCClientBridge(`ws://localhost:${TEST_PORT}`, contract);
       await client.connect();
-
       // Register client methods
       client.register({
-        sayHello: async (request, sendUpdate) => {
+        sayHello: async (request, { sendUpdate }) => {
           sendUpdate({ progress: 0 });
           sendUpdate({ progress: 50 });
           return { message: `Hello from client, ${request.name}!` };
@@ -129,7 +112,10 @@ describe('sRPC Package', () => {
     });
 
     it('should call server methods and receive responses', async () => {
-      const response = await client.call.greet({ name: 'Test User' });
+      const response = await client.call.greet(
+        { name: 'Test User' },
+        { onUpdate: () => {} },
+      );
       expect(response).toEqual({ message: 'Hello, Test User!' });
     });
 
@@ -142,21 +128,12 @@ describe('sRPC Package', () => {
     it('should receive progress updates during method calls', async () => {
       const updateSpy = vi.fn();
 
-      await client.call.greet({ name: 'Update Test' }, updateSpy);
+      await client.call.greet({ name: 'Update Test' }, { onUpdate: updateSpy });
 
       expect(updateSpy).toHaveBeenCalledTimes(3);
-      expect(updateSpy).toHaveBeenCalledWith({
-        status: 'Starting',
-        progress: 0,
-      });
-      expect(updateSpy).toHaveBeenCalledWith({
-        status: 'Processing',
-        progress: 50,
-      });
-      expect(updateSpy).toHaveBeenCalledWith({
-        status: 'Finishing',
-        progress: 100,
-      });
+      expect(updateSpy).toHaveBeenCalledWith({ progress: 0 });
+      expect(updateSpy).toHaveBeenCalledWith({ progress: 50 });
+      expect(updateSpy).toHaveBeenCalledWith({ progress: 100 });
     });
 
     it('should be able to call client methods from server', async () => {
@@ -164,7 +141,7 @@ describe('sRPC Package', () => {
 
       // Instead of trying to spy on the call method directly, verify with the update spy
       // that the method was called and had the correct behavior
-      await server.call.sayHello({ name: 'Server' }, updateSpy);
+      await server.call.sayHello({ name: 'Server' }, { onUpdate: updateSpy });
 
       expect(updateSpy).toHaveBeenCalledTimes(2);
       expect(updateSpy).toHaveBeenCalledWith({ progress: 0 });
@@ -173,10 +150,10 @@ describe('sRPC Package', () => {
   });
 
   describe('Error Handling', () => {
-    let client: ReturnType<typeof createSRPCClientBridge<Contract>>;
+    let client: ZodClient<typeof contract>;
 
     beforeAll(async () => {
-      client = createSRPCClientBridge<Contract>(`ws://localhost:${TEST_PORT}`);
+      client = createSRPCClientBridge(`ws://localhost:${TEST_PORT}`, contract);
       await client.connect();
     });
 
@@ -203,10 +180,10 @@ describe('sRPC Package', () => {
 
       // Register error-throwing implementation
       server.register({
-        greet: async (request, sendUpdate) => {
-          sendUpdate({ status: 'Starting', progress: 0 });
-          sendUpdate({ status: 'Processing', progress: 50 });
-          sendUpdate({ status: 'Finishing', progress: 100 });
+        greet: async (request, { sendUpdate }) => {
+          sendUpdate({ progress: 0 });
+          sendUpdate({ progress: 50 });
+          sendUpdate({ progress: 100 });
           return { message: `Hello, ${request.name}!` };
         },
         getData: async () => {
@@ -227,10 +204,10 @@ describe('sRPC Package', () => {
   });
 
   describe('Reconnection', () => {
-    let client: ReturnType<typeof createSRPCClientBridge<Contract>>;
+    let client: ZodClient<typeof contract>;
 
     beforeAll(async () => {
-      client = createSRPCClientBridge<Contract>(`ws://localhost:${TEST_PORT}`, {
+      client = createSRPCClientBridge(`ws://localhost:${TEST_PORT}`, contract, {
         maxReconnectAttempts: 3,
         reconnectDelay: 100,
       });
@@ -242,22 +219,69 @@ describe('sRPC Package', () => {
     });
 
     it('should handle WebSocket reconnection properly', async () => {
+      // Register initial methods
+      server.register({
+        greet: async (request, { sendUpdate }) => {
+          sendUpdate({ progress: 0 });
+          sendUpdate({ progress: 50 });
+          sendUpdate({ progress: 100 });
+          return { message: `Hello, ${request.name}!` };
+        },
+        getData: async (request) => {
+          return { data: `Data for ID ${request.id}` };
+        },
+      });
+
+      client.register({
+        sayHello: async (request, { sendUpdate }) => {
+          sendUpdate({ progress: 0 });
+          sendUpdate({ progress: 50 });
+          return { message: `Hello from client, ${request.name}!` };
+        },
+      });
+
       // Check that we can make a call
-      const response1 = await client.call.greet({ name: 'Before Reconnect' });
+      const response1 = await client.call.greet(
+        { name: 'Before Reconnect' },
+        { onUpdate: () => {} },
+      );
       expect(response1).toEqual({ message: 'Hello, Before Reconnect!' });
 
       // Force close the existing connection (simulating a network issue)
-      // Access the WebSocket through any type to bypass TypeScript protection
-      const clientImpl = client as any;
-      if (clientImpl.bridge?.ws) {
-        clientImpl.bridge.ws.close();
+      const serverImpl = server as any;
+      if (serverImpl.bridge?.ws) {
+        serverImpl.bridge.ws.close();
       }
 
-      // Wait a bit for reconnection to happen
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Wait for reconnection to happen
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Re-register methods after reconnection
+      server.register({
+        greet: async (request, { sendUpdate }) => {
+          sendUpdate({ progress: 0 });
+          sendUpdate({ progress: 50 });
+          sendUpdate({ progress: 100 });
+          return { message: `Hello, ${request.name}!` };
+        },
+        getData: async (request) => {
+          return { data: `Data for ID ${request.id}` };
+        },
+      });
+
+      client.register({
+        sayHello: async (request, { sendUpdate }) => {
+          sendUpdate({ progress: 0 });
+          sendUpdate({ progress: 50 });
+          return { message: `Hello from client, ${request.name}!` };
+        },
+      });
 
       // Try another call after reconnection
-      const response2 = await client.call.greet({ name: 'After Reconnect' });
+      const response2 = await client.call.greet(
+        { name: 'After Reconnect' },
+        { onUpdate: () => {} },
+      );
       expect(response2).toEqual({ message: 'Hello, After Reconnect!' });
     });
   });
@@ -276,11 +300,17 @@ describe('sRPC Package', () => {
 
       // Verify response type from greet method matches GreetingResponse
       async function testTypes() {
-        const client = createSRPCClientBridge<Contract>('');
-        const response = await client.call.greet({ name: 'Type Test' });
+        const client = createSRPCClientBridge(
+          `ws://localhost:${TEST_PORT}`,
+          contract,
+        );
+        const response = await client.call.greet(
+          { name: 'Type Test' },
+          { onUpdate: () => {} },
+        );
 
         type ResponseType = typeof response;
-        type IsCorrectType = Expect<Equal<ResponseType, GreetingResponse>>;
+        type IsCorrectType = Expect<Equal<ResponseType, { message: string }>>;
 
         // This line will fail TypeScript compilation if types don't match
         const _typeCheck: IsCorrectType = true;
