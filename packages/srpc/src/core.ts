@@ -1,4 +1,7 @@
-import type { WebSocket, ErrorEvent } from 'ws';
+import type { WebSocket as NodeWebSocket, ErrorEvent } from 'ws';
+// Define a union type for both browser and Node.js WebSocket
+type WebSocketType = NodeWebSocket | WebSocket;
+
 // Core type definitions
 export type RpcMethodHandler<TRequest, TResponse, TUpdate> = (
   request: TRequest,
@@ -79,7 +82,7 @@ export interface PendingRequest<TResponse = any, TUpdate = any> {
  * method registration and invocation with support for streaming updates
  */
 export abstract class WebSocketRpcBridge {
-  protected ws: WebSocket | null = null;
+  protected ws: WebSocketType | null = null;
   protected pendingRequests: Map<string, PendingRequest> = new Map();
   protected reconnectAttempts = 0;
   protected options: WebSocketBridgeOptions;
@@ -141,8 +144,8 @@ export abstract class WebSocketRpcBridge {
    * Sets up WebSocket event handlers
    * @param ws WebSocket instance
    */
-  protected setupWebSocketHandlers(ws: WebSocket): void {
-    ws.onmessage = (event) => {
+  protected setupWebSocketHandlers(ws: WebSocketType): void {
+    ws.onmessage = (event: MessageEvent) => {
       try {
         const message = JSON.parse(event.data as string) as WebSocketMessage;
         this.handleMessage(message);
@@ -156,7 +159,7 @@ export abstract class WebSocketRpcBridge {
       this.handleDisconnect();
     };
 
-    ws.onerror = (event: ErrorEvent) => {
+    ws.onerror = (event: Event | ErrorEvent) => {
       console.error('WebSocket error:', event);
     };
   }

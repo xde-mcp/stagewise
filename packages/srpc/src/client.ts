@@ -1,5 +1,9 @@
 import { WebSocketRpcBridge, type WebSocketBridgeOptions } from './core';
-import { WebSocket } from 'ws';
+
+// Use the appropriate WebSocket implementation based on the environment
+const WebSocketImpl =
+  typeof window !== 'undefined' ? window.WebSocket : require('ws').WebSocket;
+
 /**
  * Client implementation of the WebSocket RPC Bridge
  */
@@ -24,7 +28,8 @@ export class WebSocketRpcClient extends WebSocketRpcBridge {
   public connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        const ws = new WebSocket(this.url);
+        console.log('Typeof WebSocketImpl:::', typeof WebSocketImpl);
+        const ws = new WebSocketImpl(this.url);
 
         ws.onopen = () => {
           this.ws = ws;
@@ -34,7 +39,7 @@ export class WebSocketRpcClient extends WebSocketRpcBridge {
           resolve();
         };
 
-        ws.onerror = (event) => {
+        ws.onerror = (_event: Event) => {
           reject(new Error('Failed to connect to WebSocket server'));
         };
       } catch (error) {
