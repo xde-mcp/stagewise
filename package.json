@@ -25,7 +25,7 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "@headlessui/react": "patches/@headlessui__react.patch"
+      "@headlessui/react@2.2.2": "patches/@headlessui__react.patch"
     }
   }
 }
