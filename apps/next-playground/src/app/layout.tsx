@@ -2,7 +2,10 @@ import "@/styles/globals.css";
 
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
-import ToolbarLoader from "./_components/toolbar-loader";
+import {
+  ToolbarLoader,
+  type ToolbarConfig,
+} from "./_components/toolbar-loader";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -14,6 +17,8 @@ const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
 });
+
+
 
 export default function RootLayout({
   children,

@@ -1,11 +1,67 @@
-import { type ZodSchema } from "zod";
+export type MCPPrompt = {
+  name: string;
+  description: string;
+  arguments: {
+    name: string;
+    description: string;
+    required: boolean;
+  }[];
+  generator: () => MCPPromptMessage | Promise<MCPPromptMessage>;
+};
 
-interface MCPResponse {
-  type: "text" | "image" | "video" | "audio" | "file";
-  content: string;
-}
+export type MCPPromptList = {
+  prompts: MCPPrompt[];
+  nextCursor?: string;
+};
 
-export interface MCPTool {
+export type MCPPromptMessage = {
+  role: "user" | "assistant";
+  content:
+    | {
+        type: "text";
+        text: string;
+      }
+    | {
+        type: "image" | "audio";
+        data: string;
+        mimeType: string;
+      }
+    | {
+        type: "resource";
+        resource: {
+          uri: string;
+          mimeType: string;
+          text: string;
+        };
+      };
+};
+
+export type MCPResource = {
+  uri: string;
+  name: string;
+  description: string;
+  mimeType: string;
+  size: number;
+};
+
+export type MCPResourceList = {
+  resources: MCPResource[];
+  nextCursor?: string;
+};
+
+export type MCPResourceContent = {
+  uri: string;
+  mimeType: string;
+} & (
+  | {
+      text: string;
+    }
+  | {
+      data: string;
+    }
+);
+
+export type MCPTool = {
   name: string; // Unique identifier for the tool
   description?: string; // Human-readable description
   inputSchema: object; // JSON Schema for the tool's parameters
@@ -17,6 +73,49 @@ export interface MCPTool {
     idempotentHint?: boolean; // If true, repeated calls with same args have no additional effect
     openWorldHint?: boolean; // If true, tool interacts with external entities
   };
+};
+
+export type MCPToolList = {
+  tools: MCPTool[];
+  nextCursor?: string;
+};
+
+export type MCPToolResponse = {
+  content: (
+    | {
+        type: "text";
+        text: string;
+      }
+    | {
+        type: "image" | "audio";
+        data: string;
+        mimeType: string;
+      }
+    | {
+        type: "resource";
+        resource: {
+          uri: string;
+          mimeType: string;
+          text: string;
+        };
+      }
+  )[];
+  isError: boolean;
+};
+
+export interface MCP {
+  prompts: {
+    list: (cursor?: string) => MCPPromptList | Promise<MCPPromptList>;
+    get: (name: string) => MCPPromptMessage | Promise<MCPPromptMessage>;
+  };
+  resources: {
+    list: (cursor?: string) => MCPResourceList | Promise<MCPResourceList>;
+    read: (uri: string) => MCPResourceContent | Promise<MCPResourceContent>;
+  };
+  tools: {
+    list: (cursor?: string) => MCPToolList | Promise<MCPToolList>;
+    call: (name: string) => MCPToolResponse | Promise<MCPToolResponse>;
+  };
 }
 
 export interface UserMessage {
@@ -25,16 +124,16 @@ export interface UserMessage {
   contextElements: HTMLElement[];
 }
 
-export interface ToolbarTool {
+export interface ToolbarAction {
   name: string;
   description: string;
-  action: () => void;
+  execute: () => void;
 }
 
 export interface ToolbarPlugin {
   name: string;
   description: string;
-  mcpTools: MCPTool[];
-  shortInfoForPrompt: (prompt: UserMessage) => string; // Up to 200 characters of information that's gets passed in on a user prompt.
-  tools: ToolbarTool[];
+  mcp: MCP | null;
+  shortInfoForPrompt: (prompt: UserMessage) => string | null; // Up to 200 characters of information that's gets passed in on a user prompt.
+  actions: ToolbarAction[];
 }
