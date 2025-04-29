@@ -1,11 +1,13 @@
-import { ComponentChildren, createContext } from "preact";
-import { useContext, useState, useCallback, useEffect } from "preact/hooks";
+import { type ComponentChildren, createContext } from 'preact';
+import { useContext, useState, useCallback } from 'preact/hooks';
+import { useSRPCBridge } from './use-srpc-bridge';
+import { createPrompt } from '@/prompts';
 
 interface Message {
   id: string;
   content: string;
-  sender: "user" | "assistant";
-  type: "regular" | "user_request";
+  sender: 'user' | 'assistant';
+  type: 'regular' | 'user_request';
   timestamp: Date;
 }
 
@@ -19,7 +21,7 @@ interface Chat {
   domContextElements: HTMLElement[];
 }
 
-type ChatAreaState = "hidden" | "compact" | "expanded";
+type ChatAreaState = 'hidden' | 'compact' | 'expanded';
 
 interface ChatContext {
   // Chat list management
@@ -48,14 +50,14 @@ interface ChatContext {
 const ChatContext = createContext<ChatContext>({
   chats: [],
   currentChatId: null,
-  createChat: () => "",
+  createChat: () => '',
   deleteChat: () => {},
   setCurrentChat: () => {},
   setChatInput: () => {},
   addChatDomContext: () => {},
   removeChatDomContext: () => {},
   addMessage: () => {},
-  chatAreaState: "hidden",
+  chatAreaState: 'hidden',
   setChatAreaState: () => {},
   isPromptCreationActive: false,
   startPromptCreation: () => {},
@@ -69,18 +71,20 @@ interface ChatStateProviderProps {
 export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   const [chats, setChats] = useState<Chat[]>([
     {
-      id: "new_chat",
+      id: 'new_chat',
       messages: [],
-      title: "New chat",
-      inputValue: "",
+      title: 'New chat',
+      inputValue: '',
       domContextElements: [],
     },
   ]);
-  const [currentChatId, setCurrentChatId] = useState<ChatId>("new_chat");
+  const [currentChatId, setCurrentChatId] = useState<ChatId>('new_chat');
   const [chatAreaState, internalSetChatAreaState] =
-    useState<ChatAreaState>("hidden");
+    useState<ChatAreaState>('hidden');
   const [isPromptCreationMode, setIsPromptCreationMode] =
     useState<boolean>(false);
+
+  const { bridge } = useSRPCBridge();
 
   const createChat = useCallback(() => {
     const newChatId = crypto.randomUUID();
@@ -88,7 +92,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       id: newChatId,
       title: null,
       messages: [],
-      inputValue: "",
+      inputValue: '',
       domContextElements: [],
     };
     setChats((prev) => [...prev, newChat]);
@@ -103,10 +107,10 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
         if (filteredChats.length === 0) {
           return [
             {
-              id: "new_chat",
+              id: 'new_chat',
               messages: [],
-              title: "New chat",
-              inputValue: "",
+              title: 'New chat',
+              inputValue: '',
               domContextElements: [],
             },
           ];
@@ -120,7 +124,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
         });
       }
     },
-    [currentChatId]
+    [currentChatId],
   );
 
   const setCurrentChat = useCallback((chatId: ChatId) => {
@@ -130,15 +134,15 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   const setChatInput = useCallback((chatId: ChatId, value: string) => {
     setChats((prev) =>
       prev.map((chat) =>
-        chat.id === chatId ? { ...chat, inputValue: value } : chat
-      )
+        chat.id === chatId ? { ...chat, inputValue: value } : chat,
+      ),
     );
   }, []);
 
   const startPromptCreation = useCallback(() => {
     setIsPromptCreationMode(true);
-    if (chatAreaState === "hidden") {
-      internalSetChatAreaState("compact");
+    if (chatAreaState === 'hidden') {
+      internalSetChatAreaState('compact');
     }
   }, [chatAreaState]);
 
@@ -147,22 +151,22 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     // clear dom context for this chat so that it doesn't get too weird when re-starting prompt creation mode
     setChats((prev) =>
       prev.map((chat) =>
-        chat.id === currentChatId ? { ...chat, domContextElements: [] } : chat
-      )
+        chat.id === currentChatId ? { ...chat, domContextElements: [] } : chat,
+      ),
     );
-    if (chatAreaState === "compact") {
-      internalSetChatAreaState("hidden");
+    if (chatAreaState === 'compact') {
+      internalSetChatAreaState('hidden');
     }
   }, [currentChatId, chatAreaState]);
 
   const setChatAreaState = useCallback(
     (state: ChatAreaState) => {
       internalSetChatAreaState(state);
-      if (state === "hidden") {
+      if (state === 'hidden') {
         stopPromptCreation();
       }
     },
-    [internalSetChatAreaState, stopPromptCreation]
+    [internalSetChatAreaState, stopPromptCreation],
   );
 
   const addChatDomContext = useCallback(
@@ -174,11 +178,11 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
                 ...chat,
                 domContextElements: [...chat.domContextElements, element],
               }
-            : chat
-        )
+            : chat,
+        ),
       );
     },
-    []
+    [],
   );
 
   const removeChatDomContext = useCallback(
@@ -189,32 +193,55 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
             ? {
                 ...chat,
                 domContextElements: chat.domContextElements.filter(
-                  (e) => e !== element
+                  (e) => e !== element,
                 ),
               }
-            : chat
-        )
+            : chat,
+        ),
       );
     },
-    []
+    [],
   );
 
   const addMessage = useCallback(
     (chatId: ChatId, content: string) => {
       if (!content.trim()) return;
 
+      const chat = chats.find((chat) => chat.id === chatId);
+      const prompt = createPrompt(
+        chat?.domContextElements,
+        content,
+        window.location.href,
+      );
+
       const newMessage: Message = {
         id: crypto.randomUUID(),
         content: content.trim(),
-        sender: "user",
-        type: "regular",
+        sender: 'user',
+        type: 'regular',
         timestamp: new Date(),
       };
 
+      async function triggerAgentPrompt() {
+        if (bridge) {
+          const result = await bridge.call.triggerAgentPrompt(
+            { prompt },
+            {
+              onUpdate: (update) => {
+                console.log('Update', update);
+              },
+            },
+          );
+          console.log('Result', result);
+        }
+      }
+
+      triggerAgentPrompt();
+
       setIsPromptCreationMode(false);
 
-      if (chatAreaState === "hidden") {
-        internalSetChatAreaState("compact");
+      if (chatAreaState === 'hidden') {
+        internalSetChatAreaState('compact');
       }
 
       setChats((prev) =>
@@ -223,14 +250,14 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
             ? {
                 ...chat,
                 messages: [...chat.messages, newMessage],
-                inputValue: "",
+                inputValue: '',
                 domContextElements: [],
               }
-            : chat
-        )
+            : chat,
+        ),
       );
     },
-    [chatAreaState]
+    [chatAreaState, bridge],
   );
 
   const value: ChatContext = {
@@ -256,7 +283,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
 export function useChatState() {
   const context = useContext(ChatContext);
   if (!context) {
-    throw new Error("useChatState must be used within a ChatStateProvider");
+    throw new Error('useChatState must be used within a ChatStateProvider');
   }
   return context;
 }
