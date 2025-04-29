@@ -1,0 +1,31 @@
+{
+  "name": "@stagewise/srpc",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.0.0",
+    "vitest": "3.1.2"
+  },
+  "turbo": {
+    "tasks": {
+      "build": {
+        "dependsOn": ["^build"],
+        "outputs": ["dist/**"]
+      }
+    }
+  }
+}

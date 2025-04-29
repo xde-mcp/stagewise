@@ -1,0 +1,33 @@
+{
+  "name": "@stagewise/extension-toolbar-srpc-contract",
+  "version": "0.0.1",
+  "description": "SRPC contract implementation for VS Code extension and toolbar communication",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest",
+    "format": "biome format --write \"**/*.{ts,tsx,md}\""
+  },
+  "dependencies": {
+    "@stagewise/srpc": "workspace:*",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "biome": "^0.3.3",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "3.1.2"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
