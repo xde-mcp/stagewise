@@ -135,13 +135,6 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     );
   }, []);
 
-  const setChatAreaState = useCallback(
-    (state: ChatAreaState) => {
-      internalSetChatAreaState(state);
-    },
-    [internalSetChatAreaState]
-  );
-
   const startPromptCreation = useCallback(() => {
     setIsPromptCreationMode(true);
     if (chatAreaState === "hidden") {
@@ -157,7 +150,20 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
         chat.id === currentChatId ? { ...chat, domContextElements: [] } : chat
       )
     );
-  }, [currentChatId]);
+    if (chatAreaState === "compact") {
+      internalSetChatAreaState("hidden");
+    }
+  }, [currentChatId, chatAreaState]);
+
+  const setChatAreaState = useCallback(
+    (state: ChatAreaState) => {
+      internalSetChatAreaState(state);
+      if (state === "hidden") {
+        stopPromptCreation();
+      }
+    },
+    [internalSetChatAreaState, stopPromptCreation]
+  );
 
   const addChatDomContext = useCallback(
     (chatId: ChatId, element: HTMLElement) => {
@@ -204,6 +210,8 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
         type: "regular",
         timestamp: new Date(),
       };
+
+      setIsPromptCreationMode(false);
 
       if (chatAreaState === "hidden") {
         internalSetChatAreaState("compact");

@@ -26,6 +26,10 @@ export function MoreActionsButton() {
             <Minimize2 className="size-4" />
             Minimize companion
           </DropdownMenuButttonItem>
+          <DropdownMenuButttonItem onClick={minimizeCompanion}>
+            <Minimize2 className="size-4" />
+            Minimize companion
+          </DropdownMenuButttonItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </ToolbarSection>
