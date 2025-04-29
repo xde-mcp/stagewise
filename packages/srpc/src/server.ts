@@ -63,9 +63,7 @@ export class WebSocketRpcServer extends WebSocketRpcBridge {
   /**
    * Server doesn't need to reconnect
    */
-  protected reconnect(): void {
-    throw new Error('Server WebSocket manager does not support reconnection');
-  }
+  protected reconnect(): void {}
 
   /**
    * Close the WebSocket server

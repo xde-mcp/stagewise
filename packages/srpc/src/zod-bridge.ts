@@ -1,6 +1,11 @@
 import { WebSocketRpcBridge, type WebSocketBridgeOptions } from './core';
 import type { Server } from 'node:http';
-import { WebSocket, WebSocketServer } from 'ws';
+import { WebSocketServer, type WebSocket as NodeWebSocket } from 'ws';
+
+// Use the appropriate WebSocket implementation based on the environment
+const WebSocketImpl =
+  typeof window !== 'undefined' ? window.WebSocket : require('ws').WebSocket;
+
 import type {
   ZodBridgeContract,
   ZodEndpointMethodMap,
@@ -163,7 +168,7 @@ class ServerBridge extends WebSocketRpcBridge {
     super();
     this.wss = new WebSocketServer({ server });
 
-    this.wss.on('connection', (ws: WebSocket) => {
+    this.wss.on('connection', (ws: NodeWebSocket) => {
       if (this.ws) {
         console.warn(
           'New WebSocket connection attempted while one is already active. Closing existing connection first.',
@@ -194,9 +199,8 @@ class ServerBridge extends WebSocketRpcBridge {
     return this.callMethod(method, payload, onUpdate);
   }
 
-  protected reconnect(): void {
-    throw new Error('Server does not support reconnection');
-  }
+  // Server does not need to reconnect
+  protected reconnect(): void {}
 
   public close(): Promise<void> {
     this.wss.close();
@@ -243,7 +247,7 @@ class ClientBridge extends WebSocketRpcBridge {
   public connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        const ws = new WebSocket(this.url);
+        const ws = new WebSocketImpl(this.url);
 
         ws.onopen = () => {
           this.ws = ws;
