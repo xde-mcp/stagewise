@@ -18,10 +18,11 @@ The stagewise toolbar SDK [(@stagewise/toolbar)]() injects a toolbar into your l
 
 Install the extension here: https://google.com
 
-<div style="padding: 5px; border: 1px solid rgba(252, 198, 0, 0.8); background-color: rgba(252, 198, 0, 0.1); border-radius: 10px;">
-The extension will auto-install the <b>stagewise MCP server</b>.
-Click <i>enable</i> to let your agent call MCP-tools in the toolbar.
-</div>
+> [!NOTE]
+> 💬 **Enable MCP support (Cursor):** 
+> - The extension will auto-install the **stagewise MCP server**.
+> - Cursor will prompt you to *enable* the server.
+> - Click *enable* to let your agent call MCP-tools that the toolbar provides. ([Read more](#write-custom-mcp-tools))
 
 ### 2. 👨🏽‍💻 **Install and inject the toolbar**
 
@@ -73,7 +74,13 @@ export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
 
 ## Advanced guides 🧪
 
-### Register custom MCP tools
+### Write custom MCP tools
+
+Simply write custom MCP-tools that run in your browser. Tools will automatically be registered and your agent can use them: You just have to plug them into the toolbar config.
+
+```typescript
+// TBD
+```
 
 ## Contributing 🤝
 
