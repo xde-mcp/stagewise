@@ -31,7 +31,7 @@ export function MoreActionsButton() {
         </DropdownMenuButton>
         <DropdownMenuContent>
           {pluginTools.map((tool) => (
-            <DropdownMenuButttonItem onClick={tool.action}>
+            <DropdownMenuButttonItem onClick={tool.execute}>
               {tool.name}
             </DropdownMenuButttonItem>
           ))}

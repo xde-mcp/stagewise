@@ -79,13 +79,13 @@ export function ChatBox() {
     [showBigBox]
   );
 
-  const ctrlKText = useHotkeyListenerComboText(HotkeyActions.CTRL_ALT_C);
+  const ctrlAltCText = useHotkeyListenerComboText(HotkeyActions.CTRL_ALT_C);
 
   return (
     <div
       className={cn(
         "flex-1 h-fit w-80 flex flex-row gap-1 p-1.5 pl-2 rounded-2xl border border-border/10 bg-zinc-950/5 shadow-inner items-end text-sm placeholder:text-zinc-950/70 text-zinc-950 transition-all duration-150",
-        chatState.isPromptCreationActive && "ring ring-2 ring-blue-600"
+        chatState.isPromptCreationActive && "ring-2 ring-blue-600"
       )}
       onClick={() => chatState.startPromptCreation()}
     >
@@ -99,7 +99,7 @@ export function ChatBox() {
         placeholder={
           chatState.isPromptCreationActive
             ? "Enter prompt..."
-            : `What do you want to change? (${ctrlKText})`
+            : `What do you want to change? (${ctrlAltCText})`
         }
       />
       <Button
