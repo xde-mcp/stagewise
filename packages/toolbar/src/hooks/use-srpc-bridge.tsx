@@ -1,0 +1,70 @@
+import { createContext, useContext, useEffect, useState } from 'preact/compat';
+import type { ComponentChildren } from 'preact';
+import { createSRPCClientBridge, type ZodClient } from '@stagewise/srpc';
+import { contract } from '@stagewise/extension-toolbar-srpc-contract';
+import { findPort } from '../srpc';
+
+interface SRPCBridgeContextValue {
+  bridge: ZodClient<typeof contract> | null;
+  isConnecting: boolean;
+  error: Error | null;
+}
+
+const SRPCBridgeContext = createContext<SRPCBridgeContextValue>({
+  bridge: null,
+  isConnecting: false,
+  error: null,
+});
+
+export function SRPCBridgeProvider({
+  children,
+}: { children: ComponentChildren }) {
+  const [state, setState] = useState<SRPCBridgeContextValue>({
+    bridge: null,
+    isConnecting: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    async function initializeBridge() {
+      try {
+        const port = await findPort();
+        console.log('Port found', port);
+        const bridge = createSRPCClientBridge(
+          `ws://localhost:${port}`,
+          contract,
+        );
+        console.log('Connecting to bridge');
+        await bridge.connect();
+        console.log('Connected to bridge');
+        setState({
+          bridge,
+          isConnecting: false,
+          error: null,
+        });
+      } catch (error) {
+        setState({
+          bridge: null,
+          isConnecting: false,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+    }
+
+    initializeBridge();
+  }, []);
+
+  return (
+    <SRPCBridgeContext.Provider value={state}>
+      {children}
+    </SRPCBridgeContext.Provider>
+  );
+}
+
+export function useSRPCBridge() {
+  const context = useContext(SRPCBridgeContext);
+  if (!context) {
+    throw new Error('useSRPCBridge must be used within an SRPCBridgeProvider');
+  }
+  return context;
+}
