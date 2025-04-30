@@ -7,10 +7,11 @@ export function getElementAtPoint(x: number, y: number) {
     (elementsBelowAnnotation.find(
       (element) =>
         element.nodeName !== 'STAGEWISE-COMPANION-ANCHOR' &&
+        !element.closest(companionAnchorTagName) &&
         !element.closest('svg') &&
         isElementAtPoint(element as HTMLElement, x, y),
     ) as HTMLElement) || document.body;
-
+    
   return refElement;
 }
 
@@ -133,8 +134,8 @@ export interface HotkeyActionDefinition {
 }
 
 export enum HotkeyActions {
-  ESC,
-  CTRL_ALT_C,
+  ESC = 0,
+  CTRL_ALT_C = 1,
 }
 
 export const hotkeyActionDefinitions: Record<
