@@ -3,8 +3,8 @@
 import { useChatState } from '@/hooks/use-chat-state';
 import { Plus } from 'lucide-react';
 import { Button } from '@headlessui/react';
-import { ChevronDown, ChevronUp, XCircle } from 'lucide-react';
-import { ComponentChildren } from 'preact';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import type { ComponentChildren } from 'preact';
 import { memo, useCallback } from 'preact/compat';
 import { cn } from '@/utils';
 
@@ -23,7 +23,7 @@ export const ChatArea = memo(() => {
 });
 
 const ChatAreaBox = memo(({ children }: { children: ComponentChildren }) => (
-  <div className="w-full h-auto overflow-x-hidden">{children}</div>
+  <div className='h-auto w-full overflow-x-hidden'>{children}</div>
 ));
 
 const ChatAreaResizeBar = memo(() => {
@@ -40,9 +40,9 @@ const ChatAreaResizeBar = memo(() => {
   }, [setChatAreaState, stopPromptCreation]);
 
   return (
-    <div className="w-full py-1 px-3 rounded-t-3xl flex flex-row justify-center items-center">
+    <div className='flex w-full flex-row items-center justify-center rounded-t-3xl px-3 py-1'>
       <Button
-        className="bg-transparent text-muted-foreground/30 hover:text-muted-foreground size-5 transition-colors duration-100"
+        className='size-5 bg-transparent text-muted-foreground/30 transition-colors duration-100 hover:text-muted-foreground'
         onClick={handleResizeBarClick}
       >
         {chatAreaState === 'compact' ? (
@@ -52,11 +52,11 @@ const ChatAreaResizeBar = memo(() => {
         )}
       </Button>
       <Button
-        className="absolute right-2 w-fit h-fit p-1 bg-transparent opacity-50 hover:opacity-100 transition-all duration-100 flex flex-row gap-1 items-center text-xs"
+        className='absolute right-2 flex h-fit w-fit flex-row items-center gap-1 bg-transparent p-1 text-xs opacity-50 transition-all duration-100 hover:opacity-100'
         onClick={handleCloseChatArea}
       >
         Close menu
-        <div className="text-xs rounded-md bg-muted-foreground text-zinc-50 px-0.5 py-0.5">
+        <div className='rounded-md bg-muted-foreground px-0.5 py-0 text-xs text-zinc-50'>
           esc
         </div>
       </Button>
@@ -65,7 +65,7 @@ const ChatAreaResizeBar = memo(() => {
 });
 
 const ChatAreaCompact = memo(() => (
-  <div className="w-full flex flex-col gap-1 p-3">
+  <div className='flex w-full flex-col gap-1 p-3'>
     <span className="text-sm text-zinc-950/50">
       This is the compact chat area... Showing just the last response from the
       assistant.
@@ -90,8 +90,8 @@ const ChatAreaExpanded = memo(() => {
   );
 
   return (
-    <div className="w-full flex flex-col gap-3 p-3 pb-0 max-h-[50vh]">
-      <div className="flex flex-col gap-2 flex-1 overflow-y-auto p-1">
+    <div className='flex max-h-[50vh] w-full flex-col gap-3 p-3 pb-0'>
+      <div className='flex flex-1 flex-col gap-2 overflow-y-auto p-1'>
         {currentChat?.messages.map((message) => (
           <div
             key={message.id}
@@ -100,7 +100,7 @@ const ChatAreaExpanded = memo(() => {
             }`}
           >
             <div
-              className={`max-w-[80%] px-2 py-1 rounded-xl text-sm ${
+              className={`max-w-[80%] rounded-xl px-2 py-1 text-sm ${
                 message.sender === 'assistant'
                   ? 'bg-zinc-950/5 text-zinc-950'
                   : 'bg-blue-600 text-white'
@@ -111,10 +111,10 @@ const ChatAreaExpanded = memo(() => {
           </div>
         ))}
       </div>
-      <div className="flex flex-row gap-2 items-center justify-start overflow-x-auto overflow-y-visible pb-2 pt-2 border-t border-border/10">
+      <div className='flex flex-row items-center justify-start gap-2 overflow-x-auto overflow-y-visible border-border/10 border-t pt-2 pb-2'>
         {!hasNewChat && (
           <Button
-            className="text-xs px-2 h-6 rounded-full bg-zinc-950/5 text-foreground font-semibold flex-shrink-0"
+            className='h-6 flex-shrink-0 rounded-full bg-zinc-950/5 px-2 font-semibold text-foreground text-xs'
             onClick={handleCreateChat}
           >
             <Plus className="size-3" />
@@ -124,9 +124,9 @@ const ChatAreaExpanded = memo(() => {
           <Button
             key={chat.id}
             className={cn(
-              'text-xs px-2 h-5 rounded-full bg-zinc-950/5 text-muted-foreground flex-shrink-0 max-w-48 overflow-hidden truncate',
+              'h-5 max-w-48 flex-shrink-0 overflow-hidden truncate rounded-full bg-zinc-950/5 px-2 text-muted-foreground text-xs',
               chat.id === currentChatId &&
-                'bg-white/60 text-zinc-950 shadow-sm shadow-blue-600/50',
+                'bg-white/60 text-zinc-950 shadow-blue-600/50 shadow-sm',
             )}
             onClick={() => handleSetCurrentChat(chat.id)}
           >

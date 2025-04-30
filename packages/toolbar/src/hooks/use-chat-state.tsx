@@ -1,7 +1,8 @@
 import { type ComponentChildren, createContext } from 'preact';
-import { useContext, useState, useCallback } from 'preact/hooks';
+import { useContext, useState, useCallback, useEffect } from 'preact/hooks';
 import { useSRPCBridge } from './use-srpc-bridge';
 import { createPrompt } from '@/prompts';
+import { useAppState } from './use-app-state';
 
 interface Message {
   id: string;
@@ -83,6 +84,15 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     useState<ChatAreaState>('hidden');
   const [isPromptCreationMode, setIsPromptCreationMode] =
     useState<boolean>(false);
+
+  const isMinimized = useAppState((state) => state.minimized);
+
+  useEffect(() => {
+    if (isMinimized) {
+      setIsPromptCreationMode(false);
+      internalSetChatAreaState('hidden');
+    }
+  }, [isMinimized]);
 
   const { bridge } = useSRPCBridge();
 
