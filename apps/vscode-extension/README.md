@@ -2,7 +2,7 @@
 
 ### Eyesight for your local AI-Agent.
 
-[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/YOUR_PUBLISHER_NAME.stagewise-vscode?style=flat-square&label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode) [![Build Status](https://img.shields.io/github/actions/workflow/status/YOUR_ORG/stagewise/ci.yml?branch=main&style=flat-square)](https://github.com/YOUR_ORG/stagewise/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT) [![GitHub Repo stars](https://img.shields.io/github/stars/YOUR_ORG/stagewise?style=flat-square)](https://github.com/YOUR_ORG/stagewise) ---
+[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/YOUR_PUBLISHER_NAME.stagewise-vscode?style=flat-square&label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode) [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main&style=flat-square)](https://github.com/stagewise-io/stagewise/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise?style=flat-square)](https://github.com/stagewise-io/stagewise) ---
 
 **[WATCH THE DEMO VIDEO (Coming Soon!)]** [![stagewise Demo Placeholder](https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4)](YOUR_DEMO_VIDEO_LINK_HERE) ---
 
@@ -84,16 +84,16 @@ Simply write custom MCP-tools that run in your browser. Tools will automatically
 
 ## Contributing 🤝
 
-We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/YOUR_ORG/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. Found a bug or have a feature idea? [Open an issue!](https://github.com/YOUR_ORG/stagewise/issues) 
+We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. Found a bug or have a feature idea? [Open an issue!](https://github.com/stagewise-io/stagewise/issues) 
 
 ## Community & Support 💬
 
-* Join our [Discord](#) 
-* Leave a star on the [GitHub repo]()
+* Join our [Discord](https://discord.gg/vsDjhubRbh)
+* Leave a star on the [GitHub repo](https://github.com/stagewise-io/stagewise)
 
 ## License 📜
 
-<!-- stagewise is open-source and licensed under the [MIT License](https://github.com/YOUR_ORG/stagewise/blob/main/LICENSE). --- -->
+<!-- stagewise is open-source and licensed under the [MIT License](https://github.com/stagewise-io/stagewise/blob/main/LICENSE). --- -->
 UNLICENSED, the license is under development.
 
 *Made with ❤️ by the stagewise team.*
