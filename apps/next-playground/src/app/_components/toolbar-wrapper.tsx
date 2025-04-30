@@ -1,8 +1,8 @@
-"use client";
-
-import { useEffect, useRef } from "react";
-import { initToolbar, type ToolbarConfig } from "@stagewise/toolbar";
-export { type ToolbarConfig };
+'use client';
+import type { ToolbarConfig } from '@stagewise/toolbar';
+export type { ToolbarConfig };
+import { initToolbar } from '@stagewise/toolbar';
+import { useEffect, useRef } from 'react';
 
 export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
   const isLoaded = useRef(false);
