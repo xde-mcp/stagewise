@@ -208,6 +208,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       if (!content.trim()) return;
 
       const chat = chats.find((chat) => chat.id === chatId);
+
       const prompt = createPrompt(
         chat?.domContextElements,
         content,
@@ -227,12 +228,9 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
           const result = await bridge.call.triggerAgentPrompt(
             { prompt },
             {
-              onUpdate: (update) => {
-                console.log('Update', update);
-              },
+              onUpdate: (update) => {},
             },
           );
-          console.log('Result', result);
         }
       }
 
@@ -257,7 +255,13 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
         ),
       );
     },
-    [chatAreaState, bridge],
+    [
+      chatAreaState,
+      bridge,
+      chats,
+      setIsPromptCreationMode,
+      internalSetChatAreaState,
+    ],
   );
 
   const value: ChatContext = {
