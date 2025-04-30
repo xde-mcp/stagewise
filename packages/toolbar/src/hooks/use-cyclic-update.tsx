@@ -2,14 +2,14 @@
 // If no frame rate is given, it will default to trigger the function every repaint (requestAnimationFrame).
 // If a frame rate of 0 is set, the update call will never be made.
 
-import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
 
 export function useCyclicUpdate(func: () => void, frameRate?: number) {
   const animationFrameHandle = useRef<number | undefined>(undefined);
 
   const timeBetweenFrames = useMemo(
     () => (frameRate && frameRate > 0 ? 1000 / frameRate : 0),
-    [frameRate]
+    [frameRate],
   );
 
   const lastCallFrameTime = useRef<number>(0);
@@ -23,7 +23,7 @@ export function useCyclicUpdate(func: () => void, frameRate?: number) {
 
       animationFrameHandle.current = requestAnimationFrame(update);
     },
-    [func, timeBetweenFrames]
+    [func, timeBetweenFrames],
   );
 
   useEffect(() => {

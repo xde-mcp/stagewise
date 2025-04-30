@@ -1,9 +1,9 @@
-import { useCyclicUpdate } from "./use-cyclic-update";
-import { useCallback, useEffect, useRef } from "preact/hooks";
+import { useCyclicUpdate } from './use-cyclic-update';
+import { useCallback, useEffect, useRef } from 'preact/hooks';
 
 export function useReferenceElement(
   referencePath: string,
-  updateRate: number = 0
+  updateRate: number = 0,
 ) {
   // Fetch the reference element using the provided path and return the reference to it.
 
@@ -15,10 +15,10 @@ export function useReferenceElement(
         referencePath,
         document,
         (prefix) => {
-          return prefix === "svg" ? "http://www.w3.org/2000/svg" : null;
+          return prefix === 'svg' ? 'http://www.w3.org/2000/svg' : null;
         },
         XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null
+        null,
       ).singleNodeValue;
 
       const referenceElement =

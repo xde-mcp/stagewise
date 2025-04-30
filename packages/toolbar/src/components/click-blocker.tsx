@@ -1,4 +1,4 @@
-import { cn } from "@/utils";
+import { cn } from '@/utils';
 
 // This component creates a transparent element that blocks all clicks on the elements below it.
 export function ClickBlocker(props: {
@@ -9,10 +9,10 @@ export function ClickBlocker(props: {
   return (
     <div
       className={cn(
-        typeof props.enable === "undefined" || props.enable
-          ? "pointer-events-auto"
-          : "pointer-events-none",
-        props.className
+        typeof props.enable === 'undefined' || props.enable
+          ? 'pointer-events-auto'
+          : 'pointer-events-none',
+        props.className,
       )}
       onClick={props.onClick}
     />

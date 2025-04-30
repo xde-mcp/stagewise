@@ -1,5 +1,5 @@
-import { useCallback } from "preact/hooks";
-import { useEventListener } from "./use-event-listener";
+import { useCallback } from 'preact/hooks';
+import { useEventListener } from './use-event-listener';
 
 const eventListenerOptions: AddEventListenerOptions = {
   capture: true,
@@ -10,7 +10,7 @@ export function useKeydownBinding(
   key: string,
   withCtrl: boolean,
   withAlt: boolean,
-  callback: () => void
+  callback: () => void,
 ) {
   const handler = useCallback(
     (ev: KeyboardEvent) => {
@@ -21,8 +21,8 @@ export function useKeydownBinding(
       )
         callback();
     },
-    [callback, key, withAlt, withCtrl]
+    [callback, key, withAlt, withCtrl],
   );
 
-  useEventListener("keydown", handler, eventListenerOptions);
+  useEventListener('keydown', handler, eventListenerOptions);
 }

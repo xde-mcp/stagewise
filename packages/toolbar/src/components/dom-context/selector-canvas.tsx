@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from "preact/hooks";
-import { ElementSelector } from "./element-selector";
-import { useChatState } from "@/hooks/use-chat-state";
-import { ContextItemProposal } from "./item-proposal";
-import { ContextItem } from "./item";
+import { useCallback, useMemo, useState } from 'preact/hooks';
+import { ElementSelector } from './element-selector';
+import { useChatState } from '@/hooks/use-chat-state';
+import { ContextItemProposal } from './item-proposal';
+import { ContextItem } from './item';
 
 export function SelectorCanvas() {
   const { chats, currentChatId, addChatDomContext, isPromptCreationActive } =
@@ -10,7 +10,7 @@ export function SelectorCanvas() {
 
   const currentChat = useMemo(
     () => chats.find((chat) => chat.id === currentChatId),
-    [currentChatId, chats]
+    [currentChatId, chats],
   );
 
   const shouldShow = isPromptCreationActive;
@@ -20,14 +20,14 @@ export function SelectorCanvas() {
   }, [currentChat]);
 
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(
-    null
+    null,
   );
 
   const addElementToContext = useCallback(
     (el: HTMLElement) => {
       addChatDomContext(currentChatId, el);
     },
-    [addChatDomContext, currentChatId]
+    [addChatDomContext, currentChatId],
   );
 
   if (!shouldShow) return null;

@@ -1,13 +1,13 @@
-import "./app.css";
+import './app.css';
 
-import { ContextProviders } from "./components/context-providers";
-import { HotkeyListener } from "./components/hotkey-listener";
-import { DesktopLayout } from "./components/layouts/desktop";
-import { ClickBlocker } from "./components/click-blocker";
-import { FocusLock } from "./components/focus-lock";
-import { VisibilityManager } from "./components/visibility-manager";
-import { useAppState } from "./hooks/use-app-state";
-import { ToolbarConfig } from "./config";
+import { ContextProviders } from './components/context-providers';
+import { HotkeyListener } from './components/hotkey-listener';
+import { DesktopLayout } from './components/layouts/desktop';
+import { ClickBlocker } from './components/click-blocker';
+import { FocusLock } from './components/focus-lock';
+import { VisibilityManager } from './components/visibility-manager';
+import { useAppState } from './hooks/use-app-state';
+import { ToolbarConfig } from './config';
 
 export function App(config: ToolbarConfig) {
   const isMainAppBlocked = useAppState((state) => state.isMainAppBlocked);

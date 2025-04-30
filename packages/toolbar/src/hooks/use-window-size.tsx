@@ -1,5 +1,5 @@
-import { useCallback, useState } from "preact/hooks";
-import { useEventListener } from "./use-event-listener";
+import { useCallback, useState } from 'preact/hooks';
+import { useEventListener } from './use-event-listener';
 
 export interface WindowSize {
   width: number;
@@ -18,10 +18,10 @@ export function useWindowSize() {
         width: window.innerWidth,
         height: window.innerHeight,
       }),
-    []
+    [],
   );
 
-  useEventListener("resize", handleResize);
+  useEventListener('resize', handleResize);
 
   return size;
 }

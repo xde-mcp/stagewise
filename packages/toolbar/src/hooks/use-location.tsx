@@ -1,6 +1,6 @@
-import { type ComponentChildren, createContext } from "preact";
-import { useCallback, useContext, useState } from "preact/hooks";
-import { useCyclicUpdate } from "./use-cyclic-update";
+import { type ComponentChildren, createContext } from 'preact';
+import { useCallback, useContext, useState } from 'preact/hooks';
+import { useCyclicUpdate } from './use-cyclic-update';
 
 const LocationContext = createContext<URL>(new URL(window.location.href));
 
@@ -10,7 +10,7 @@ export function LocationProvider({
   children?: ComponentChildren;
 }) {
   const [currentUrl, setCurrentUrl] = useState<URL>(
-    new URL(window.location.href)
+    new URL(window.location.href),
   );
 
   const update = useCallback(() => {

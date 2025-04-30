@@ -1,36 +1,36 @@
-import { render, createElement } from "preact";
-import appStyle from "./app.css?inline";
-import { App } from "./app.tsx";
+import { render, createElement } from 'preact';
+import appStyle from './app.css?inline';
+import { App } from './app.tsx';
 
-import { companionAnchorTagName } from "./utils.tsx";
+import { companionAnchorTagName } from './utils.tsx';
 
-import { type ToolbarConfig } from "./config.ts";
+import { type ToolbarConfig } from './config.ts';
 
-export { type ToolbarPlugin, type MCPTool } from "./plugin.ts";
-export { type ToolbarConfig } from "./config.ts";
+export { type ToolbarPlugin, type MCPTool } from './plugin.ts';
+export { type ToolbarConfig } from './config.ts';
 
 export function initToolbar(config: ToolbarConfig) {
-  console.log("Stagewise Toolbar Main");
+  console.log('Stagewise Toolbar Main');
 
   if (!document.body)
-    throw new Error("stagewise companion cannot find document.body");
+    throw new Error('stagewise companion cannot find document.body');
 
   // If a stagewise companion anchor already exists, we abort this instance.
   if (document.body.querySelector(companionAnchorTagName)) {
     console.warn(
-      "A stagewise companion anchor already exists. Aborting this instance."
+      'A stagewise companion anchor already exists. Aborting this instance.',
     );
-    throw new Error("A stagewise companion anchor already exists.");
+    throw new Error('A stagewise companion anchor already exists.');
   }
 
   const shadowDomAnchor = document.createElement(companionAnchorTagName);
-  shadowDomAnchor.style.position = "fixed";
-  shadowDomAnchor.style.top = "0px";
-  shadowDomAnchor.style.left = "0px";
-  shadowDomAnchor.style.right = "0px";
-  shadowDomAnchor.style.bottom = "0px";
-  shadowDomAnchor.style.pointerEvents = "none";
-  shadowDomAnchor.style.zIndex = "2147483647";
+  shadowDomAnchor.style.position = 'fixed';
+  shadowDomAnchor.style.top = '0px';
+  shadowDomAnchor.style.left = '0px';
+  shadowDomAnchor.style.right = '0px';
+  shadowDomAnchor.style.bottom = '0px';
+  shadowDomAnchor.style.pointerEvents = 'none';
+  shadowDomAnchor.style.zIndex = '2147483647';
 
   const eventBlocker = (ev: Event) => {
     ev.stopPropagation();
@@ -50,13 +50,13 @@ export function initToolbar(config: ToolbarConfig) {
 
   document.body.appendChild(shadowDomAnchor);
 
-  const fontLinkNode = document.createElement("link");
-  fontLinkNode.rel = "stylesheet";
+  const fontLinkNode = document.createElement('link');
+  fontLinkNode.rel = 'stylesheet';
   fontLinkNode.href = `https://rsms.me/inter/inter.css"`;
   document.head.appendChild(fontLinkNode);
 
   /** Insert generated css into shadow dom */
-  const styleNode = document.createElement("style");
+  const styleNode = document.createElement('style');
   styleNode.append(document.createTextNode(appStyle));
   document.head.appendChild(styleNode);
   render(createElement(App, config), shadowDomAnchor);

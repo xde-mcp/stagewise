@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from 'preact/hooks';
 
 export function useElementSize(node: HTMLElement | null) {
   const [size, setSize] = useState({ width: 0, height: 0 });
