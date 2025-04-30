@@ -8,7 +8,7 @@
 
 ## What is stagewise? 🤔
 
-The stagewise toolbar SDK [(@stagewise/toolbar)]() injects a toolbar into your localhost and bridges change-requests directly into your IDE's coding agent. 
+The stagewise toolbar SDK [(@stagewise/toolbar)]() injects a toolbar into your localhost and let's you visually submit change-requests that directly trigger your IDE's coding agent. 
 
 👆🏽 💬 *Make this button green!!!* ...  🧙🏽 🪄 🟢
 
