@@ -1,73 +1,92 @@
 # stagewise ✨
 
-**Code with your eyes. Visually connect your localhost app to AI code agents.**
+### Eyesight for your local AI-Agent.
 
 [![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/YOUR_PUBLISHER_NAME.stagewise-vscode?style=flat-square&label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode) [![Build Status](https://img.shields.io/github/actions/workflow/status/YOUR_ORG/stagewise/ci.yml?branch=main&style=flat-square)](https://github.com/YOUR_ORG/stagewise/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT) [![GitHub Repo stars](https://img.shields.io/github/stars/YOUR_ORG/stagewise?style=flat-square)](https://github.com/YOUR_ORG/stagewise) ---
 
-**[WATCH THE DEMO VIDEO (Coming Soon!)]** [![stagewise Demo Placeholder](https://via.placeholder.com/800x400.png?text=Awesome+stagewise+Demo+Coming+Soon!)](YOUR_DEMO_VIDEO_LINK_HERE) ---
+**[WATCH THE DEMO VIDEO (Coming Soon!)]** [![stagewise Demo Placeholder](https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4)](YOUR_DEMO_VIDEO_LINK_HERE) ---
 
 ## What is stagewise? 🤔
 
-Tired of digging through code to find that *one* button you want to tweak? Wish you could just point at something in your running app and tell an AI like GitHub Copilot or Cursor to fix it?
+The stagewise toolbar SDK [(@stagewise/toolbar)]() injects a toolbar into your localhost and bridges change-requests directly into your IDE's coding agent. 
 
-**stagewise** makes this real. It's an open-source developer toolbar that bridges the gap between your visual localhost environment and your AI coding assistant in VS Code.
+👆🏽 💬 *Make this button green!!!* ...  🧙🏽 🪄 🟢
 
-Select an element, describe the change in plain English ("make this text bold", "fix padding here"), and watch the AI implement it in your codebase, guided by rich context captured directly from the browser.
+## Quickstart 📖
 
-## How it Works 🤯
+### 1. 🧩 **Install the vs-code extension** 
 
-1.  **Inject:** Add the `stagewise` JS SDK to your frontend project. A sleek toolbar appears over your app on localhost.
-2.  **Select & Command:** Click the stagewise selector, pick any UI element, and type your command (e.g., "change background to dark grey").
-3.  **Context is King:** The toolbar grabs the command *plus* relevant details (HTML structure, CSS, component state) and beams it over.
-4.  **VS Code Bridge:** This extension catches the info from the toolbar.
-5.  **AI Magic:** The extension feeds the command and context to your configured AI agent (Cursor, Copilot, etc.).
-6.  **Code Change:** The AI uses the context to understand *exactly* what you mean and generates the code change right in your IDE.
+Install the extension here: https://google.com
 
-It even supports bidirectional communication using the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), so the AI can ask the toolbar follow-up questions ("What's the parent element's ID?").
+<div style="padding: 5px; border: 1px solid rgba(252, 198, 0, 0.8); background-color: rgba(252, 198, 0, 0.1); border-radius: 10px;">
+The extension will auto-install the <b>stagewise MCP server</b>.
+Click <i>enable</i> to let your agent call MCP-tools in the toolbar.
+</div>
+
+### 2. 👨🏽‍💻 **Install and inject the toolbar**
+
+Install [@stagewise/toolbar]():
+```bash
+pnpm i -D @stagewise/toolbar
+```
+
+Inject the toolbar into your app dev-mode:
+```tsx
+'use client';
+import { initToolbar, type ToolbarConfig } from '@stagewise/toolbar';
+import { useEffect, useRef } from 'react';
+
+export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
+  const isLoaded = useRef(false);
+  useEffect(() => {
+    if (isLoaded.current) return;
+    isLoaded.current = true;
+    initToolbar(config);
+  }, []);
+  return null;
+}
+```
 
 ## Features 🔥
 
-* **Visual Element Selection:** Target UI elements directly in your running app.
-* **Natural Language Commands:** Talk to your code like you talk to a teammate.
-* **Context-Aware AI:** Send rich browser context (DOM, styles, state) for more accurate AI suggestions.
-* **IDE Integration:** Seamlessly connects to AI agents within VS Code.
-* **Bidirectional Communication:** AI can query the browser via MCP.
-* **Open Source:** Built by developers, for developers. Contribute and shape the future!
+* 👆🏽 **Visual Element Selection:** Target UI elements directly in your running app.
+* 💬 **Natural Language Commands:** Talk to your code like you talk to a teammate.
+* 🤖 **Context for your agent:** Automatically send rich browser context (DOM, styles, state) for more accurate AI suggestions.
+* 👨🏽‍💻 **Local IDE Integration:** Seamlessly connects to AI agents within VS Code.
+* ⬅️➡️ **Bidirectional Communication:** The agent can query the toolbar via [MCP](https://modelcontextprotocol.io/).
+* 📖 **Open Source:** Built by developers, for developers. Contribute and shape the future!
 
-## Getting Started 🚀
+## Agent support 🤖
 
-1.  **Install Extension:** Get the **stagewise** extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode). 2.  **Install SDK:** In your frontend project's terminal:
-    ```bash
-    npm install stagewise-sdk # Or yarn add / pnpm add (UPDATE if package name differs)
-    ```
-3.  **Inject Toolbar:** Add the stagewise toolbar to your app's entry point:
-    ```javascript
-    // Example for a React app (adjust for Vue, Angular, etc.)
-    import React from 'react';
-    import ReactDOM from 'react-dom/client';
-    import App from './App';
-    import { injectToolbar } from 'stagewise-sdk'; // (UPDATE if package name differs)
+| **Agent** | **Supported** |
+| --- | --- |
+| Cursor | ✅ |
+| Copilot | ❌ |
+| Windsurf | ❌ |
+| Cline | ❌ |
+| BLACKBOXAI | ❌ |
+| Console Ninja | ❌ |
+| Continue.dev | ❌ |
+| Amazon Q | ❌ |
+| Cody | ❌ |
+| Qodo | ❌ |
 
-    // Inject stagewise toolbar (only in development)
-    if (process.env.NODE_ENV === 'development') {
-      injectToolbar({ /* Optional config */ });
-    }
+## Advanced guides 🧪
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
-    );
-    ```
-4.  **Code!** Run your app on localhost. Select elements, issue commands, and experience the magic! ✨
+### Register custom MCP tools
 
 ## Contributing 🤝
 
-We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/YOUR_ORG/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. Found a bug or have a feature idea? [Open an issue!](https://github.com/YOUR_ORG/stagewise/issues) ## Community & Support 💬
+We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/YOUR_ORG/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. Found a bug or have a feature idea? [Open an issue!](https://github.com/YOUR_ORG/stagewise/issues) 
 
-* [Join our Discord (Link Coming Soon!)](#) * [Follow us on Twitter (Link Coming Soon!)](#) ## License 📜
+## Community & Support 💬
 
-stagewise is open-source and licensed under the [MIT License](https://github.com/YOUR_ORG/stagewise/blob/main/LICENSE). ---
+* Join our [Discord](#) 
+* Leave a star on the [GitHub repo]()
+
+## License 📜
+
+<!-- stagewise is open-source and licensed under the [MIT License](https://github.com/YOUR_ORG/stagewise/blob/main/LICENSE). --- -->
+UNLICENSED, the license is under development.
 
 *Made with ❤️ by the stagewise team.*
