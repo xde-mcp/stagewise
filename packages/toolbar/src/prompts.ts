@@ -97,61 +97,53 @@ function getElementAttributes(element: HTMLElement): { [key: string]: string } {
  * Generates a detailed context string for a single HTMLElement.
  */
 function generateElementContext(element: HTMLElement, index: number): string {
-  let context = `### Element ${index + 1} Details:\n`;
-  context += `- **Tag:** ${element.tagName.toLowerCase()}\n`;
+  let context = `<element index="${index + 1}">\n`;
+  context += `  <tag>${element.tagName.toLowerCase()}</tag>\n`;
 
   const id = element.id;
   if (id) {
-    context += `- **ID:** ${id}\n`;
+    context += `  <id>${id}</id>\n`;
   }
 
   const classes = Array.from(element.classList).join(', ');
   if (classes) {
-    context += `- **Classes:** ${classes}\n`;
+    context += `  <classes>${classes}</classes>\n`;
   }
 
   const attributes = getElementAttributes(element);
   if (Object.keys(attributes).length > 0) {
-    context += `- **Attributes:**\n`;
+    context += `  <attributes>\n`;
     for (const [key, value] of Object.entries(attributes)) {
-      // Ensure class is not duplicated if already listed via classList
       if (key.toLowerCase() !== 'class' || !classes) {
-        context += `  - ${key}: "${value}"\n`;
+        context += `    <${key}>${value}</${key}>\n`;
       }
     }
+    context += `  </attributes>\n`;
   }
 
   const text = element.innerText?.trim();
   if (text) {
-    // Limit length to avoid excessive prompt size
     const maxLength = 100;
-    context += `- **Visible Text:** "${text.length > maxLength ? `${text.substring(0, maxLength)}...` : text}"\n`;
+    context += `  <text>${text.length > maxLength ? `${text.substring(0, maxLength)}...` : text}</text>\n`;
   }
 
-  // --- Structural Context ---
-  context += `- **Structural Context (Parent):**\n`;
+  context += `  <structural_context>\n`;
   if (element.parentElement) {
     const parent = element.parentElement;
-    context += `  - Parent Tag: ${parent.tagName.toLowerCase()}\n`;
+    context += `    <parent>\n`;
+    context += `      <tag>${parent.tagName.toLowerCase()}</tag>\n`;
     if (parent.id) {
-      context += `  - Parent ID: ${parent.id}\n`;
+      context += `      <id>${parent.id}</id>\n`;
     }
     const parentClasses = Array.from(parent.classList).join(', ');
     if (parentClasses) {
-      context += `  - Parent Classes: ${parentClasses}\n`;
+      context += `      <classes>${parentClasses}</classes>\n`;
     }
-    // Optional: A snippet of parent's outerHTML containing the element might be useful
-    // Be careful about length and complexity here.
-    // try {
-    //    const elementOuterHTML = element.outerHTML;
-    //    const parentOuterHTML = parent.outerHTML;
-    //    const snippetStart = Math.max(0, parentOuterHTML.indexOf(elementOuterHTML) - 50);
-    //    const snippetEnd = Math.min(parentOuterHTML.length, parentOuterHTML.indexOf(elementOuterHTML) + elementOuterHTML.length + 50);
-    //    context += `  - HTML Snippet Context: ...${parentOuterHTML.substring(snippetStart, snippetEnd)}...\n`;
-    // } catch (e) { /* Handle potential errors */ }
+    context += `    </parent>\n`;
   } else {
-    context += `  - No parent element found (likely root or disconnected).\n`;
+    context += `    <parent>No parent element found (likely root or disconnected)</parent>\n`;
   }
+  context += `  </structural_context>\n`;
 
   try {
     const styles = window.getComputedStyle(element);
@@ -161,17 +153,17 @@ function generateElementContext(element: HTMLElement, index: number): string {
       fontSize: styles.fontSize,
       fontWeight: styles.fontWeight,
       display: styles.display,
-      // Add other potentially relevant styles
     };
-    context += `- **Current Computed Styles (Relevant):**\n`;
+    context += `  <styles>\n`;
     for (const [key, value] of Object.entries(relevantStyles)) {
-      context += `  - ${key}: ${value}\n`;
+      context += `    <${key}>${value}</${key}>\n`;
     }
+    context += `  </styles>\n`;
   } catch (e) {
-    context += `- Could not retrieve computed styles.\n`;
+    context += `  <styles>Could not retrieve computed styles</styles>\n`;
   }
 
-  context += `\n`; // Add space before next element or end of section
+  context += `</element>\n`;
   return context;
 }
 
@@ -189,16 +181,15 @@ export function createPrompt(
   url: string,
 ): string {
   if (!selectedElements || selectedElements.length === 0) {
-    // Handle cases where no specific element is selected, maybe provide general page context?
-    // For now, we'll assume at least one element is usually selected for this type of interaction.
     return `
     \`\`\`
     Ah, sorry! I was wrong, it wasn't an error. The user has a specific change request. Here is the request:
     \`\`\`
-User Prompt: "${userPrompt}"
-URL: ${url}
-Context: The user provided this prompt without selecting a specific element on the page. Please analyze the page code in general or ask for clarification.
-`.trim();
+    <request>
+      <user_goal>${userPrompt}</user_goal>
+      <url>${url}</url>
+  <context>No specific element was selected on the page. Please analyze the page code in general or ask for clarification.</context>
+</request>`.trim();
   }
 
   let detailedContext = '';
@@ -206,29 +197,15 @@ Context: The user provided this prompt without selecting a specific element on t
     detailedContext += generateElementContext(element, index);
   });
 
-  // --- Construct the Final Prompt ---
-  // Using Markdown for clarity
-  const finalPrompt = `
-## User Request Context
-
-**User's Goal:** "${userPrompt}"
-
-**Interaction URL:** ${url}
-
-## Selected Element(s) on Page
-
-${detailedContext.trim()}
-
-## Task for AI Agent
-
-Based on the user's goal and the details of the selected HTML element(s) above:
-1.  **Identify:** Locate the corresponding code file and structure (e.g., component, template) responsible for rendering this element/these elements. Use the provided tag, ID, classes, attributes, text content, and parent structure as clues.
-2.  **Analyze:** Understand the user's request ("${userPrompt}") in the context of the identified code.
-3.  **Modify:** Generate the necessary code changes (e.g., CSS, HTML structure, component props, state updates) to fulfill the user's request.
-4.  **Consider:** If multiple elements were selected, apply the change appropriately to all of them if it makes sense, or clarify if the request seems ambiguous for multiple elements. Assume the user wants the change applied to all selected elements unless the prompt implies otherwise.
-
-**Please provide the modified code snippet(s) and specify the file(s) to be changed.**
-`.trim(); // Use trim() to remove leading/trailing whitespace
-
-  return finalPrompt;
+  return `
+    \`\`\`
+    Ah, sorry! I was wrong, it wasn't an error. The user has a specific change request. Here is the request:
+    \`\`\`
+<request>
+  <user_goal>${userPrompt}</user_goal>
+  <url>${url}</url>
+  <selected_elements>
+    ${detailedContext.trim()}
+  </selected_elements>
+</request>`.trim();
 }
