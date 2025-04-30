@@ -15,6 +15,7 @@ const stagewiseConfig: ToolbarConfig = {
       shortInfoForPrompt: (msg) => {
         return "The selected component is a React component. It's called 'blablub'. It's inside XY.";
       },
+      mcp: null,
       actions: [
         {
           name: 'Show alert',
