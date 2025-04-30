@@ -27,19 +27,20 @@ const ChatAreaBox = memo(({ children }: { children: ComponentChildren }) => (
 ));
 
 const ChatAreaResizeBar = memo(() => {
-  const { chatAreaState, setChatAreaState } = useChatState();
+  const { chatAreaState, setChatAreaState, stopPromptCreation } =
+    useChatState();
 
   const handleResizeBarClick = useCallback(() => {
     setChatAreaState(chatAreaState === "compact" ? "expanded" : "compact");
   }, [chatAreaState, setChatAreaState]);
 
   const handleCloseChatArea = useCallback(() => {
+    stopPromptCreation();
     setChatAreaState("hidden");
-  }, [setChatAreaState]);
+  }, [setChatAreaState, stopPromptCreation]);
 
   return (
-    <div className="w-full py-1 px-3 rounded-t-3xl bg-zinc-500/5 flex flex-row justify-between items-center">
-      <div className="size-5" />
+    <div className="w-full py-1 px-3 rounded-t-3xl flex flex-row justify-center items-center">
       <Button
         className="bg-transparent text-muted-foreground/30 hover:text-muted-foreground size-5 transition-colors duration-100"
         onClick={handleResizeBarClick}
@@ -51,10 +52,13 @@ const ChatAreaResizeBar = memo(() => {
         )}
       </Button>
       <Button
-        className="size-5 bg-transparent text-muted-foreground/30 hover:text-muted-foreground transition-colors duration-100"
+        className="absolute right-2 w-fit h-fit p-1 bg-transparent opacity-50 hover:opacity-100 transition-all duration-100 flex flex-row gap-1 items-center text-xs"
         onClick={handleCloseChatArea}
       >
-        <XCircle className="size-3" />
+        Close menu
+        <div className="text-xs rounded-md bg-muted-foreground text-zinc-50 px-0.5 py-0.5">
+          esc
+        </div>
       </Button>
     </div>
   );

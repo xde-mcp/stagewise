@@ -19,7 +19,7 @@ export function ChatBox() {
   );
 
   const showBigBox = useMemo(() => {
-    return currentInput.split("\n").length > 1 || currentInput.length > 48;
+    return currentInput.split("\n").length > 1 || currentInput.length > 30;
   }, [currentInput]);
 
   const handleInputChange = useCallback(
@@ -73,16 +73,22 @@ export function ChatBox() {
   const textareaClassName = useMemo(
     () =>
       cn(
-        "w-full flex-1 resize-none focus:outline-none",
+        "w-full flex-1 resize-none focus:outline-none bg-transparent text-zinc-950 placeholder:text-zinc-950/50",
         showBigBox ? "h-[4.5em]" : "h-6"
       ),
     [showBigBox]
   );
 
-  const ctrlKText = useHotkeyListenerComboText(HotkeyActions.CTRL_ALT_C);
+  const ctrlAltCText = useHotkeyListenerComboText(HotkeyActions.CTRL_ALT_C);
 
   return (
-    <div className="flex-1 h-fit w-80 flex flex-row gap-1 p-1.5 rounded-2xl border border-border/10 bg-zinc-950/5 shadow-inner items-end text-sm placeholder:text-zinc-950/50 text-zinc-950 focus-within:outline-2 outline-blue-600 transition-all duration-150">
+    <div
+      className={cn(
+        "flex-1 h-fit w-80 flex flex-row gap-1 p-1.5 pl-2 rounded-2xl border border-border/10 bg-zinc-950/5 shadow-inner items-end text-sm placeholder:text-zinc-950/70 text-zinc-950 transition-all duration-150",
+        chatState.isPromptCreationActive && "ring-2 ring-blue-600"
+      )}
+      onClick={() => chatState.startPromptCreation()}
+    >
       <Textarea
         ref={inputRef}
         className={textareaClassName}
@@ -90,7 +96,11 @@ export function ChatBox() {
         value={currentInput}
         onChange={(e) => handleInputChange(e.currentTarget.value)}
         onKeyDown={handleKeyDown}
-        placeholder={`What do you want to change? (${ctrlKText})`}
+        placeholder={
+          chatState.isPromptCreationActive
+            ? "Enter prompt..."
+            : `What do you want to change? (${ctrlAltCText})`
+        }
       />
       <Button
         className={buttonClassName}

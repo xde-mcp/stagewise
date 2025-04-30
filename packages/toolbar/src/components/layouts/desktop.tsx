@@ -4,9 +4,7 @@ import { ToolbarArea } from "@/components/toolbar/desktop-only/area";
 import { useAppState } from "@/hooks/use-app-state";
 import { cn } from "@/utils";
 import { ExpandButton } from "../expand-button";
-import { useChatState } from "@/hooks/use-chat-state";
 import { SelectorCanvas } from "../dom-context/selector-canvas";
-import { useMemo } from "preact/hooks";
 
 export function DesktopLayout() {
   console.log("DesktopLayout rendered!");

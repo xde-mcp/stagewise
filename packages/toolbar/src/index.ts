@@ -50,9 +50,6 @@ export function initToolbar(config: ToolbarConfig) {
 
   document.body.appendChild(shadowDomAnchor);
 
-  // Create a shadow root
-  const shadow = shadowDomAnchor.attachShadow({ mode: "open" });
-
   const fontLinkNode = document.createElement("link");
   fontLinkNode.rel = "stylesheet";
   fontLinkNode.href = `https://rsms.me/inter/inter.css"`;
@@ -61,6 +58,6 @@ export function initToolbar(config: ToolbarConfig) {
   /** Insert generated css into shadow dom */
   const styleNode = document.createElement("style");
   styleNode.append(document.createTextNode(appStyle));
-  shadow.appendChild(styleNode);
-  render(createElement(App, config), shadow);
+  document.head.appendChild(styleNode);
+  render(createElement(App, config), shadowDomAnchor);
 }

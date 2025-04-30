@@ -13,7 +13,7 @@ export function ToolbarDraggableBox() {
   return (
     <div className="absolute p-0.5 pointer-events-auto bottom-5 left-1/2 -translate-x-1/2">
       {/* This is the complete toolbar area where we can stack different stuff. The main toolbar content stands out. */}
-      <div className="pointer-events-auto flex flex-col p-0 items-start justify-center rounded-3xl border border-border/30 bg-zinc-50/60 shadow-lg backdrop-blur-lg transition-colors w-96 max-w-[80vw]">
+      <div className="pointer-events-auto flex flex-col p-0 items-start justify-center rounded-3xl border border-solid border-border/30 bg-zinc-50/80 shadow-lg backdrop-blur-lg transition-colors w-96 max-w-[80vw]">
         <ChatArea />
         {/* <ToolbarDraggingGrip /> */}
         {/* If the app state is right, we also render the button that enables dragging the toolbar around */}

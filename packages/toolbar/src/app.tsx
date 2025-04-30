@@ -9,7 +9,7 @@ import { VisibilityManager } from "./components/visibility-manager";
 import { useAppState } from "./hooks/use-app-state";
 import { ToolbarConfig } from "./config";
 
-export function App({ plugins }: ToolbarConfig) {
+export function App(config: ToolbarConfig) {
   const isMainAppBlocked = useAppState((state) => state.isMainAppBlocked);
 
   return (
@@ -20,7 +20,7 @@ export function App({ plugins }: ToolbarConfig) {
         enable={isMainAppBlocked}
       />
 
-      <ContextProviders>
+      <ContextProviders config={config}>
         <HotkeyListener />
         <VisibilityManager>
           {/* Depending on the screen size, load either the mobile or the desktop companion layout */}

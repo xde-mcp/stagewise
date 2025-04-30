@@ -1,4 +1,5 @@
 import { useAppState } from "@/hooks/use-app-state";
+import { Logo } from "./ui/logo";
 
 export function ExpandButton() {
   const expand = useAppState((state) => state.expand);
@@ -6,9 +7,9 @@ export function ExpandButton() {
   return (
     <button
       onClick={() => expand()}
-      className="bg-transparent rounded-full pointer-events-auto absolute bottom-3 left-3 size-10 opacity-60 shadow-sm transition-all duration-500 hover:opacity-100 hover:shadow-lg"
+      className="bg-transparent rounded-full pointer-events-auto absolute bottom-3 left-3 size-12 opacity-80 shadow-sm transition-all duration-500 hover:opacity-100 hover:shadow-lg"
     >
-      Expand
+      <Logo color="gradient" />
     </button>
   );
 }
