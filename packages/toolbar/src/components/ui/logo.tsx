@@ -1,4 +1,4 @@
-import { type FC, type HTMLAttributes } from 'react';
+import type { FC, HTMLAttributes } from 'react';
 
 export type LogoColor =
   | 'default'
@@ -34,28 +34,26 @@ export const Logo: FC<LogoProps> = ({
     <div
       className={`relative ${
         color === 'gradient'
-          ? 'rounded-full overflow-hidden'
+          ? 'overflow-hidden rounded-full'
           : 'overflow-visible'
       } ${props.className || ''} ${
         loading ? 'drop-shadow-xl' : ''
       } aspect-square`}
     >
       {color === 'gradient' && (
-        <>
-          <div className="absolute inset-0">
-            <div className="absolute size-full inset-0 bg-gradient-to-tr from-indigo-600 to-emerald-400" />
-            <div className="absolute size-9/12 top-1/2 left-1/2 bg-[radial-gradient(circle,rgba(219,39,119,0.2)_0%,rgba(219,39,119,0)_100%)]" />
-            <div className="absolute size-full bottom-1/2 right-1/2 bg-[radial-gradient(circle,rgba(219,39,119,0.2)_0%,rgba(219,39,119,0)_100%)]" />
-            <div className="absolute size-full inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0)_60%,rgba(255,255,255,0.2)_70%)]" />
-            <div className="absolute w-full h-[120%] top-[-20%] left-0 bg-[radial-gradient(circle,rgba(55,48,163,0)_55%,rgba(55,48,163,0.35)_73%)]" />
-          </div>
-        </>
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 size-full bg-gradient-to-tr from-indigo-700 via-blue-500 to-teal-500" />
+          <div className="absolute top-1/2 left-1/2 size-9/12 bg-[radial-gradient(circle,rgba(219,39,119,0.2)_0%,rgba(219,39,119,0)_100%)]" />
+          <div className="absolute right-1/2 bottom-1/2 size-full bg-[radial-gradient(circle,rgba(219,39,119,0.2)_0%,rgba(219,39,119,0)_100%)]" />
+          <div className='absolute top-0 left-[-10%] size-[120%] bg-[radial-gradient(circle,rgba(255,255,255,0)_60%,rgba(255,255,255,0.2)_70%)]' />
+          <div className="absolute top-[-20%] left-0 h-[120%] w-full bg-[radial-gradient(circle,rgba(55,48,163,0)_55%,rgba(55,48,163,0.35)_73%)]" />
+        </div>
       )}
       <svg
         className={`absolute overflow-visible ${
           color === 'gradient'
-            ? 'left-[25%] top-[25%] h-[50%] w-[50%]'
-            : 'left-0 top-0 h-full w-full'
+            ? 'top-[25%] left-[25%] h-[50%] w-[50%] drop-shadow-indigo-950 drop-shadow-xs'
+            : 'top-0 left-0 h-full w-full'
         }`}
         viewBox="0 0 2048 2048"
       >
@@ -72,8 +70,8 @@ export const Logo: FC<LogoProps> = ({
       <svg
         className={`absolute overflow-visible ${
           color === 'gradient'
-            ? 'left-[25%] top-[25%] h-[50%] w-[50%]'
-            : 'left-0 top-0 h-full w-full'
+            ? 'top-[25%] left-[25%] h-[50%] w-[50%]'
+            : 'top-0 left-0 h-full w-full'
         }`}
         viewBox="0 0 2048 2048"
       >
