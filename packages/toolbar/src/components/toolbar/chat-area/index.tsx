@@ -1,23 +1,23 @@
 /** The chat area is the top section of the toolbar that can either be hidden or expanded, based on the likings and the ations of the user. */
 
-import { useChatState } from "@/hooks/use-chat-state";
-import { Plus } from "lucide-react";
-import { Button } from "@headlessui/react";
-import { ChevronDown, ChevronUp, XCircle } from "lucide-react";
-import { ComponentChildren } from "preact";
-import { memo, useCallback } from "preact/compat";
-import { cn } from "@/utils";
+import { useChatState } from '@/hooks/use-chat-state';
+import { Plus } from 'lucide-react';
+import { Button } from '@headlessui/react';
+import { ChevronDown, ChevronUp, XCircle } from 'lucide-react';
+import { ComponentChildren } from 'preact';
+import { memo, useCallback } from 'preact/compat';
+import { cn } from '@/utils';
 
 export const ChatArea = memo(() => {
   const { chatAreaState } = useChatState();
 
-  if (chatAreaState === "hidden") return null;
+  if (chatAreaState === 'hidden') return null;
 
   return (
     <ChatAreaBox>
       <ChatAreaResizeBar />
-      {chatAreaState === "compact" && <ChatAreaCompact />}
-      {chatAreaState === "expanded" && <ChatAreaExpanded />}
+      {chatAreaState === 'compact' && <ChatAreaCompact />}
+      {chatAreaState === 'expanded' && <ChatAreaExpanded />}
     </ChatAreaBox>
   );
 });
@@ -31,12 +31,12 @@ const ChatAreaResizeBar = memo(() => {
     useChatState();
 
   const handleResizeBarClick = useCallback(() => {
-    setChatAreaState(chatAreaState === "compact" ? "expanded" : "compact");
+    setChatAreaState(chatAreaState === 'compact' ? 'expanded' : 'compact');
   }, [chatAreaState, setChatAreaState]);
 
   const handleCloseChatArea = useCallback(() => {
     stopPromptCreation();
-    setChatAreaState("hidden");
+    setChatAreaState('hidden');
   }, [setChatAreaState, stopPromptCreation]);
 
   return (
@@ -45,7 +45,7 @@ const ChatAreaResizeBar = memo(() => {
         className="bg-transparent text-muted-foreground/30 hover:text-muted-foreground size-5 transition-colors duration-100"
         onClick={handleResizeBarClick}
       >
-        {chatAreaState === "compact" ? (
+        {chatAreaState === 'compact' ? (
           <ChevronUp className="size-5" />
         ) : (
           <ChevronDown className="size-5" />
@@ -76,7 +76,7 @@ const ChatAreaCompact = memo(() => (
 const ChatAreaExpanded = memo(() => {
   const { chats, currentChatId, setCurrentChat, createChat } = useChatState();
   const currentChat = chats.find((chat) => chat.id === currentChatId);
-  const hasNewChat = chats.some((chat) => chat.id === "new_chat");
+  const hasNewChat = chats.some((chat) => chat.id === 'new_chat');
 
   const handleCreateChat = useCallback(() => {
     createChat();
@@ -86,7 +86,7 @@ const ChatAreaExpanded = memo(() => {
     (chatId: string) => {
       setCurrentChat(chatId);
     },
-    [setCurrentChat]
+    [setCurrentChat],
   );
 
   return (
@@ -96,14 +96,14 @@ const ChatAreaExpanded = memo(() => {
           <div
             key={message.id}
             className={`flex ${
-              message.sender === "assistant" ? "justify-start" : "justify-end"
+              message.sender === 'assistant' ? 'justify-start' : 'justify-end'
             }`}
           >
             <div
               className={`max-w-[80%] px-2 py-1 rounded-xl text-sm ${
-                message.sender === "assistant"
-                  ? "bg-zinc-950/5 text-zinc-950"
-                  : "bg-blue-600 text-white"
+                message.sender === 'assistant'
+                  ? 'bg-zinc-950/5 text-zinc-950'
+                  : 'bg-blue-600 text-white'
               }`}
             >
               {message.content}
@@ -124,13 +124,13 @@ const ChatAreaExpanded = memo(() => {
           <Button
             key={chat.id}
             className={cn(
-              "text-xs px-2 h-5 rounded-full bg-zinc-950/5 text-muted-foreground flex-shrink-0 max-w-48 overflow-hidden truncate",
+              'text-xs px-2 h-5 rounded-full bg-zinc-950/5 text-muted-foreground flex-shrink-0 max-w-48 overflow-hidden truncate',
               chat.id === currentChatId &&
-                "bg-white/60 text-zinc-950 shadow-sm shadow-blue-600/50"
+                'bg-white/60 text-zinc-950 shadow-sm shadow-blue-600/50',
             )}
             onClick={() => handleSetCurrentChat(chat.id)}
           >
-            {chat.title || "New chat"}
+            {chat.title || 'New chat'}
           </Button>
         ))}
       </div>

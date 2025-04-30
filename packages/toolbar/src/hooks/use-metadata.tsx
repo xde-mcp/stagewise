@@ -1,8 +1,8 @@
 // This hook provides an interface to fetch all kinds of metadata about the device.
 // It can be used at the time of creating a finding to provide additional information about the device.
 
-import { useCallback } from "preact/hooks";
-import UAParser from "ua-parser-js";
+import { useCallback } from 'preact/hooks';
+import UAParser from 'ua-parser-js';
 
 type Metadata = {
   accessibility: {
@@ -52,12 +52,12 @@ export function useMetadataGetter(): () => Promise<{}> {
       accessibility: {
         hearingImpairment: false,
         visionImpairment: false,
-        prefersReducedMotion: matchMedia("(prefers-reduced-motion: reduce)")
+        prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)')
           .matches,
       },
       inputs: {
-        hasMouse: matchMedia("(any-pointer:fine)").matches,
-        hasTouch: matchMedia("(any-pointer:coarse)").matches,
+        hasMouse: matchMedia('(any-pointer:fine)').matches,
+        hasTouch: matchMedia('(any-pointer:coarse)').matches,
       },
       browser: {
         browser: uaResult.browser.name ?? null,
@@ -70,9 +70,9 @@ export function useMetadataGetter(): () => Promise<{}> {
         resolutionY: window.innerHeight,
         viewportScale: window.visualViewport?.scale || 1,
       },
-      userAgent: window.navigator.userAgent || "unknown",
+      userAgent: window.navigator.userAgent || 'unknown',
       preferences: {
-        darkMode: matchMedia("(prefers-color-scheme: dark)").matches,
+        darkMode: matchMedia('(prefers-color-scheme: dark)').matches,
         locale: window.navigator.language,
       },
     };

@@ -1,7 +1,7 @@
-import { useReferenceElement } from "@/hooks/use-reference-element";
-import { useWindowSize } from "@/hooks/use-window-size";
-import { getElementAtPoint } from "@/utils";
-import { useCyclicUpdate } from "@/hooks/use-cyclic-update";
+import { useReferenceElement } from '@/hooks/use-reference-element';
+import { useWindowSize } from '@/hooks/use-window-size';
+import { getElementAtPoint } from '@/utils';
+import { useCyclicUpdate } from '@/hooks/use-cyclic-update';
 import {
   useCallback,
   useContext,
@@ -9,8 +9,8 @@ import {
   useMemo,
   useRef,
   useState,
-} from "preact/hooks";
-import { createContext, VNode } from "preact";
+} from 'preact/hooks';
+import { createContext, VNode } from 'preact';
 
 export interface DOMAnchorProps {
   referencePath: string; // The XPath of the reference element
@@ -142,8 +142,8 @@ export function DOMAnchor({
             ? AnchorOrientation.BOTTOM_RIGHT
             : AnchorOrientation.BOTTOM_LEFT
           : preferRight
-          ? AnchorOrientation.TOP_RIGHT
-          : AnchorOrientation.TOP_LEFT
+            ? AnchorOrientation.TOP_RIGHT
+            : AnchorOrientation.TOP_LEFT,
       );
     }
   }, [
@@ -174,9 +174,9 @@ export function DOMAnchor({
       refElement.current.scrollIntoViewIfNeeded(true);
     } else if (refElement.current?.scrollIntoView) {
       refElement.current.scrollIntoView({
-        behavior: "instant",
-        block: "center",
-        inline: "center",
+        behavior: 'instant',
+        block: 'center',
+        inline: 'center',
       });
     }
   }, [isAtAnchor, props.disableUpdating, props.keepInViewport, refElement]);
@@ -198,7 +198,7 @@ export function DOMAnchor({
       notAtAnchorReason: notAtAnchorReason,
       refElement: refElement.current,
     }),
-    [isAtAnchor, notAtAnchorReason, recommendedOrientation, refElement]
+    [isAtAnchor, notAtAnchorReason, recommendedOrientation, refElement],
   );
 
   return (

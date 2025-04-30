@@ -2,9 +2,9 @@
 // information about the element that was hovered or clicked.
 // It ignores the companion itself.
 
-import { getElementAtPoint } from "@/utils";
-import { useCallback, useRef } from "preact/hooks";
-import { MouseEventHandler } from "preact/compat";
+import { getElementAtPoint } from '@/utils';
+import { useCallback, useRef } from 'preact/hooks';
+import { MouseEventHandler } from 'preact/compat';
 
 export interface ElementSelectorProps {
   onElementHovered: (element: HTMLElement) => void;
@@ -19,7 +19,7 @@ export function ElementSelector(props: ElementSelectorProps) {
   const handleMouseMove = useCallback<MouseEventHandler<HTMLDivElement>>(
     (event) => {
       const target = event.target as HTMLElement;
-      if (target.closest(".companion")) return;
+      if (target.closest('.companion')) return;
       const refElement = getElementAtPoint(event.clientX, event.clientY);
       if (props.ignoreList.includes(refElement)) return;
       if (lastHoveredElement.current !== refElement) {
@@ -27,7 +27,7 @@ export function ElementSelector(props: ElementSelectorProps) {
         props.onElementHovered(refElement);
       }
     },
-    [props]
+    [props],
   );
 
   const handleMouseLeave = useCallback<

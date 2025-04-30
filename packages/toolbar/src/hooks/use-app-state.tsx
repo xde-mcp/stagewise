@@ -3,11 +3,11 @@
 // This hook provides information to all components about whether certain parts of the companion layout should be rendered or not.
 // Components can use this information to hide themselves or show additional information.
 
-import { DropAreaZone } from "@/components/toolbar/desktop-only/drop-zones";
-import { createRef, RefObject } from "preact";
-import { create, StateCreator } from "zustand";
-import SuperJSON from "superjson";
-import { persist, PersistStorage } from "zustand/middleware";
+import { DropAreaZone } from '@/components/toolbar/desktop-only/drop-zones';
+import { createRef, RefObject } from 'preact';
+import { create, StateCreator } from 'zustand';
+import SuperJSON from 'superjson';
+import { persist, PersistStorage } from 'zustand/middleware';
 
 export enum ResolvedFilter {
   ALL,
@@ -25,7 +25,7 @@ export interface AppState {
 
   toolbarPosition: (typeof DropAreaZone)[keyof typeof DropAreaZone];
   setToolbarPosition: (
-    position: (typeof DropAreaZone)[keyof typeof DropAreaZone]
+    position: (typeof DropAreaZone)[keyof typeof DropAreaZone],
   ) => void;
 
   toolbarBoxRef: RefObject<HTMLElement | null>; // used to place popovers in case the reference is not available
@@ -53,9 +53,9 @@ const createAppStore: StateCreator<AppState> = (s) => {
       | InternalAppState
       | Partial<InternalAppState>
       | ((
-          state: InternalAppState
+          state: InternalAppState,
         ) => InternalAppState | Partial<InternalAppState>),
-    replace?: boolean | undefined
+    replace?: boolean | undefined,
   ) => void;
   return {
     appBlockRequestList: [],
@@ -96,7 +96,7 @@ const createAppStore: StateCreator<AppState> = (s) => {
     discardMainAppBlock: (handle: number) => {
       set((state) => {
         const newBlockRequestList = state.appBlockRequestList.filter(
-          (h) => h !== handle
+          (h) => h !== handle,
         );
         return {
           appBlockRequestList: newBlockRequestList,
@@ -110,7 +110,7 @@ const createAppStore: StateCreator<AppState> = (s) => {
     discardMainAppUnblock: (handle: number) => {
       set((state) => {
         const newUnblockRequestList = state.appUnblockRequestList.filter(
-          (h) => h !== handle
+          (h) => h !== handle,
         );
         return {
           appUnblockRequestList: newUnblockRequestList,
@@ -123,7 +123,7 @@ const createAppStore: StateCreator<AppState> = (s) => {
 
     toolbarPosition: DropAreaZone.BOTTOM_CENTER,
     setToolbarPosition: (
-      position: (typeof DropAreaZone)[keyof typeof DropAreaZone]
+      position: (typeof DropAreaZone)[keyof typeof DropAreaZone],
     ) => set(() => ({ toolbarPosition: position })),
 
     toolbarBoxRef: createRef(),
@@ -155,12 +155,12 @@ function createSuperJSONStorage<T>(storage: Storage): PersistStorage<T> {
 
 export const useAppState = create(
   persist(createAppStore, {
-    name: "stgws:companion",
+    name: 'stgws:companion',
     storage: createSuperJSONStorage(sessionStorage),
     partialize: (state) => {
       return {
         toolbarPosition: state.toolbarPosition,
       };
     },
-  })
+  }),
 );

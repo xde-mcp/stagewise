@@ -1,10 +1,10 @@
-import { useReferenceElement } from "@/hooks/use-reference-element";
-import { useWindowSize } from "@/hooks/use-window-size";
-import { useCyclicUpdate } from "@/hooks/use-cyclic-update";
-import { useCallback, useRef } from "preact/hooks";
-import { HTMLAttributes } from "preact/compat";
-import { Trash2 } from "lucide-react";
-import { useChatState } from "@/hooks/use-chat-state";
+import { useReferenceElement } from '@/hooks/use-reference-element';
+import { useWindowSize } from '@/hooks/use-window-size';
+import { useCyclicUpdate } from '@/hooks/use-cyclic-update';
+import { useCallback, useRef } from 'preact/hooks';
+import { HTMLAttributes } from 'preact/compat';
+import { Trash2 } from 'lucide-react';
+import { useChatState } from '@/hooks/use-chat-state';
 
 export interface ContextItemProps extends HTMLAttributes<HTMLDivElement> {
   refElement: HTMLElement;
@@ -26,11 +26,11 @@ export function ContextItem({ refElement, ...props }: ContextItemProps) {
         boxRef.current.style.height = `${referenceRect.height}px`;
         boxRef.current.style.display = undefined;
       } else {
-        boxRef.current.style.height = "0px";
-        boxRef.current.style.width = "0px";
+        boxRef.current.style.height = '0px';
+        boxRef.current.style.width = '0px';
         boxRef.current.style.top = `${windowSize.height / 2}px`;
         boxRef.current.style.left = `${windowSize.width / 2}px`;
-        boxRef.current.style.display = "none";
+        boxRef.current.style.display = 'none';
       }
     }
   }, [refElement, windowSize.height, windowSize.width]);
@@ -47,7 +47,7 @@ export function ContextItem({ refElement, ...props }: ContextItemProps) {
     <div
       {...props}
       className={
-        "pointer-events-auto flex items-center justify-center fixed rounded-lg border-2 border-green-600/80 bg-green-600/5 transition-all duration-0 overflow-hidden hover:bg-red-600/20 hover:border-red-600/80 hover:text-white hover:backdrop-blur-sm text-transparent cursor-pointer"
+        'pointer-events-auto flex items-center justify-center fixed rounded-lg border-2 border-green-600/80 bg-green-600/5 transition-all duration-0 overflow-hidden hover:bg-red-600/20 hover:border-red-600/80 hover:text-white hover:backdrop-blur-sm text-transparent cursor-pointer'
       }
       ref={boxRef}
       onClick={handleDeleteClick}

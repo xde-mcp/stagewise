@@ -1,15 +1,15 @@
-import { Ellipsis, Minimize2 } from "lucide-react";
+import { Ellipsis, Minimize2 } from 'lucide-react';
 import {
   DropdownMenuButton,
   DropdownMenuButttonItem,
   DropdownMenuContent,
-} from "../ui/dropdown-menu";
-import { DropdownMenu } from "../ui/dropdown-menu";
-import { ToolbarButton } from "./button";
-import { useAppState } from "@/hooks/use-app-state";
-import { ToolbarSection } from "./section";
-import { usePlugins } from "@/hooks/use-plugins";
-import { useMemo } from "preact/hooks";
+} from '../ui/dropdown-menu';
+import { DropdownMenu } from '../ui/dropdown-menu';
+import { ToolbarButton } from './button';
+import { useAppState } from '@/hooks/use-app-state';
+import { ToolbarSection } from './section';
+import { usePlugins } from '@/hooks/use-plugins';
+import { useMemo } from 'preact/hooks';
 export function MoreActionsButton() {
   const minimizeCompanion = useAppState((state) => state.minimize);
 
@@ -19,7 +19,7 @@ export function MoreActionsButton() {
     return plugins.flatMap((plugin) => plugin.actions);
   }, [plugins]);
 
-  console.log("pluginTools", pluginTools);
+  console.log('pluginTools', pluginTools);
 
   return (
     <ToolbarSection>

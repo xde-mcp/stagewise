@@ -1,4 +1,4 @@
-import { createContext, useContext } from "preact/compat";
+import { createContext, useContext } from 'preact/compat';
 
 interface ExtensionContextType {
   isExtensionInstalled: boolean;

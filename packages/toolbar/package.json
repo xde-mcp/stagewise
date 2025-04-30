@@ -6,9 +6,7 @@
   "main": "dist/index.umd.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "dev": "tsc -b && vite build --watch --mode development",
     "build": "tsc -b && vite build --mode production"

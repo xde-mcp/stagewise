@@ -15,19 +15,19 @@ export type MCPPromptList = {
 };
 
 export type MCPPromptMessage = {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content:
     | {
-        type: "text";
+        type: 'text';
         text: string;
       }
     | {
-        type: "image" | "audio";
+        type: 'image' | 'audio';
         data: string;
         mimeType: string;
       }
     | {
-        type: "resource";
+        type: 'resource';
         resource: {
           uri: string;
           mimeType: string;
@@ -83,16 +83,16 @@ export type MCPToolList = {
 export type MCPToolResponse = {
   content: (
     | {
-        type: "text";
+        type: 'text';
         text: string;
       }
     | {
-        type: "image" | "audio";
+        type: 'image' | 'audio';
         data: string;
         mimeType: string;
       }
     | {
-        type: "resource";
+        type: 'resource';
         resource: {
           uri: string;
           mimeType: string;

@@ -1,8 +1,8 @@
-import { Button, type ButtonProps } from "@headlessui/react";
-import { forwardRef } from "preact/compat";
-import { type VNode } from "preact";
-import { ToolbarItem } from "./item";
-import { cn } from "@/utils";
+import { Button, type ButtonProps } from '@headlessui/react';
+import { forwardRef } from 'preact/compat';
+import { type VNode } from 'preact';
+import { ToolbarItem } from './item';
+import { cn } from '@/utils';
 
 export interface ToolbarButtonProps extends ButtonProps {
   badgeContent?: VNode;
@@ -10,7 +10,7 @@ export interface ToolbarButtonProps extends ButtonProps {
   statusDot?: boolean;
   statusDotClassName?: string;
   tooltipHint?: string;
-  variant?: "default" | "promoted";
+  variant?: 'default' | 'promoted';
 }
 
 export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
@@ -21,18 +21,18 @@ export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
       statusDot,
       statusDotClassName,
       tooltipHint,
-      variant = "default",
+      variant = 'default',
       ...props
     },
-    ref
+    ref,
   ) => {
     const button = (
       <Button
         ref={ref}
         {...props}
         className={cn(
-          "flex items-center justify-center p-1 hover:bg-zinc-950/5 rounded-full",
-          variant === "default" ? "size-8" : "h-8 rounded-full"
+          'flex items-center justify-center p-1 hover:bg-zinc-950/5 rounded-full',
+          variant === 'default' ? 'size-8' : 'h-8 rounded-full',
         )}
       />
     );
@@ -46,6 +46,6 @@ export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         {button}
       </ToolbarItem>
     );
-  }
+  },
 );
-ToolbarButton.displayName = "ToolbarButton";
+ToolbarButton.displayName = 'ToolbarButton';

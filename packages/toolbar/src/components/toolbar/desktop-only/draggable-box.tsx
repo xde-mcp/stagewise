@@ -1,13 +1,13 @@
 // This component represents the box in which the toolbar is placed.
 // It is only used in desktop cases, since the mobile toolbar is placed inside a modal card.
 
-import { Button } from "@headlessui/react";
-import { GripVertical, Plus } from "lucide-react";
-import { ChatArea } from "../chat-area";
-import { ChatBox } from "../chat-box";
-import { MoreActionsButton } from "../more-actions-button";
-import { useDraggable } from "@/hooks/use-draggable";
-import { MutableRef } from "preact/hooks";
+import { Button } from '@headlessui/react';
+import { GripVertical, Plus } from 'lucide-react';
+import { ChatArea } from '../chat-area';
+import { ChatBox } from '../chat-box';
+import { MoreActionsButton } from '../more-actions-button';
+import { useDraggable } from '@/hooks/use-draggable';
+import { MutableRef } from 'preact/hooks';
 
 export function ToolbarDraggableBox() {
   return (

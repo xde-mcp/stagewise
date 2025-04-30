@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "preact/hooks";
-import { useEventListener } from "./use-event-listener";
+import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useEventListener } from './use-event-listener';
 
 export const useMediaQuery = (query: string) => {
   const [matches, setMatches] = useState(false);
 
   const queryBrowser = useCallback(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
 
     const media = window.matchMedia(query);
     if (media.matches !== matches) {
@@ -13,7 +13,7 @@ export const useMediaQuery = (query: string) => {
     }
   }, [matches, query]);
 
-  useEventListener("resize", queryBrowser);
+  useEventListener('resize', queryBrowser);
 
   useEffect(() => {
     queryBrowser();

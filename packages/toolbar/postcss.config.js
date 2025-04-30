@@ -1,12 +1,12 @@
-const prefixWhereOverrideList = ["html", "body"];
-const prefixElementOverrideList = [":root", ":host"];
+const prefixWhereOverrideList = ['html', 'body'];
+const prefixElementOverrideList = [':root', ':host'];
 
 export default {
   plugins: {
-    "@tailwindcss/postcss": {},
+    '@tailwindcss/postcss': {},
     autoprefixer: {},
-    "postcss-prefix-selector": {
-      prefix: "stagewise-companion-anchor",
+    'postcss-prefix-selector': {
+      prefix: 'stagewise-companion-anchor',
       transform: function (prefix, selector, prefixedSelector, filePath, rule) {
         if (prefixWhereOverrideList.includes(selector)) {
           return `:where(${prefix})`;
@@ -17,7 +17,7 @@ export default {
             (acc, sel) => {
               return acc.replace(sel, prefix);
             },
-            selector
+            selector,
           );
           return cleanedSelector;
         } else {
