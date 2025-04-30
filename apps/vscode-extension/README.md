@@ -76,7 +76,7 @@ export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
 
 ### Write custom MCP tools
 
-Simply write custom MCP-tools that run in your browser. Tools will automatically be registered and your agent can use them: You just have to plug them into the toolbar config.
+Simply write custom MCP-tools that run in your browser. Tools will automatically be registered and your local AI agent can use them: You just have to plug them into the toolbar config.
 
 ```typescript
 // TBD
