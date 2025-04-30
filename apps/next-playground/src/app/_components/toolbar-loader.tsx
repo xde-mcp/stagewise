@@ -12,7 +12,7 @@ const stagewiseConfig: ToolbarConfig = {
     {
       name: 'react',
       description: 'Adds context for React components',
-      shortInfoForPrompt: (msg) => {
+      shortInfoForPrompt: () => {
         return "The selected component is a React component. It's called 'blablub'. It's inside XY.";
       },
       mcp: null,
