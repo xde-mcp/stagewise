@@ -1,98 +1,73 @@
-# stagewise for VSCode
+# stagewise ✨
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/stagewise.stagewise)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/stagewise.stagewise)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise)
+**Code with your eyes. Visually connect your localhost app to AI code agents.**
 
-stagewise is a powerful VSCode extension that enhances your development workflow by providing an interactive toolbar for AI-assisted code improvements and seamless integration with the Model Context Protocol (MCP).
+[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/YOUR_PUBLISHER_NAME.stagewise-vscode?style=flat-square&label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode) [![Build Status](https://img.shields.io/github/actions/workflow/status/YOUR_ORG/stagewise/ci.yml?branch=main&style=flat-square)](https://github.com/YOUR_ORG/stagewise/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT) [![GitHub Repo stars](https://img.shields.io/github/stars/YOUR_ORG/stagewise?style=flat-square)](https://github.com/YOUR_ORG/stagewise) ---
 
-## Features
+**[WATCH THE DEMO VIDEO (Coming Soon!)]** [![stagewise Demo Placeholder](https://via.placeholder.com/800x400.png?text=Awesome+stagewise+Demo+Coming+Soon!)](YOUR_DEMO_VIDEO_LINK_HERE) ---
 
-### 🎯 Interactive Toolbar
-- Inject a customizable toolbar into your local development environment
-- Annotate code sections directly for AI-Agent improvements
-- Real-time feedback and suggestions from the AI assistant
+## What is stagewise? 🤔
 
-### 🔌 Built-in MCP Server
-- Automatic setup of a local Model Context Protocol (MCP) server
-- Define and manage custom MCP tools directly from your IDE
-- Seamless integration with existing AI workflows
+Tired of digging through code to find that *one* button you want to tweak? Wish you could just point at something in your running app and tell an AI like GitHub Copilot or Cursor to fix it?
 
-### 🤖 AI-Agent Integration
-- Direct communication with the AI assistant
-- Context-aware code suggestions
-- Automated code improvements based on annotations
+**stagewise** makes this real. It's an open-source developer toolbar that bridges the gap between your visual localhost environment and your AI coding assistant in VS Code.
 
-## Requirements
+Select an element, describe the change in plain English ("make this text bold", "fix padding here"), and watch the AI implement it in your codebase, guided by rich context captured directly from the browser.
 
-- VSCode 1.96.2 or higher
-- Node.js 16.x or higher
-- A local development environment with localhost access
+## How it Works 🤯
 
-## Installation
+1.  **Inject:** Add the `stagewise` JS SDK to your frontend project. A sleek toolbar appears over your app on localhost.
+2.  **Select & Command:** Click the stagewise selector, pick any UI element, and type your command (e.g., "change background to dark grey").
+3.  **Context is King:** The toolbar grabs the command *plus* relevant details (HTML structure, CSS, component state) and beams it over.
+4.  **VS Code Bridge:** This extension catches the info from the toolbar.
+5.  **AI Magic:** The extension feeds the command and context to your configured AI agent (Cursor, Copilot, etc.).
+6.  **Code Change:** The AI uses the context to understand *exactly* what you mean and generates the code change right in your IDE.
 
-1. Open VSCode
-2. Go to the Extensions view (Ctrl+Shift+X or Cmd+Shift+X)
-3. Search for "stagewise"
-4. Click Install
+It even supports bidirectional communication using the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), so the AI can ask the toolbar follow-up questions ("What's the parent element's ID?").
 
-## Getting Started
+## Features 🔥
 
-1. Open your project in VSCode
-2. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) to open the command palette
-3. Type "Inject Agent" and select the command to start the stagewise toolbar
+* **Visual Element Selection:** Target UI elements directly in your running app.
+* **Natural Language Commands:** Talk to your code like you talk to a teammate.
+* **Context-Aware AI:** Send rich browser context (DOM, styles, state) for more accurate AI suggestions.
+* **IDE Integration:** Seamlessly connects to AI agents within VS Code.
+* **Bidirectional Communication:** AI can query the browser via MCP.
+* **Open Source:** Built by developers, for developers. Contribute and shape the future!
 
-## Usage
+## Getting Started 🚀
 
-### Toolbar Injection
-The toolbar will be automatically injected into your localhost development environment. To manually inject the toolbar:
+1.  **Install Extension:** Get the **stagewise** extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode). 2.  **Install SDK:** In your frontend project's terminal:
+    ```bash
+    npm install stagewise-sdk # Or yarn add / pnpm add (UPDATE if package name differs)
+    ```
+3.  **Inject Toolbar:** Add the stagewise toolbar to your app's entry point:
+    ```javascript
+    // Example for a React app (adjust for Vue, Angular, etc.)
+    import React from 'react';
+    import ReactDOM from 'react-dom/client';
+    import App from './App';
+    import { injectToolbar } from 'stagewise-sdk'; // (UPDATE if package name differs)
 
-1. Open the command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
-2. Run the "Inject Agent" command
+    // Inject stagewise toolbar (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      injectToolbar({ /* Optional config */ });
+    }
 
-### Code Annotation
-1. Select the code you want to improve
-2. Use the toolbar to add annotations
-3. The AI agent will analyze your annotations and suggest improvements
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+    ```
+4.  **Code!** Run your app on localhost. Select elements, issue commands, and experience the magic! ✨
 
-### MCP Tools
-1. Define custom MCP tools in your project
-2. Access them directly through the VSCode interface
-3. Use them in combination with the AI agent for enhanced functionality
+## Contributing 🤝
 
-## Commands
+We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/YOUR_ORG/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. Found a bug or have a feature idea? [Open an issue!](https://github.com/YOUR_ORG/stagewise/issues) ## Community & Support 💬
 
-- `Inject Agent`: Injects the stagewise toolbar into your development environment
-- `Test Cursor Agent Injector` (Cmd+Alt+V): Test the agent injection functionality
+* [Join our Discord (Link Coming Soon!)](#) * [Follow us on Twitter (Link Coming Soon!)](#) ## License 📜
 
-## Extension Settings
+stagewise is open-source and licensed under the [MIT License](https://github.com/YOUR_ORG/stagewise/blob/main/LICENSE). ---
 
-This extension contributes the following settings:
-
-* `stagewise.enableToolbar`: Enable/disable the development toolbar
-* `stagewise.mcpPort`: Configure the port for the MCP server
-* `stagewise.autoInject`: Enable/disable automatic toolbar injection
-
-## Known Issues
-
-Please report issues on our [GitHub repository](https://github.com/stagewise/stagewise).
-
-## Contributing
-
-We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for more details.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Release Notes
-
-### 1.0.0
-- Initial release of stagewise
-- Introduction of the interactive toolbar
-- Built-in MCP server functionality
-- AI-Agent integration
-
----
-
-**Enjoy coding with stagewise! 🚀** 
+*Made with ❤️ by the stagewise team.*
