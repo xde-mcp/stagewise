@@ -2,7 +2,8 @@
 
 ### Eyesight for your local AI-Agent.
 
-[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/YOUR_PUBLISHER_NAME.stagewise-vscode?style=flat-square&label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode) [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main&style=flat-square)](https://github.com/stagewise-io/stagewise/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise?style=flat-square)](https://github.com/stagewise-io/stagewise) 
+[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/YOUR_PUBLISHER_NAME.stagewise-vscode?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=YOUR_PUBLISHER_NAME.stagewise-vscode) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/vsDjhubRbh) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
+
 
 ![stagewise demo](media/demo.gif)
 
@@ -11,6 +12,8 @@
 With stagewise, you can **comment on elements** and your local dev agent will automatically **receive a change-prompt with context.**
 
 👆🏽 💬 *Make this button green!!!* ...  🧙🏽 🪄 🟢
+
+---
 
 ## Quickstart 📖
 
@@ -48,6 +51,11 @@ export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
 }
 ```
 
+> [!IMPORTANT]
+> ⚡️ The toolbar will **automatically connect** to the extension!
+
+---
+
 ## Features 🔥
 
 * 👆🏽 **Visual Element Selection:** Target UI elements directly in your running app.
@@ -56,6 +64,8 @@ export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
 * 👨🏽‍💻 **Local IDE Integration:** Seamlessly connects to AI agents within VS Code.
 * ⬅️➡️ **Bidirectional Communication:** The agent can query the toolbar via [MCP](https://modelcontextprotocol.io/).
 * 📖 **Open Source:** Built by developers, for developers. Contribute and shape the future!
+
+---
 
 ## Agent support 🤖
 
@@ -72,28 +82,57 @@ export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
 | Cody | ❌ |
 | Qodo | ❌ |
 
+---
+
 ## Advanced guides 🧪
 
 ### Write custom MCP tools
 
-Simply write custom MCP-tools that run in your browser. Tools will automatically be registered and your local AI agent can use them: You just have to plug them into the toolbar config.
+Simply write custom MCP-tools that run in your browser. Tools will automatically be registered and your local AI agent can use them: You just have to plug them into the toolbar config. 🔌
 
 ```typescript
 // TBD
 ```
 
+---
+
+## Roadmap 🧭
+
+See the roadmap project for a list of planned features (and known issues). 
+
+---
+
 ## Contributing 🤝
 
-We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. Found a bug or have a feature idea? [Open an issue!](https://github.com/stagewise-io/stagewise/issues) 
+We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. For bugs and fresh ideas, please [Open an issue!](https://github.com/stagewise-io/stagewise/issues) 
+
+<!-- --- -->
+<!--  -->
+<!-- ## Contributers 👫🏽 -->
+<!-- Coming soon -->
+<!--  -->
+<!-- --- -->
+
+---
 
 ## Community & Support 💬
 
-* Join our [Discord](https://discord.gg/vsDjhubRbh)
-* Leave a star on the [GitHub repo](https://github.com/stagewise-io/stagewise)
+* [Join our Discord](https://discord.gg/vsDjhubRbh) 👾
+* Leave a star on the [GitHub repo](https://github.com/stagewise-io/stagewise) ⭐️
+
+---
+
+## Contact us 📧
+
+Talk to us for any commercial inquiries or enterprise licenses.
+
+sales@stagewise.io
+
+---
 
 ## License 📜
 
 <!-- stagewise is open-source and licensed under the [MIT License](https://github.com/stagewise-io/stagewise/blob/main/LICENSE). --- -->
-UNLICENSED, the license is under development.
+Currently UNLICENSED, the license is under development.
 
 *Made with ❤️ by the stagewise team.*
