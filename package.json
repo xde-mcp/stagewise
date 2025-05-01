@@ -4,9 +4,10 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "biome format --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "format-and-lint": "biome check .",
+    "format-and-lint:fix": "biome check . --write",
+    "check-types": "turbo run check-types",
+    "sherif": "pnpm dlx sherif --fix"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",
