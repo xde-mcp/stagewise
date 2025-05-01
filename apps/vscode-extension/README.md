@@ -8,7 +8,7 @@
 
 ## What is stagewise? 🤔
 
-The stagewise toolbar SDK [(@stagewise/toolbar)]() lets you **inject a toolbar** into your localhost so you can **visually submit change-requests** that directly trigger your IDE's coding agent with the context it needs.
+With stagewise, you can **comment on elements** and your local dev agent will automatically **receive a change-prompt with context.**
 
 👆🏽 💬 *Make this button green!!!* ...  🧙🏽 🪄 🟢
 
@@ -20,7 +20,7 @@ Install the extension here: https://google.com
 
 > [!NOTE]
 > 💬 **Enable MCP support (Cursor):** 
-> - The extension will auto-install the **stagewise MCP server**.
+> - The extension will auto-install a **stagewise MCP server**.
 > - Cursor will prompt you to *enable* the server.
 > - Click *enable* to let your agent call MCP-tools that the toolbar provides. ([Read more](#write-custom-mcp-tools))
 
