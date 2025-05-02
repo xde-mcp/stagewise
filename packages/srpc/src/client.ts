@@ -28,7 +28,6 @@ export class WebSocketRpcClient extends WebSocketRpcBridge {
   public connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        console.log('Typeof WebSocketImpl:::', typeof WebSocketImpl);
         const ws = new WebSocketImpl(this.url);
 
         ws.onopen = () => {
@@ -81,9 +80,7 @@ export class WebSocketRpcClient extends WebSocketRpcBridge {
     this.reconnectTimer = setTimeout(async () => {
       try {
         await this.connect();
-        console.log('Successfully reconnected to WebSocket server');
       } catch (error) {
-        console.error('Failed to reconnect:', error);
         this.handleDisconnect();
       }
     }, this.options.reconnectDelay);

@@ -55,9 +55,7 @@ export const startServer = async (
   port: number = DEFAULT_PORT,
 ): Promise<Server> => {
   const app = createServer(port);
-  return await app.listen(port, () => {
-    console.error(`>>> HTTP server listening on port ${port}`);
-  });
+  return await app.listen(port, () => {});
 };
 
 export const stopServer = (): Promise<void> => {

@@ -186,8 +186,6 @@ class ServerBridge extends WebSocketRpcBridge {
           this.ws = null;
         }
       });
-
-      console.log('WebSocket client connected');
     });
   }
 
@@ -236,9 +234,7 @@ class ClientBridge extends WebSocketRpcBridge {
     this.reconnectTimer = setTimeout(async () => {
       try {
         await this.connect();
-        console.log('Successfully reconnected to WebSocket server');
       } catch (error) {
-        console.error('Failed to reconnect:', error);
         this.reconnect(); // Try again
       }
     }, this.options.reconnectDelay);

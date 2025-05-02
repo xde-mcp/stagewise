@@ -36,8 +36,6 @@ export class WebSocketRpcServer extends WebSocketRpcBridge {
           this.ws = null;
         }
       });
-
-      console.log('WebSocket client connected');
     });
   }
 

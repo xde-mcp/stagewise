@@ -33,7 +33,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // Start the HTTP server with the same port
     const server = await startServer(port);
     const bridge = getExtensionBridge(server);
-    console.error('Bridge started successfully');
 
     bridge.register({
       triggerAgentPrompt: async (request, sendUpdate) => {
