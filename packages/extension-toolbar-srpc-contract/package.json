@@ -4,6 +4,7 @@
   "description": "SRPC contract implementation for VS Code extension and toolbar communication",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "private": false,
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -25,6 +26,7 @@
     "tsup": "^8.0.0"
   },
   "files": ["dist", "src"],
+  "license": "AGPL-3.0-only",
   "publishConfig": {
     "access": "public"
   },
