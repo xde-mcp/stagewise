@@ -46,14 +46,11 @@ export function SRPCBridgeProvider({
     async function initializeBridge() {
       try {
         const port = await findPort();
-        console.log('Port found', port);
         const bridge = createSRPCClientBridge(
           `ws://localhost:${port}`,
           contract,
         );
-        console.log('Connecting to bridge');
         await bridge.connect();
-        console.log('Connected to bridge');
         setState({
           bridge,
           isConnecting: false,

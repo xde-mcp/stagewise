@@ -28,8 +28,6 @@ export function PluginProvider({
   children: ComponentChildren;
   plugins: ToolbarConfig['plugins'];
 }) {
-  console.log('PluginProvider rendered!');
-  console.log(plugins);
   return (
     <PluginContext.Provider value={plugins}>{children}</PluginContext.Provider>
   );

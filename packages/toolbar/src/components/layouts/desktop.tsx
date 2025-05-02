@@ -24,7 +24,6 @@ import { ExpandButton } from '../expand-button';
 import { SelectorCanvas } from '../dom-context/selector-canvas';
 
 export function DesktopLayout() {
-  console.log('DesktopLayout rendered!');
   const minimized = useAppState((state) => state.minimized);
 
   return (

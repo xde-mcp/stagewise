@@ -63,7 +63,6 @@ export function getReactInfo(element: HTMLElement | null): {
       sourceLocation,
     };
   } catch (e) {
-    console.error('Error getting React info:', e);
     return { componentNames: [], sourceLocation: null };
   }
 }

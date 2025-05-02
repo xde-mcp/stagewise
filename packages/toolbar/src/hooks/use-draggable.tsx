@@ -194,24 +194,9 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
     const containerHeight =
       context.borderLocation.bottom - context.borderLocation.top;
 
-    console.log('[useDraggable] Container dimensions:', {
-      width: containerWidth,
-      height: containerHeight,
-      borders: context.borderLocation,
-    });
-
     // Calculate percentage position relative to container
     const xPercent = ((x - context.borderLocation.left) / containerWidth) * 100;
     const yPercent = ((y - context.borderLocation.top) / containerHeight) * 100;
-
-    console.log('[useDraggable] Position calculation:', {
-      inputX: x,
-      inputY: y,
-      containerLeft: context.borderLocation.left,
-      containerTop: context.borderLocation.top,
-      xPercent,
-      yPercent,
-    });
 
     // Clamp values between 0 and 100
     return {
@@ -293,15 +278,6 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
     const translateX = (x / 100) * containerWidth;
     const translateY = (y / 100) * containerHeight;
 
-    console.log('[useDraggable] Applying transform:', {
-      x,
-      y,
-      translateX,
-      translateY,
-      containerWidth,
-      containerHeight,
-    });
-
     draggableRef.current.style.transform = `translate(${translateX}px, ${translateY}px)`;
     transformRef.current = { x, y };
 
@@ -318,10 +294,6 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
   // Initialize position if initialSnapArea is provided
   useEffect(() => {
     if (initialSnapArea && context.snapAreas[initialSnapArea]) {
-      console.log(
-        '[useDraggable] Initializing position to snap area:',
-        initialSnapArea,
-      );
       const [vertical, horizontal] = initialSnapArea.split(/(?=[A-Z])/);
       const x = horizontal === 'Left' ? 0 : horizontal === 'Right' ? 100 : 50;
       const y = vertical === 'Top' ? 0 : vertical === 'Bottom' ? 100 : 50;
@@ -332,13 +304,6 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
   // Handle mouse down
   const handleMouseDown = (e: MouseEvent) => {
     if (!draggableRef.current) return;
-
-    console.log('[useDraggable] Mouse down event:', {
-      clientX: e.clientX,
-      clientY: e.clientY,
-      currentPosition: transformRef.current,
-      containerBorders: context.borderLocation,
-    });
 
     dragStartRef.current = {
       x: e.clientX,
@@ -355,24 +320,12 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
 
       // Check if we've moved enough to start dragging
       if (!isDragging && Math.hypot(deltaX, deltaY) > startThreshold) {
-        console.log('[useDraggable] Drag started:', {
-          deltaX,
-          deltaY,
-          threshold: startThreshold,
-          startPosition: dragStartRef.current,
-        });
         setIsDragging(true);
         onDragStart?.();
       }
 
       if (isDragging) {
         const newPosition = calculatePosition(e.clientX, e.clientY);
-
-        console.log('[useDraggable] Mouse move:', {
-          clientX: e.clientX,
-          clientY: e.clientY,
-          calculatedPosition: newPosition,
-        });
 
         // Check for snap areas first
         const snapArea = checkSnapAreas(newPosition.x, newPosition.y);
@@ -389,11 +342,6 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
             },
           )?.[0] as keyof DraggableContextType['snapAreas'] | undefined;
 
-          console.log('[useDraggable] Snapped to area:', {
-            snapArea: snapAreaKey,
-            position: snapArea,
-          });
-
           updateElementPosition(snapArea.x, snapArea.y, snapAreaKey || null);
           return;
         }
@@ -401,31 +349,17 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
         // Then check borders if areaBorderSnap is enabled
         if (areaBorderSnap) {
           const { x, y } = checkBorders(newPosition.x, newPosition.y);
-          console.log('[useDraggable] Border snap:', {
-            x,
-            y,
-            originalX: newPosition.x,
-            originalY: newPosition.y,
-          });
           updateElementPosition(x, y, null);
           return;
         }
 
         // If no snapping, use the calculated position
-        console.log('[useDraggable] Free movement:', {
-          x: newPosition.x,
-          y: newPosition.y,
-        });
         updateElementPosition(newPosition.x, newPosition.y, null);
       }
     };
 
     const handleMouseUp = () => {
       if (isDragging) {
-        console.log('[useDraggable] Drag ended:', {
-          finalPosition: transformRef.current,
-          snapArea: position.snapArea,
-        });
         onDragEnd?.();
       }
       setIsDragging(false);
@@ -458,11 +392,6 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
       const rect = draggableRef.current.getBoundingClientRect();
       const newPosition = calculatePosition(rect.left, rect.top);
 
-      console.log('[useDraggable] Container resized:', {
-        newPosition,
-        currentPosition: transformRef.current,
-      });
-
       // Recheck snap areas and borders after resize
       const snapArea = checkSnapAreas(newPosition.x, newPosition.y);
       if (snapArea) {
@@ -477,23 +406,12 @@ export function useDraggable(config?: DraggableConfig): IDraggable {
           },
         )?.[0] as keyof DraggableContextType['snapAreas'] | undefined;
 
-        console.log('[useDraggable] Resize snap to area:', {
-          snapArea: snapAreaKey,
-          position: snapArea,
-        });
-
         updateElementPosition(snapArea.x, snapArea.y, snapAreaKey || null);
         return;
       }
 
       if (areaBorderSnap) {
         const { x, y } = checkBorders(newPosition.x, newPosition.y);
-        console.log('[useDraggable] Resize border snap:', {
-          x,
-          y,
-          originalX: newPosition.x,
-          originalY: newPosition.y,
-        });
         updateElementPosition(x, y, null);
         return;
       }

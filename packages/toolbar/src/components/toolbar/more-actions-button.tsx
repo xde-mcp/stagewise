@@ -36,8 +36,6 @@ export function MoreActionsButton() {
     return plugins.flatMap((plugin) => plugin.actions);
   }, [plugins]);
 
-  console.log('pluginTools', pluginTools);
-
   return (
     <ToolbarSection>
       <DropdownMenu>
