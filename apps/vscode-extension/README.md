@@ -29,7 +29,7 @@ Install the extension here: https://marketplace.visualstudio.com/items?itemName=
 
 ### 2. 👨🏽‍💻 **Install and inject the toolbar**
 
-Install [@stagewise/toolbar]():
+Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
 ```bash
 pnpm i -D @stagewise/toolbar
 ```
