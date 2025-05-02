@@ -1,3 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Toolbar focus lock component
+// Copyright (C) 2025 Goetze, Scharpff & Toews GbR
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 import { useEventListener } from '@/hooks/use-event-listener';
 import { companionAnchorTagName } from '@/utils';
 import { useEffect, useRef } from 'preact/hooks';
@@ -10,7 +27,7 @@ export function FocusLock() {
   useEffect(() => {
     const originalFocus = HTMLElement.prototype.focus;
 
-    HTMLElement.prototype.focus = function () {
+    HTMLElement.prototype.focus = function (...args) {
       const shadowRoot = this.getRootNode();
       const isInCompanion =
         shadowRoot instanceof ShadowRoot &&
@@ -19,8 +36,7 @@ export function FocusLock() {
       if (!isInCompanion && focusInCompanion.current) {
         return;
       }
-      // @ts-expcect-error This is a hack to make sure the original focus function is called
-      originalFocus.apply(this, arguments);
+      originalFocus.apply(this, args);
     };
 
     return () => {

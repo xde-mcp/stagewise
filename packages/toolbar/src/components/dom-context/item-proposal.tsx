@@ -1,8 +1,24 @@
-import { useReferenceElement } from '@/hooks/use-reference-element';
+// SPDX-License-Identifier: AGPL-3.0-only
+// Item proposal component for the toolbar
+// Copyright (C) 2025 Goetze, Scharpff & Toews GbR
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 import { useWindowSize } from '@/hooks/use-window-size';
 import { useCyclicUpdate } from '@/hooks/use-cyclic-update';
 import { useCallback, useRef } from 'preact/hooks';
-import { HTMLAttributes } from 'preact/compat';
+import type { HTMLAttributes } from 'preact/compat';
 import { Plus } from 'lucide-react';
 
 export interface ItemProposalProps extends HTMLAttributes<HTMLDivElement> {
@@ -43,11 +59,11 @@ export function ContextItemProposal({
     <div
       {...props}
       className={
-        'flex items-center justify-center fixed text-white rounded-lg border-2 border-blue-600/80 bg-blue-600/20 transition-all duration-100 overflow-hidden backdrop-blur-xs'
+        'fixed flex items-center justify-center overflow-hidden rounded-lg border-2 border-blue-600/80 bg-blue-600/20 text-white backdrop-blur-xs transition-all duration-100'
       }
       ref={boxRef}
     >
-      <Plus className="size-6 drop-shadow-md drop-shadow-black" />
+      <Plus className="size-6 drop-shadow-black drop-shadow-md" />
     </div>
   );
 }

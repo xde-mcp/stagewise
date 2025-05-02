@@ -1,3 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Toolbar draggable hook
+// Copyright (C) 2025 Goetze, Scharpff & Toews GbR
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 export const companionAnchorTagName = 'stagewise-companion-anchor';
 
 export function getElementAtPoint(x: number, y: number) {
@@ -11,7 +28,7 @@ export function getElementAtPoint(x: number, y: number) {
         !element.closest('svg') &&
         isElementAtPoint(element as HTMLElement, x, y),
     ) as HTMLElement) || document.body;
-    
+
   return refElement;
 }
 
@@ -78,7 +95,7 @@ export const getXPathForElement = (element: HTMLElement, useId: boolean) => {
       }
       sibling = sibling.nextSibling;
     }
-    const prefix = nodeElem.prefix ? nodeElem.prefix + ':' : '';
+    const prefix = nodeElem.prefix ? `${nodeElem.prefix}:` : '';
     const nth =
       nbOfPreviousSiblings || hasNextSiblings
         ? `[${nbOfPreviousSiblings + 1}]`
@@ -86,7 +103,7 @@ export const getXPathForElement = (element: HTMLElement, useId: boolean) => {
     parts.push(prefix + nodeElem.localName + nth);
     nodeElem = nodeElem.parentElement;
   }
-  return parts.length ? '/' + parts.reverse().join('/') : '';
+  return parts.length ? `/${parts.reverse().join('/')}` : '';
 };
 
 export const sleep = (ms: number) => {
@@ -117,14 +134,14 @@ export function formatToSizeFormat(sizeInBytes: number) {
     'YiB',
   ];
 
-  let l = 0,
-    n = sizeInBytes;
+  let l = 0;
+  let n = sizeInBytes;
 
   while (n >= 1024 && ++l) {
     n = n / 1024;
   }
 
-  return n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l];
+  return `${n.toFixed(n < 10 && l > 0 ? 1 : 0)} ${units[l]}`;
 }
 
 export interface HotkeyActionDefinition {

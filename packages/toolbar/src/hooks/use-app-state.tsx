@@ -1,18 +1,35 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Toolbar app state hook
+// Copyright (C) 2025 Goetze, Scharpff & Toews GbR
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // This hook manages the state of the companion app. It provides information about all high level stuff that affects what components are rendered etc.
 
 // This hook provides information to all components about whether certain parts of the companion layout should be rendered or not.
 // Components can use this information to hide themselves or show additional information.
 
 import { DropAreaZone } from '@/components/toolbar/desktop-only/drop-zones';
-import { createRef, RefObject } from 'preact';
-import { create, StateCreator } from 'zustand';
+import { createRef, type RefObject } from 'preact';
+import { create, type StateCreator } from 'zustand';
 import SuperJSON from 'superjson';
-import { persist, PersistStorage } from 'zustand/middleware';
+import { persist, type PersistStorage } from 'zustand/middleware';
 
 export enum ResolvedFilter {
-  ALL,
-  RESOLVED,
-  UNRESOLVED,
+  ALL = 0,
+  RESOLVED = 1,
+  UNRESOLVED = 2,
 }
 
 export interface AppState {
