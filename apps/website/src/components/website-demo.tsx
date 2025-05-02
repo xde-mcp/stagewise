@@ -42,8 +42,11 @@ export function WebsiteDemo() {
 
     let currentIndex = 0;
     typingInterval.current = setInterval(() => {
-      if (currentIndex < messages[messageIndex].length) {
-        setText(messages[messageIndex].slice(0, currentIndex + 1));
+      if (
+        messageIndex < messages.length &&
+        currentIndex < messages[messageIndex]!.length
+      ) {
+        setText(messages[messageIndex]!.slice(0, currentIndex + 1));
         currentIndex++;
       } else {
         if (typingInterval.current) clearInterval(typingInterval.current);
