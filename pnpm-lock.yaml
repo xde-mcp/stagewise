@@ -285,7 +285,7 @@ importers:
         specifier: 20.x
         version: 20.17.31
       '@types/vscode':
-        specifier: ^1.99.0
+        specifier: ^1.85.0
         version: 1.99.1
       '@types/ws':
         specifier: ^8.18.1
@@ -302,6 +302,9 @@ importers:
       '@vscode/test-electron':
         specifier: ^2.4.1
         version: 2.5.2
+      esbuild:
+        specifier: ^0.25.3
+        version: 0.25.3
       eslint:
         specifier: ^9.23.0
         version: 9.25.0(jiti@2.4.2)

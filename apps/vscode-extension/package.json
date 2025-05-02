@@ -45,7 +45,7 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "run-server": "node ./out/server.js",
-    "build": "pnpm run compile",
+    "build": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
     "dev": "pnpm run watch"
   },
   "devDependencies": {
@@ -57,18 +57,19 @@
     "@typescript-eslint/parser": "^8.28.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.25.3",
     "eslint": "^9.23.0",
     "typescript": "^5.8.2",
     "vitest": "3.1.2"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.10.2",
+    "@stagewise/extension-toolbar-srpc-contract": "workspace:*",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "zod": "^3.24.3",
-    "@stagewise/extension-toolbar-srpc-contract": "workspace:*"
+    "zod": "^3.24.3"
   },
   "turbo": {
     "tasks": {
