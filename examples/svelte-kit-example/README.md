@@ -1,38 +1,112 @@
-# sv
+# Stagewise Toolbar SvelteKit Example
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This example demonstrates how to integrate the Stagewise toolbar into a SvelteKit project.
 
-## Creating a project
+## Installation
 
-If you're seeing this, you've probably already done this step. Congrats!
-
+1. Install the Stagewise toolbar package:
 ```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+npm install @stagewise/toolbar
+# or
+yarn add @stagewise/toolbar
+# or
+pnpm add @stagewise/toolbar
 ```
 
-## Developing
+## Integration Steps
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+1. Create a toolbar wrapper component (`src/lib/components/stagewise/ToolbarWrapper.svelte`):
+```ts
+<script lang="ts">
+import type { ToolbarConfig } from '@stagewise/toolbar';
+import { onMount } from 'svelte';
+import { browser } from '$app/environment';
+
+export let config: ToolbarConfig;
+let isLoaded = false;
+
+onMount(async () => {
+  if (isLoaded || !browser) return;
+  isLoaded = true;
+  
+  const { initToolbar } = await import('@stagewise/toolbar');
+  initToolbar(config);
+});
+</script>
+```
+
+2. Create a toolbar loader component (`src/lib/components/stagewise/ToolbarLoader.svelte`):
+```ts
+<script lang="ts">
+import type { ToolbarConfig } from '@stagewise/toolbar';
+import ToolbarWrapper from './ToolbarWrapper.svelte';
+import { browser } from '$app/environment';
+
+const stagewiseConfig: ToolbarConfig = {
+  plugins: [
+    {
+      name: 'svelte',
+      description: 'Adds context for Svelte components',
+      shortInfoForPrompt: () => {
+        return "The selected component is a Svelte component. It's called 'blablub'. It's inside XY.";
+      },
+      mcp: null,
+      actions: [
+        {
+          name: 'Show alert',
+          description:
+            "Shows an alert with the message 'Ich bin eine custom action!'",
+          execute: () => {
+            window.alert('Ich bin eine custom action!');
+          },
+        },
+      ],
+    },
+  ],
+};
+</script>
+
+{#if browser}
+  <ToolbarWrapper config={stagewiseConfig} />
+{/if}
+```
+
+3. Add the toolbar to your layout or page (`src/routes/+page.svelte`):
+```ts
+<script lang="ts">
+import StagewiseToolbar from '$lib/components/stagewise/ToolbarLoader.svelte';
+</script>
+
+<StagewiseToolbar />
+
+<main>
+  <!-- Your page content -->
+</main>
+```
+
+## Important Notes
+
+- The toolbar is client-side only and won't work during SSR
+- We use dynamic imports to ensure the toolbar module is only loaded in the browser
+- The `browser` check from `$app/environment` is used to prevent SSR issues
+- Customize the `stagewiseConfig` object to add your own plugins and actions
+
+## Development
 
 ```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+# or
+yarn dev
+# or
+pnpm dev
 ```
 
-## Building
-
-To create a production version of your app:
+## Building for Production
 
 ```bash
 npm run build
+# or
+yarn build
+# or
+pnpm build
 ```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
