@@ -18,14 +18,17 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
-    "@types/node": "20.x",
+    "@types/node": "22.15.2",
     "biome": "^0.3.3",
     "rimraf": "^5.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "3.1.2",
-    "tsup": "^8.0.0"
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "3.1.2"
   },
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "license": "AGPL-3.0-only",
   "publishConfig": {
     "access": "public"

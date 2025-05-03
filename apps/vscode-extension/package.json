@@ -9,8 +9,15 @@
     "vscode": "^1.85.0"
   },
   "license": "UNLICENSED",
-  "categories": ["AI", "Debuggers", "Machine Learning", "Other"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "AI",
+    "Debuggers",
+    "Machine Learning",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [],
@@ -50,7 +57,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
+    "@types/node": "22.15.2",
     "@types/vscode": "^1.85.0",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.28.0",
@@ -59,7 +66,7 @@
     "@vscode/test-electron": "^2.4.1",
     "esbuild": "^0.25.3",
     "eslint": "^9.23.0",
-    "typescript": "^5.8.2",
+    "typescript": "^5.8.3",
     "vitest": "3.1.2"
   },
   "dependencies": {
@@ -75,8 +82,12 @@
   "turbo": {
     "tasks": {
       "build": {
-        "dependsOn": ["^build"],
-        "outputs": ["out/**"]
+        "dependsOn": [
+          "^build"
+        ],
+        "outputs": [
+          "out/**"
+        ]
       }
     }
   }

@@ -23,17 +23,21 @@
     }
   },
   "devDependencies": {
-    "@types/node": "20.x",
-    "@types/ws": "^8.5.10",
-    "typescript": "^5.0.0",
-    "vitest": "3.1.2",
-    "tsup": "^8.0.0"
+    "@types/node": "22.15.2",
+    "@types/ws": "^8.18.1",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "3.1.2"
   },
   "turbo": {
     "tasks": {
       "build": {
-        "dependsOn": ["^build"],
-        "outputs": ["dist/**"]
+        "dependsOn": [
+          "^build"
+        ],
+        "outputs": [
+          "dist/**"
+        ]
       }
     }
   }
