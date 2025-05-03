@@ -299,7 +299,6 @@ sales@stagewise.io
 
 ## License 📜
 
-<!-- stagewise is open-source and licensed under the [MIT License](https://github.com/stagewise-io/stagewise/blob/main/LICENSE). --- -->
-Currently UNLICENSED, the license is under development.
+stagewise is open-source and licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](https://github.com/stagewise-io/stagewise/blob/main/LICENSE.md).
 
 *Made with ❤️ by the stagewise team.*
