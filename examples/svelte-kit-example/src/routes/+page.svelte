@@ -1,5 +1,5 @@
 <script lang="ts">
-import StagewiseToolbar from '$lib/components/stagewise/ToolbarLoader.svelte';
+import StagewiseToolbar from '../lib/components/stagewise/ToolbarLoader.svelte';
 </script>
 
 <StagewiseToolbar />
