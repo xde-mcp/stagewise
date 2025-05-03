@@ -1,3 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Toolbar DOM anchor component
+// Copyright (C) 2025 Goetze, Scharpff & Toews GbR
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 import { useReferenceElement } from '@/hooks/use-reference-element';
 import { useWindowSize } from '@/hooks/use-window-size';
 import { getElementAtPoint } from '@/utils';
@@ -10,7 +27,7 @@ import {
   useRef,
   useState,
 } from 'preact/hooks';
-import { createContext, VNode } from 'preact';
+import { createContext, type VNode } from 'preact';
 
 export interface DOMAnchorProps {
   referencePath: string; // The XPath of the reference element
@@ -25,18 +42,18 @@ export interface DOMAnchorProps {
 }
 
 export enum AnchorOrientation {
-  TOP_LEFT,
-  TOP_RIGHT,
-  BOTTOM_LEFT,
-  BOTTOM_RIGHT,
+  TOP_LEFT = 0,
+  TOP_RIGHT = 1,
+  BOTTOM_LEFT = 2,
+  BOTTOM_RIGHT = 3,
 }
 
 export enum NotAtAnchorReason {
-  OUTSIDE_VIEWPORT, // The reference element is not inside the viewport
-  REF_ELEMENT_NOT_FOUND, // The reference element is not found
-  REF_ELEMENT_NOT_VISIBLE, // The reference element is not visible or not at the top
-  DISABLED, // The anchor updating is disabled
-  NOT_IN_DOM_ANCHOR, // The element is not a child of a DOMAnchor
+  OUTSIDE_VIEWPORT = 0, // The reference element is not inside the viewport
+  REF_ELEMENT_NOT_FOUND = 1, // The reference element is not found
+  REF_ELEMENT_NOT_VISIBLE = 2, // The reference element is not visible or not at the top
+  DISABLED = 3, // The anchor updating is disabled
+  NOT_IN_DOM_ANCHOR = 4, // The element is not a child of a DOMAnchor
 }
 
 interface DOMAnchorState {

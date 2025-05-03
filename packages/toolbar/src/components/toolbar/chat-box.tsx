@@ -1,6 +1,23 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Chat box component for the toolbar
+// Copyright (C) 2025 Goetze, Scharpff & Toews GbR
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 import { useChatState } from '@/hooks/use-chat-state';
 import { useHotkeyListenerComboText } from '@/hooks/use-hotkey-listener-combo-text';
-import { cn, hotkeyActionDefinitions, HotkeyActions } from '@/utils';
+import { cn, HotkeyActions } from '@/utils';
 import { Button, Textarea } from '@headlessui/react';
 import { Send } from 'lucide-react';
 import { useEffect, useMemo, useRef, useCallback } from 'preact/hooks';
@@ -64,8 +81,8 @@ export function ChatBox() {
   const buttonClassName = useMemo(
     () =>
       cn(
-        'size-6 bg-transparent text-zinc-950 opacity-20 rounded-full p-1 flex items-center justify-center',
-        currentInput.length > 0 && 'opacity-100 text-white bg-blue-600',
+        'flex size-6 items-center justify-center rounded-full bg-transparent p-1 text-zinc-950 opacity-20',
+        currentInput.length > 0 && 'bg-blue-600 text-white opacity-100',
       ),
     [currentInput.length],
   );
@@ -73,7 +90,7 @@ export function ChatBox() {
   const textareaClassName = useMemo(
     () =>
       cn(
-        'w-full flex-1 resize-none focus:outline-none bg-transparent text-zinc-950 placeholder:text-zinc-950/50',
+        'w-full flex-1 resize-none bg-transparent text-zinc-950 placeholder:text-zinc-950/50 focus:outline-none',
         showBigBox ? 'h-[4.5em]' : 'h-6',
       ),
     [showBigBox],
@@ -84,7 +101,7 @@ export function ChatBox() {
   return (
     <div
       className={cn(
-        'flex-1 h-fit w-80 flex flex-row gap-1 p-1.5 pl-2 rounded-2xl border border-border/10 bg-zinc-950/5 shadow-inner items-end text-sm placeholder:text-zinc-950/70 text-zinc-950 transition-all duration-150',
+        'flex h-fit w-80 flex-1 flex-row items-end gap-1 rounded-2xl border border-border/10 bg-zinc-950/5 p-1.5 pl-2 text-sm text-zinc-950 shadow-inner transition-all duration-150 placeholder:text-zinc-950/70',
         chatState.isPromptCreationActive && 'ring-2 ring-blue-600',
       )}
       onClick={() => chatState.startPromptCreation()}

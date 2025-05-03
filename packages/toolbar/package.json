@@ -1,12 +1,28 @@
 {
   "name": "@stagewise/toolbar",
   "private": false,
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.1",
   "type": "module",
+  "description": "stagewise toolbar SDK for AI Agent interaction.",
+  "keywords": ["stagewise", "toolbar", "ai", "devtool", "agent", "interaction"],
+  "author": "Goetze, Scharpff & Toews GbR",
+  "homepage": "https://stagewise.io",
+  "bugs": {
+    "url": "https://github.com/stagewise-io/stagewise/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stagewise-io/stagewise.git",
+    "directory": "packages/toolbar"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.umd.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
+  "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "tsc -b && vite build --watch --mode development",
     "build": "tsc -b && vite build --mode production"
@@ -27,9 +43,7 @@
     "ua-parser-js": "^2.0.3",
     "vite-plugin-css-injected-by-js": "^3.5.2",
     "zod": "^3.24.3",
-    "zustand": "^5.0.3",
-    "@stagewise/extension-toolbar-srpc-contract": "workspace:*",
-    "@stagewise/srpc": "workspace:*"
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@preact/compat": "18.3.1",
@@ -41,6 +55,8 @@
     "typescript": "~5.7.2",
     "vite": "^6.3.1",
     "vite-bundle-analyzer": "^0.19.0",
-    "vite-plugin-dts": "^4.5.3"
+    "vite-plugin-dts": "^4.5.3",
+    "@stagewise/extension-toolbar-srpc-contract": "workspace:*",
+    "@stagewise/srpc": "workspace:*"
   }
 }
