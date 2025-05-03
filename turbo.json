@@ -23,7 +23,7 @@
       "cache": false,
       "persistent": true
     },
-    "playground:dev": {
+    "dev:playgrounds": {
       "cache": false,
       "persistent": true
     }
