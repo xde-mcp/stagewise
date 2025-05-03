@@ -3,3 +3,4 @@ packages:
   - "packages/*"
   - "toolbar/*"
   - "plug-ins/*"
+  - "playgrounds/*"
