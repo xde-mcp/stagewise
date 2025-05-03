@@ -7,8 +7,8 @@
     "dev:playgrounds": "turbo run dev:playgrounds",
     "format-and-lint": "biome check .",
     "format-and-lint:fix": "biome check . --write",
-    "check-types": "turbo run check-types",
     "sherif": "pnpm dlx sherif --fix",
+    "typecheck": "turbo run typecheck",
     "test": "turbo run test"
   },
   "devDependencies": {
