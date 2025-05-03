@@ -35,21 +35,188 @@ pnpm i -D @stagewise/toolbar
 ```
 
 Inject the toolbar into your app dev-mode:
-```tsx
-'use client';
-import { initToolbar, type ToolbarConfig } from '@stagewise/toolbar';
-import { useEffect, useRef } from 'react';
 
-export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {
-  const isLoaded = useRef(false);
-  useEffect(() => {
-    if (isLoaded.current) return;
-    isLoaded.current = true;
-    initToolbar(config);
-  }, []);
-  return null;
+```js
+// 1. Import the toolbar
+import { initToolbar } from '@stagewise/toolbar';
+
+// 2. Define your toolbar configuration
+const stagewiseConfig = {
+  plugins: [
+    {
+      name: 'example-plugin',
+      description: 'Adds additional context for your components',
+      shortInfoForPrompt: () => {
+        return "Context information about the selected element";
+      },
+      mcp: null,
+      actions: [
+        {
+          name: 'Example Action',
+          description: 'Demonstrates a custom action',
+          execute: () => {
+            window.alert('This is a custom action!');
+          },
+        },
+      ],
+    },
+  ],
+};
+
+// 3. Initialize the toolbar when your app starts
+// Framework-agnostic approach - call this when your app initializes
+function setupStagewise() {
+  // Only initialize once and only in development mode
+  if (process.env.NODE_ENV === 'development') {
+    initToolbar(stagewiseConfig);
+  }
 }
+
+// Call the setup function when appropriate for your framework
+setupStagewise();
 ```
+
+### Framework-specific integration examples
+
+<details>
+<summary><b>React</b></summary>
+
+```tsx
+// ToolbarComponent.tsx
+'use client'; // If using Next.js App Router
+import { useEffect, useRef } from 'react';
+import { initToolbar } from '@stagewise/toolbar';
+
+// Configuration for the toolbar
+const stagewiseConfig = {
+  plugins: [
+    {
+      name: 'react-plugin',
+      description: 'Adds context for React components',
+      shortInfoForPrompt: () => {
+        return "Component context information";
+      },
+      mcp: null,
+      actions: [
+        {
+          name: 'Example Action',
+          description: 'Demonstrates a custom action',
+          execute: () => {
+            window.alert('Custom action executed!');
+          },
+        },
+      ],
+    },
+  ],
+};
+
+export function ToolbarComponent() {
+  const isLoaded = useRef(false);
+  
+  useEffect(() => {
+    // Only initialize once and only in development
+    if (!isLoaded.current && process.env.NODE_ENV === 'development') {
+      isLoaded.current = true;
+      initToolbar(stagewiseConfig);
+    }
+  }, []);
+  
+  return null; // This component doesn't render anything
+}
+
+// Then in your root layout or App component:
+// <ToolbarComponent />
+```
+</details>
+
+<details>
+<summary><b>Vue</b></summary>
+
+```vue
+<!-- ToolbarComponent.vue -->
+<script setup>
+import { ref, onMounted } from 'vue';
+import { initToolbar } from '@stagewise/toolbar';
+
+const isLoaded = ref(false);
+
+// Configuration for the toolbar
+const stagewiseConfig = {
+  plugins: [
+    {
+      name: 'vue-plugin',
+      description: 'Adds context for Vue components',
+      shortInfoForPrompt: () => {
+        return "Vue component context information";
+      },
+      mcp: null,
+      actions: [
+        {
+          name: 'Example Action',
+          description: 'Demonstrates a custom action',
+          execute: () => {
+            window.alert('Custom action executed!');
+          },
+        },
+      ],
+    },
+  ],
+};
+
+onMounted(() => {
+  // Only initialize once and only in development
+  if (!isLoaded.value && process.env.NODE_ENV === 'development') {
+    isLoaded.value = true;
+    initToolbar(stagewiseConfig);
+  }
+});
+</script>
+
+<template>
+  <!-- This component doesn't render anything -->
+</template>
+```
+</details>
+
+<details>
+<summary><b>Vanilla JS</b></summary>
+
+```js
+// toolbar-setup.js
+import { initToolbar } from '@stagewise/toolbar';
+
+// Configuration for the toolbar
+const stagewiseConfig = {
+  plugins: [
+    {
+      name: 'vanilla-plugin',
+      description: 'Adds context for DOM elements',
+      shortInfoForPrompt: () => {
+        return "Element context information";
+      },
+      mcp: null,
+      actions: [
+        {
+          name: 'Example Action',
+          description: 'Demonstrates a custom action',
+          execute: () => {
+            window.alert('Custom action executed!');
+          },
+        },
+      ],
+    },
+  ],
+};
+
+// Initialize on DOM content loaded
+document.addEventListener('DOMContentLoaded', () => {
+  // Only in development mode
+  if (process.env.NODE_ENV === 'development') {
+    initToolbar(stagewiseConfig);
+  }
+});
+```
+</details>
 
 > [!IMPORTANT]
 > ⚡️ The toolbar will **automatically connect** to the extension!
