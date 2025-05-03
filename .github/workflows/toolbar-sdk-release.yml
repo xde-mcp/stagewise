@@ -1,0 +1,27 @@
+name: Toolbar SDK Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/toolbar/**'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "./packages/toolbar" build
+      - run: pnpm --filter "./packages/toolbar" publish --access public --no-git-checks
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 
