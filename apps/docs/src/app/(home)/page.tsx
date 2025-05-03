@@ -1,19 +1,23 @@
-import Link from 'next/link';
+import { WebsiteDemo } from '@/components/landing/website-demo';
+import { ActionButtons } from '@/components/landing/action-buttons';
+import type { Metadata } from 'next';
 
-export default function HomePage() {
+export const metadata: Metadata = {
+  title: 'Stagewise | Eyesight for AI code editors',
+  description:
+    'Stagewise enables coders to connect their AI code editor to your browser environment.',
+};
+
+export default function Home() {
   return (
-    <main className="flex flex-1 flex-col justify-center text-center">
-      <h1 className="mb-4 text-2xl font-bold">Hello World</h1>
-      <p className="text-fd-muted-foreground">
-        You can open{' '}
-        <Link
-          href="/docs"
-          className="text-fd-foreground font-semibold underline"
-        >
-          /docs
-        </Link>{' '}
-        and see the documentation.
-      </p>
-    </main>
+    <div className="grid min-h-screen grid-rows-[20px_1fr_20px] items-center justify-items-center gap-16 p-8 pb-20 font-[family-name:var(--font-geist-sans)] sm:p-20">
+      <main className="row-start-2 flex flex-col items-center gap-[32px] sm:items-start">
+        <h1 className="text-balance font-bold text-6xl lg:text-8xl">
+          Eyesight for your AI code editor
+        </h1>
+        <ActionButtons />
+        <WebsiteDemo />
+      </main>
+    </div>
   );
 }
