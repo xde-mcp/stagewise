@@ -5,8 +5,8 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:playgrounds": "turbo run dev:playgrounds",
-    "format-and-lint": "biome check .",
-    "format-and-lint:fix": "biome check . --write",
+    "check": "biome check .",
+    "check:fix": "biome check . --write",
     "sherif": "pnpm dlx sherif --fix",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test"

@@ -7,10 +7,10 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "out/**", "dist/**"]
     },
-    "//#format-and-lint": {
+    "//#check": {
       "cache": false
     },
-    "//#format-and-lint:fix": {
+    "//#check:fix": {
       "cache": false
     },
     "lint": {
