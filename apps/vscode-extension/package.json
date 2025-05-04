@@ -2,22 +2,15 @@
   "name": "stagewise-vscode-extension",
   "displayName": "stagewise",
   "description": "Bridge your localhost app to AI code agents. Select UI elements, tell the AI what to do.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "stagewise",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
   "license": "UNLICENSED",
-  "categories": [
-    "AI",
-    "Debuggers",
-    "Machine Learning",
-    "Other"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
+  "categories": ["AI", "Debuggers", "Machine Learning", "Other"],
+  "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [],
@@ -45,14 +38,14 @@
     "debugging"
   ],
   "scripts": {
-    "vscode:prepublish": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --packages=bundle",
+    "vscode:prepublish": "pnpm run build",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
     "run-server": "node ./out/server.js",
-    "build": "node ./scripts/build.js",
+    "build": "webpack --mode production --config webpack.config.js",
     "dev": "pnpm run watch"
   },
   "devDependencies": {
@@ -64,10 +57,14 @@
     "@typescript-eslint/parser": "^8.28.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
-    "esbuild": "^0.25.3",
     "eslint": "^9.23.0",
+    "ts-loader": "^9.5.2",
+    "tsconfig-paths-webpack-plugin": "^4.2.0",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
-    "vitest": "3.1.2"
+    "vitest": "3.1.2",
+    "webpack": "^5.99.7",
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.10.2",
@@ -76,18 +73,14 @@
     "@types/express": "^5.0.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "ws": "^8.16.0",
+    "ws": "^8.18.1",
     "zod": "^3.24.3"
   },
   "turbo": {
     "tasks": {
       "build": {
-        "dependsOn": [
-          "^build"
-        ],
-        "outputs": [
-          "out/**"
-        ]
+        "dependsOn": ["^build"],
+        "outputs": ["out/**"]
       }
     }
   }
