@@ -12,7 +12,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "ws": "^8.16.0",
+    "ws": "^8.18.1",
     "zod": "^3.24.3"
   },
   "exports": {
@@ -32,12 +32,8 @@
   "turbo": {
     "tasks": {
       "build": {
-        "dependsOn": [
-          "^build"
-        ],
-        "outputs": [
-          "dist/**"
-        ]
+        "dependsOn": ["^build"],
+        "outputs": ["dist/**"]
       }
     }
   }
