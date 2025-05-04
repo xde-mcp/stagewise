@@ -1,8 +1,8 @@
 {
   "name": "stagewise-vscode-extension",
   "displayName": "stagewise",
-  "description": "Bridge your localhost app to AI code agents. Select UI elements, tell the AI what to do.",
-  "version": "0.1.5",
+  "description": "Eyesight for your local AI-Agent.",
+  "version": "0.1.6",
   "publisher": "stagewise",
   "icon": "icon.png",
   "engines": {
