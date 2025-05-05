@@ -93,7 +93,7 @@ Useful commands:
 * `pnpm dev` — start all dev servers
 * `pnpm build` — build all packages
 * `pnpm lint` — run linters and type checks
-* `pnpm turbo run test` — run tests across packages
+* `pnpm test` — run tests across packages
 
 ---
 
