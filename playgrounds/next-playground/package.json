@@ -5,10 +5,6 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "check": "biome check .",
-    "check:unsafe": "biome check --write --unsafe .",
-    "check:write": "biome check --write .",
-    "dev": "next dev --turbo",
     "dev:playgrounds": "next dev --turbo",
     "preview": "next build && next start",
     "start": "next start",
