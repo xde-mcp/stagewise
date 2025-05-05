@@ -1,126 +1,172 @@
-## About the Project
+# <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
 
-`Video showing the toolbar with a comment on an element and how the changes are applied atfer rerender`
+# Eyesight for your AI-powered code editor.
 
-# Eyesight for your AI-powered code editor
+[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise-vscode-extension?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/vsDjhubRbh) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
 
----
 
-An open source solution to provide AI code editors like Cursor or Github Copilot with actual data from the browser. Just comment on an element and your code editor receives the element with your comment as prompt. No more linking of subfolders and components in your prompts.
+![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
 
-Using AI agents to code was a paradigm shift. Everything you can put into words, can now be turned into code. However, often times it takes a lot of iterations or very precise prompts to make sure the agent edits the right files.
 
-That’s where Stagewise comes in. With our toolbar you can send detailed information about the elements and components you want to have changed.  Prompt precision by design.
+## About the project
 
----
+**stagewise is a browser toolbar that connects your frontend UI to your code ai agents in your code editor.**
 
-## Features
+* 🧠 Select any element(s) in your web app
+* 💬 Leave a comment on it
+* 💡 Let your AI agent do the magic
 
-The Stagewise Toolbar makes it incredibly easy to edit your frontend code with AI agents. Simply select an element from the DOM using the Toolbar and provide a prompt. The Toolbar sends your prompt with additional information about the marked elements to your selected coding agent and requests a fix.
+> Perfect for devs tired of pasting folder paths into prompts. stagewise gives your AI real-time, browser-powered context.
 
-Alongside the DOM element you can provide your agent with further information.
 
-### Logs
+## ✨ Features
 
-Coming soon @Julian
+The stagewise Toolbar makes it incredibly easy to edit your frontend code with AI agents:
 
-### Accessibility
+* ⚡ Works out of the box
+* 🛠️ Customise using your own configuration file
+* 🔌 Connect to your own MCP server
+* 📦 Does not impact bundle size
+* 🧠 Sends DOM elements, screenshots & metadata to your AI agent
+* 👇 Comment directly on live elements in the browser
+* 🧪 Comes with playgrounds for React, Vue, and Svelte (`./playgrounds`)
 
-### Performance
 
-### Community tools
 
----
 
-## Contact us
+## 📖 Quickstart 
 
-Talk to us for any commercial inquiries or enterprise licenses.
+### 1. 🧩 **Install the vs-code extension** 
 
-sales@stagewise.io
+Install the extension here: https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension
 
----
+> [!NOTE]
+> 💬 **Enable MCP support (Cursor):** 
+> - The extension will auto-install a **stagewise MCP server**.
+> - Cursor will prompt you to *enable* the server.
+> - Click *enable* to let your agent call MCP-tools that the toolbar provides. ([Read more](#write-custom-mcp-tools))
 
-## Getting started
+### 2. 👨🏽‍💻 **Install and inject the toolbar**
 
-With the release of version 1.0 we only support the Cursor IDE via a VSCode extension. We are working on a Github Copilot integration at the moment.
+Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
+```bash
+pnpm i -D @stagewise/toolbar
+```
 
-// Todo: we might need to change that, depending on whether we support the Chrome Extension
+Inject the toolbar into your app dev-mode:
 
-You can use Stagewise either with our Chrome Extension or with the SDK. We highly recommend using the Chrome Extension, since the Chrome Extension does include detailed data like screenshots.
+```js
+// 1. Import the toolbar
+import { initToolbar } from '@stagewise/toolbar';
 
-### Chrome Extension
+// 2. Define your toolbar configuration
+const stagewiseConfig = {
+  plugins: [
+    {
+      name: 'example-plugin',
+      description: 'Adds additional context for your components',
+      shortInfoForPrompt: () => {
+        return "Context information about the selected element";
+      },
+      mcp: null,
+      actions: [
+        {
+          name: 'Example Action',
+          description: 'Demonstrates a custom action',
+          execute: () => {
+            window.alert('This is a custom action!');
+          },
+        },
+      ],
+    },
+  ],
+};
 
-Download the latest version of our Chrome Extension from the Chrome Web Store. 
+// 3. Initialize the toolbar when your app starts
+// Framework-agnostic approach - call this when your app initializes
+function setupStagewise() {
+  // Only initialize once and only in development mode
+  if (process.env.NODE_ENV === 'development') {
+    initToolbar(stagewiseConfig);
+  }
+}
 
-// @Julian
+// Call the setup function when appropriate for your framework
+setupStagewise();
+```
 
-### SDK
+### Framework-specific integration examples
+> ⚡️ The toolbar will **automatically connect** to the extension!
 
-// @Julian @Glenn ?
+Check out our framework-specific integration [examples](https://github.com/stagewise-io/stagewise/tree/main/examples) for Next.js, Nuxt and SveleKit.
 
-### Code editor
 
-**Visual Studio Code and Cursor** 
 
-To use Stagewise with VS Code or Cursor you need our VS Code Extension. This way the Stagewise Toolbar communicates directly with your AI coding agent. 
+## ⚙️ How it Works
 
-At the moment we only support the Cursor Agent mode. We are working on a Github Copilot and other integrations.
+stagewise connects your browser and code editor via:
 
-| **Agent** | **Supported** |
-| --- | --- |
-| Cursor | ✅ |
-| Copilot | ❌ |
-| Windsurf | ❌ |
-| Cline | ❌ |
-| BLACKBOXAI | ❌ |
-| Console Ninja | ❌ |
-| Continue.dev | ❌ |
-| Amazon Q | ❌ |
-| Cody | ❌ |
-| Qodo | ❌ |
+* Toolbar in Chrome →
+* stagewise Extension →
+* Cursor IDE or compatible agent
 
-The Stagewise Toolbar automatically connects with the VS Code Extension. 
+Each comment includes:
 
----
+* DOM element
+* Your comment
+* Screenshot
+* Accessibility and performance hints (coming soon)
 
-### **Prerequisites**
 
-// @Julian
+## 🤖 Agent support 
 
----
+| **Agent**      | **Supported**  |
+| -------------- | -------------- |
+| Cursor         | ✅              |
+| GitHub Copilot | 🚧 In Progress |
+| Windsurf       | ❌              |
+| Cline          | ❌              |
+| BLACKBOXAI     | ❌              |
+| Console Ninja  | ❌              |
+| Continue.dev   | ❌              |
+| Amazon Q       | ❌              |
+| Cody           | ❌              |
+| Qodo           | ❌              |
 
-## Roadmap
 
-See the roadmap project for a list of planned features (and known issues). 
+## 🛣️ Roadmap
 
----
+Check out our [project roadmap](./.github/ROADMAP.md) for upcoming features, bug fixes, and progress.
 
-### License
+## 📜 License
 
-The Goetze, Scharpff & Toews GbR is a commercial open source company, which means some parts of this open source repository require a commercial license. The concept is called “Open Core” where the core technology (99%) is fully open source, licensed under AGPLv3 and the 1% is covered under a commercial license which we believe is entirely relevant for larger organizations that plan to implement our technology into proprietary software.
+stagewise is developed by Goetze, Scharpff & Toews GbR under an **Open Core** model:
 
-We are deeply committed to the principles of open source and aspire to make our product as open as possible. However, to ensure the long-term sustainability and continued development of the project, we are adopting an **open core** model.
+* 🧩 99% is open-source under AGPLv3
+* 🏢 1% (enterprise features) is commercial
 
-In this model, the core functionalities of our software will remain **open source**, allowing the community to use, modify, and contribute to the project freely. Advanced features, particularly those facilitating integration into proprietary software, will be offered under a **commercial license**.
+This allows us to:
 
-This approach enables us to: 
+* Keep core tech open and transparent
+* Ensure sustainability and quality
+* Prevent misuse by closed-source platforms
 
-- Maintain a robust and secure open source core.
-- Ensure the project's financial viability and resource allocation.
-- Prevent potential misuse or exploitation that could jeopardize the project's future.
+We believe this model creates a fair, open ecosystem that benefits both individuals and companies.
 
-We believe this balance between open source and commercial offerings will foster a healthy ecosystem, encouraging community involvement while supporting the project's growth and stability.
+## 🤝 Contributing
 
----
+We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. For bugs and fresh ideas, please [Open an issue!](https://github.com/stagewise-io/stagewise/issues) 
 
-## Contributing
+## 💬 Community & Support 
 
-Please see our contributing guide.
+* [Join our Discord](https://discord.gg/vsDjhubRbh)
+* Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues) for dev support.
 
-### Good first Issues
 
-Coming soon
+## 📬 Contact Us
 
-### Contributors
+Got questions or want to license stagewise for commercial or enterprise use?
 
-Coming soon
+📧 **[sales@stagewise.io](mailto:sales@stagewise.io)**
+
+
