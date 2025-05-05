@@ -197,9 +197,9 @@ importers:
         specifier: ^19.1.0
         version: 19.1.0(react@19.1.0)
     devDependencies:
-      '@stagewise/toolbar':
+      '@stagewise/toolbar-next':
         specifier: workspace:*
-        version: link:../../packages/toolbar
+        version: link:../../packages/next
       '@tailwindcss/postcss':
         specifier: ^4.1.4
         version: 4.1.4

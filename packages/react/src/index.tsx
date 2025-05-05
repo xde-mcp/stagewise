@@ -1,6 +1,8 @@
 import { initToolbar, type ToolbarConfig } from '@stagewise/toolbar';
 import { useEffect } from 'react';
 
+export type { ToolbarConfig } from '@stagewise/toolbar';
+
 export function StagewiseToolbar({ config }: { config: ToolbarConfig }) {
   useEffect(() => {
     initToolbar(config);

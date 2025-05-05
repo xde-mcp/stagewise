@@ -25,7 +25,14 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), dts({ rollupTypes: true })],
+  plugins: [
+    react(),
+    dts({
+      // rollupTypes: true,
+      copyDtsFiles: true,
+      outDir: '.',
+    }),
+  ],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
@@ -48,6 +55,11 @@ export default defineConfig({
       output: {
         manualChunks: undefined,
         preserveModules: false,
+        globals: {
+          react: 'react',
+          'react-dom': 'react-dom',
+          '@stagewise/toolbar': '@stagewise/toolbar',
+        },
       },
       external: ['@stagewise/toolbar', 'react', 'react-dom'],
       treeshake: true,
