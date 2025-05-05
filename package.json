@@ -5,6 +5,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:playgrounds": "turbo run dev:playgrounds",
+    "dev:examples": "turbo run dev:examples",
     "check": "biome check .",
     "check:fix": "biome check . --write",
     "sherif": "pnpm dlx sherif --fix",
@@ -29,6 +30,7 @@
   "pnpm": {
     "patchedDependencies": {
       "@headlessui/react@2.2.2": "patches/@headlessui__react.patch"
-    }
+    },
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }
