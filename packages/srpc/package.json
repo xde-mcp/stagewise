@@ -9,7 +9,7 @@
     "build": "tsup",
     "clean": "rm -rf dist",
     "dev": "tsup --watch",
-    "test": "vitest"
+    "test": "vitest run"
   },
   "dependencies": {
     "ws": "^8.18.1",

@@ -45,11 +45,7 @@
   ],
   "scripts": {
     "vscode:prepublish": "pnpm run build",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "pnpm run compile && pnpm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test",
+    "watch": "webpack --mode development --config webpack.config.js --watch",
     "run-server": "node ./out/server.js",
     "build": "webpack --mode production --config webpack.config.js",
     "dev": "pnpm run watch"
