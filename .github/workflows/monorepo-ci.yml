@@ -46,3 +46,26 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm test 
+      
+  verify-changeset:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for changeset
+        run: |
+          # Get the list of files changed between the base branch and current branch
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          
+          # Check if any new changeset files have been created
+          NEW_CHANGESETS=$(echo "$CHANGED_FILES" | grep ".changeset/.*.md" | grep -v "README.md" || true)
+          
+          if [ -z "$NEW_CHANGESETS" ]; then
+            echo "::error::No changeset file found. Please run 'pnpm changeset' to create one."
+            echo "A changeset is required when making changes that should be published."
+            exit 1
+          else
+            echo "Changeset found: $NEW_CHANGESETS"
+          fi 
