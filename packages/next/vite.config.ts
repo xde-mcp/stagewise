@@ -28,9 +28,7 @@ export default defineConfig({
   plugins: [
     react(),
     dts({
-      // rollupTypes: true, // Disable rollupTypes
-      copyDtsFiles: true, // Enable copying DTS files
-      outDir: '.', // Explicitly set output directory for dts plugin relative to Vite's outDir
+      rollupTypes: true,
     }),
   ],
   resolve: {

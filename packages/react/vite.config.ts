@@ -28,9 +28,7 @@ export default defineConfig({
   plugins: [
     react(),
     dts({
-      // rollupTypes: true,
-      copyDtsFiles: true,
-      outDir: '.',
+      rollupTypes: true,
     }),
   ],
   resolve: {
