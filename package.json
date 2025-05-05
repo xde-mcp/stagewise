@@ -6,6 +6,7 @@
     "dev": "turbo run dev",
     "dev:playgrounds": "turbo run dev:playgrounds",
     "dev:examples": "turbo run dev:examples",
+    "changeset": "pnpm dlx @changesets/cli",
     "check": "biome check .",
     "check:fix": "biome check . --write",
     "sherif": "pnpm dlx sherif --fix",
