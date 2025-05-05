@@ -1,6 +1,6 @@
 # <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
 
-# Eyesight for your AI-powered code editor.
+# Eyesight for your local AI-Agent.
 
 [![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise-vscode-extension?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/vsDjhubRbh) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
 
@@ -14,7 +14,7 @@
 
 * 🧠 Select any element(s) in your web app
 * 💬 Leave a comment on it
-* 💡 Let your AI agent do the magic
+* 💡 Let your AI-Agent do the magic
 
 > Perfect for devs tired of pasting folder paths into prompts. stagewise gives your AI real-time, browser-powered context.
 
@@ -47,6 +47,14 @@ Install the extension here: https://marketplace.visualstudio.com/items?itemName=
 > - Click *enable* to let your agent call MCP-tools that the toolbar provides. ([Read more](#write-custom-mcp-tools))
 
 ### 2. 👨🏽‍💻 **Install and inject the toolbar**
+
+> [!TIP]
+> 🪄 **Auto-Install the toolbar (AI-guided):** 
+> 1. In Cursor, Press `CMD + Shift + P`
+> 2. Enter `setupToolbar`
+> 3. Execute the command and the toolbar will init automatically 🦄
+
+Or follow the manual way:
 
 Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
 ```bash
@@ -94,29 +102,21 @@ function setupStagewise() {
 // Call the setup function when appropriate for your framework
 setupStagewise();
 ```
-
-### Framework-specific integration examples
 > ⚡️ The toolbar will **automatically connect** to the extension!
 
-Check out our framework-specific integration [examples](https://github.com/stagewise-io/stagewise/tree/main/examples) for Next.js, Nuxt and SveleKit.
+### Framework-specific integration examples
+
+Check out our framework-specific integration [examples](https://github.com/stagewise-io/stagewise/tree/main/examples) for Next.js, Nuxt and SvelteKit.
 
 
 
-## ⚙️ How it Works
+<!-- ## ⚙️ How it Works
 
 stagewise connects your browser and code editor via:
 
 * Toolbar in Chrome →
 * stagewise Extension →
-* Cursor IDE or compatible agent
-
-Each comment includes:
-
-* DOM element
-* Your comment
-* Screenshot
-* Accessibility and performance hints (coming soon)
-
+* Cursor IDE or compatible agent -->
 
 ## 🤖 Agent support 
 
@@ -159,8 +159,8 @@ We're just getting started and love contributions! Check out our [CONTRIBUTING.m
 
 ## 💬 Community & Support 
 
-* [Join our Discord](https://discord.gg/vsDjhubRbh)
-* Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues) for dev support.
+* 👾 [Join our Discord](https://discord.gg/vsDjhubRbh)
+* 📖 Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues) for dev support.
 
 
 ## 📬 Contact Us
