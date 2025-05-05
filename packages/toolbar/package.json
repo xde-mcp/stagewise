@@ -25,6 +25,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "tsc -b && vite build --watch --mode development",
+    "dev:examples": "tsc -b && vite build --watch --mode development",
     "build": "tsc -b && vite build --mode production"
   },
   "dependencies": {
