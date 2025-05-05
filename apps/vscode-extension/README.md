@@ -1,21 +1,40 @@
 # <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
 
-### Eyesight for your local AI-Agent.
+# Eyesight for your local AI-Agent.
 
 [![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise-vscode-extension?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/vsDjhubRbh) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
 
 
 ![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
 
-## What is stagewise? 🤔
 
-With stagewise, you can **comment on elements** and your local dev agent will automatically **receive a change-prompt with context.**
+## About the project
 
-👆🏽 💬 *Make this button green!!!* ...  🧙🏽 🪄 🟢
+**stagewise is a browser toolbar that connects your frontend UI to your code ai agents in your code editor.**
 
----
+* 🧠 Select any element(s) in your web app
+* 💬 Leave a comment on it
+* 💡 Let your AI-Agent do the magic
 
-## Quickstart 📖
+> Perfect for devs tired of pasting folder paths into prompts. stagewise gives your AI real-time, browser-powered context.
+
+
+## ✨ Features
+
+The stagewise Toolbar makes it incredibly easy to edit your frontend code with AI agents:
+
+* ⚡ Works out of the box
+* 🛠️ Customise using your own configuration file
+* 🔌 Connect to your own MCP server
+* 📦 Does not impact bundle size
+* 🧠 Sends DOM elements, screenshots & metadata to your AI agent
+* 👇 Comment directly on live elements in the browser
+* 🧪 Comes with playgrounds for React, Vue, and Svelte (`./playgrounds`)
+
+
+
+
+## 📖 Quickstart 
 
 ### 1. 🧩 **Install the vs-code extension** 
 
@@ -83,231 +102,71 @@ function setupStagewise() {
 // Call the setup function when appropriate for your framework
 setupStagewise();
 ```
+> ⚡️ The toolbar will **automatically connect** to the extension!
 
 ### Framework-specific integration examples
 
-<details>
-<summary><b>React</b></summary>
+Check out our framework-specific integration [examples](https://github.com/stagewise-io/stagewise/tree/main/examples) for Next.js, Nuxt and SvelteKit.
 
-```tsx
-// ToolbarComponent.tsx
-'use client'; // If using Next.js App Router
-import { useEffect, useRef } from 'react';
-import { initToolbar } from '@stagewise/toolbar';
 
-// Configuration for the toolbar
-const stagewiseConfig = {
-  plugins: [
-    {
-      name: 'react-plugin',
-      description: 'Adds context for React components',
-      shortInfoForPrompt: () => {
-        return "Component context information";
-      },
-      mcp: null,
-      actions: [
-        {
-          name: 'Example Action',
-          description: 'Demonstrates a custom action',
-          execute: () => {
-            window.alert('Custom action executed!');
-          },
-        },
-      ],
-    },
-  ],
-};
 
-export function ToolbarComponent() {
-  const isLoaded = useRef(false);
-  
-  useEffect(() => {
-    // Only initialize once and only in development
-    if (!isLoaded.current && process.env.NODE_ENV === 'development') {
-      isLoaded.current = true;
-      initToolbar(stagewiseConfig);
-    }
-  }, []);
-  
-  return null; // This component doesn't render anything
-}
+<!-- ## ⚙️ How it Works
 
-// Then in your root layout or App component:
-// <ToolbarComponent />
-```
-</details>
+stagewise connects your browser and code editor via:
 
-<details>
-<summary><b>Vue</b></summary>
+* Toolbar in Chrome →
+* stagewise Extension →
+* Cursor IDE or compatible agent -->
 
-```vue
-<!-- ToolbarComponent.vue -->
-<script setup>
-import { ref, onMounted } from 'vue';
-import { initToolbar } from '@stagewise/toolbar';
+## 🤖 Agent support 
 
-const isLoaded = ref(false);
+| **Agent**      | **Supported**  |
+| -------------- | -------------- |
+| Cursor         | ✅              |
+| GitHub Copilot | 🚧 In Progress |
+| Windsurf       | ❌              |
+| Cline          | ❌              |
+| BLACKBOXAI     | ❌              |
+| Console Ninja  | ❌              |
+| Continue.dev   | ❌              |
+| Amazon Q       | ❌              |
+| Cody           | ❌              |
+| Qodo           | ❌              |
 
-// Configuration for the toolbar
-const stagewiseConfig = {
-  plugins: [
-    {
-      name: 'vue-plugin',
-      description: 'Adds context for Vue components',
-      shortInfoForPrompt: () => {
-        return "Vue component context information";
-      },
-      mcp: null,
-      actions: [
-        {
-          name: 'Example Action',
-          description: 'Demonstrates a custom action',
-          execute: () => {
-            window.alert('Custom action executed!');
-          },
-        },
-      ],
-    },
-  ],
-};
 
-onMounted(() => {
-  // Only initialize once and only in development
-  if (!isLoaded.value && process.env.NODE_ENV === 'development') {
-    isLoaded.value = true;
-    initToolbar(stagewiseConfig);
-  }
-});
-</script>
+## 🛣️ Roadmap
 
-<template>
-  <!-- This component doesn't render anything -->
-</template>
-```
-</details>
+Check out our [project roadmap](./.github/ROADMAP.md) for upcoming features, bug fixes, and progress.
 
-<details>
-<summary><b>Vanilla JS</b></summary>
+## 📜 License
 
-```js
-// toolbar-setup.js
-import { initToolbar } from '@stagewise/toolbar';
+stagewise is developed by Goetze, Scharpff & Toews GbR under an **Open Core** model:
 
-// Configuration for the toolbar
-const stagewiseConfig = {
-  plugins: [
-    {
-      name: 'vanilla-plugin',
-      description: 'Adds context for DOM elements',
-      shortInfoForPrompt: () => {
-        return "Element context information";
-      },
-      mcp: null,
-      actions: [
-        {
-          name: 'Example Action',
-          description: 'Demonstrates a custom action',
-          execute: () => {
-            window.alert('Custom action executed!');
-          },
-        },
-      ],
-    },
-  ],
-};
+* 🧩 99% is open-source under AGPLv3
+* 🏢 1% (enterprise features) is commercial
 
-// Initialize on DOM content loaded
-document.addEventListener('DOMContentLoaded', () => {
-  // Only in development mode
-  if (process.env.NODE_ENV === 'development') {
-    initToolbar(stagewiseConfig);
-  }
-});
-```
-</details>
+This allows us to:
 
-> [!IMPORTANT]
-> ⚡️ The toolbar will **automatically connect** to the extension!
+* Keep core tech open and transparent
+* Ensure sustainability and quality
+* Prevent misuse by closed-source platforms
 
----
+We believe this model creates a fair, open ecosystem that benefits both individuals and companies.
 
-## Features 🔥
-
-* 👆🏽 **Visual Element Selection:** Target UI elements directly in your running app.
-* 💬 **Natural Language Commands:** Talk to your code like you talk to a teammate.
-* 🤖 **Context for your agent:** Automatically send rich browser context (DOM, styles, state) for more accurate AI suggestions.
-* 👨🏽‍💻 **Local IDE Integration:** Seamlessly connects to AI agents within VS Code.
-* ⬅️➡️ **Bidirectional Communication:** The agent can query the toolbar via [MCP](https://modelcontextprotocol.io/).
-* 📖 **Open Source:** Built by developers, for developers. Contribute and shape the future!
-
----
-
-## Agent support 🤖
-
-| **Agent** | **Supported** |
-| --- | --- |
-| Cursor | ✅ |
-| Copilot | ❌ |
-| Windsurf | ❌ |
-| Cline | ❌ |
-| BLACKBOXAI | ❌ |
-| Console Ninja | ❌ |
-| Continue.dev | ❌ |
-| Amazon Q | ❌ |
-| Cody | ❌ |
-| Qodo | ❌ |
-
----
-
-## Advanced guides 🧪
-
-### Write custom MCP tools
-
-Simply write custom MCP-tools that run in your browser. Tools will automatically be registered and your local AI agent can use them: You just have to plug them into the toolbar config. 🔌
-
-```typescript
-// TBD
-```
-
----
-
-## Roadmap 🧭
-
-See the roadmap project for a list of planned features (and known issues). 
-
----
-
-## Contributing 🤝
+## 🤝 Contributing
 
 We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. For bugs and fresh ideas, please [Open an issue!](https://github.com/stagewise-io/stagewise/issues) 
 
-<!-- --- -->
-<!--  -->
-<!-- ## Contributers 👫🏽 -->
-<!-- Coming soon -->
-<!--  -->
-<!-- --- -->
+## 💬 Community & Support 
 
----
+* 👾 [Join our Discord](https://discord.gg/vsDjhubRbh)
+* 📖 Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues) for dev support.
 
-## Community & Support 💬
 
-* [Join our Discord](https://discord.gg/vsDjhubRbh) 👾
-* Leave a star on the [GitHub repo](https://github.com/stagewise-io/stagewise) ⭐️
+## 📬 Contact Us
 
----
+Got questions or want to license stagewise for commercial or enterprise use?
 
-## Contact us 📧
+📧 **[sales@stagewise.io](mailto:sales@stagewise.io)**
 
-Talk to us for any commercial inquiries or enterprise licenses.
 
-sales@stagewise.io
-
----
-
-## License 📜
-
-<!-- stagewise is open-source and licensed under the [MIT License](https://github.com/stagewise-io/stagewise/blob/main/LICENSE). --- -->
-Currently UNLICENSED, the license is under development.
-
-*Made with ❤️ by the stagewise team.*

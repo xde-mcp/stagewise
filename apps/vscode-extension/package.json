@@ -2,13 +2,13 @@
   "name": "stagewise-vscode-extension",
   "displayName": "stagewise",
   "description": "Eyesight for your local AI-Agent.",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "stagewise",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
-  "license": "UNLICENSED",
+  "license": "AGPL-3.0-only",
   "categories": ["AI", "Debuggers", "Machine Learning", "Other"],
   "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
