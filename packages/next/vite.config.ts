@@ -29,6 +29,8 @@ export default defineConfig({
     react(),
     dts({
       rollupTypes: true,
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      logLevel: 'info',
     }),
   ],
   resolve: {
@@ -44,7 +46,7 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.tsx'),
+      entry: resolve(__dirname, 'src/index.ts'),
       name: 'StagewiseToolbarNext',
       fileName: 'index',
       formats: ['es', 'umd'],
