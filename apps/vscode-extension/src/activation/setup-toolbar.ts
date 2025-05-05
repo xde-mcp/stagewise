@@ -48,7 +48,7 @@ if (process.env.NODE_ENV === 'development') {
         // Ensure this block is only included once
 
         // Define basic config (if not already defined globally/imported)
-        const stagewiseConfig = {}; // Use an empty config for initial setup
+        const stagewiseConfig = { plugins: [] }; // Use an empty config for initial setup
 
         // Initialize only in development mode
         if (process.env.NODE_ENV === 'development') {
