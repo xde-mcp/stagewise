@@ -2,7 +2,7 @@
   "name": "stagewise-vscode-extension",
   "displayName": "stagewise",
   "description": "Eyesight for your local AI-Agent.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "stagewise",
   "icon": "icon.png",
   "engines": {
@@ -13,7 +13,13 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [],
+    "commands": [
+      {
+        "command": "stagewise.setupToolbar",
+        "title": "Auto-setup the stagewise toolbar (AI-Assisted)",
+        "category": "stagewise"
+      }
+    ],
     "configuration": {
       "title": "stagewise",
       "type": "object",

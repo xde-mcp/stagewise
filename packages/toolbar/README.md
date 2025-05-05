@@ -29,6 +29,14 @@ Install the extension here: https://marketplace.visualstudio.com/items?itemName=
 
 ### 2. 👨🏽‍💻 **Install and inject the toolbar**
 
+> [!TIP]
+> 🪄 **Auto-Install the toolbar (AI-guided):** 
+> 1. In Cursor, Press `CMD + Shift + P`
+> 2. Enter `setupToolbar`
+> 3. Execute the command and the toolbar will init automatically 🦄
+
+Or follow the manual way:
+
 Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
 ```bash
 pnpm i -D @stagewise/toolbar
