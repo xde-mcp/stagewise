@@ -97,13 +97,37 @@ Useful commands:
 
 ---
 
+## Changesets and Versioning
+
+We use [Changesets](https://github.com/changesets/changesets) to manage versions and changelogs. For any change that affects users, you must include a changeset:
+
+```bash
+pnpm changeset
+```
+
+This will guide you through:
+1. Selecting the packages you've modified
+2. Choosing the appropriate semver increment (patch, minor, or major)
+3. Writing a description of your changes
+
+Your PR will fail CI checks if it doesn't include a changeset when making changes to published packages. For documentation-only changes or fixes that don't affect package functionality, you can create an empty changeset:
+
+```bash
+pnpm changeset --empty
+```
+
+**Note:** Changes without a changeset cannot be merged to the main branch.
+
+---
+
 ## Contribution Guidelines
 
 * Follow our code style (enforced by Biome, Lefthook, and Commitlint).
 * Write clear and descriptive commit messages.
 * Open a GitHub issue or draft PR before making large changes.
-* Add tests if you’re adding new functionality (or explain why not).
+* Add tests if you're adding new functionality (or explain why not).
 * Prefer small, scoped pull requests over large ones.
+* Include a changeset for any change affecting published packages.
 
 ---
 
@@ -111,4 +135,4 @@ Useful commands:
 
 * 💬 Join our [Discord](https://discord.gg/tRRyHJnv) to ask questions and get support.
 * 🐛 Found a bug? Open a [GitHub Issue](https://github.com/stagewise-io/stagewise/issues).
-* 💡 Have a feature idea? Let’s discuss it in [GitHub Discussions](#).
+* 💡 Have a feature idea? Let's discuss it in [GitHub Discussions](#).
