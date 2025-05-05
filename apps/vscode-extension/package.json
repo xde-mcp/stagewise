@@ -2,7 +2,7 @@
   "name": "stagewise-vscode-extension",
   "displayName": "stagewise",
   "description": "Eyesight for your local AI-Agent.",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "stagewise",
   "icon": "icon.png",
   "engines": {
