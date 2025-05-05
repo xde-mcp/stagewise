@@ -1,0 +1,30 @@
+name: VSCode Extension Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/vscode-extension/**'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.10.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "./apps/vscode-extension" build
+      - run: npm install -g vsce
+      - run: pnpm --filter "./apps/vscode-extension" exec vsce package
+      - name: Publish to VSCode Marketplace
+        run: pnpm --filter "./apps/vscode-extension" exec vsce publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }} 

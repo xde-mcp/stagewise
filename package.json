@@ -5,10 +5,10 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:playgrounds": "turbo run dev:playgrounds",
-    "format-and-lint": "biome check .",
-    "format-and-lint:fix": "biome check . --write",
-    "check-types": "turbo run check-types",
+    "check": "biome check .",
+    "check:fix": "biome check . --write",
     "sherif": "pnpm dlx sherif --fix",
+    "typecheck": "turbo run typecheck",
     "test": "turbo run test"
   },
   "devDependencies": {
@@ -19,7 +19,7 @@
     "turbo": "^2.5.2",
     "typescript": "^5.8.3"
   },
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.10.0",
   "engines": {
     "node": ">=18"
   },
