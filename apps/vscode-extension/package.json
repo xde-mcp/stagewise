@@ -8,7 +8,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "license": "UNLICENSED",
+  "license": "AGPL-3.0-only",
   "categories": ["AI", "Debuggers", "Machine Learning", "Other"],
   "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
