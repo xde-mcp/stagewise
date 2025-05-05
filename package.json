@@ -8,7 +8,8 @@
     "format-and-lint": "biome check .",
     "format-and-lint:fix": "biome check . --write",
     "check-types": "turbo run check-types",
-    "sherif": "pnpm dlx sherif --fix"
+    "sherif": "pnpm dlx sherif --fix",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",
