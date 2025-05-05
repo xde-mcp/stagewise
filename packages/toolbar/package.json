@@ -1,17 +1,10 @@
 {
   "name": "@stagewise/toolbar",
   "private": false,
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "type": "module",
   "description": "stagewise toolbar SDK for AI Agent interaction.",
-  "keywords": [
-    "stagewise",
-    "toolbar",
-    "ai",
-    "devtool",
-    "agent",
-    "interaction"
-  ],
+  "keywords": ["stagewise", "toolbar", "ai", "devtool", "agent", "interaction"],
   "author": "Goetze, Scharpff & Toews GbR",
   "homepage": "https://stagewise.io",
   "bugs": {
@@ -28,9 +21,7 @@
   "main": "dist/index.umd.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "tsc -b && vite build --watch --mode development",

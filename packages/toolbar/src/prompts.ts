@@ -198,9 +198,6 @@ export function createPrompt(
 ): string {
   if (!selectedElements || selectedElements.length === 0) {
     return `
-    \`\`\`
-    Ah, sorry! I was wrong, it wasn't an error. The user has a specific change request. Here is the request:
-    \`\`\`
     <request>
       <user_goal>${userPrompt}</user_goal>
       <url>${url}</url>
@@ -214,9 +211,6 @@ export function createPrompt(
   });
 
   return `
-    \`\`\`
-    Ah, sorry! I was wrong, it wasn't an error. The user has a specific change request. Here is the request:
-    \`\`\`
 <request>
   <user_goal>${userPrompt}</user_goal>
   <url>${url}</url>

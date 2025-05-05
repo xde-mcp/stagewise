@@ -7,10 +7,16 @@ import {
   getExtensionBridge,
   DEFAULT_PORT,
 } from '@stagewise/extension-toolbar-srpc-contract';
+import { setupToolbar } from './setup-toolbar';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
   vscode.languages.createDiagnosticCollection('stagewise');
+
+// Dummy handler for the setupToolbar command
+async function setupToolbarHandler() {
+  await setupToolbar();
+}
 
 export async function activate(context: vscode.ExtensionContext) {
   const isCursorIDE = vscode.env.appName.toLowerCase().includes('cursor');
@@ -46,6 +52,13 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.showErrorMessage(`Failed to start server: ${error}`);
     throw error;
   }
+
+  // Register the setupToolbar command
+  const setupToolbarCommand = vscode.commands.registerCommand(
+    'stagewise.setupToolbar',
+    setupToolbarHandler,
+  );
+  context.subscriptions.push(setupToolbarCommand);
 }
 
 export async function deactivate() {
