@@ -1,11 +1,17 @@
+<script setup lang="ts">
+import { StagewiseToolbar, type ToolbarConfig } from '@stagewise/vue';
+
+const config: ToolbarConfig = {
+  plugins: [],
+};
+</script>
+
 <template>
   <div>
     <NuxtRouteAnnouncer />
-    <StagewiseToolbar />
+    <ClientOnly>
+      <StagewiseToolbar :config="config" />
+    </ClientOnly>
     <NuxtWelcome />
   </div>
 </template>
-
-<script setup lang="ts">
-import StagewiseToolbar from './components/stagewise/ToolbarLoader.vue';
-</script>
