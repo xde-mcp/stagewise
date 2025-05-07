@@ -19,14 +19,14 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
-import react from '@vitejs/plugin-react-swc';
+import vue from '@vitejs/plugin-vue';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
+    vue(),
     dts({
       rollupTypes: true,
     }),
@@ -44,8 +44,8 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.tsx'),
-      name: 'StagewiseToolbarReact',
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'StagewiseToolbarVue',
       fileName: 'index',
       formats: ['es', 'umd'],
     },
@@ -54,12 +54,11 @@ export default defineConfig({
         manualChunks: undefined,
         preserveModules: false,
         globals: {
-          react: 'react',
-          'react-dom': 'react-dom',
-          '@stagewise/toolbar': '@stagewise/toolbar',
+          vue: 'vue',
+          '@stagewise/core': '@stagewise/core',
         },
       },
-      external: ['@stagewise/toolbar', 'react', 'react-dom'],
+      external: ['@stagewise/core', 'vue'],
       treeshake: true,
     },
     minify: false,

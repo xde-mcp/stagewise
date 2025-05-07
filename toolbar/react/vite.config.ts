@@ -20,7 +20,6 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import react from '@vitejs/plugin-react-swc';
-import preserveDirectives from 'rollup-preserve-directives';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -30,10 +29,7 @@ export default defineConfig({
     react(),
     dts({
       rollupTypes: true,
-      include: ['src/**/*.ts', 'src/**/*.tsx'],
-      logLevel: 'info',
     }),
-    preserveDirectives(),
   ],
   resolve: {
     alias: {
@@ -48,8 +44,8 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'StagewiseToolbarNext',
+      entry: resolve(__dirname, 'src/index.tsx'),
+      name: 'StagewiseToolbarReact',
       fileName: 'index',
       formats: ['es', 'umd'],
     },
@@ -60,18 +56,10 @@ export default defineConfig({
         globals: {
           react: 'react',
           'react-dom': 'react-dom',
-          '@stagewise/toolbar-react': '@stagewise/toolbar-react',
-          '@stagewise/toolbar': '@stagewise/toolbar',
+          '@stagewise/core': '@stagewise/core',
         },
       },
-      external: [
-        '@stagewise/toolbar-react',
-        '@stagewise/toolbar',
-        'next',
-        'next/dynamic',
-        'react',
-        'react-dom',
-      ],
+      external: ['@stagewise/core', 'react', 'react-dom'],
       treeshake: true,
     },
     minify: false,

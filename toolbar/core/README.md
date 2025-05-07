@@ -57,16 +57,16 @@ Install the extension here: https://marketplace.visualstudio.com/items?itemName=
 
 Or follow the manual way:
 
-Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
+Install [@stagewise/core](https://www.npmjs.com/package/@stagewise/core):
 ```bash
-pnpm i -D @stagewise/toolbar
+pnpm i -D @stagewise/core
 ```
 
 Inject the toolbar into your app dev-mode:
 
 ```js
 // 1. Import the toolbar
-import { initToolbar } from '@stagewise/toolbar';
+import { initToolbar } from '@stagewise/core';
 
 // 2. Define your toolbar configuration
 const stagewiseConfig = {

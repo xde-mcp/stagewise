@@ -1,5 +1,5 @@
 {
-  "name": "@stagewise/toolbar",
+  "name": "@stagewise/core",
   "private": false,
   "version": "0.1.0-alpha.3",
   "type": "module",
@@ -24,12 +24,13 @@
   "files": ["dist"],
   "license": "AGPL-3.0-only",
   "scripts": {
-    "dev": "tsc -b && vite build --mode development",
-    "dev:examples": "tsc -b && vite build --mode development",
+    "dev": "tsc -b && vite build --watch --mode development",
+    "dev:examples": "tsc -b && vite build --watch --mode development",
+    "build:toolbar": "tsc -b && vite build --mode production",
     "build": "tsc -b && vite build --mode production"
   },
   "dependencies": {
-    "@headlessui/react": "2.2.2",
+    "@headlessui/react": "^2.2.2",
     "@preact/compat": "18.3.1",
     "clsx": "^2.1.1",
     "javascript-time-ago": "^2.5.11",
