@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf .turbo .svelte-kit node_modules",
     "dev:examples": "vite dev --port 3003",
     "build": "vite build",
     "preview": "vite preview",

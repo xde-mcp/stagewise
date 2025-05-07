@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "clean": "rm -rf .turbo next node_modules",
     "build": "next build",
     "dev": "next dev --turbo -p 3001",
     "preview": "next build && next start",

@@ -9,6 +9,7 @@
   "files": ["dist"],
   "license": "AGPL-3.0-only",
   "scripts": {
+    "clean": "rm -rf .turbo dist node_modules",
     "dev": "tsc -b && vite build --watch --mode development",
     "build": "tsc -b && vite build && npm run fix-types",
     "build:toolbar": "tsc -b && vite build && npm run fix-types",

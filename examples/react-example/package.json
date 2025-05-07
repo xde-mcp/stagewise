@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf .turbo dist node_modules",
     "dev:examples": "vite --port 3002",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

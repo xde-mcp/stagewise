@@ -24,6 +24,7 @@
   "files": ["dist"],
   "license": "AGPL-3.0-only",
   "scripts": {
+    "clean": "rm -rf .turbo node_modules",
     "dev": "tsc -b && vite build --watch --mode development",
     "dev:examples": "tsc -b && vite build --watch --mode development",
     "build:toolbar": "tsc -b && vite build --mode production",
