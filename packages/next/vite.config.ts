@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import react from '@vitejs/plugin-react-swc';
+import preserveDirectives from 'rollup-preserve-directives';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -32,6 +33,7 @@ export default defineConfig({
       include: ['src/**/*.ts', 'src/**/*.tsx'],
       logLevel: 'info',
     }),
+    preserveDirectives(),
   ],
   resolve: {
     alias: {

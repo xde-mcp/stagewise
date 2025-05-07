@@ -6,7 +6,9 @@
   "main": "dist/index.umd.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "tsc -b && vite build --watch --mode development",
@@ -35,6 +37,7 @@
     "react": ">=18.0.0"
   },
   "dependencies": {
-    "@stagewise/toolbar": "0.1.0-alpha.2"
+    "@stagewise/toolbar": "0.1.0-alpha.2",
+    "rollup-preserve-directives": "^1.1.3"
   }
 }
