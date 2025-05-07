@@ -115,7 +115,7 @@ importers:
   apps/website:
     dependencies:
       '@headlessui/react':
-        specifier: ^2.2.2
+        specifier: 2.2.2
         version: 2.2.2(patch_hash=p2t5fm6sudlfgt4egmyp3nenvu)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@radix-ui/react-accordion':
         specifier: ^1.2.8
@@ -464,7 +464,7 @@ importers:
   packages/toolbar:
     dependencies:
       '@headlessui/react':
-        specifier: ^2.2.2
+        specifier: 2.2.2
         version: 2.2.2(patch_hash=p2t5fm6sudlfgt4egmyp3nenvu)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@preact/compat':
         specifier: 18.3.1
