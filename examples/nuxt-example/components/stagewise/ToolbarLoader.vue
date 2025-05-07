@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ToolbarConfig } from '@stagewise/toolbar';
+import type { ToolbarConfig } from '@stagewise/core';
 import ToolbarWrapper from './ToolbarWrapper.vue';
 
 const stagewiseConfig: ToolbarConfig = {

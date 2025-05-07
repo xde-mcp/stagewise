@@ -6,11 +6,11 @@ This example demonstrates how to integrate the Stagewise toolbar into a Nuxt pro
 
 1. Install the Stagewise toolbar package:
 ```bash
-npm install @stagewise/toolbar
+npm install @stagewise/core
 # or
-yarn add @stagewise/toolbar
+yarn add @stagewise/core
 # or
-pnpm add @stagewise/toolbar
+pnpm add @stagewise/core
 ```
 
 ## Integration Steps
@@ -18,8 +18,8 @@ pnpm add @stagewise/toolbar
 1. Create a toolbar wrapper component (`components/stagewise/ToolbarWrapper.vue`):
 ```ts
 <script setup lang="ts">
-import type { ToolbarConfig } from '@stagewise/toolbar';
-import { initToolbar } from '@stagewise/toolbar';
+import type { ToolbarConfig } from '@stagewise/core';
+import { initToolbar } from '@stagewise/core';
 import { onMounted, ref } from 'vue';
 
 const props = defineProps<{
@@ -43,7 +43,7 @@ onMounted(() => {
 2. Create a toolbar loader component (`components/stagewise/ToolbarLoader.vue`):
 ```ts
 <script setup lang="ts">
-import type { ToolbarConfig } from '@stagewise/toolbar';
+import type { ToolbarConfig } from '@stagewise/core';
 import ToolbarWrapper from './ToolbarWrapper.vue';
 
 const stagewiseConfig: ToolbarConfig = {

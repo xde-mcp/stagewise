@@ -1,7 +1,7 @@
 'use client';
-import type { ToolbarConfig } from '@stagewise/toolbar';
+import type { ToolbarConfig } from '@stagewise/core';
 export type { ToolbarConfig };
-import { initToolbar } from '@stagewise/toolbar';
+import { initToolbar } from '@stagewise/core';
 import { useEffect, useRef } from 'react';
 
 export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {

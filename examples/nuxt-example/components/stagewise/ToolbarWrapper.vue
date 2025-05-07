@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ToolbarConfig } from '@stagewise/toolbar';
-import { initToolbar } from '@stagewise/toolbar';
+import type { ToolbarConfig } from '@stagewise/core';
+import { initToolbar } from '@stagewise/core';
 import { onMounted, ref } from 'vue';
 
 const props = defineProps<{

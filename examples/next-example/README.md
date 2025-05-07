@@ -6,11 +6,11 @@ This example demonstrates how to integrate the Stagewise toolbar into a Next.js 
 
 1. Install the Stagewise toolbar package:
 ```bash
-npm install @stagewise/toolbar
+npm install @stagewise/core
 # or
-yarn add @stagewise/toolbar
+yarn add @stagewise/core
 # or
-pnpm add @stagewise/toolbar
+pnpm add @stagewise/core
 ```
 
 ## Integration Steps
@@ -18,9 +18,9 @@ pnpm add @stagewise/toolbar
 1. Create a toolbar wrapper component (`src/components/stagewise/toolbar-wrapper.tsx`):
 ```ts
 'use client';
-import type { ToolbarConfig } from '@stagewise/toolbar';
+import type { ToolbarConfig } from '@stagewise/core';
 export type { ToolbarConfig };
-import { initToolbar } from '@stagewise/toolbar';
+import { initToolbar } from '@stagewise/core';
 import { useEffect, useRef } from 'react';
 
 export default function ToolbarWrapper({ config }: { config: ToolbarConfig }) {

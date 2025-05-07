@@ -61,7 +61,7 @@ const result = await bridge.call.triggerAgentPrompt({
 
 ## Related Packages
 
-- [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar): The toolbar component for your web app
+- [@stagewise/core](https://www.npmjs.com/package/@stagewise/core): The toolbar component for your web app
 - [@stagewise/srpc](https://www.npmjs.com/package/@stagewise/srpc): The underlying RPC framework
 
 ## License
