@@ -56,16 +56,16 @@ Install the extension here: https://marketplace.visualstudio.com/items?itemName=
 
 Or follow the manual way:
 
-Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
+Install [@stagewise/core](https://www.npmjs.com/package/@stagewise/core):
 ```bash
-pnpm i -D @stagewise/toolbar
+pnpm i -D @stagewise/core
 ```
 
 Inject the toolbar into your app dev-mode:
 
-```js
+```ts
 // 1. Import the toolbar
-import { initToolbar } from '@stagewise/toolbar';
+import { initToolbar } from '@stagewise/core';
 
 // 2. Define your toolbar configuration
 const stagewiseConfig = {
@@ -106,17 +106,185 @@ setupStagewise();
 
 ### Framework-specific integration examples
 
-Check out our framework-specific integration [examples](https://github.com/stagewise-io/stagewise/tree/main/examples) for Next.js, Nuxt and SvelteKit.
+For easier integration, we provide framework-specific NPM packages that come with dedicated toolbar components (e.g., `<StagewiseToolbar>`). You can usually import these from `@stagewise/[framework-name]`.
 
+<details>
+<summary>React.js</summary>
 
+We provide the `@stagewise/react` package for React projects. Initialize the toolbar in your main entry file (e.g., `src/main.tsx`) by creating a separate React root for it. This ensures it doesn't interfere with your main application tree.
 
-<!-- ## ⚙️ How it Works
+```tsx
+// src/main.tsx
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App.tsx';
+import { StagewiseToolbar } from '@stagewise/react';
+import './index.css';
 
-stagewise connects your browser and code editor via:
+// Render the main app
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
 
-* Toolbar in Chrome →
-* stagewise Extension →
-* Cursor IDE or compatible agent -->
+// Initialize toolbar separately
+const toolbarConfig = {
+  plugins: [], // Add your custom plugins here
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const toolbarRoot = document.createElement('div');
+  toolbarRoot.id = 'stagewise-toolbar-root'; // Ensure a unique ID
+  document.body.appendChild(toolbarRoot);
+
+  createRoot(toolbarRoot).render(
+    <StrictMode>
+      <StagewiseToolbar config={toolbarConfig} />
+    </StrictMode>
+  );
+});
+```
+</details>
+
+<details>
+<summary>Next.js</summary>
+
+Use the `@stagewise/next` package for Next.js applications. Include the `<StagewiseToolbar>` component in your root layout file (`src/app/layout.tsx`).
+
+```tsx
+// src/app/layout.tsx
+import { StagewiseToolbar } from '@stagewise/next';
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>
+        <StagewiseToolbar
+          config={{
+            plugins: [], // Add your custom plugins here
+          }}
+        />
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+</details>
+
+<details>
+<summary>Nuxt.js</summary>
+
+For Nuxt.js projects, you can use the `@stagewise/vue` package. Place the `<StagewiseToolbar>` component in your `app.vue` or a relevant layout file.
+
+```vue
+// app.vue
+<script setup lang="ts">
+import { StagewiseToolbar, type ToolbarConfig } from '@stagewise/vue';
+
+const config: ToolbarConfig = {
+  plugins: [], // Add your custom plugins here
+};
+</script>
+
+<template>
+  <div>
+    <NuxtRouteAnnouncer />
+    <ClientOnly>
+      <StagewiseToolbar :config="config" />
+    </ClientOnly>
+    <NuxtWelcome />
+  </div>
+</template>
+```
+
+</details>
+
+<details>
+<summary>Vue.js</summary>
+
+Use the `@stagewise/vue` package for Vue.js projects. Add the `<StagewiseToolbar>` component to your main App component (e.g., `App.vue`).
+
+```vue
+// src/App.vue
+<script setup lang="ts">
+import { StagewiseToolbar, type ToolbarConfig } from '@stagewise/vue';
+
+const config: ToolbarConfig = {
+  plugins: [], // Add your custom plugins here
+};
+</script>
+
+<template>
+  <StagewiseToolbar :config="config" />
+  <div>
+    <!-- Your app content -->
+  </div>
+</template>
+```
+
+</details>
+
+<details>
+<summary>SvelteKit</summary>
+
+For SvelteKit, you can integrate the toolbar using `@stagewise/core` and Svelte's lifecycle functions, or look for a dedicated `@stagewise/svelte` package if available. Create a component that conditionally renders/initializes the toolbar on the client side (e.g., `src/lib/components/StagewiseToolbarLoader.svelte` or directly in `src/routes/+layout.svelte`).
+
+**Using `onMount` in `+layout.svelte` (with `@stagewise/core`):**
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
+  import { initToolbar, type ToolbarConfig } from '@stagewise/core'; // Adjust path if needed
+
+  onMount(() => {
+    if (browser) {
+      const stagewiseConfig: ToolbarConfig = {
+        plugins: [
+          // Add your Svelte-specific plugins or configurations here
+        ],
+      };
+      initToolbar(stagewiseConfig);
+    }
+  });
+</script>
+
+<slot />
+```
+
+**Using a loader component (example from repository):**
+The example repository uses a `ToolbarLoader.svelte` which wraps `ToolbarWrapper.svelte`. `ToolbarWrapper.svelte` would then call `initToolbar` from `@stagewise/core`.
+
+```svelte
+<!-- examples/svelte-kit-example/src/lib/components/stagewise/ToolbarLoader.svelte -->
+<script lang="ts">
+import type { ToolbarConfig } from '@stagewise/core';
+// ToolbarWrapper.svelte is a custom component that would call initToolbar
+import ToolbarWrapper from './ToolbarWrapper.svelte'; 
+import { browser } from '$app/environment';
+
+const stagewiseConfig: ToolbarConfig = {
+  plugins: [
+    // ... your svelte plugin config
+  ],
+};
+</script>
+
+{#if browser}
+  <ToolbarWrapper config={stagewiseConfig} />
+{/if}
+```
+You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
+
+</details>
+
 
 ## 🤖 Agent support 
 

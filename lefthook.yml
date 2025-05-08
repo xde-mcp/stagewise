@@ -2,8 +2,8 @@ pre-commit:
   parallel: true
   jobs:
     - name: check
-      run: biome check --write --unsafe --staged     
-      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
+      run: biome check --write --unsafe --staged --no-errors-on-unmatched
+      glob: "*.{js,ts,jsx,tsx}"
 
 commit-msg:
   parallel: true

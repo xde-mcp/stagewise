@@ -2,17 +2,17 @@ import { callCursorAgent } from 'src/utils/call-cursor-agent';
 
 export async function setupToolbar() {
   const prompt = `
-  Objective: Automatically initialize the Stagewise toolbar (\`@stagewise/toolbar\`) in the current project for development mode only. Use the framework-agnostic Vanilla JS approach described below.
+  Objective: Automatically initialize the Stagewise toolbar (\`@stagewise/core\`) in the current project for development mode only. Use the framework-agnostic Vanilla JS approach described below.
 
 **Context & Instructions:**
 
-The goal is to inject the Stagewise toolbar using the \`initToolbar\` function from the \`@stagewise/toolbar\` package. This toolbar should ONLY be active during development (\`process.env.NODE_ENV === 'development'\`).
+The goal is to inject the Stagewise toolbar using the \`initToolbar\` function from the \`@stagewise/core\` package. This toolbar should ONLY be active during development (\`process.env.NODE_ENV === 'development'\`).
 
 **Required Code Structure for Initialization:**
 
 \`\`\`javascript
 // 1. Import the function (should be at the top of the file)
-import { initToolbar } from '@stagewise/toolbar';
+import { initToolbar } from '@stagewise/core';
 
 // 2. Define a basic configuration (can be placed near the initialization call)
 const stagewiseConfig = {
@@ -30,17 +30,17 @@ if (process.env.NODE_ENV === 'development') {
 **Steps for the AI Agent:**
 
 1.  **Check Package Installation:**
-    * Verify if \`@stagewise/toolbar\` is listed in \`devDependencies\` in the project's \`package.json\`.
-    * If it's NOT present, add it using the project's detected package manager (pnpm, npm, or yarn). For example: \`pnpm add -D @stagewise/toolbar\` or \`npm install --save-dev @stagewise/toolbar\` or \`yarn add --dev @stagewise/toolbar\`.
+    * Verify if \`@stagewise/core\` is listed in \`devDependencies\` in the project's \`package.json\`.
+    * If it's NOT present, add it using the project's detected package manager (pnpm, npm, or yarn). For example: \`pnpm add -D @stagewise/core\` or \`npm install --save-dev @stagewise/core\` or \`yarn add --dev @stagewise/core\`.
 
 2.  **Check Existing Initialization:**
     * Scan the project's likely frontend entry point files (e.g., \`main.js\`, \`index.js\`, \`app.js\`, \`app.ts\`, \`main.ts\`, \`src/index.js\`, etc.).
-    * Look for code that already imports \`initToolbar\` from \`@stagewise/toolbar\` AND calls it within a condition checking for \`process.env.NODE_ENV === 'development'\` (or equivalent development mode checks like \`import.meta.env.DEV\` for Vite).
+    * Look for code that already imports \`initToolbar\` from \`@stagewise/core\` AND calls it within a condition checking for \`process.env.NODE_ENV === 'development'\` (or equivalent development mode checks like \`import.meta.env.DEV\` for Vite).
     * **If existing initialization code matching this pattern is found, STOP and do nothing.** Report that Stagewise appears to be already initialized.
 
 3.  **Add Initialization Code (if not already present):**
     * Identify the most appropriate frontend entry point file where application setup occurs. If unsure, target common files like \`src/main.js\` or \`src/index.js\`.
-    * **Add the import:** Ensure \`import { initToolbar } from '@stagewise/toolbar';\` exists at the top of the selected file. Add it if missing.
+    * **Add the import:** Ensure \`import { initToolbar } from '@stagewise/core';\` exists at the top of the selected file. Add it if missing.
     * **Add the initialization block:** Insert the following code block into the file, ensuring it runs once during the application's startup sequence and *only* in development mode. Place it after essential app setup but before the app is fully mounted or rendered if possible.
 
         \`\`\`javascript

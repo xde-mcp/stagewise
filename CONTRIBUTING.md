@@ -24,9 +24,16 @@ Stagewise is organized as a **monorepo** using [pnpm workspaces](https://pnpm.io
 
 * **toolbar/**
 
-  * The core browser toolbar package.
-  * Provides the UI and logic for DOM element selection, prompt sending, and plugin support.
-  * Contains React components, hooks, utilities, and configuration for the toolbar.
+  * This directory now serves as a monorepo for framework-specific toolbar packages. It houses the core logic and UI components, along with adapters for various frontend frameworks.
+    * **core/** (`@toolbar/core`)
+        * The fundamental browser toolbar package, providing the core UI and logic for DOM element selection, prompt sending, and plugin support.
+        * Contains the main React components, hooks, utilities, and configuration for the toolbar's core functionality.
+    * **next/** (`@toolbar/next`)
+        * The specific package for integrating the Stagewise toolbar with Next.js applications.
+    * **vue/** (`@toolbar/vue`)
+        * The specific package for integrating the Stagewise toolbar with Vue.js applications.
+    * **react/** (`@toolbar/react`)
+        * The specific package for integrating the Stagewise toolbar with React applications (outside of Next.js, or for generic React usage).
 * **ui/**
 
   * Shared React component library.
@@ -69,11 +76,11 @@ Stagewise is organized as a **monorepo** using [pnpm workspaces](https://pnpm.io
 
 ## How the Parts Interact
 
-* The **toolbar** (browser package) is injected into frontend apps and provides the UI for selecting DOM elements and sending prompts.
-* The **VSCode extension** receives data from the toolbar and communicates with your local AI agent (e.g., Cursor IDE).
-* **Contracts** in `packages/extension-toolbar-srpc-contract` and `packages/extension-websocket-contract` ensure type-safe communication between the extension, toolbar, and any backend services.
-* The **UI library** is shared across the website, toolbar, and potentially other packages for a consistent look and feel.
-* **Examples** and **playgrounds** help demonstrate and test integrations in various environments.
+* The framework-specific **toolbar packages** (e.g., `@toolbar/next`, `@toolbar/react`, `@toolbar/vue`) are injected into frontend apps. They leverage `@toolbar/core` to provide the UI for selecting DOM elements and sending prompts.
+* The **VSCode extension** receives data from the active toolbar instance and communicates with your local AI agent (e.g., Cursor IDE).
+* **Contracts** in `packages/extension-toolbar-srpc-contract` and `packages/extension-websocket-contract` ensure type-safe communication between the extension, the toolbar components, and any backend services.
+* The **UI library** is shared across the website, `@toolbar/core`, and potentially other packages for a consistent look and feel.
+* **Examples** and **playgrounds** help demonstrate and test integrations in various environments using the appropriate framework-specific toolbar package.
 
 This structure is designed for modularity, reusability, and ease of contribution. Each package and app is self-contained, with clear responsibilities and minimal coupling.
 

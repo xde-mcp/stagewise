@@ -3,9 +3,13 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:packages": "turbo run build --filter=@stagewise/*",
+    "build:toolbar": "turbo run build:toolbar",
+    "clean": "git clean -xdf node_modules",
+    "clean:workspaces": "turbo clean",
     "dev": "turbo watch dev",
-    "dev:playgrounds": "turbo run dev:playgrounds",
-    "dev:examples": "turbo run dev:examples",
+    "dev:playgrounds": "turbo watch dev:playgrounds",
+    "dev:examples": "turbo watch dev:examples",
     "changeset": "pnpm dlx @changesets/cli",
     "check": "biome check .",
     "check:fix": "biome check . --write",
@@ -32,6 +36,8 @@
     "patchedDependencies": {
       "@headlessui/react@2.2.2": "patches/@headlessui__react.patch"
     },
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
