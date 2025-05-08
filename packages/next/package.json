@@ -9,7 +9,7 @@
   "files": ["dist"],
   "license": "AGPL-3.0-only",
   "scripts": {
-    "dev": "tsc -b && vite build --watch --mode development",
+    "dev": "tsc -b && vite build --mode development",
     "build": "tsc -b && vite build"
   },
   "devDependencies": {
