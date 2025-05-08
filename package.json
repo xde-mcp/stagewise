@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo watch dev",
     "dev:playgrounds": "turbo run dev:playgrounds",
     "dev:examples": "turbo run dev:examples",
     "changeset": "pnpm dlx @changesets/cli",
