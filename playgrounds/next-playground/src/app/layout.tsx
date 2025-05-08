@@ -2,7 +2,7 @@ import '@/styles/globals.css';
 
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
-import { ToolbarLoader } from './_components/toolbar-loader';
+import { StagewiseToolbar } from '@stagewise/toolbar-next';
 
 export const metadata: Metadata = {
   title: 'Create T3 App',
@@ -20,7 +20,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geist.variable}`}>
-      <ToolbarLoader />
+      <StagewiseToolbar
+        config={{
+          plugins: [],
+        }}
+      />
       <body>{children}</body>
     </html>
   );
