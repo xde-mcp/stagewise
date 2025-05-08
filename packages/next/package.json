@@ -10,8 +10,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "tsc -b && vite build --watch --mode development",
-    "build": "tsc -b && vite build && npm run fix-types",
-    "fix-types": "echo 'import type { ToolbarConfig } from \"@stagewise/toolbar\";\nexport type { ToolbarConfig };\nexport declare const StagewiseToolbar: any;' > dist/index.d.ts"
+    "build": "tsc -b && vite build"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
