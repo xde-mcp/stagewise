@@ -12,10 +12,9 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "clean": "rm -rf .turbo dist node_modules",
-    "dev": "tsc -b && vite build --watch --mode development",
-    "build": "tsc -b && vite build && npm run fix-types",
-    "build:toolbar": "tsc -b && vite build && npm run fix-types",
-    "fix-types": "echo 'import type { ToolbarConfig } from \"@stagewise/core\";\nexport type { ToolbarConfig };\nexport declare const StagewiseToolbar: any;' > dist/index.d.ts"
+    "dev": "tsc -b && vite build --mode development",
+    "build": "tsc -b && vite build",
+    "build:toolbar": "tsc -b && vite build"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
