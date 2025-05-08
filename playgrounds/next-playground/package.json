@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "dev:playgrounds": "next dev --turbo",
+    "dev": "next dev --turbo -p 3001",
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -69,7 +69,8 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4",
     "tw-animate-css": "^1.2.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@stagewise/toolbar-next": "workspace:*"
   },
   "ct3aMetadata": {
     "initVersion": "7.39.3"
