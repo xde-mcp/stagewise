@@ -55,10 +55,10 @@ export default defineConfig({
         preserveModules: false,
         globals: {
           vue: 'vue',
-          '@stagewise/core': '@stagewise/core',
+          '@stagewise/toolbar': '@stagewise/toolbar',
         },
       },
-      external: ['@stagewise/core', 'vue'],
+      external: ['@stagewise/toolbar', 'vue'],
       treeshake: true,
     },
     minify: false,

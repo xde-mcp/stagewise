@@ -60,13 +60,13 @@ export default defineConfig({
         globals: {
           react: 'react',
           'react-dom': 'react-dom',
-          '@stagewise/react': '@stagewise/react',
-          '@stagewise/core': '@stagewise/core',
+          '@stagewise/toolbar-react': '@stagewise/toolbar-react',
+          '@stagewise/toolbar': '@stagewise/toolbar',
         },
       },
       external: [
-        '@stagewise/react',
-        '@stagewise/core',
+        '@stagewise/toolbar-react',
+        '@stagewise/toolbar',
         'next',
         'next/dynamic',
         'react',

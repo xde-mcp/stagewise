@@ -1,22 +1,28 @@
 {
-  "name": "@stagewise/vue",
-  "private": true,
-  "version": "1.0.0",
+  "name": "@stagewise/toolbar-vue",
+  "private": false,
+  "version": "0.1.0-alpha.0",
   "type": "module",
   "main": "dist/index.umd.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "license": "AGPL-3.0-only",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "clean": "rm -rf .turbo dist node_modules",
     "dev": "tsc -b && vite build --mode development",
     "build": "tsc -b && vite build",
     "build:toolbar": "tsc -b && vite build"
   },
+  "dependencies": {
+    "@stagewise/toolbar": "latest"
+  },
   "devDependencies": {
     "@eslint/js": "^9.26.0",
-    "@stagewise/core": "workspace:*",
+    "@stagewise/toolbar": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.4",
     "eslint": "^9.26.0",
     "globals": "^16.1.0",
@@ -27,7 +33,6 @@
     "vue": "^3.5.13"
   },
   "peerDependencies": {
-    "@stagewise/core": "workspace:*",
     "vue": ">=3.0.0"
   }
 }

@@ -40,7 +40,7 @@
     "@radix-ui/react-toggle": "^1.1.8",
     "@radix-ui/react-toggle-group": "^1.1.9",
     "@radix-ui/react-tooltip": "^1.2.6",
-    "@stagewise/core": "workspace:*",
+    "@stagewise/toolbar": "workspace:*",
     "@t3-oss/env-nextjs": "^0.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
-    "@stagewise/next": "workspace:*",
+    "@stagewise/toolbar-next": "workspace:*",
     "@tailwindcss/postcss": "^4.1.5",
     "@types/node": "22.15.2",
     "@types/react": "^19.1.3",

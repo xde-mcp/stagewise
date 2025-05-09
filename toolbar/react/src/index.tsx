@@ -1,7 +1,7 @@
-import { initToolbar, type ToolbarConfig } from '@stagewise/core';
+import { initToolbar, type ToolbarConfig } from '@stagewise/toolbar';
 import { useEffect, useRef } from 'react';
 
-export type { ToolbarConfig } from '@stagewise/core';
+export type { ToolbarConfig } from '@stagewise/toolbar';
 
 export function StagewiseToolbar({ config }: { config: ToolbarConfig }) {
   const isLoaded = useRef(false);
