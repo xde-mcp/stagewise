@@ -72,7 +72,7 @@ importers:
         specifier: 22.15.2
         version: 22.15.2
       '@types/vscode':
-        specifier: ^1.100.0
+        specifier: ^1.85.0
         version: 1.100.0
       '@types/ws':
         specifier: ^8.18.1
