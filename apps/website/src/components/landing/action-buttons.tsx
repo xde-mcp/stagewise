@@ -61,7 +61,7 @@ export default function CopyNPMInstallCommandButton() {
             size="lg"
           >
             <SiNpm className="h-5 w-5" />
-            npm install @stagewise/core
+            npm install @stagewise/toolbar
             <div className="relative flex w-full justify-end">
               <div
                 className={cn(

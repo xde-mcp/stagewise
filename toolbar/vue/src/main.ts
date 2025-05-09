@@ -1,6 +1,6 @@
 import { createApp } from 'vue';
 import StagewiseToolbar from './StagewiseToolbar.vue';
-import type { ToolbarConfig } from '@stagewise/core';
+import type { ToolbarConfig } from '@stagewise/toolbar';
 
 // Example App component (can be inlined or a separate .vue file)
 const App = {

@@ -6,11 +6,11 @@ This example demonstrates how to integrate the Stagewise toolbar into a SvelteKi
 
 1. Install the Stagewise toolbar package:
 ```bash
-npm install @stagewise/core
+npm install @stagewise/toolbar
 # or
-yarn add @stagewise/core
+yarn add @stagewise/toolbar
 # or
-pnpm add @stagewise/core
+pnpm add @stagewise/toolbar
 ```
 
 ## Integration Steps
@@ -18,7 +18,7 @@ pnpm add @stagewise/core
 1. Create a toolbar wrapper component (`src/lib/components/stagewise/ToolbarWrapper.svelte`):
 ```ts
 <script lang="ts">
-import type { ToolbarConfig } from '@stagewise/core';
+import type { ToolbarConfig } from '@stagewise/toolbar';
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 
@@ -29,7 +29,7 @@ onMount(async () => {
   if (isLoaded || !browser) return;
   isLoaded = true;
   
-  const { initToolbar } = await import('@stagewise/core');
+  const { initToolbar } = await import('@stagewise/toolbar');
   initToolbar(config);
 });
 </script>
@@ -38,7 +38,7 @@ onMount(async () => {
 2. Create a toolbar loader component (`src/lib/components/stagewise/ToolbarLoader.svelte`):
 ```ts
 <script lang="ts">
-import type { ToolbarConfig } from '@stagewise/core';
+import type { ToolbarConfig } from '@stagewise/toolbar';
 import ToolbarWrapper from './ToolbarWrapper.svelte';
 import { browser } from '$app/environment';
 

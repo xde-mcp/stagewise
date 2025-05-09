@@ -2,7 +2,7 @@ import '@/styles/globals.css';
 
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
-import { StagewiseToolbar } from '@stagewise/next';
+import { StagewiseToolbar } from '@stagewise/toolbar-next';
 
 export const metadata: Metadata = {
   title: 'Create T3 App',

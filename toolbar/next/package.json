@@ -1,7 +1,7 @@
 {
-  "name": "@stagewise/next",
+  "name": "@stagewise/toolbar-next",
   "private": false,
-  "version": "0.1.0-alpha.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "dist/index.umd.cjs",
   "module": "dist/index.js",
@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.26.0",
-    "@stagewise/react": "workspace:*",
+    "@stagewise/toolbar-react": "workspace:*",
     "@types/react": "^19.1.3",
     "@types/react-dom": "^19.1.3",
     "@vitejs/plugin-react-swc": "^3.9.0",
@@ -31,12 +31,11 @@
     "vite-plugin-dts": "^4.5.3"
   },
   "peerDependencies": {
-    "@stagewise/core": "workspace:*",
     "@types/react": ">=18.0.0",
     "next": ">=14.0.0",
     "react": ">=18.0.0"
   },
   "dependencies": {
-    "@stagewise/core": "workspace:*"
+    "@stagewise/toolbar": "latest"
   }
 }

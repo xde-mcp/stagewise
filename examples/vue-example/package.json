@@ -12,7 +12,7 @@
     "vue": "^3.5.13"
   },
   "devDependencies": {
-    "@stagewise/vue": "workspace:*",
+    "@stagewise/toolbar-vue": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/tsconfig": "^0.7.0",
     "typescript": "^5.8.3",

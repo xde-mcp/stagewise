@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { initToolbar, type ToolbarConfig } from '@stagewise/core';
+import { initToolbar, type ToolbarConfig } from '@stagewise/toolbar';
 import { onMounted, watch } from 'vue';
 
 // Define props

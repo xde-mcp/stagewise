@@ -33,7 +33,7 @@ Examine project structure to identify the JavaScript framework:
 
 <idempotency_check>
 Scan for existing Stagewise initialization:
-- Look for imports of \`initToolbar\` from \`@stagewise/core\` and its usage with dev check
+- Look for imports of \`initToolbar\` from \`@stagewise/toolbar\` and its usage with dev check
 - Check for \`<StagewiseToolbar>\` component from framework-specific packages
 - For SvelteKit, look for \`initToolbar\` usage within \`onMount\`
 
@@ -45,14 +45,14 @@ Scan for existing Stagewise initialization:
 <next_js_strategy>
 ### Next.js Integration
 
-**Package:** \`@stagewise/next\`
+**Package:** \`@stagewise/toolbar-next\`
 
 **Target File:** Root layout file (typically \`src/app/layout.tsx\` or \`app/layout.js\`)
 
 **Implementation:**
 \`\`\`tsx
 // src/app/layout.tsx
-import { StagewiseToolbar } from '@stagewise/next';
+import { StagewiseToolbar } from '@stagewise/toolbar-next';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const stagewiseConfig = { plugins: [] };
@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 <react_js_strategy>
 ### React.js Integration
 
-**Package:** \`@stagewise/react\`
+**Package:** \`@stagewise/toolbar-react\`
 
 **Target File:** Main entry file (e.g., \`src/main.tsx\`, \`src/index.tsx\`)
 
@@ -105,14 +105,14 @@ if (process.env.NODE_ENV === 'development' || import.meta.env.DEV) {
 \`\`\`tsx
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { StagewiseToolbar } from '@stagewise/react';
+import { StagewiseToolbar } from '@stagewise/toolbar-react';
 \`\`\`
 </react_js_strategy>
 
 <nuxt_js_strategy>
 ### Nuxt.js Integration
 
-**Package:** \`@stagewise/vue\`
+**Package:** \`@stagewise/toolbar-vue\`
 
 **Target File:** Root \`app.vue\` or relevant layout file
 
@@ -120,7 +120,7 @@ import { StagewiseToolbar } from '@stagewise/react';
 \`\`\`vue
 // app.vue
 <script setup lang="ts">
-import { type ToolbarConfig } from '@stagewise/vue';
+import { type ToolbarConfig } from '@stagewise/toolbar-vue';
 
 const config: ToolbarConfig = { plugins: [] };
 
@@ -145,7 +145,7 @@ if (process.dev) {
 <vue_js_strategy>
 ### Vue.js Integration
 
-**Package:** \`@stagewise/vue\`
+**Package:** \`@stagewise/toolbar-vue\`
 
 **Target File:** Main App component (e.g., \`src/App.vue\`)
 
@@ -153,7 +153,7 @@ if (process.dev) {
 \`\`\`vue
 // src/App.vue
 <script setup lang="ts">
-import { StagewiseToolbar, } from '@stagewise/vue';
+import { StagewiseToolbar, } from '@stagewise/toolbar-vue';
 import { onMounted } from 'vue';
 
 const config: ToolbarConfig = { plugins: [] };
@@ -178,7 +178,7 @@ onMounted(() => {
 <sveltekit_strategy>
 ### SvelteKit Integration
 
-**Package:** \`@stagewise/core\`
+**Package:** \`@stagewise/toolbar\`
 
 **Target File:** Root layout file (\`src/routes/+layout.svelte\`)
 
@@ -188,7 +188,7 @@ onMounted(() => {
 <script lang="ts">
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
-  import { initToolbar, type ToolbarConfig } from '@stagewise/core';
+  import { initToolbar, type ToolbarConfig } from '@stagewise/toolbar';
 
   onMount(() => {
     if (browser && (process.env.NODE_ENV === 'development' || import.meta.env.DEV)) {
@@ -212,7 +212,7 @@ onMounted(() => {
 <vanilla_js_strategy>
 ### Vanilla JS (Fallback) Integration
 
-**Package:** \`@stagewise/core\`
+**Package:** \`@stagewise/toolbar\`
 
 **Target File:** Most appropriate frontend entry point file (e.g., \`main.js\`, \`index.js\`, \`app.js\`)
 
@@ -221,7 +221,7 @@ onMounted(() => {
 // --- Stagewise Toolbar Initialization (Fallback) ---
 
 // Import if not already at the top of the file
-// import { initToolbar } from '@stagewise/core'; 
+// import { initToolbar } from '@stagewise/toolbar'; 
 
 // Define basic config
 const stagewiseConfig = { plugins: [] }; 
@@ -231,7 +231,7 @@ if (process.env.NODE_ENV === 'development') { // Use import.meta.env.DEV for Vit
   try {
     // Check if already initialized
     if (!document.getElementById('stagewise-toolbar-root-vanilla')) {
-      const stagewiseCore = await import('@stagewise/core');
+      const stagewiseCore = await import('@stagewise/toolbar');
       stagewiseCore.initToolbar(stagewiseConfig);
       // Mark that initialization has run
       const marker = document.createElement('div');
@@ -254,10 +254,10 @@ if (process.env.NODE_ENV === 'development') { // Use import.meta.env.DEV for Vit
 
 Install the required Stagewise package as a dev dependency based on the detected framework:
 
-1. For Next.js: \`npm install --save-dev @stagewise/next\` or \`pnpm add -D @stagewise/next\` or \`yarn add -D @stagewise/next\`
-2. For React.js: \`npm install --save-dev @stagewise/react\` or \`pnpm add -D @stagewise/react\` or \`yarn add -D @stagewise/react\`
-3. For Vue.js/Nuxt.js: \`npm install --save-dev @stagewise/vue\` or \`pnpm add -D @stagewise/vue\` or \`yarn add -D @stagewise/vue\`
-4. For SvelteKit or Vanilla JS: \`npm install --save-dev @stagewise/core\` or \`pnpm add -D @stagewise/core\` or \`yarn add -D @stagewise/core\`
+1. For Next.js: \`npm install --save-dev @stagewise/toolbar-next\` or \`pnpm add -D @stagewise/toolbar-next\` or \`yarn add -D @stagewise/toolbar-next\`
+2. For React.js: \`npm install --save-dev @stagewise/toolbar-react\` or \`pnpm add -D @stagewise/toolbar-react\` or \`yarn add -D @stagewise/toolbar-react\`
+3. For Vue.js/Nuxt.js: \`npm install --save-dev @stagewise/toolbar-vue\` or \`pnpm add -D @stagewise/toolbar-vue\` or \`yarn add -D @stagewise/toolbar-vue\`
+4. For SvelteKit or Vanilla JS: \`npm install --save-dev @stagewise/toolbar\` or \`pnpm add -D @stagewise/toolbar\` or \`yarn add -D @stagewise/toolbar\`
 
 Use the package manager detected in the project (npm, yarn, or pnpm) based on lock files.
 </package_installation>
