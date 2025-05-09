@@ -32,12 +32,8 @@
   "turbo": {
     "tasks": {
       "build": {
-        "dependsOn": [
-          "^build"
-        ],
-        "outputs": [
-          "dist/**"
-        ]
+        "dependsOn": ["^build"],
+        "outputs": ["dist/**"]
       }
     }
   }

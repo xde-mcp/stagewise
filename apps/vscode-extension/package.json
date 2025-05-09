@@ -9,15 +9,8 @@
     "vscode": "^1.85.0"
   },
   "license": "AGPL-3.0-only",
-  "categories": [
-    "AI",
-    "Debuggers",
-    "Machine Learning",
-    "Other"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
+  "categories": ["AI", "Debuggers", "Machine Learning", "Other"],
+  "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -88,12 +81,8 @@
   "turbo": {
     "tasks": {
       "build": {
-        "dependsOn": [
-          "^build"
-        ],
-        "outputs": [
-          "out/**"
-        ]
+        "dependsOn": ["^build"],
+        "outputs": ["out/**"]
       }
     }
   }
