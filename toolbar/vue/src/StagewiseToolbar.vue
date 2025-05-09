@@ -4,7 +4,7 @@ import { onMounted, watch } from 'vue';
 
 // Define props
 const props = defineProps<{
-  config: ToolbarConfig;
+  config?: ToolbarConfig;
 }>();
 
 onMounted(() => {

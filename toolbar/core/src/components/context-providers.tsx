@@ -27,12 +27,12 @@ export function ContextProviders({
   config,
 }: {
   children?: ComponentChildren;
-  config: ToolbarConfig;
+  config?: ToolbarConfig;
 }) {
   return (
     <LocationProvider>
       <SRPCBridgeProvider>
-        <PluginProvider plugins={config.plugins}>
+        <PluginProvider plugins={config?.plugins || []}>
           <ChatStateProvider>{children}</ChatStateProvider>
         </PluginProvider>
       </SRPCBridgeProvider>
