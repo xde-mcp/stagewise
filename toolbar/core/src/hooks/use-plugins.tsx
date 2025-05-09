@@ -35,6 +35,6 @@ export function PluginProvider({
 
 export function usePlugins() {
   const plugin = useContext(PluginContext);
-  if (!plugin) throw new Error('No plugin found');
+  if (!plugin) return [];
   return plugin;
 }

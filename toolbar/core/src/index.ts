@@ -26,7 +26,7 @@ import type { ToolbarConfig } from './config.ts';
 export type { ToolbarPlugin, MCPTool } from './plugin.ts';
 export type { ToolbarConfig } from './config.ts';
 
-export function initToolbar(config: ToolbarConfig) {
+export function initToolbar(config?: ToolbarConfig) {
   if (!document.body)
     throw new Error('stagewise companion cannot find document.body');
 
