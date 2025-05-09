@@ -4,6 +4,10 @@
     "dev": {
       "persistent": false,
       "dependsOn": ["^dev"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
     }
   }
 }

@@ -30,8 +30,6 @@ export default defineConfig({
     react(),
     dts({
       rollupTypes: true,
-      include: ['src/**/*.ts', 'src/**/*.tsx'],
-      logLevel: 'info',
     }),
     preserveDirectives(),
   ],
