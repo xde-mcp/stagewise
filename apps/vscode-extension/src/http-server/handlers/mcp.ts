@@ -22,7 +22,7 @@ export const handleStreamableHttp: RequestHandler = async (req, res) => {
     });
   }
 
-  const newSessionId = `streamable-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const newSessionId = crypto.randomUUID();
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => newSessionId,
     onsessioninitialized: (sessionId) => {
