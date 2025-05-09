@@ -10,7 +10,9 @@
       ".next",
       "public",
       ".vercel",
-      "**/src/types/db.ts"
+      "**/src/types/db.ts",
+      "**/.nuxt/**",
+      "**/.svelte-kit/**"
     ]
   },
   "vcs": {
