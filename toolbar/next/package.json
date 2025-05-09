@@ -1,7 +1,7 @@
 {
   "name": "@stagewise/toolbar-next",
   "private": false,
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "type": "module",
   "main": "dist/index.umd.cjs",
   "module": "dist/index.js",
@@ -39,6 +39,7 @@
     "react": ">=18.0.0"
   },
   "dependencies": {
-    "@stagewise/toolbar": "latest"
+    "@stagewise/toolbar": "latest",
+    "@stagewise/toolbar-react": "latest"
   }
 }
