@@ -12,7 +12,9 @@
       ".vercel",
       "**/src/types/db.ts",
       "**/.nuxt/**",
-      "**/.svelte-kit/**"
+      "**/.svelte-kit/**",
+      "**/.output/**",
+      "**/.source/**"
     ]
   },
   "vcs": {
