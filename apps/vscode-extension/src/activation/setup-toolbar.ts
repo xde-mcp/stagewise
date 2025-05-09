@@ -2,76 +2,290 @@ import { callCursorAgent } from 'src/utils/call-cursor-agent';
 
 export async function setupToolbar() {
   const prompt = `
-  Objective: Automatically initialize the Stagewise toolbar (\`@stagewise/core\`) in the current project for development mode only. Use the framework-agnostic Vanilla JS approach described below.
+# Stagewise Toolbar Implementation Agent
 
-**Context & Instructions:**
+<objective>
+Automatically initialize the Stagewise toolbar in the user\'s project, ensuring it ONLY runs in development mode. Prioritize framework-specific integration if the project uses Next.js, React.js, Nuxt.js, Vue.js, or SvelteKit. Use the framework-agnostic Vanilla JS approach (\`@stagewiseguiding_principles
 
-The goal is to inject the Stagewise toolbar using the \`initToolbar\` function from the \`@stagewise/core\` package. This toolbar should ONLY be active during development (\`process.env.NODE_ENV === 'development'\`).
+>/objective> >
+>/core\`) as a fallback. 
+1. **Detect Framework:** First, identify the JavaScript framework used in the project by checking \`package.json\` dependencies and file structures.
+2. **Prioritize Framework-Specific Setup:** Use the dedicated Stagewise package for the detected framework.
+3. **Ensure Idempotency:** Before making changes, check if Stagewise is already initialized to avoid duplications.
+4. **Development Mode Only:** Ensure toolbar only runs in development environments.
+5. **Package Installation:** Add required Stagewise packages as devDependencies if not present.
+6. **Simple Configuration:** Use a basic configuration object with empty plugins array.
+</guiding_principles>
 
-**Required Code Structure for Initialization:**
+<implementation_workflow>
+## Phase 1: Project Analysis
 
-\`\`\`javascript
-// 1. Import the function (should be at the top of the file)
-import { initToolbar } from '@stagewise/core';
+<framework_detection>
+Examine project structure to identify the JavaScript framework:
+- Check \`package.json\` for dependencies: \`next\`, \`react\`, \`nuxt\`, \`vue\`, \`@sveltejs/kit\`
+- Look for characteristic files:
+  - Next.js: \`next.config.js\`, \`src/app/layout.tsx\`
+  - React: \`vite.config.js\` with React plugin, \`src/main.tsx\`
+  - Nuxt.js: \`nuxt.config.js\`, \`app.vue\`
+  - Vue.js: \`vite.config.js\` with Vue plugin, \`src/App.vue\`
+  - SvelteKit: \`svelte.config.js\`, \`src/routes/+layout.svelte\`
+</framework_detection>
 
-// 2. Define a basic configuration (can be placed near the initialization call)
-const stagewiseConfig = {
-  // plugins: [] // Plugins array can be empty or omitted for basic setup
-};
+<idempotency_check>
+Scan for existing Stagewise initialization:
+- Look for imports of \`initToolbar\` from \`@stagewise/core\` and its usage with dev check
+- Check for \`<StagewiseToolbar>\` component from framework-specific packages
+- For SvelteKit, look for \`initToolbar\` usage within \`onMount\`
 
-// 3. Initialize the toolbar within a development mode check
-//    (This block should run once when the application starts)
-if (process.env.NODE_ENV === 'development') {
-  initToolbar(stagewiseConfig);
-  console.log('Stagewise Toolbar initialized.'); // Optional: Add console log for confirmation
+**IMPORTANT**: If any suitable initialization is found, STOP and report that Stagewise appears to be already initialized.
+</idempotency_check>
+
+## Phase 2: Framework-Specific Integration Strategies
+
+<next_js_strategy>
+### Next.js Integration
+
+**Package:** \`@stagewise/next\`
+
+**Target File:** Root layout file (typically \`src/app/layout.tsx\` or \`app/layout.js\`)
+
+**Implementation:**
+\`\`\`tsx
+// src/app/layout.tsx
+import { StagewiseToolbar } from '@stagewise/next';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const stagewiseConfig = { plugins: [] };
+  return (
+    <html lang=<body>
+        {/* Ensure StagewiseToolbar is only rendered in development */}<
+      "en" process.env.NODE_ENV === 'development' && <StagewiseToolbar config={stagewiseConfig} />children
+      </body>
+    </html>
+  );
 }
 \`\`\`
 
-**Steps for the AI Agent:**
+**Success Logging:** \`console.log('Stagewise Toolbar (Next.js) initialized via automatic setup.');\`
+</next_js_strategy>
 
-1.  **Check Package Installation:**
-    * Verify if \`@stagewise/core\` is listed in \`devDependencies\` in the project's \`package.json\`.
-    * If it's NOT present, add it using the project's detected package manager (pnpm, npm, or yarn). For example: \`pnpm add -D @stagewise/core\` or \`npm install --save-dev @stagewise/core\` or \`yarn add --dev @stagewise/core\`.
+<react_js_strategy>
+### React.js Integration
 
-2.  **Check Existing Initialization:**
-    * Scan the project's likely frontend entry point files (e.g., \`main.js\`, \`index.js\`, \`app.js\`, \`app.ts\`, \`main.ts\`, \`src/index.js\`, etc.).
-    * Look for code that already imports \`initToolbar\` from \`@stagewise/core\` AND calls it within a condition checking for \`process.env.NODE_ENV === 'development'\` (or equivalent development mode checks like \`import.meta.env.DEV\` for Vite).
-    * **If existing initialization code matching this pattern is found, STOP and do nothing.** Report that Stagewise appears to be already initialized.
+**Package:** \`@stagewise/react\`
 
-3.  **Add Initialization Code (if not already present):**
-    * Identify the most appropriate frontend entry point file where application setup occurs. If unsure, target common files like \`src/main.js\` or \`src/index.js\`.
-    * **Add the import:** Ensure \`import { initToolbar } from '@stagewise/core';\` exists at the top of the selected file. Add it if missing.
-    * **Add the initialization block:** Insert the following code block into the file, ensuring it runs once during the application's startup sequence and *only* in development mode. Place it after essential app setup but before the app is fully mounted or rendered if possible.
+**Target File:** Main entry file (e.g., \`src/main.tsx\`, \`src/index.tsx\`)
 
-        \`\`\`javascript
-        // --- Stagewise Toolbar Initialization ---
-        // Ensure this block is only included once
+**Implementation:**
+\`\`\`tsx
+// src/main.tsx (example)
+// ... existing App rendering ...
 
-        // Define basic config (if not already defined globally/imported)
-        const stagewiseConfig = { plugins: [] }; // Use an empty config for initial setup
+// Initialize Stagewise Toolbar separately only in development
+if (process.env.NODE_ENV === 'development' || import.meta.env.DEV) {
+  const toolbarConfig = { plugins: [] };
+  const stagewiseToolbarRootId = 'stagewise-toolbar-root';
+  let toolbarRootElement = document.getElementById(stagewiseToolbarRootId);
+  if (!toolbarRootElement) {
+    toolbarRootElement = document.createElement('div');
+    toolbarRootElement.id = stagewiseToolbarRootId;
+    document.body.appendChild(toolbarRootElement);
+  }
 
-        // Initialize only in development mode
-        if (process.env.NODE_ENV === 'development') {
-          try {
-            initToolbar(stagewiseConfig);
-            console.log('Stagewise Toolbar initialized via automatic setup.');
-          } catch (error) {
-            console.error('Failed to initialize Stagewise Toolbar:', error);
-          }
-        }
-        // --- End Stagewise Initialization ---
-        \`\`\`
-    * Adapt the development check if the project clearly uses a different pattern (like \`import.meta.env.DEV\` in Vite projects). Use \`process.env.NODE_ENV === 'development'\` as the default.
+  createRoot(toolbarRootElement).render(
+    <StrictMode>
+      <StagewiseToolbar config={toolbarConfig} />
+    </StrictMode>
+  );
+  console.log('Stagewise Toolbar (React) initialized via automatic setup.');
+}
+\`\`\`
 
-**Important Constraints:**
+**Required Imports:**
+\`\`\`tsx
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { StagewiseToolbar } from '@stagewise/react';
+\`\`\`
+</react_js_strategy>
 
-* **Idempotency:** Critically important - **DO NOT** add the initialization code if it already exists in a suitable form.
-* **Development Mode Only:** The \`initToolbar\` call MUST be guarded by a development environment check (\`process.env.NODE_ENV === 'development'\` or equivalent).
-* **Framework-Agnostic:** Use the direct \`initToolbar\` call. Do not attempt to wrap it in React Hooks (\`useEffect\`), Vue lifecycle methods (\`onMounted\`), or other framework-specific constructs unless absolutely necessary based on the entry point file structure. The provided block is designed to be generally applicable.
-* **File Selection:** Prioritize common JavaScript/TypeScript entry point files. Avoid modifying HTML files directly for this setup.
+<nuxt_js_strategy>
+### Nuxt.js Integration
 
-Please proceed with setting up the Stagewise toolbar according to these instructions.
+**Package:** \`@stagewise/vue\`
 
+**Target File:** Root \`app.vue\` or relevant layout file
+
+**Implementation:**
+\`\`\`vue
+// app.vue
+<script setup lang="ts">
+import { type ToolbarConfig } from '@stagewise/vue';
+
+const config: ToolbarConfig = { plugins: [] };
+
+// Optional: Log initialization
+if (process.dev) {
+  console.log('Stagewise Toolbar (Nuxt.js) will be initialized via automatic setup.');
+}
+</script>
+
+<template>
+  <div>
+    <NuxtRouteAnnouncer />
+    <ClientOnly>
+      <StagewiseToolbar v-if="process.dev" :config="config" />
+    </ClientOnly>
+    <NuxtWelcome />
+  </div>
+</template>
+\`\`\`
+</nuxt_js_strategy>
+
+<vue_js_strategy>
+### Vue.js Integration
+
+**Package:** \`@stagewise/vue\`
+
+**Target File:** Main App component (e.g., \`src/App.vue\`)
+
+**Implementation:**
+\`\`\`vue
+// src/App.vue
+<script setup lang="ts">
+import { StagewiseToolbar, } from '@stagewise/vue';
+import { onMounted } from 'vue';
+
+const config: ToolbarConfig = { plugins: [] };
+const isDevelopment = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
+
+onMounted(() => {
+  if (isDevelopment) {
+    console.log('Stagewise Toolbar (Vue.js) initialized via automatic setup.');
+  }
+});
+</script>
+
+<template>
+  <StagewiseToolbar v-if="isDevelopment" :config="config" />
+  <div>
+    <!-- Existing app content -->
+  </div>
+</template>
+\`\`\`
+</vue_js_strategy>
+
+<sveltekit_strategy>
+### SvelteKit Integration
+
+**Package:** \`@stagewise/core\`
+
+**Target File:** Root layout file (\`src/routes/+layout.svelte\`)
+
+**Implementation:**
+\`\`\`svelte
+// src/routes/+layout.svelte
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
+  import { initToolbar, type ToolbarConfig } from '@stagewise/core';
+
+  onMount(() => {
+    if (browser && (process.env.NODE_ENV === 'development' || import.meta.env.DEV)) {
+      const stagewiseConfig: ToolbarConfig = {
+        plugins: [],
+      };
+      try {
+        initToolbar(stagewiseConfig);
+        console.log('Stagewise Toolbar (SvelteKit) initialized via automatic setup.');
+      } catch (error) {
+        console.error('Failed to initialize Stagewise Toolbar for SvelteKit:', error);
+      }
+    }
+  });
+</script>
+
+<slot />
+\`\`\`
+</sveltekit_strategy>
+
+<vanilla_js_strategy>
+### Vanilla JS (Fallback) Integration
+
+**Package:** \`@stagewise/core\`
+
+**Target File:** Most appropriate frontend entry point file (e.g., \`main.js\`, \`index.js\`, \`app.js\`)
+
+**Implementation:**
+\`\`\`javascript
+// --- Stagewise Toolbar Initialization (Fallback) ---
+
+// Import if not already at the top of the file
+// import { initToolbar } from '@stagewise/core'; 
+
+// Define basic config
+const stagewiseConfig = { plugins: [] }; 
+
+// Initialize only in development mode
+if (process.env.NODE_ENV === 'development') { // Use import.meta.env.DEV for Vite projects
+  try {
+    // Check if already initialized
+    if (!document.getElementById('stagewise-toolbar-root-vanilla')) {
+      const stagewiseCore = await import('@stagewise/core');
+      stagewiseCore.initToolbar(stagewiseConfig);
+      // Mark that initialization has run
+      const marker = document.createElement('div');
+      marker.id = 'stagewise-toolbar-root-vanilla';
+      marker.style.display = 'none';
+      document.body.appendChild(marker);
+      console.log('Stagewise Toolbar (Vanilla JS) initialized via automatic setup.');
+    }
+  } catch (error) {
+    console.error('Failed to initialize Stagewise Toolbar (Vanilla JS):', error);
+  }
+}
+// --- End Stagewise Initialization ---
+\`\`\`
+</vanilla_js_strategy>
+</implementation_workflow>
+
+<package_installation>
+## Package Installation Guide
+
+Install the required Stagewise package as a dev dependency based on the detected framework:
+
+1. For Next.js: \`npm install --save-dev @stagewise/next\` or \`pnpm add -D @stagewise/next\` or \`yarn add -D @stagewise/next\`
+2. For React.js: \`npm install --save-dev @stagewise/react\` or \`pnpm add -D @stagewise/react\` or \`yarn add -D @stagewise/react\`
+3. For Vue.js/Nuxt.js: \`npm install --save-dev @stagewise/vue\` or \`pnpm add -D @stagewise/vue\` or \`yarn add -D @stagewise/vue\`
+4. For SvelteKit or Vanilla JS: \`npm install --save-dev @stagewise/core\` or \`pnpm add -D @stagewise/core\` or \`yarn add -D @stagewise/core\`
+
+Use the package manager detected in the project (npm, yarn, or pnpm) based on lock files.
+</package_installation>
+
+<critical_constraints>
+## Critical Constraints
+
+1. **Strict Idempotency:** DO NOT add initialization code if Stagewise is already set up in any way.
+2. **Development Mode Only:** Always ensure the toolbar runs ONLY in development environments.
+3. **Package Scope:** All Stagewise packages must be installed as \`devDependencies\`.
+4. **Component Safety:** Even for framework-specific components, prefer explicit development checks unless the component is confirmed to handle this internally.
+</critical_constraints>
+
+<output_expectations>
+## Expected Output
+
+After analyzing the project, I will:
+
+1. Report the detected framework and chosen integration strategy
+2. Confirm whether Stagewise is already initialized or not
+3. If not already initialized:
+   - Show the proposed file modifications
+   - List any packages that need to be installed
+   - Provide the exact installation command for the project\'s package manager
+4. Detail any specific considerations or adaptations made for the project
+
+This information will be presented in a clear, structured format to help you review and implement the proposed changes.
+</output_expectations>
   `;
   await callCursorAgent(prompt);
 }
