@@ -19,11 +19,11 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
-    "@commitlint/cli": "^19.8.0",
-    "@commitlint/config-conventional": "^19.8.0",
-    "lefthook": "^1.11.11",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "lefthook": "^1.11.12",
     "ts-node": "10.9.2",
-    "turbo": "^2.5.2",
+    "turbo": "^2.5.3",
     "typescript": "^5.8.3"
   },
   "packageManager": "pnpm@10.10.0",

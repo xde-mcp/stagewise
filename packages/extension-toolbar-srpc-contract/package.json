@@ -14,11 +14,11 @@
   },
   "dependencies": {
     "@stagewise/srpc": "workspace:*",
-    "zod": "^3.24.3"
+    "zod": "^3.24.4"
   },
   "devDependencies": {
     "@types/node": "22.15.2",
-    "rimraf": "^5.0.0",
+    "rimraf": "^5.0.10",
     "tsup": "^8.4.0",
     "typescript": "^5.8.3",
     "vitest": "3.1.2"
