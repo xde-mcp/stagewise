@@ -1,6 +1,5 @@
 {
   "name": "@stagewise/extension-toolbar-srpc-contract",
-  "version": "0.0.1",
   "description": "SRPC contract implementation for VS Code extension and toolbar communication",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
