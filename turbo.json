@@ -7,9 +7,6 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "out/**", "dist/**"]
     },
-    "build:toolbar": {
-      "dependsOn": ["^build:toolbar"]
-    },
     "//#check": {
       "cache": false
     },
@@ -23,10 +20,6 @@
       "dependsOn": ["^lint"]
     },
     "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "dev:examples": {
       "cache": false,
       "persistent": true
     },
