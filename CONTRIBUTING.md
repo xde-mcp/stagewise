@@ -140,6 +140,6 @@ pnpm changeset --empty
 
 ## Need Help?
 
-* 💬 Join our [Discord](https://discord.gg/tRRyHJnv) to ask questions and get support.
+* 💬 Join our [Discord](https://discord.gg/gkdGsDYaKA) to ask questions and get support.
 * 🐛 Found a bug? Open a [GitHub Issue](https://github.com/stagewise-io/stagewise/issues).
 * 💡 Have a feature idea? Let's discuss it in [GitHub Discussions](#).

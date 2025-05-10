@@ -2,7 +2,7 @@
 
 # Eyesight for your AI-powered Code Editor.
 
-[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise-vscode-extension?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/vsDjhubRbh) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
+[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise-vscode-extension?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/gkdGsDYaKA) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
 
 
 ![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
@@ -327,7 +327,7 @@ We're just getting started and love contributions! Check out our [CONTRIBUTING.m
 
 ## 💬 Community & Support 
 
-* 👾 [Join our Discord](https://discord.gg/vsDjhubRbh)
+* 👾 [Join our Discord](https://discord.gg/gkdGsDYaKA)
 * 📖 Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues) for dev support.
 
 
