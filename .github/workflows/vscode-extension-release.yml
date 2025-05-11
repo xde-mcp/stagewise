@@ -1,29 +1,37 @@
+### vscode-extension-release.yml
 name: VSCode Extension Release
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'apps/vscode-extension/**'
+    tags:
+      - 'stagewise-vscode-extension@*'
   workflow_dispatch:
 
 jobs:
-  release:
+  release-vscode-extension:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout Code at Tag
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.10.0
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - run: npm install -g vsce
-      - run: pnpm --filter stagewise-vscode-extension exec vsce package --no-dependencies
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build VS Code Extension
+        run: pnpm build --filter stagewise-vscode-extension
+
       - name: Publish to VSCode Marketplace
         run: pnpm --filter stagewise-vscode-extension exec vsce publish --no-dependencies
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }} 
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

@@ -1,4 +1,4 @@
-name: Release
+name: Monorepo Release
 
 on:
   push:
@@ -9,22 +9,41 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Grant permissions for GITHUB_TOKEN to create commits and tags
+    permissions:
+      contents: write # To push commits and tags
+      pull-requests: write # If you ever want it to create PRs instead of direct commits
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          version: 10.10.0
-      - uses: actions/setup-node@v4
+          # Fetch all history for all branches and tags for Changesets
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.10.0 
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: pnpm changeset version
-      - name: Publish to npm and create GitHub Releases
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build All Packages
+        run: pnpm build # Ensure this builds all packages including the VS Code extension if its build affects versioning artifacts
+
+      - name: Version Packages, Publish to npm, and Create GitHub Releases
         uses: changesets/action@v1
         with:
-          publish: pnpm changeset publish
+          publish: pnpm changeset publish # This command publishes to npm (skips private packages)
+          commit: "chore: release packages [skip ci]" # Commit message for version bumps
+          title: "Release: New Package Versions" # Title for PR if created (not relevant for direct commit)
+          createGitHubReleases: true # Set to false if you only want tags, true if you want GitHub releases for npm packages
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Used for committing, pushing tags, and creating GH releases
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}       # Used by `pnpm changeset publish` for npm
