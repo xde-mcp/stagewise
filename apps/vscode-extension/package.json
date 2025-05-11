@@ -1,6 +1,7 @@
 {
   "name": "stagewise-vscode-extension",
   "displayName": "stagewise",
+  "private": true,
   "description": "Eyesight for your AI-powered Code Editor.",
   "version": "0.1.10",
   "publisher": "stagewise",
@@ -57,7 +58,9 @@
     "@typescript-eslint/parser": "^8.32.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.3.2",
     "eslint": "^9.26.0",
+    "ovsx": "^0.10.2",
     "ts-loader": "^9.5.2",
     "tsconfig-paths-webpack-plugin": "^4.2.0",
     "tsx": "^4.19.4",
