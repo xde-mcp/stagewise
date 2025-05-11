@@ -24,12 +24,24 @@ import { ChatArea } from '../chat-area';
 import { ChatBox } from '../chat-box';
 import { MoreActionsButton } from '../more-actions-button';
 import { useDraggable } from '@/hooks/use-draggable';
+import { useContext } from 'preact/hooks';
+import { DraggableContext } from '@/hooks/use-draggable';
+import type { DraggableContextType } from '@/hooks/use-draggable';
 
 export function ToolbarDraggableBox() {
+  const provider = useContext(DraggableContext) as DraggableContextType | null;
+  const borderLocation = provider?.borderLocation;
+  const isReady =
+    !!borderLocation &&
+    borderLocation.right - borderLocation.left > 0 &&
+    borderLocation.bottom - borderLocation.top > 0;
+
   const draggable = useDraggable({
     startThreshold: 10,
     initialSnapArea: 'bottomCenter',
   });
+  if (!isReady) return null; // Wait until borderLocation is valid
+
   return (
     <div
       ref={draggable.draggableRef}

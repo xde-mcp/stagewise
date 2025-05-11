@@ -8,7 +8,7 @@ import {
   useCallback,
 } from 'preact/hooks';
 
-interface DraggableContextType {
+export interface DraggableContextType {
   borderLocation: {
     top: number;
     left: number;
@@ -32,7 +32,9 @@ interface DraggableContextType {
   emitDragEnd?: () => void;
 }
 
-const DraggableContext = createContext<DraggableContextType | null>(null);
+export const DraggableContext = createContext<DraggableContextType | null>(
+  null,
+);
 
 export const DraggableProvider = ({
   containerRef,
