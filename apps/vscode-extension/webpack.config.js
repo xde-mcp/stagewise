@@ -23,10 +23,20 @@ const config = {
     // --- Use TsconfigPathsPlugin to handle workspace paths ---
     plugins: [
       new TsconfigPathsPlugin({
-        configFile: './tsconfig.json', // Point to your tsconfig.json
+        configFile: path.resolve(__dirname, './tsconfig.json'),
+        extensions: ['.ts', '.js'],
+        mainFields: ['main', 'module'],
+        baseUrl: path.resolve(__dirname),
       }),
     ],
     // ---------------------------------------------------------
+    alias: {
+      '@stagewise/extension-toolbar-srpc-contract': path.resolve(
+        __dirname,
+        '../../packages/extension-toolbar-srpc-contract',
+      ),
+      '@stagewise/srpc': path.resolve(__dirname, '../../packages/srpc'),
+    },
   },
   module: {
     rules: [
@@ -36,8 +46,10 @@ const config = {
         use: [
           {
             loader: 'ts-loader',
-            // Optional: ts-loader options can go here, e.g., referencing a specific tsconfig
-            // options: { configFile: path.resolve(__dirname, 'tsconfig.json') }
+            options: {
+              configFile: path.resolve(__dirname, 'tsconfig.json'),
+              transpileOnly: false,
+            },
           },
         ],
       },

@@ -21,10 +21,9 @@ jobs:
           node-version: 20
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter stagewise-vscode-extension build
       - run: npm install -g vsce
-      - run: pnpm --filter stagewise-vscode-extension exec vsce package
+      - run: pnpm --filter stagewise-vscode-extension exec vsce package --no-dependencies
       - name: Publish to VSCode Marketplace
-        run: pnpm --filter stagewise-vscode-extension exec vsce publish
+        run: pnpm --filter stagewise-vscode-extension exec vsce publish --no-dependencies
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }} 

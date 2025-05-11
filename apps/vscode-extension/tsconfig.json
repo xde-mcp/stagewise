@@ -11,12 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "baseUrl": ".",
-    "paths": {
-      "@stagewise/extension-toolbar-srpc-contract": [
-        "../packages/extension-toolbar-srpc-contract/index.ts"
-      ],
-      "@stagewise/srpc": ["../packages/srpc/index.ts"]
-    }
+    "paths": {}
   },
   "include": ["src", "scripts"],
   "exclude": ["node_modules", ".vscode-test", "out"]
