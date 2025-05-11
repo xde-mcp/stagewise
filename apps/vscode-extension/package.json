@@ -45,10 +45,8 @@
   ],
   "scripts": {
     "vscode:prepublish": "pnpm run build",
-    "watch": "webpack --mode development --config webpack.config.js --watch",
     "run-server": "node ./out/server.js",
-    "build": "webpack --mode production --config webpack.config.js",
-    "dev": "pnpm run watch"
+    "build": "webpack --mode production --config webpack.config.js"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
