@@ -23,10 +23,9 @@ const config = {
     // --- Use TsconfigPathsPlugin to handle workspace paths ---
     plugins: [
       new TsconfigPathsPlugin({
-        configFile: './tsconfig.json', // Point to your tsconfig.json
+        configFile: path.resolve(__dirname, './tsconfig.json'),
       }),
     ],
-    // ---------------------------------------------------------
   },
   module: {
     rules: [
@@ -36,8 +35,6 @@ const config = {
         use: [
           {
             loader: 'ts-loader',
-            // Optional: ts-loader options can go here, e.g., referencing a specific tsconfig
-            // options: { configFile: path.resolve(__dirname, 'tsconfig.json') }
           },
         ],
       },
