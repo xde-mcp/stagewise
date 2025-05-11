@@ -38,7 +38,7 @@ jobs:
         run: pnpm build # Ensure this builds all packages including the VS Code extension if its build affects versioning artifacts
 
       - name: Version Packages, Publish to npm, and Create GitHub Releases
-        uses: changesets/action@v1
+        uses: changesets/action@v1.5.2
         with:
           publish: pnpm changeset publish # This command publishes to npm (skips private packages)
           commit: "chore: release packages [skip ci]" # Commit message for version bumps
