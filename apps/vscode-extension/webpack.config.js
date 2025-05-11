@@ -24,19 +24,8 @@ const config = {
     plugins: [
       new TsconfigPathsPlugin({
         configFile: path.resolve(__dirname, './tsconfig.json'),
-        extensions: ['.ts', '.js'],
-        mainFields: ['main', 'module'],
-        baseUrl: path.resolve(__dirname),
       }),
     ],
-    // ---------------------------------------------------------
-    alias: {
-      '@stagewise/extension-toolbar-srpc-contract': path.resolve(
-        __dirname,
-        '../../packages/extension-toolbar-srpc-contract',
-      ),
-      '@stagewise/srpc': path.resolve(__dirname, '../../packages/srpc'),
-    },
   },
   module: {
     rules: [
@@ -46,10 +35,6 @@ const config = {
         use: [
           {
             loader: 'ts-loader',
-            options: {
-              configFile: path.resolve(__dirname, 'tsconfig.json'),
-              transpileOnly: false,
-            },
           },
         ],
       },
