@@ -157,6 +157,8 @@ export interface DraggableConfig {
   onDragEnd?: () => void;
   initialSnapArea?: keyof DraggableContextType['snapAreas'];
   initialRelativeCenter?: { x: number; y: number };
+  springStiffness?: number;
+  springDampness?: number;
 }
 
 export function useDraggable(config: DraggableConfig) {
@@ -202,8 +204,18 @@ export function useDraggable(config: DraggableConfig) {
     onDragStart,
     onDragEnd,
     initialSnapArea,
+    springStiffness = 0.3, // Default spring stiffness
+    springDampness = 0.5, // Default spring dampness
     // initialRelativeCenter is used to initialize persistedRelativeCenterRef
   } = config;
+
+  // --- SPRING ANIMATION STATE ---
+  // Animated position (center of draggable in viewport coordinates)
+  const animatedPositionRef = useRef<{ x: number; y: number } | null>(null);
+  // Animated velocity
+  const velocityRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  // Track if we've already animated once (to skip animation on first render)
+  const hasAnimatedOnceRef = useRef(false);
 
   // Set initial position based on initialSnapArea if provided
   useEffect(() => {
@@ -440,47 +452,119 @@ export function useDraggable(config: DraggableConfig) {
       targetViewportCenterY = clampedCenterY;
     }
 
-    if (
-      isDraggingRef.current &&
-      parentWidth > 0 &&
-      parentHeight > 0
-      // targetViewportCenterX and targetViewportCenterY are guaranteed non-null
-      // here due to the earlier check and subsequent clamping.
-    ) {
-      // Persist the new relative center if dragging, using the CLAMPED viewport coordinates
-      const newRelativeX =
-        (targetViewportCenterX - parentViewportLeft) / parentWidth;
-      const newRelativeY =
-        (targetViewportCenterY - parentViewportTop) / parentHeight;
-
-      if (Number.isFinite(newRelativeX) && Number.isFinite(newRelativeY)) {
-        persistedRelativeCenterRef.current = {
-          x: newRelativeX,
-          y: newRelativeY,
-        };
+    // --- SPRING ANIMATION ---
+    // Use spring physics to animate the position
+    // If this is the first frame, initialize the animated position
+    if (!animatedPositionRef.current) {
+      animatedPositionRef.current = {
+        x: targetViewportCenterX,
+        y: targetViewportCenterY,
+      };
+      velocityRef.current = { x: 0, y: 0 };
+      // On first render, jump to position and skip animation
+      const targetElementStyleX = targetViewportCenterX - draggableWidth / 2;
+      const targetElementStyleY = targetViewportCenterY - draggableHeight / 2;
+      const isTopHalf = currentDesiredRelativeCenter
+        ? currentDesiredRelativeCenter.y <= 0.5
+        : true; // Default to top if undefined
+      const isLeftHalf = currentDesiredRelativeCenter
+        ? currentDesiredRelativeCenter.x <= 0.5
+        : true; // Default to left if undefined
+      const elStyle = draggableEl.style;
+      elStyle.right = '';
+      elStyle.bottom = '';
+      elStyle.left = '';
+      elStyle.top = '';
+      if (isLeftHalf) {
+        const styleLeftPx = targetElementStyleX - parentViewportLeft;
+        elStyle.left =
+          parentWidth > 0
+            ? `${((styleLeftPx / parentWidth) * 100).toFixed(2)}%`
+            : '0px';
+        elStyle.right = '';
+      } else {
+        const styleRightPx =
+          parentViewportLeft +
+          parentWidth -
+          (targetElementStyleX + draggableWidth);
+        elStyle.right =
+          parentWidth > 0
+            ? `${((styleRightPx / parentWidth) * 100).toFixed(2)}%`
+            : '0px';
+        elStyle.left = '';
       }
+      if (isTopHalf) {
+        const styleTopPx = targetElementStyleY - parentViewportTop;
+        elStyle.top =
+          parentHeight > 0
+            ? `${((styleTopPx / parentHeight) * 100).toFixed(2)}%`
+            : '0px';
+        elStyle.bottom = '';
+      } else {
+        const styleBottomPx =
+          parentViewportTop +
+          parentHeight -
+          (targetElementStyleY + draggableHeight);
+        elStyle.bottom =
+          parentHeight > 0
+            ? `${((styleBottomPx / parentHeight) * 100).toFixed(2)}%`
+            : '0px';
+        elStyle.top = '';
+      }
+      hasAnimatedOnceRef.current = true;
+      return;
     }
+    // Only animate if we've already jumped to the initial position
+    if (!hasAnimatedOnceRef.current) {
+      hasAnimatedOnceRef.current = true;
+      return;
+    }
+    const pos = animatedPositionRef.current;
+    const vel = velocityRef.current;
+    // Calculate spring force
+    const dx = targetViewportCenterX - pos.x;
+    const dy = targetViewportCenterY - pos.y;
+    // F = -kX - bv
+    const ax = springStiffness * dx - springDampness * vel.x;
+    const ay = springStiffness * dy - springDampness * vel.y;
+    // Integrate velocity and position
+    vel.x += ax;
+    vel.y += ay;
+    pos.x += vel.x;
+    pos.y += vel.y;
+    // If close enough to target, snap to target and zero velocity
+    const threshold = 0.5;
+    if (
+      Math.abs(dx) < threshold &&
+      Math.abs(dy) < threshold &&
+      Math.abs(vel.x) < threshold &&
+      Math.abs(vel.y) < threshold
+    ) {
+      pos.x = targetViewportCenterX;
+      pos.y = targetViewportCenterY;
+      vel.x = 0;
+      vel.y = 0;
+    }
+    animatedPositionRef.current = { ...pos };
+    velocityRef.current = { ...vel };
 
-    const elStyle = draggableEl.style;
-    elStyle.right = ''; // Clear right and bottom as we use left/top
-    elStyle.bottom = '';
-    elStyle.left = '';
-    elStyle.top = '';
-
-    // Calculate target top-left for styling, from target viewport center
-    const targetElementStyleX = targetViewportCenterX - draggableWidth / 2;
-    const targetElementStyleY = targetViewportCenterY - draggableHeight / 2;
+    // Calculate target top-left for styling, from animated center
+    const targetElementStyleX = pos.x - draggableWidth / 2;
+    const targetElementStyleY = pos.y - draggableHeight / 2;
 
     // Determine if the element is in the top/left or bottom/right halves for styling
-    // This needs to be re-evaluated for the styling part, especially if not dragging
-    // or use a state/ref if these flags are needed elsewhere.
-    // For simplicity here, we re-evaluate. If performance becomes an issue, optimize.
     const isTopHalf = currentDesiredRelativeCenter
       ? currentDesiredRelativeCenter.y <= 0.5
       : true; // Default to top if undefined
     const isLeftHalf = currentDesiredRelativeCenter
       ? currentDesiredRelativeCenter.x <= 0.5
       : true; // Default to left if undefined
+
+    const elStyle = draggableEl.style;
+    elStyle.right = '';
+    elStyle.bottom = '';
+    elStyle.left = '';
+    elStyle.top = '';
 
     if (isLeftHalf) {
       const styleLeftPx = targetElementStyleX - parentViewportLeft;
@@ -490,7 +574,6 @@ export function useDraggable(config: DraggableConfig) {
           : '0px';
       elStyle.right = '';
     } else {
-      // Calculate distance from right edge of parent to right edge of element
       const styleRightPx =
         parentViewportLeft +
         parentWidth -
@@ -510,7 +593,6 @@ export function useDraggable(config: DraggableConfig) {
           : '0px';
       elStyle.bottom = '';
     } else {
-      // Calculate distance from bottom edge of parent to bottom edge of element
       const styleBottomPx =
         parentViewportTop +
         parentHeight -
@@ -522,10 +604,17 @@ export function useDraggable(config: DraggableConfig) {
       elStyle.top = '';
     }
 
-    if (isDraggingRef.current) {
+    // Continue animating if not at target
+    if (
+      Math.abs(pos.x - targetViewportCenterX) > threshold ||
+      Math.abs(pos.y - targetViewportCenterY) > threshold ||
+      Math.abs(vel.x) > threshold ||
+      Math.abs(vel.y) > threshold ||
+      isDraggingRef.current
+    ) {
       requestAnimationFrame(updateDraggablePosition);
     }
-  }, [areaSnapThreshold]);
+  }, [areaSnapThreshold, springStiffness, springDampness]);
 
   // This will be listened to globally if the mouse was pressed down on the draggable element
   const mouseUpHandler = useCallback(
@@ -534,6 +623,89 @@ export function useDraggable(config: DraggableConfig) {
         if (onDragEnd) onDragEnd();
         if (latestProviderDataRef.current?.emitDragEnd) {
           latestProviderDataRef.current.emitDragEnd();
+        }
+        // --- Persist the new position on drag end ---
+        const draggableEl = movingElementRef.current;
+        const provider = latestProviderDataRef.current;
+        if (draggableEl && provider && provider.borderLocation) {
+          const draggableWidth = draggableEl.offsetWidth;
+          const draggableHeight = draggableEl.offsetHeight;
+          const offsetParent = draggableEl.offsetParent as HTMLElement | null;
+          let parentViewportLeft = 0;
+          let parentViewportTop = 0;
+          let parentWidth = window.innerWidth;
+          let parentHeight = window.innerHeight;
+          if (offsetParent) {
+            const opRect = offsetParent.getBoundingClientRect();
+            parentViewportLeft = opRect.left;
+            parentViewportTop = opRect.top;
+            parentWidth = offsetParent.offsetWidth || window.innerWidth;
+            parentHeight = offsetParent.offsetHeight || window.innerHeight;
+          }
+          // Compute the center where the draggable is released
+          let releasedCenterX = 0;
+          let releasedCenterY = 0;
+          if (
+            currentMousePosRef.current &&
+            mouseToDraggableCenterOffsetRef.current
+          ) {
+            releasedCenterX =
+              currentMousePosRef.current.x -
+              mouseToDraggableCenterOffsetRef.current.x;
+            releasedCenterY =
+              currentMousePosRef.current.y -
+              mouseToDraggableCenterOffsetRef.current.y;
+          } else {
+            // fallback to current animated position
+            if (animatedPositionRef.current) {
+              releasedCenterX = animatedPositionRef.current.x;
+              releasedCenterY = animatedPositionRef.current.y;
+            }
+          }
+          // Clamp to provider bounds
+          const borderLocation = provider.borderLocation;
+          const minX = borderLocation.left + draggableWidth / 2;
+          const maxX = borderLocation.right - draggableWidth / 2;
+          const minY = borderLocation.top + draggableHeight / 2;
+          const maxY = borderLocation.bottom - draggableHeight / 2;
+          releasedCenterX = Math.max(minX, Math.min(releasedCenterX, maxX));
+          releasedCenterY = Math.max(minY, Math.min(releasedCenterY, maxY));
+
+          // Check if released within a snap area
+          const areaCenters = getSnapAreaCenters(borderLocation);
+          let minDist = Number.POSITIVE_INFINITY;
+          let closestArea: keyof DraggableContextType['snapAreas'] | null =
+            null;
+          let closestCenter: { x: number; y: number } | null = null;
+          for (const area in provider.snapAreas) {
+            if (provider.snapAreas[area as keyof typeof provider.snapAreas]) {
+              const center = areaCenters[area as keyof typeof areaCenters];
+              if (!center) continue;
+              const dist = Math.hypot(
+                center.x - releasedCenterX,
+                center.y - releasedCenterY,
+              );
+              if (dist < minDist) {
+                minDist = dist;
+                closestArea = area as keyof DraggableContextType['snapAreas'];
+                closestCenter = center;
+              }
+            }
+          }
+          if (closestArea && closestCenter && minDist <= areaSnapThreshold) {
+            // Snap to the area
+            setCurrentSnapArea(closestArea);
+            // Convert to relative
+            const relX = (closestCenter.x - parentViewportLeft) / parentWidth;
+            const relY = (closestCenter.y - parentViewportTop) / parentHeight;
+            persistedRelativeCenterRef.current = { x: relX, y: relY };
+          } else {
+            // Free floating: use released position
+            setCurrentSnapArea(null);
+            const relX = (releasedCenterX - parentViewportLeft) / parentWidth;
+            const relY = (releasedCenterY - parentViewportTop) / parentHeight;
+            persistedRelativeCenterRef.current = { x: relX, y: relY };
+          }
         }
       }
       mouseDownPosRef.current = null;
@@ -551,7 +723,7 @@ export function useDraggable(config: DraggableConfig) {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     },
-    [onDragEnd],
+    [onDragEnd, areaSnapThreshold],
   );
 
   // This will be listened to globally if the mouse was pressed down on the draggable element
