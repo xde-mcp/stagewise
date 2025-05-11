@@ -46,4 +46,4 @@ jobs:
           createGitHubReleases: true # Set to false if you only want tags, true if you want GitHub releases for npm packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Used for committing, pushing tags, and creating GH releases
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}       # Used by `pnpm changeset publish` for npm
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_ACCESS_TOKEN }}       # Used by `pnpm changeset publish` for npm
