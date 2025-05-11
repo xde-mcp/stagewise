@@ -4,12 +4,14 @@ name: VSCode Extension Release
 on:
   push:
     tags:
-      - 'stagewise-vscode-extension@*'
+      - 'stagewise-vscode-extension@*' # Adjust if your extension package name in package.json is different
   workflow_dispatch:
 
 jobs:
   release-vscode-extension:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to create/update GitHub Releases and upload assets
     steps:
       - name: Checkout Code at Tag
         uses: actions/checkout@v4
@@ -17,7 +19,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.10.0
+          version: 10.10.0 # Or your desired pnpm version
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,9 +31,48 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build VS Code Extension
+        # This command should build your extension and place output in the correct directory
+        # that vsce package will look for (usually the root of the extension package).
         run: pnpm build --filter stagewise-vscode-extension
 
-      - name: Publish to VSCode Marketplace
-        run: pnpm --filter stagewise-vscode-extension exec vsce publish --no-dependencies
+      # Determine the package name and version from the tag
+      - name: Get VSIX Filename from Tag
+        id: get_filename
+        # Extracts 'stagewise-vscode-extension' and '1.2.3' from 'stagewise-vscode-extension@1.2.3'
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          PACKAGE_NAME=$(echo "$TAG_NAME" | cut -d'@' -f1)
+          VERSION_NUMBER=$(echo "$TAG_NAME" | cut -d'@' -f2)
+          echo "vsix_filename=${PACKAGE_NAME}-${VERSION_NUMBER}.vsix" >> $GITHUB_OUTPUT
+          echo "package_version=${VERSION_NUMBER}" >> $GITHUB_OUTPUT
+
+      - name: Package Extension using vsce
+        # Run from the directory of the extension or specify path
+        # This creates the .vsix file
+        run: |
+          cd apps/vscode-extension 
+          pnpm exec vsce package --out ${{ steps.get_filename.outputs.vsix_filename }}
+
+      - name: Publish to Visual Studio Marketplace
+        # Run from the directory of the extension or specify path
+        run: |
+          cd apps/vscode-extension # Or the path to your extension
+          pnpm exec vsce publish --packagePath ${{ steps.get_filename.outputs.vsix_filename }} --pat ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        # Run from the directory of the extension or specify path
+        run: |
+          cd apps/vscode-extension # Or the path to your extension
+          pnpm exec ovsx publish ${{ steps.get_filename.outputs.vsix_filename }} -p ${{ secrets.OPEN_VSX_ACCESS_TOKEN }}
+
+      - name: Create/Update GitHub Release and Upload VSIX
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: "Release of stagewise VS Code Extension version ${{ steps.get_filename.outputs.package_version }}. See CHANGELOG.md for details."
+          draft: false
+          prerelease: false
+          files: apps/vscode-extension/${{ steps.get_filename.outputs.vsix_filename }} # Path to the .vsix file
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
