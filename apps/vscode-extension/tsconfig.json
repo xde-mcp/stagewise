@@ -13,9 +13,9 @@
     "baseUrl": ".",
     "paths": {
       "@stagewise/extension-toolbar-srpc-contract": [
-        "../packages/extension-toolbar-srpc-contract/index.ts"
+        "../packages/extension-toolbar-srpc-contract/dist"
       ],
-      "@stagewise/srpc": ["../packages/srpc/index.ts"]
+      "@stagewise/srpc": ["../packages/srpc/dist"]
     }
   },
   "include": ["src", "scripts"],
