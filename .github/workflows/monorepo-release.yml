@@ -40,10 +40,11 @@ jobs:
       - name: Version Packages, Publish to npm, and Create GitHub Releases
         uses: changesets/action@v1.5.2
         with:
+          version: pnpm changeset version && pnpm biome format --write .
           publish: pnpm changeset publish # This command publishes to npm (skips private packages)
           commit: "chore: release packages [skip ci]" # Commit message for version bumps
           title: "Release: New Package Versions" # Title for PR if created (not relevant for direct commit)
           createGitHubReleases: true # Set to false if you only want tags, true if you want GitHub releases for npm packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Used for committing, pushing tags, and creating GH releases
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}       # Used by `pnpm changeset publish` for npm
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_ACCESS_TOKEN }}       # Used by `pnpm changeset publish` for npm
