@@ -1,7 +1,6 @@
 {
   "name": "svelte-kit-example",
   "private": true,
-  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "clean": "rm -rf .turbo .svelte-kit node_modules",
