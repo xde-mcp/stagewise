@@ -1,10 +1,9 @@
 name: VSCode Extension CI
 
 on:
-  push:
-    paths:
-      - 'apps/vscode-extension/**'
   pull_request:
+    branches:
+      - main
     paths:
       - 'apps/vscode-extension/**'
 
