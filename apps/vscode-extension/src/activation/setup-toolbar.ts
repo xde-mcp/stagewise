@@ -1,7 +1,4 @@
-import * as vscode from 'vscode';
-import { callCursorAgent } from 'src/utils/call-cursor-agent';
-import { callWindsurfAgent } from 'src/utils/call-windsurf-agent';
-import { getCurrentIDE } from 'src/utils/get-current-ide';
+import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 
 export async function setupToolbar() {
   const prompt = `
@@ -290,18 +287,5 @@ After analyzing the project, I will:
 This information will be presented in a clear, structured format to help you review and implement the proposed changes.
 </output_expectations>
   `;
-  const ide = getCurrentIDE();
-  switch (ide) {
-    case 'CURSOR':
-      await callCursorAgent(prompt);
-      break;
-    case 'WINDSURF':
-      await callWindsurfAgent(prompt);
-      break;
-    case 'VSCODE':
-    default:
-      vscode.window.showInformationMessage(
-        'stagewise does not work for your current IDE',
-      );
-  }
+  await dispatchAgentCall(prompt);
 }
