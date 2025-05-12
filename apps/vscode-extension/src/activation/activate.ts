@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import { startServer, stopServer } from '../http-server/server';
-import { updateCursorMcpConfig } from './register-mcp-server';
 import { findAvailablePort } from '../utils/find-available-port';
 import {
   getExtensionBridge,
@@ -34,7 +33,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const port = await findAvailablePort(DEFAULT_PORT);
 
     // Register MCP server with the actual port
-    updateCursorMcpConfig(port);
+    // updateCursorMcpConfig(port); // Disabled for now, since MCP tools are not available yet
 
     // Start the HTTP server with the same port
     const server = await startServer(port);
