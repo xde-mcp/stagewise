@@ -9,16 +9,14 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Grant permissions for GITHUB_TOKEN to create commits and tags
     permissions:
       contents: write # To push commits and tags
-      pull-requests: write # If you ever want it to create PRs instead of direct commits
+      pull-requests: write # To create PRs (though commit: is used here)
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          # Fetch all history for all branches and tags for Changesets
-          fetch-depth: 0
+          fetch-depth: 0 # Needed for commit history checks
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -35,16 +33,57 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build All Packages
-        run: pnpm build # Ensure this builds all packages including the VS Code extension if its build affects versioning artifacts
+        run: pnpm build
 
-      - name: Version Packages, Publish to npm, and Create GitHub Releases
+      - name: Version Packages, Format, Publish to npm, and Create GitHub Releases
+        id: changesets # Add an ID here
         uses: changesets/action@v1.5.2
         with:
-          version: pnpm run version-and-format
-          publish: pnpm changeset publish # This command publishes to npm (skips private packages)
-          commit: "chore: release packages [skip ci]" # Commit message for version bumps
-          title: "Release: New Package Versions" # Title for PR if created (not relevant for direct commit)
-          createGitHubReleases: true # Set to false if you only want tags, true if you want GitHub releases for npm packages
+          # Assumes you have the version-and-format script in your root package.json
+          version: pnpm run version-and-format 
+          publish: pnpm changeset publish
+          commit: "chore: release packages [skip ci]" # This commits the changes
+          title: "Release: New Package Versions"
+          createGitHubReleases: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Used for committing, pushing tags, and creating GH releases
-          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_ACCESS_TOKEN }}       # Used by `pnpm changeset publish` for npm
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_ACCESS_TOKEN }} # Ensure secret name is correct
+
+      - name: Check for VSCode Extension Version Change and Tag
+        # This step runs after changesets/action has committed the version bump
+        run: |
+          # Get the SHA of the commit made by changesets/action (should be HEAD)
+          RELEASE_COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Checking for changes to VS Code extension in commit $RELEASE_COMMIT_SHA"
+
+          # Check if the specific package.json was changed in this commit compared to its parent
+          # Use exit code: 0 = no changes, 1 = changes.
+          # Use git diff-tree to check files changed in the commit.
+          # The `!` negates the exit code, so the block executes if grep finds the file (exit code 0 -> !0 -> true)
+          if ! git diff-tree --no-commit-id --name-only -r $RELEASE_COMMIT_SHA | grep -q "^apps/vscode-extension/package.json$"; then
+            echo "VS Code extension package.json not modified in this release commit. Skipping tag."
+            exit 0 # Exit successfully, no tag needed
+          fi
+
+          echo "VS Code extension package.json was modified. Proceeding to tag."
+
+          # Read the new version directly from the package.json at the release commit
+          # Ensure we're in the workspace root for pnpm filter to work correctly
+          cd $GITHUB_WORKSPACE
+          VERSION=$(pnpm --filter stagewise-vscode-extension exec node -p "require('./package.json').version")
+
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not read version from apps/vscode-extension/package.json"
+            exit 1 # Exit with error
+          fi
+
+          # Construct the tag name
+          TAG_NAME="stagewise-vscode-extension@$VERSION"
+          echo "Creating and pushing tag: $TAG_NAME"
+
+          # Create and push the tag
+          git tag $TAG_NAME $RELEASE_COMMIT_SHA # Tag the specific release commit
+          git push origin $TAG_NAME
+        env:
+          # Use GITHUB_TOKEN or a PAT with permission to push tags
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
