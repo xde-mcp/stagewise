@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.2.2
+
+### Patch Changes
+
+- 4337bd6: Remove mcp.json update, since mcp tools are not supported yet
+
 ## 0.2.1
 
 ### Patch Changes
