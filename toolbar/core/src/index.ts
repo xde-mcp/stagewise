@@ -67,7 +67,7 @@ export function initToolbar(config?: ToolbarConfig) {
 
   const fontLinkNode = document.createElement('link');
   fontLinkNode.rel = 'stylesheet';
-  fontLinkNode.href = `https://rsms.me/inter/inter.css"`;
+  fontLinkNode.href = `https://rsms.me/inter/inter.css`;
   document.head.appendChild(fontLinkNode);
 
   /** Insert generated css into shadow dom */
