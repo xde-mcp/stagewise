@@ -16,8 +16,11 @@ export async function setupToolbar() {
 </requirements>
 
 <implementation_steps>
+  <step_0>
+    Identify the project's package manager (npm, yarn, pnpm, etc.). You must use the same package manager to install the stagewise package.
+  </step_0>
   <step_1>
-    Identify the project's frontend framework (React, Next.js, Vue, Svelte, etc.) and install the appropriate stagewise package:
+    Identify the project's frontend framework (React, Next.js, Vue, Svelte, etc.) and install the appropriate stagewise package.
     - For framework-agnostic (as fallback): @stagewise/toolbar
     - For React: @stagewise/toolbar-react
     - For Next.js: @stagewise/toolbar-next
@@ -112,9 +115,8 @@ export async function setupToolbar() {
 <expected_outcome>
   A properly integrated stagewise toolbar that:
   1. Appears only in development mode
-  2. Allows selecting elements in the web app
-  3. Connects to the AI agent in your code editor
-  4. Provides context-aware AI editing capabilities
+  2. Is not included in production builds
+  3. Does not lead to any linting errors
 </expected_outcome>`;
 
   await dispatchAgentCall(prompt);
