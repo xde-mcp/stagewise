@@ -16,7 +16,8 @@
     "sherif": "pnpm dlx sherif --fix",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "copy-readme": "ts-node --esm scripts/copy-readme.ts"
+    "copy-readme": "ts-node --esm scripts/copy-readme.ts",
+    "version-and-format": "pnpm changeset version && pnpm biome format --write ."
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
