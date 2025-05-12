@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.2.1
+
+### Patch Changes
+
+- 57ea87c: Fixing malformed inter.css URL
+
 ## 0.2.0
 
 ### Minor Changes
