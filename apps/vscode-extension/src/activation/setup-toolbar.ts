@@ -1,4 +1,4 @@
-import { callCursorAgent } from 'src/utils/call-cursor-agent';
+import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 
 export async function setupToolbar() {
   const prompt = `
@@ -287,5 +287,5 @@ After analyzing the project, I will:
 This information will be presented in a clear, structured format to help you review and implement the proposed changes.
 </output_expectations>
   `;
-  await callCursorAgent(prompt);
+  await dispatchAgentCall(prompt);
 }

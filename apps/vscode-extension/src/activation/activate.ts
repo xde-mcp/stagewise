@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
+import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import { startServer, stopServer } from '../http-server/server';
 import { updateCursorMcpConfig } from './register-mcp-server';
 import { findAvailablePort } from '../utils/find-available-port';
-import { callCursorAgent } from '../utils/call-cursor-agent';
 import {
   getExtensionBridge,
   DEFAULT_PORT,
 } from '@stagewise/extension-toolbar-srpc-contract';
 import { setupToolbar } from './setup-toolbar';
+import { getCurrentIDE } from 'src/utils/get-current-ide';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -19,14 +20,13 @@ async function setupToolbarHandler() {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  const isCursorIDE = vscode.env.appName.toLowerCase().includes('cursor');
-  if (!isCursorIDE) {
+  const ide = getCurrentIDE();
+  if (ide === 'UNKNOWN') {
     vscode.window.showInformationMessage(
-      'For now, this extension is designed to work only in Cursor IDE. Please use Cursor to run this extension.',
+      'stagewise does not work for your current IDE.',
     );
     return;
   }
-
   context.subscriptions.push(fakeDiagCollection); // Dispose on deactivation
 
   try {
@@ -42,7 +42,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     bridge.register({
       triggerAgentPrompt: async (request, sendUpdate) => {
-        await callCursorAgent(request.prompt);
+        await dispatchAgentCall(request.prompt);
         sendUpdate.sendUpdate({ updateText: 'Called the agent' });
 
         return { result: { success: true } };
