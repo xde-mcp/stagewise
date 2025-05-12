@@ -40,7 +40,7 @@ jobs:
       - name: Version Packages, Publish to npm, and Create GitHub Releases
         uses: changesets/action@v1.5.2
         with:
-          version: pnpm changeset version && pnpm biome format --write .
+          version: pnpm run version-and-format
           publish: pnpm changeset publish # This command publishes to npm (skips private packages)
           commit: "chore: release packages [skip ci]" # Commit message for version bumps
           title: "Release: New Package Versions" # Title for PR if created (not relevant for direct commit)
