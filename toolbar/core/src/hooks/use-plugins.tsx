@@ -55,8 +55,9 @@ export function PluginProvider({
     return {
       plugins,
       toolbarContext: {
-        sendPrompt: (prompt: string) => {
-          bridge.call.triggerAgentPrompt(
+        sendPrompt: async (prompt: string) => {
+          if (!bridge) throw new Error('No connection to the agent');
+          const result = await bridge.call.triggerAgentPrompt(
             { prompt },
             {
               onUpdate: (update) => {},
@@ -65,7 +66,7 @@ export function PluginProvider({
         },
       },
     };
-  }, [plugins]);
+  }, [plugins, bridge]);
 
   return (
     <PluginContext.Provider value={value}>{children}</PluginContext.Provider>
