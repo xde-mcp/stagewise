@@ -73,7 +73,7 @@ export function ContextItem({ refElement, ...props }: ContextItemProps) {
     <div
       {...props}
       className={
-        'pointer-events-auto fixed flex cursor-pointer items-center justify-center rounded-lg border-2 border-green-600/80 bg-green-600/5 text-transparent transition-all duration-0 hover:border-red-600/80 hover:bg-red-600/20 hover:text-white hover:backdrop-blur-sm'
+        'pointer-events-auto fixed flex cursor-pointer items-center justify-center rounded-lg border-2 border-green-600/80 bg-green-600/5 text-transparent transition-all duration-0 hover:border-red-600/80 hover:bg-red-600/20 hover:text-white'
       }
       ref={boxRef}
       onClick={handleDeleteClick}
