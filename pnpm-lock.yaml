@@ -220,6 +220,9 @@ importers:
         specifier: ^19.1.0
         version: 19.1.0(react@19.1.0)
     devDependencies:
+      '@stagewise/plugin-a11y':
+        specifier: workspace:*
+        version: link:../../plugins/a11y
       '@stagewise/toolbar-next':
         specifier: workspace:*
         version: link:../../toolbar/next
@@ -600,6 +603,19 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
+
+  plugins/a11y:
+    dependencies:
+      axe-core:
+        specifier: ^4.10.3
+        version: 4.10.3
+    devDependencies:
+      '@stagewise/toolbar':
+        specifier: workspace:*
+        version: link:../../toolbar/core
+      '@stagewise/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
 
   toolbar/core:
     dependencies:
@@ -3970,6 +3986,10 @@ packages:
     hasBin: true
     peerDependencies:
       postcss: ^8.1.0
+
+  axe-core@4.10.3:
+    resolution: {integrity: sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==}
+    engines: {node: '>=4'}
 
   axios@1.9.0:
     resolution: {integrity: sha512-re4CqKTJaURpzbLHtIi6XpDv20/CnpXOtjRY5/CU32L8gU8ek9UIivcfvSWvmKEngmVbrUtPpdDwWDWL7DNHvg==}
@@ -13315,6 +13335,8 @@ snapshots:
       picocolors: 1.1.1
       postcss: 8.5.3
       postcss-value-parser: 4.2.0
+
+  axe-core@4.10.3: {}
 
   axios@1.9.0:
     dependencies:
