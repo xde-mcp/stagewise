@@ -79,16 +79,24 @@ export type MCPResourceContent = {
 );
 
 export type MCPTool = {
-  name: string; // Unique identifier for the tool
-  description?: string; // Human-readable description
-  inputSchema: object; // JSON Schema for the tool's parameters
+  /** Unique identifier for the tool */
+  name: string;
+  /** Human-readable description */
+  description?: string;
+  /** JSON Schema for the tool's parameters */
+  inputSchema: object;
+  /** Optional hints about tool behavior */
   annotations?: {
-    // Optional hints about tool behavior
-    title?: string; // Human-readable title for the tool
-    readOnlyHint?: boolean; // If true, the tool does not modify its environment
-    destructiveHint?: boolean; // If true, the tool may perform destructive updates
-    idempotentHint?: boolean; // If true, repeated calls with same args have no additional effect
-    openWorldHint?: boolean; // If true, tool interacts with external entities
+    /** Human-readable title for the tool */
+    title?: string;
+    /** If true, the tool does not modify its environment */
+    readOnlyHint?: boolean;
+    /** If true, the tool may perform destructive updates */
+    destructiveHint?: boolean;
+    /** If true, repeated calls with same args have no additional effect */
+    idempotentHint?: boolean;
+    /** If true, tool interacts with external entities */
+    openWorldHint?: boolean;
   };
 };
 
@@ -139,18 +147,80 @@ export interface UserMessage {
   id: string;
   text: string;
   contextElements: HTMLElement[];
+  sentByPlugin: boolean;
 }
 
-export interface ToolbarAction {
-  name: string;
-  description: string;
-  execute: () => void;
+export interface ToolbarContext {
+  sendPrompt: (prompt: string) => void;
+}
+
+/** A context snippet that get's added into the prompt. */
+export interface ContextSnippet {
+  promptContextName: string;
+  content: (() => string | Promise<string>) | string;
+}
+
+/** A user-selectable context snippet offer that optionally get's added into the prompt. */
+export interface ContextSnippetOffer extends ContextSnippet {
+  displayName: string;
+}
+
+/** Additional information that a plugin may provide once the user get's into prompting mode.
+ *
+ * Used to provide user selectable context snippets that get added to the prompt once it's sent.
+ */
+export interface PromptingExtension {
+  contextSnippetOffers: ContextSnippet[];
+}
+
+/** Additional information that a plugin can provide automatically (without user triggering) when the user sends a prompt */
+export interface PromptContext {
+  contextSnippets: ContextSnippet[];
+}
+
+/** Additional information that a plugin can provide when the user selects a context element */
+export interface ContextElementContext {
+  /** Up to ~50 characters of information (element name, whatever...) that get's rendered when selecting an element */
+  annotation: string | null;
 }
 
 export interface ToolbarPlugin {
-  name: string;
+  /** The name of the plugin shown to the user. */
+  displayName: string;
+
+  /** This name is used in the tag that wraps the context provided by this plugin. */
+  promptContextName: string;
+
+  /** A short description of what the plugin does. */
   description: string;
-  mcp: MCP | null;
-  shortInfoForPrompt: (prompt: UserMessage) => string | null; // Up to 200 characters of information that's gets passed in on a user prompt.
-  actions: ToolbarAction[];
+
+  /** A monochrome svg icon that will be rendered in places where the plugin is shown */
+  iconSvg: string | null;
+
+  /** If defined, a button for this plugin is rendered in the toolbar. */
+  toolbarAction: {
+    onClick: (context: ToolbarContext) => void;
+  } | null;
+
+  /** Called when the toolbar and the plugin is loaded. */
+  onLoad?: (() => void) | null;
+
+  /** Called when the prompting mode get's started. Plugins may provide some additional */
+  onPromptingStart?: (() => PromptingExtension | null) | null;
+
+  /** Called when the prompting mode get's aborted. */
+  onPromptingAbort?: (() => void) | null;
+
+  /** Not implemented right now. */
+  onResponse?: (() => void) | null;
+
+  /** Called when a prompt is sent. Plugins can use this to automatically provide additional context for the prompt or simply listen to some change. */
+  onPromptSend?:
+    | ((prompt: UserMessage) => PromptContext | Promise<PromptContext> | null)
+    | null;
+
+  /** Called when a context element is selected in the context menu. This only happens in prompting mode. */
+  onContextElementSelect?:
+    | ((element: HTMLElement) => ContextElementContext)
+    | null;
 }
