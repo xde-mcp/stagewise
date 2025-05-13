@@ -51,13 +51,13 @@ jobs:
         # This creates the .vsix file
         run: |
           cd apps/vscode-extension 
-          pnpm exec vsce package --out ${{ steps.get_filename.outputs.vsix_filename }}
+          pnpm exec vsce package --out ${{ steps.get_filename.outputs.vsix_filename }} --no-dependencies
 
       - name: Publish to Visual Studio Marketplace
         # Run from the directory of the extension or specify path
         run: |
           cd apps/vscode-extension # Or the path to your extension
-          pnpm exec vsce publish --packagePath ${{ steps.get_filename.outputs.vsix_filename }} --pat ${{ secrets.VSCE_PAT }}
+          pnpm exec vsce publish --packagePath ${{ steps.get_filename.outputs.vsix_filename }} --pat ${{ secrets.VSCE_PAT }} --no-dependencies
 
       - name: Publish to Open VSX Registry
         # Run from the directory of the extension or specify path
