@@ -202,6 +202,9 @@ export interface ToolbarPlugin {
     onClick: (context: ToolbarContext) => void;
   } | null;
 
+  /** Add a MCP server to the plugin that will be accessible to the agent. */
+  mcp?: MCP | null;
+
   /** Called when the toolbar and the plugin is loaded. */
   onLoad?: (() => void) | null;
 
