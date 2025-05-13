@@ -38,10 +38,10 @@ export function ContextItemProposal({
       if (refElement) {
         const referenceRect = refElement.getBoundingClientRect();
 
-        boxRef.current.style.top = `${referenceRect.top}px`;
-        boxRef.current.style.left = `${referenceRect.left}px`;
-        boxRef.current.style.width = `${referenceRect.width}px`;
-        boxRef.current.style.height = `${referenceRect.height}px`;
+        boxRef.current.style.top = `${referenceRect.top - 2}px`;
+        boxRef.current.style.left = `${referenceRect.left - 2}px`;
+        boxRef.current.style.width = `${referenceRect.width + 4}px`;
+        boxRef.current.style.height = `${referenceRect.height + 4}px`;
         boxRef.current.style.display = undefined;
       } else {
         boxRef.current.style.height = '0px';
@@ -71,7 +71,7 @@ export function ContextItemProposal({
           left: '2px',
           backgroundColor: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
-          padding: '2px 4px',
+          padding: '1px 2px',
           fontSize: '12px',
           borderRadius: '3px',
           zIndex: 1001,
