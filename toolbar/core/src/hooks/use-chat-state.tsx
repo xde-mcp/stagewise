@@ -18,8 +18,10 @@
 import { type ComponentChildren, createContext } from 'preact';
 import { useContext, useState, useCallback, useEffect } from 'preact/hooks';
 import { useSRPCBridge } from './use-srpc-bridge';
-import { createPrompt } from '@/prompts';
+import { createPrompt, type PluginContextSnippets } from '@/prompts';
 import { useAppState } from './use-app-state';
+import { usePlugins } from './use-plugins';
+import type { ContextElementContext } from '@/plugin';
 
 interface Message {
   id: string;
@@ -36,7 +38,13 @@ interface Chat {
   title: string | null;
   messages: Message[];
   inputValue: string;
-  domContextElements: HTMLElement[];
+  domContextElements: {
+    element: HTMLElement;
+    pluginContext: {
+      pluginName: string;
+      context: ContextElementContext;
+    }[];
+  }[];
 }
 
 type ChatAreaState = 'hidden' | 'compact' | 'expanded';
@@ -166,11 +174,17 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     );
   }, []);
 
+  const { plugins } = usePlugins();
+
   const startPromptCreation = useCallback(() => {
     setIsPromptCreationMode(true);
     if (chatAreaState === 'hidden') {
       internalSetChatAreaState('compact');
     }
+
+    plugins.forEach((plugin) => {
+      plugin.onPromptingStart?.();
+    });
   }, [chatAreaState]);
 
   const stopPromptCreation = useCallback(() => {
@@ -184,6 +198,10 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     if (chatAreaState === 'compact') {
       internalSetChatAreaState('hidden');
     }
+
+    plugins.forEach((plugin) => {
+      plugin.onPromptingAbort?.();
+    });
   }, [currentChatId, chatAreaState]);
 
   const setChatAreaState = useCallback(
@@ -199,14 +217,27 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   const addChatDomContext = useCallback(
     (chatId: ChatId, element: HTMLElement) => {
       setChats((prev) =>
-        prev.map((chat) =>
-          chat.id === chatId
+        prev.map((chat) => {
+          const pluginsWithContextGetters = plugins.filter(
+            (plugin) => plugin.onContextElementSelect,
+          );
+
+          return chat.id === chatId
             ? {
                 ...chat,
-                domContextElements: [...chat.domContextElements, element],
+                domContextElements: [
+                  ...chat.domContextElements,
+                  {
+                    element,
+                    pluginContext: pluginsWithContextGetters.map((plugin) => ({
+                      pluginName: plugin.promptContextName,
+                      context: plugin.onContextElementSelect?.(element),
+                    })),
+                  },
+                ],
               }
-            : chat,
-        ),
+            : chat;
+        }),
       );
     },
     [],
@@ -220,7 +251,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
             ? {
                 ...chat,
                 domContextElements: chat.domContextElements.filter(
-                  (e) => e !== element,
+                  (e) => e.element !== element,
                 ),
               }
             : chat,
@@ -231,15 +262,70 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   );
 
   const addMessage = useCallback(
-    (chatId: ChatId, content: string) => {
+    async (chatId: ChatId, content: string, pluginTriggered = false) => {
       if (!content.trim()) return;
 
       const chat = chats.find((chat) => chat.id === chatId);
 
+      const pluginContextSnippets: PluginContextSnippets[] = [];
+
+      const pluginProcessingPromises = plugins.map(async (plugin) => {
+        const userMessagePayload = {
+          id: crypto.randomUUID(),
+          text: content,
+          contextElements:
+            chat?.domContextElements.map((el) => el.element) || [],
+          sentByPlugin: pluginTriggered,
+        };
+
+        const handlerResult = await plugin.onPromptSend?.(userMessagePayload);
+
+        if (
+          !handlerResult ||
+          !handlerResult.contextSnippets ||
+          handlerResult.contextSnippets.length === 0
+        ) {
+          return null;
+        }
+
+        const snippetPromises = handlerResult.contextSnippets.map(
+          async (snippet) => {
+            const resolvedContent =
+              typeof snippet.content === 'string'
+                ? snippet.content
+                : await snippet.content();
+            return {
+              tagName: snippet.promptContextName,
+              content: resolvedContent,
+            };
+          },
+        );
+
+        const resolvedSnippets = await Promise.all(snippetPromises);
+
+        if (resolvedSnippets.length > 0) {
+          const pluginSnippets: PluginContextSnippets = {
+            pluginName: plugin.displayName,
+            contextSnippets: resolvedSnippets,
+          };
+          return pluginSnippets;
+        }
+        return null;
+      });
+
+      const allPluginContexts = await Promise.all(pluginProcessingPromises);
+
+      allPluginContexts.forEach((pluginCtx) => {
+        if (pluginCtx) {
+          pluginContextSnippets.push(pluginCtx);
+        }
+      });
+
       const prompt = createPrompt(
-        chat?.domContextElements,
+        chat?.domContextElements.map((e) => e.element),
         content,
         window.location.href,
+        pluginContextSnippets,
       );
 
       const newMessage: Message = {

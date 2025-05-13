@@ -52,13 +52,13 @@ export function SelectorCanvas() {
     <>
       {hoveredElement && <ContextItemProposal refElement={hoveredElement} />}
       <ElementSelector
-        ignoreList={contextElements}
+        ignoreList={contextElements.map((el) => el.element)}
         onElementHovered={setHoveredElement}
         onElementSelected={addElementToContext}
         onElementUnhovered={() => setHoveredElement(null)}
       />
       {contextElements.map((el) => (
-        <ContextItem refElement={el} />
+        <ContextItem refElement={el.element} pluginContext={el.pluginContext} />
       ))}
     </>
   );

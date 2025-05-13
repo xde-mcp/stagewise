@@ -183,25 +183,49 @@ function generateElementContext(element: HTMLElement, index: number): string {
   return context;
 }
 
+export interface PluginContextSnippets {
+  pluginName: string;
+  contextSnippets: {
+    tagName: string;
+    content: string;
+  }[];
+}
+[];
+
 /**
  * Creates a comprehensive prompt for a Coding Agent LLM.
  *
  * @param selectedElements - An array of HTMLElements the user interacted with.
  * @param userPrompt - The user's natural language instruction.
  * @param url - The URL of the page where the interaction occurred.
+ * @param contextSnippets - An array of context snippets from a list of plugins.
  * @returns A formatted string prompt for the LLM.
  */
 export function createPrompt(
   selectedElements: HTMLElement[],
   userPrompt: string,
   url: string,
+  contextSnippets: PluginContextSnippets[],
 ): string {
+  const pluginContext = contextSnippets
+    .map((snippet) =>
+      `
+      <plugin_contexts>
+<${snippet.pluginName}>
+${snippet.contextSnippets.map((snippet) => `    <${snippet.tagName}>${snippet.content}</${snippet.tagName}>`).join('\n')}
+</${snippet.pluginName}>
+</plugin_contexts>
+`.trim(),
+    )
+    .join('\n');
+
   if (!selectedElements || selectedElements.length === 0) {
     return `
     <request>
       <user_goal>${userPrompt}</user_goal>
       <url>${url}</url>
   <context>No specific element was selected on the page. Please analyze the page code in general or ask for clarification.</context>
+  ${pluginContext}
 </request>`.trim();
   }
 
@@ -217,5 +241,6 @@ export function createPrompt(
   <selected_elements>
     ${detailedContext.trim()}
   </selected_elements>
+  ${pluginContext}
 </request>`.trim();
 }

@@ -40,7 +40,7 @@ export const ChatArea = memo(() => {
 });
 
 const ChatAreaBox = memo(({ children }: { children: ComponentChildren }) => (
-  <div className="h-auto w-full overflow-x-hidden">{children}</div>
+  <div className="h-auto w-auto overflow-x-hidden">{children}</div>
 ));
 
 const ChatAreaResizeBar = memo(() => {
