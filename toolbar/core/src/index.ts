@@ -23,7 +23,7 @@ import { companionAnchorTagName } from './utils.tsx';
 
 import type { ToolbarConfig } from './config.ts';
 
-export type { ToolbarPlugin, MCPTool } from './plugin.ts';
+export * from './plugin.ts';
 export type { ToolbarConfig } from './config.ts';
 
 export function initToolbar(config?: ToolbarConfig) {
