@@ -15,11 +15,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import type { VNode } from 'preact';
+import type { ComponentChildren } from 'preact';
 
-export function ToolbarSection({ children }: { children?: VNode }) {
+export function ToolbarSection({ children }: { children?: ComponentChildren }) {
   return (
-    <div className="fade-in slide-in-from-bottom-2 flex max-h-full max-w-sm animate-in snap-start flex-row items-center justify-between gap-2 border-x border-r-border/30 border-l-transparent px-3 first:pl-0 last:border-r-transparent last:pr-0">
+    <div className="fade-in slide-in-from-bottom-2 flex max-h-full max-w-sm animate-in snap-start flex-row items-center justify-between gap-1 border-x border-r-border/30 border-l-transparent px-1.5 first:pl-0 last:border-r-transparent last:pr-0">
       {children}
     </div>
   );

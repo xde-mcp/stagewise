@@ -16,25 +16,62 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import { type ComponentChildren, createContext } from 'preact';
-import { useContext } from 'preact/hooks';
-import type { ToolbarConfig } from '../config';
+import { useContext, useEffect, useMemo, useRef } from 'preact/hooks';
+import type { ToolbarContext, ToolbarPlugin } from '@/plugin';
+import { useSRPCBridge } from './use-srpc-bridge';
 
-const PluginContext = createContext<ToolbarConfig['plugins']>([]);
+export interface PluginContextType {
+  plugins: ToolbarPlugin[];
+  toolbarContext: ToolbarContext;
+}
+
+const PluginContext = createContext<PluginContextType>({
+  plugins: [],
+  toolbarContext: {
+    sendPrompt: () => {},
+  },
+});
 
 export function PluginProvider({
   children,
   plugins,
 }: {
   children: ComponentChildren;
-  plugins: ToolbarConfig['plugins'];
+  plugins: ToolbarPlugin[];
 }) {
+  const { bridge } = useSRPCBridge();
+
+  // call plugins once on initial load
+  const pluginsLoadedRef = useRef(false);
+  useEffect(() => {
+    if (pluginsLoadedRef.current) return;
+    pluginsLoadedRef.current = true;
+    plugins.forEach((plugin) => {
+      plugin.onLoad?.();
+    });
+  }, [plugins]);
+
+  const value = useMemo(() => {
+    return {
+      plugins,
+      toolbarContext: {
+        sendPrompt: (prompt: string) => {
+          bridge.call.triggerAgentPrompt(
+            { prompt },
+            {
+              onUpdate: (update) => {},
+            },
+          );
+        },
+      },
+    };
+  }, [plugins]);
+
   return (
-    <PluginContext.Provider value={plugins}>{children}</PluginContext.Provider>
+    <PluginContext.Provider value={value}>{children}</PluginContext.Provider>
   );
 }
 
 export function usePlugins() {
-  const plugin = useContext(PluginContext);
-  if (!plugin) return [];
-  return plugin;
+  return useContext(PluginContext);
 }

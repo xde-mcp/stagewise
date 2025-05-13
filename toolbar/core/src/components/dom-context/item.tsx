@@ -21,9 +21,15 @@ import { useCallback, useRef } from 'preact/hooks';
 import type { HTMLAttributes } from 'preact/compat';
 import { Trash2 } from 'lucide-react';
 import { useChatState } from '@/hooks/use-chat-state';
+import type { ContextElementContext } from '@/plugin';
+import { usePlugins } from '@/hooks/use-plugins';
 
 export interface ContextItemProps extends HTMLAttributes<HTMLDivElement> {
   refElement: HTMLElement;
+  pluginContext: {
+    pluginName: string;
+    context: ContextElementContext;
+  }[];
 }
 
 export function ContextItem({ refElement, ...props }: ContextItemProps) {
@@ -59,17 +65,36 @@ export function ContextItem({ refElement, ...props }: ContextItemProps) {
     chatState.removeChatDomContext(chatState.currentChatId, refElement);
   }, [chatState, refElement]);
 
+  console.log(props.pluginContext);
+
+  const { plugins } = usePlugins();
+
   return (
     <div
       {...props}
       className={
-        'pointer-events-auto fixed flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-green-600/80 bg-green-600/5 text-transparent transition-all duration-0 hover:border-red-600/80 hover:bg-red-600/20 hover:text-white hover:backdrop-blur-sm'
+        'pointer-events-auto fixed flex cursor-pointer items-center justify-center rounded-lg border-2 border-green-600/80 bg-green-600/5 text-transparent transition-all duration-0 hover:border-red-600/80 hover:bg-red-600/20 hover:text-white hover:backdrop-blur-sm'
       }
       ref={boxRef}
       onClick={handleDeleteClick}
       role="button"
       tabIndex={0}
     >
+      <div className="absolute bottom-[100%] flex w-full flex-row items-start justify-start gap-1 py-1">
+        {props.pluginContext.map((plugin) => (
+          <div className="flex flex-row items-center justify-center gap-0.5 rounded-md bg-blue-500 px-1 py-0 font-medium text-white text-xs">
+            <img
+              className="size-3 rounded-sm bg-white"
+              alt=""
+              src={
+                plugins.find((p) => p.promptContextName === plugin.pluginName)
+                  ?.iconSvg ?? ''
+              }
+            />
+            <span>{plugin.context.annotation}</span>
+          </div>
+        ))}
+      </div>
       <Trash2 className="size-6 drop-shadow-black drop-shadow-md" />
     </div>
   );
