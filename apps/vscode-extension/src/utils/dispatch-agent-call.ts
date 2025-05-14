@@ -2,14 +2,15 @@ import { getCurrentIDE } from './get-current-ide';
 import { callCursorAgent } from './call-cursor-agent';
 import { callWindsurfAgent } from './call-windsurf-agent';
 import * as vscode from 'vscode';
+import type { TriggerAgentPromptRequest } from '@stagewise/extension-toolbar-srpc-contract';
 
-export async function dispatchAgentCall(prompt: string) {
+export async function dispatchAgentCall(request: TriggerAgentPromptRequest) {
   const ide = getCurrentIDE();
   switch (ide) {
     case 'CURSOR':
-      return await callCursorAgent(prompt);
+      return await callCursorAgent(request);
     case 'WINDSURF':
-      return await callWindsurfAgent(prompt);
+      return await callWindsurfAgent(request);
     case 'VSCODE':
       vscode.window.showErrorMessage(
         'Currently, only Cursor and Windsurf are supported with stagewise.',
