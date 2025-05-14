@@ -32,7 +32,6 @@
     "preact": "^10.26.6"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.1",
     "@stagewise/toolbar": "workspace:*",
     "rollup-preserve-directives": "^1.0.0",
     "typescript": "~5.8.3",
