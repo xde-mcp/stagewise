@@ -64,7 +64,7 @@ export function ElementSelector(props: ElementSelectorProps) {
 
   return (
     <div
-      className="pointer-events-auto fixed inset-0 h-screen w-screen"
+      className="pointer-events-auto fixed inset-0 h-screen w-screen cursor-copy"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onClick={handleMouseClick}

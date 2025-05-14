@@ -19,7 +19,7 @@ import { useWindowSize } from '@/hooks/use-window-size';
 import { useCyclicUpdate } from '@/hooks/use-cyclic-update';
 import { useCallback, useRef } from 'preact/hooks';
 import type { HTMLAttributes } from 'preact/compat';
-import { Plus } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 
 export interface ItemProposalProps extends HTMLAttributes<HTMLDivElement> {
   refElement: HTMLElement;
@@ -38,10 +38,10 @@ export function ContextItemProposal({
       if (refElement) {
         const referenceRect = refElement.getBoundingClientRect();
 
-        boxRef.current.style.top = `${referenceRect.top}px`;
-        boxRef.current.style.left = `${referenceRect.left}px`;
-        boxRef.current.style.width = `${referenceRect.width}px`;
-        boxRef.current.style.height = `${referenceRect.height}px`;
+        boxRef.current.style.top = `${referenceRect.top - 2}px`;
+        boxRef.current.style.left = `${referenceRect.left - 2}px`;
+        boxRef.current.style.width = `${referenceRect.width + 4}px`;
+        boxRef.current.style.height = `${referenceRect.height + 4}px`;
         boxRef.current.style.display = undefined;
       } else {
         boxRef.current.style.height = '0px';
@@ -59,11 +59,27 @@ export function ContextItemProposal({
     <div
       {...props}
       className={
-        'fixed flex items-center justify-center overflow-hidden rounded-lg border-2 border-blue-600/80 bg-blue-600/20 text-white backdrop-blur-xs transition-all duration-100'
+        'fixed flex items-center justify-center rounded-lg border-2 border-blue-600/80 bg-blue-600/20 text-white transition-all duration-100'
       }
+      style={{ zIndex: 1000 }}
       ref={boxRef}
     >
-      <Plus className="size-6 drop-shadow-black drop-shadow-md" />
+      <div
+        style={{
+          position: 'absolute',
+          top: '2px',
+          left: '2px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '1px 2px',
+          fontSize: '12px',
+          borderRadius: '3px',
+          zIndex: 1001,
+        }}
+      >
+        {refElement.tagName.toLowerCase()}
+      </div>
+      <PlusIcon className="size-6 drop-shadow-black drop-shadow-md" />
     </div>
   );
 }
