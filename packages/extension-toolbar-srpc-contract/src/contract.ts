@@ -29,6 +29,22 @@ export const contract = createBridgeContract({
     triggerAgentPrompt: {
       request: z.object({
         prompt: z.string(),
+        model: z
+          .string()
+          .optional()
+          .describe('The model to use for the agent prompt'),
+        files: z
+          .array(z.string())
+          .optional()
+          .describe('Link project files to the agent prompt'),
+        mode: z
+          .enum(['agent', 'ask', 'manual'])
+          .optional()
+          .describe('The mode to use for the agent prompt'),
+        images: z
+          .array(z.string())
+          .optional()
+          .describe('Upload files like images, videos, etc.'),
       }),
       response: z.object({
         result: z.object({
@@ -43,3 +59,7 @@ export const contract = createBridgeContract({
     },
   },
 });
+
+export type TriggerAgentPromptRequest = z.infer<
+  typeof contract.server.triggerAgentPrompt.request
+>;
