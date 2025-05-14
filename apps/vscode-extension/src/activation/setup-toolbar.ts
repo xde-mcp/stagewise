@@ -119,5 +119,7 @@ export async function setupToolbar() {
   3. Does not lead to any linting errors
 </expected_outcome>`;
 
-  await dispatchAgentCall(prompt);
+  await dispatchAgentCall({
+    prompt,
+  });
 }

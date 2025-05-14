@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import { startServer, stopServer } from '../http-server/server';
 import { findAvailablePort } from '../utils/find-available-port';
 import {
@@ -8,6 +7,7 @@ import {
 } from '@stagewise/extension-toolbar-srpc-contract';
 import { setupToolbar } from './setup-toolbar';
 import { getCurrentIDE } from 'src/utils/get-current-ide';
+import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -41,7 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     bridge.register({
       triggerAgentPrompt: async (request, sendUpdate) => {
-        await dispatchAgentCall(request.prompt);
+        await dispatchAgentCall(request);
         sendUpdate.sendUpdate({ updateText: 'Called the agent' });
 
         return { result: { success: true } };
