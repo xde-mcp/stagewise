@@ -17,7 +17,7 @@
 
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import dts from 'vite-plugin-dts';
 import react from '@vitejs/plugin-react-swc';
 import preserveDirectives from 'rollup-preserve-directives';
@@ -30,7 +30,7 @@ export default defineConfig({
     react(),
     dts({
       rollupTypes: true,
-    }),
+    }) as PluginOption,
     preserveDirectives(),
   ],
   resolve: {
