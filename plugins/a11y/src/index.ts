@@ -5,9 +5,9 @@ import { ToolbarAction } from './ui/actionButton';
 
 export const A11yPlugin: ToolbarPlugin = {
   displayName: 'A11y',
+  pluginName: 'a11y',
   description: 'Accessibility Checker',
   iconSvg: null,
-  promptContextName: 'a11y',
 
   onLoad: (toolbar) => {
     toolbar.renderToolbarAction(ToolbarAction);
