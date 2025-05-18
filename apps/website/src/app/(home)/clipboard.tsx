@@ -1,0 +1,38 @@
+'use client';
+
+import { useState } from 'react';
+import { CopyIcon, CheckIcon } from 'lucide-react';
+
+export function Clipboard({
+  text,
+}: {
+  text: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      // Optionally handle error
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="mb-4 flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 p-4 dark:border-gray-800 dark:bg-gray-900"
+      onClick={handleCopy}
+      aria-label="Copy to clipboard"
+    >
+      <span className="select-all font-mono">{text}</span>
+      {copied ? (
+        <CheckIcon className="h-4 w-4 text-green-500" />
+      ) : (
+        <CopyIcon className="h-4 w-4" />
+      )}
+    </button>
+  );
+}
