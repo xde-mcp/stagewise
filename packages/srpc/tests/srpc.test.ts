@@ -30,7 +30,7 @@ import {
   createSRPCClientBridge,
   createSRPCServerBridge,
   type ZodClient,
-} from '..';
+} from '../src';
 import { z } from 'zod';
 
 // Define test contracts similar to the example
