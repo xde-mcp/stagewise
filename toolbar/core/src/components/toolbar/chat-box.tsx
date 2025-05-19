@@ -101,7 +101,7 @@ export function ToolbarChatArea() {
   return (
     <div
       className={cn(
-        'flex h-64 w-80 flex-1 flex-row items-end gap-1 rounded-xl border border-border/30 bg-zinc-50/80 p-1.5 pl-2 text-sm text-zinc-950 shadow-md backdrop-blur transition-all duration-150 placeholder:text-zinc-950/70',
+        'flex h-64 w-80 flex-1 flex-row items-end gap-1 rounded-xl border border-border/30 bg-zinc-50/80 p-1 pl-2 text-sm text-zinc-950 shadow-md backdrop-blur transition-all duration-150 placeholder:text-zinc-950/70',
         chatState.isPromptCreationActive && 'ring-2 ring-blue-600',
       )}
       onClick={() => chatState.startPromptCreation()}

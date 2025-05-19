@@ -19,7 +19,12 @@
 // It is only used in desktop cases, since the mobile toolbar is placed inside a modal card.
 
 import { Button } from '@headlessui/react';
-import { GripVertical, MessageCircleIcon, X, PuzzleIcon } from 'lucide-react';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  GripVertical,
+  MessageCircleIcon,
+} from 'lucide-react';
 import { ToolbarChatArea } from '../chat-box';
 import { useDraggable } from '@/hooks/use-draggable';
 import { useContext } from 'preact/hooks';
@@ -74,7 +79,7 @@ export function ToolbarDraggableBox() {
         <div
           ref={draggable.handleRef}
           className={cn(
-            'flex items-center justify-center divide-y divide-border/30 rounded-full border border-border/30 bg-white/80 px-1.5 shadow-md backdrop-blur',
+            'flex items-center justify-center divide-y divide-border/30 rounded-full border border-border/30 bg-white/80 px-1 shadow-md backdrop-blur',
             draggable.position.isTopHalf
               ? 'flex-col-reverse divide-y-reverse'
               : 'flex-col',
@@ -111,7 +116,11 @@ export function ToolbarDraggableBox() {
           </ToolbarSection>
           <ToolbarSection>
             <ToolbarButton>
-              <X className="size-3 stroke-zinc-600/80" />
+              {draggable.position.isTopHalf ? (
+                <ChevronUpIcon className="size-4 text-zinc-500/80" />
+              ) : (
+                <ChevronDownIcon className="size-4 text-zinc-500/80" />
+              )}
             </ToolbarButton>
           </ToolbarSection>
         </div>
