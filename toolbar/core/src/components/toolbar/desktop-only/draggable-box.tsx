@@ -58,36 +58,28 @@ export function ToolbarDraggableBox() {
       className="pointer-events-auto absolute p-0.5"
     >
       {/* This is the complete toolbar area where we can stack different stuff. The main toolbar content stands out. */}
-      <div
-        className={cn(
-          'pointer-events-auto flex w-[calc-size(auto)] max-w-[80vw] flex-col items-stretch justify-center gap-2 rounded-3xl border border-border/30 border-solid bg-zinc-50/80 p-0 shadow-lg backdrop-blur-lg transition-all duration-150',
-          chatState.isPromptCreationActive && 'rounded-t-2xl',
-        )}
-      >
-        {/* <ToolbarDraggingGrip /> */}
-        {/* If the app state is right, we also render the button that enables dragging the toolbar around */}
-        {/* This is the plugin content area */}
-        {chatState.isPromptCreationActive && (
-          <div className="p-2">
-            <ToolbarChatArea />
-          </div>
-        )}
+      <div className="flex flex-row items-end justify-end">
+        <div
+          className={cn(
+            'flex flex-col items-stretch justify-end gap-0',
+            draggable.position.isTopHalf && 'flex-col-reverse',
+          )}
+        >
+          {chatState.isPromptCreationActive && (
+            <div className="p-2">
+              <ToolbarChatArea />
+            </div>
+          )}
+        </div>
         <div
           ref={draggable.handleRef}
-          className="flex flex-row items-center justify-center p-1.5"
+          className={cn(
+            'flex items-center justify-center divide-y divide-border/30 rounded-full border border-border/30 bg-white/80 px-1.5 shadow-md backdrop-blur',
+            draggable.position.isTopHalf
+              ? 'flex-col-reverse divide-y-reverse'
+              : 'flex-col',
+          )}
         >
-          <ToolbarSection>
-            <ToolbarButton
-              onClick={() => chatState.startPromptCreation()}
-              className={cn(
-                'rounded-full transition-all duration-150',
-                chatState.isPromptCreationActive &&
-                  'border border-border/30 bg-white shadow-md',
-              )}
-            >
-              <MessageCircleIcon className="size-4 stroke-zinc-950" />
-            </ToolbarButton>
-          </ToolbarSection>
           {pluginsWithActions.length > 0 && (
             <ToolbarSection>
               {pluginsWithActions.map((plugin) => (
@@ -104,6 +96,19 @@ export function ToolbarDraggableBox() {
               ))}
             </ToolbarSection>
           )}
+          <ToolbarSection>
+            <ToolbarButton
+              onClick={() => chatState.startPromptCreation()}
+              className={cn(
+                'rounded-full transition-all duration-150',
+                chatState.isPromptCreationActive &&
+                  'border border-border/30 bg-white shadow-md',
+              )}
+              badgeContent={<>2</>}
+            >
+              <MessageCircleIcon className="size-4 stroke-zinc-950" />
+            </ToolbarButton>
+          </ToolbarSection>
           <ToolbarSection>
             <ToolbarButton>
               <X className="size-3 stroke-zinc-600/80" />
