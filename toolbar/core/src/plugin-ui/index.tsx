@@ -16,4 +16,9 @@ export const useToolbar = () => {
   return plugins.toolbarContext;
 };
 
-export { ToolbarButton } from '@/components/toolbar/button';
+export {
+  PluginBox,
+  PluginBoxHeader,
+  PluginBoxContent,
+  PluginBoxFooter,
+} from '@/plugin-ui/components/plugin-box';

@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { ToolbarChatArea } from '../chat-box';
 import { useDraggable } from '@/hooks/use-draggable';
-import { useContext } from 'preact/hooks';
+import { useContext, useEffect, useState } from 'preact/hooks';
 import { DraggableContext } from '@/hooks/use-draggable';
 import type { DraggableContextType } from '@/hooks/use-draggable';
 import { usePlugins } from '@/hooks/use-plugins';
@@ -38,6 +38,7 @@ import { useChatState } from '@/hooks/use-chat-state';
 import { cn } from '@/utils';
 import { useAppState } from '@/hooks/use-app-state';
 import { Logo } from '@/components/ui/logo';
+import type { VNode } from 'preact';
 
 export function ToolbarDraggableBox() {
   const provider = useContext(DraggableContext) as DraggableContextType | null;
@@ -58,11 +59,23 @@ export function ToolbarDraggableBox() {
   const pluginsWithActions = plugins.plugins.filter(
     (plugin) => plugin.onActionClick,
   );
+
+  const [pluginBox, setPluginBox] = useState<null | {
+    component: VNode;
+    pluginName: string;
+  }>(null);
+
   const chatState = useChatState();
 
   const minimized = useAppState((state) => state.minimized);
   const minimize = useAppState((state) => state.minimize);
   const expand = useAppState((state) => state.expand);
+
+  useEffect(() => {
+    if (minimized) {
+      setPluginBox(null);
+    }
+  }, [minimized]);
 
   return (
     <div
@@ -79,25 +92,35 @@ export function ToolbarDraggableBox() {
       >
         <div
           className={cn(
-            'flex flex-col items-stretch justify-end gap-2',
-            draggable.position.isTopHalf && 'flex-col-reverse',
+            'flex w-72 flex-col-reverse items-stretch justify-end gap-2 transition-all duration-300 ease-out',
+            draggable.position.isTopHalf && 'flex-col',
           )}
         >
           <div
             className={cn(
-              'origin-bottom-right px-2 transition-all duration-300',
+              'z-20 origin-bottom-right px-2 transition-all duration-300 ease-out',
               chatState.isPromptCreationActive
-                ? 'pointer-events-auto scale-100 opacity-100 blur-none'
-                : 'pointer-events-none scale-50 opacity-0 blur-md',
+                ? 'pointer-events-auto h-[calc-size(auto,size)] scale-100 opacity-100 blur-none'
+                : 'pointer-events-none h-0 scale-0 opacity-0 blur-md',
             )}
           >
             <ToolbarChatArea />
+          </div>
+          <div
+            className={cn(
+              'origin-bottom-right px-2 transition-all duration-300 ease-out',
+              pluginBox
+                ? 'pointer-events-auto h-[calc-size(auto,size)] scale-100 opacity-100 blur-none'
+                : 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
+            )}
+          >
+            {pluginBox?.component}
           </div>
         </div>
         <div
           ref={draggable.handleRef}
           className={cn(
-            'rounded-full border border-border/30 bg-zinc-50/80 px-0.5 shadow-md backdrop-blur transition-all duration-300 ease-out',
+            'z-50 rounded-full border border-border/30 bg-zinc-50/80 px-0.5 shadow-md backdrop-blur transition-all duration-300 ease-out',
             draggable.position.isTopHalf
               ? 'flex-col-reverse divide-y-reverse'
               : 'flex-col',
@@ -129,8 +152,26 @@ export function ToolbarDraggableBox() {
               <ToolbarSection>
                 {pluginsWithActions.map((plugin) => (
                   <ToolbarButton
+                    className={cn(
+                      'rounded-full border-border/0 transition-all duration-150',
+                      pluginBox?.pluginName === plugin.pluginName &&
+                        'border border-border/30 bg-white shadow-md',
+                    )}
                     key={plugin.pluginName}
-                    onClick={plugin.onActionClick}
+                    onClick={() => {
+                      if (pluginBox?.pluginName !== plugin.pluginName) {
+                        const component = plugin.onActionClick();
+
+                        if (component) {
+                          setPluginBox({
+                            component: plugin.onActionClick(),
+                            pluginName: plugin.pluginName,
+                          });
+                        }
+                      } else {
+                        setPluginBox(null);
+                      }
+                    }}
                   >
                     {plugin.iconSvg ? (
                       <img src={plugin.iconSvg} alt={plugin.displayName} />
