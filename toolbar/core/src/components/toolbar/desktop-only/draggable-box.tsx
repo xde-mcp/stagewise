@@ -92,7 +92,7 @@ export function ToolbarDraggableBox() {
       >
         <div
           className={cn(
-            'flex w-72 flex-col-reverse items-stretch justify-end gap-2 transition-all duration-300 ease-out',
+            'flex w-96 max-w-[40vw] flex-col-reverse items-stretch justify-end gap-2 transition-all duration-300 ease-out',
             draggable.position.isTopHalf && 'flex-col',
           )}
         >
@@ -124,20 +124,22 @@ export function ToolbarDraggableBox() {
             draggable.position.isTopHalf
               ? 'flex-col-reverse divide-y-reverse'
               : 'flex-col',
-            minimized ? 'h-10 w-10' : 'h-[calc-size(auto,size)] h-auto w-auto',
+            minimized
+              ? 'h-9.5 w-9.5'
+              : 'h-[calc-size(auto,size)] h-auto w-auto',
           )}
         >
           <Button
             onClick={() => expand()}
             className={cn(
-              'absolute right-0 left-0 z-50 flex size-10 origin-center cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-sky-700 to-fuchsia-700 transition-all duration-300 ease-out',
+              'absolute right-0 left-0 z-50 flex size-9 origin-center cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-sky-700 to-fuchsia-700 transition-all duration-300 ease-out',
               minimized
                 ? 'pointer-events-auto scale-100 opacity-100 blur-none'
                 : 'pointer-events-none scale-25 opacity-0 blur-md',
               draggable.position.isTopHalf ? 'top-0' : 'bottom-0',
             )}
           >
-            <Logo className="size-5" color="white" />
+            <Logo className="size-4.5" color="white" />
           </Button>
           <div
             className={cn(
@@ -153,9 +155,9 @@ export function ToolbarDraggableBox() {
                 {pluginsWithActions.map((plugin) => (
                   <ToolbarButton
                     className={cn(
-                      'rounded-full border-border/0 transition-all duration-150',
+                      'rounded-full ring ring-border/0 transition-all duration-150',
                       pluginBox?.pluginName === plugin.pluginName &&
-                        'border border-border/30 bg-white shadow-md',
+                        'bg-white ring-blue-600',
                     )}
                     key={plugin.pluginName}
                     onClick={() => {
@@ -190,9 +192,8 @@ export function ToolbarDraggableBox() {
                     : chatState.startPromptCreation()
                 }
                 className={cn(
-                  'rounded-full border-border/0 transition-all duration-150',
-                  chatState.isPromptCreationActive &&
-                    'border border-border/30 bg-white shadow-md',
+                  'rounded-full ring ring-border/0 transition-all duration-150',
+                  chatState.isPromptCreationActive && 'bg-white ring-border/30',
                 )}
               >
                 <MessageCircleIcon className="size-4 stroke-zinc-950" />
