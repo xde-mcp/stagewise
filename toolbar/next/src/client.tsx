@@ -14,10 +14,11 @@ const DynamicToolbar = dynamic(
 
 export const StagewiseToolbar: ComponentType<{
   config?: ToolbarConfig;
-}> = ({ config }) => {
-  if (process.env.NODE_ENV !== 'development') {
+  enabled?: boolean;
+}> = ({ config, enabled = process.env.NODE_ENV === 'development' }) => {
+  if (!enabled) {
     return null;
   }
 
-  return <DynamicToolbar config={config} />;
+  return <DynamicToolbar config={config} enabled={enabled} />;
 };
