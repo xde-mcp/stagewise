@@ -24,6 +24,7 @@ import {
   ChevronUpIcon,
   GripVertical,
   MessageCircleIcon,
+  PuzzleIcon,
 } from 'lucide-react';
 import { ToolbarChatArea } from '../chat-box';
 import { useDraggable } from '@/hooks/use-draggable';
@@ -35,6 +36,8 @@ import { ToolbarSection } from '../section';
 import { ToolbarButton } from '../button';
 import { useChatState } from '@/hooks/use-chat-state';
 import { cn } from '@/utils';
+import { useAppState } from '@/hooks/use-app-state';
+import { Logo } from '@/components/ui/logo';
 
 export function ToolbarDraggableBox() {
   const provider = useContext(DraggableContext) as DraggableContextType | null;
@@ -57,6 +60,10 @@ export function ToolbarDraggableBox() {
   );
   const chatState = useChatState();
 
+  const minimized = useAppState((state) => state.minimized);
+  const minimize = useAppState((state) => state.minimize);
+  const expand = useAppState((state) => state.expand);
+
   return (
     <div
       ref={draggable.draggableRef}
@@ -71,7 +78,7 @@ export function ToolbarDraggableBox() {
           )}
         >
           {chatState.isPromptCreationActive && (
-            <div className="p-2">
+            <div className="pt-2 pr-2">
               <ToolbarChatArea />
             </div>
           )}
@@ -79,50 +86,73 @@ export function ToolbarDraggableBox() {
         <div
           ref={draggable.handleRef}
           className={cn(
-            'flex items-center justify-center divide-y divide-border/30 rounded-full border border-border/30 bg-white/80 px-1 shadow-md backdrop-blur',
+            'rounded-full border border-border/30 bg-white/80 px-0.5 shadow-md backdrop-blur transition-all duration-300 ease-out',
             draggable.position.isTopHalf
               ? 'flex-col-reverse divide-y-reverse'
               : 'flex-col',
+            minimized ? 'h-10 w-10' : 'h-[calc-size(auto,size)] w-auto',
           )}
         >
-          {pluginsWithActions.length > 0 && (
+          <Button
+            onClick={() => expand()}
+            className={cn(
+              'absolute right-0 left-0 z-50 flex size-10 origin-center cursor-pointer items-center justify-center rounded-full bg-gradient-to-tr from-sky-700 to-fuchsia-700 transition-all duration-300 ease-out',
+              minimized
+                ? 'pointer-events-auto scale-100 opacity-100 blur-none'
+                : 'pointer-events-none scale-25 opacity-0 blur-md',
+              draggable.position.isTopHalf ? 'top-0' : 'bottom-0',
+            )}
+          >
+            <Logo className="size-5" color="white" />
+          </Button>
+          <div
+            className={cn(
+              'flex h-[calc-size(auto)] h-auto scale-100 items-center justify-center divide-y divide-border/30 transition-all duration-300 ease-out',
+              draggable.position.isTopHalf
+                ? 'origin-top-center flex-col-reverse divide-y-reverse'
+                : 'origin-bottom-center flex-col',
+              minimized && 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
+            )}
+          >
+            {pluginsWithActions.length > 0 && (
+              <ToolbarSection>
+                {pluginsWithActions.map((plugin) => (
+                  <ToolbarButton
+                    key={plugin.pluginName}
+                    onClick={plugin.onActionClick}
+                  >
+                    {plugin.iconSvg ? (
+                      <img src={plugin.iconSvg} alt={plugin.displayName} />
+                    ) : (
+                      <PuzzleIcon className="size-4" />
+                    )}
+                  </ToolbarButton>
+                ))}
+              </ToolbarSection>
+            )}
             <ToolbarSection>
-              {pluginsWithActions.map((plugin) => (
-                <ToolbarButton
-                  key={plugin.pluginName}
-                  onClick={plugin.onActionClick}
-                >
-                  {plugin.iconSvg ? (
-                    <img src={plugin.iconSvg} alt={plugin.displayName} />
-                  ) : (
-                    <PuzzleIcon className="size-4" />
-                  )}
-                </ToolbarButton>
-              ))}
+              <ToolbarButton
+                onClick={() => chatState.startPromptCreation()}
+                className={cn(
+                  'rounded-full transition-all duration-150',
+                  chatState.isPromptCreationActive &&
+                    'border border-border/30 bg-white shadow-md',
+                )}
+                badgeContent={<>2</>}
+              >
+                <MessageCircleIcon className="size-4 stroke-zinc-950" />
+              </ToolbarButton>
             </ToolbarSection>
-          )}
-          <ToolbarSection>
-            <ToolbarButton
-              onClick={() => chatState.startPromptCreation()}
-              className={cn(
-                'rounded-full transition-all duration-150',
-                chatState.isPromptCreationActive &&
-                  'border border-border/30 bg-white shadow-md',
-              )}
-              badgeContent={<>2</>}
-            >
-              <MessageCircleIcon className="size-4 stroke-zinc-950" />
-            </ToolbarButton>
-          </ToolbarSection>
-          <ToolbarSection>
-            <ToolbarButton>
-              {draggable.position.isTopHalf ? (
-                <ChevronUpIcon className="size-4 text-zinc-500/80" />
-              ) : (
-                <ChevronDownIcon className="size-4 text-zinc-500/80" />
-              )}
-            </ToolbarButton>
-          </ToolbarSection>
+            <ToolbarSection>
+              <ToolbarButton onClick={() => minimize()}>
+                {draggable.position.isTopHalf ? (
+                  <ChevronUpIcon className="size-4 text-zinc-500/80" />
+                ) : (
+                  <ChevronDownIcon className="size-4 text-zinc-500/80" />
+                )}
+              </ToolbarButton>
+            </ToolbarSection>
+          </div>
         </div>
       </div>
     </div>

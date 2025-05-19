@@ -35,7 +35,7 @@ export function ToolbarItem(props: ToolbarItemProps) {
           className={cn(
             'bg-blue-600 text-white',
             props.badgeClassName,
-            '-right-0.5 pointer-events-none absolute bottom-0 flex h-3 w-max min-w-3 max-w-8 select-none items-center justify-center truncate rounded-full px-0.5 font-semibold text-[0.5em]',
+            'pointer-events-none absolute right-0 bottom-0 flex h-3 w-max min-w-3 max-w-8 select-none items-center justify-center truncate rounded-full px-0.5 font-semibold text-[0.5em]',
           )}
         >
           {props.badgeContent}
