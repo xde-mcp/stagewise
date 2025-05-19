@@ -8,18 +8,22 @@ const props = defineProps<{
 }>();
 
 onMounted(() => {
-  initToolbar(props.config);
+  if (process.env.NODE_ENV === 'development') {
+    initToolbar(props.config);
+  }
 });
 
 // If the config can change dynamically and the toolbar needs to re-initialize
 watch(
   () => props.config,
   (newConfig) => {
-    // We might need a way to destroy/re-initialize the toolbar if initToolbar isn't idempotent
-    // or doesn't handle being called multiple times.
-    // For now, just calling it again.
-    console.log('StagewiseToolbar: Config changed, re-initializing.');
-    initToolbar(newConfig);
+    if (process.env.NODE_ENV === 'development') {
+      // We might need a way to destroy/re-initialize the toolbar if initToolbar isn't idempotent
+      // or doesn't handle being called multiple times.
+      // For now, just calling it again.
+      console.log('StagewiseToolbar: Config changed, re-initializing.');
+      initToolbar(newConfig);
+    }
   },
   { deep: true },
 );
