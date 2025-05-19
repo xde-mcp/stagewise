@@ -1,4 +1,4 @@
 export const siteConfig = {
-  title: 'Stagewise',
+  title: 'stagewise',
   description: 'Eyesight for AI Agents',
 };

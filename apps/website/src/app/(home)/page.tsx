@@ -131,7 +131,7 @@ export default function Home() {
           <div className="mx-auto max-w-4xl scale-[1.02] transform overflow-hidden rounded-xl border border-purple-900/50 shadow-[0_0_40px_rgba(128,90,213,0.25)] transition-transform duration-500">
             <Image
               src="/demo.gif"
-              alt="Stagewise Demo"
+              alt="stagewise Demo"
               width={1200}
               height={675}
               className="w-full"
@@ -220,7 +220,7 @@ export default function Home() {
               Works With Your Stack
             </h2>
             <p className="mx-auto max-w-2xl text-gray-600 text-lg dark:text-gray-400">
-              Stagewise integrates seamlessly with popular frontend frameworks
+              stagewise integrates seamlessly with popular frontend frameworks
             </p>
           </div>
         </ScrollReveal>
@@ -459,7 +459,7 @@ export default function Home() {
           <div className="mb-4 flex items-center gap-2 md:mb-0">
             <Image
               src="/logo.png"
-              alt="Stagewise Logo"
+              alt="stagewise Logo"
               width={24}
               height={24}
               className="rounded-full"
