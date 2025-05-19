@@ -41,7 +41,7 @@ export function AnimatedBackground() {
 
     // Create particles
     const particlesArray: Particle[] = [];
-    const numberOfParticles = 50;
+    const numberOfParticles = 70;
 
     class Particle {
       x: number;
@@ -58,9 +58,9 @@ export function AnimatedBackground() {
         this.speedX = (Math.random() - 0.5) * 0.5;
         this.speedY = (Math.random() - 0.5) * 0.5;
         if (isDarkMode) {
-          this.color = `rgba(${Math.floor(Math.random() * 90 + 100)}, ${Math.floor(
-            Math.random() * 50 + 50,
-          )}, ${Math.floor(Math.random() * 150 + 100)}, ${Math.random() * 0.2 + 0.1})`;
+          this.color = `rgba(${Math.floor(Math.random() * 100 + 150)}, ${Math.floor(
+            Math.random() * 50 + 100,
+          )}, ${Math.floor(Math.random() * 150 + 150)}, ${Math.random() * 0.3 + 0.2})`;
         } else {
           // Lighter colors for light mode
           this.color = `rgba(${Math.floor(Math.random() * 50 + 200)}, ${Math.floor(
@@ -105,7 +105,7 @@ export function AnimatedBackground() {
             const opacity = 0.1 - distance / 2000;
             if (!ctx) return;
             ctx.strokeStyle = isDarkMode
-              ? `rgba(150, 100, 200, ${opacity})`
+              ? `rgba(150, 100, 220, ${opacity})`
               : `rgba(200, 200, 200, ${opacity * 2})`; // Lighter gray for light mode, slightly more visible
             ctx.lineWidth = 1;
             ctx.beginPath();

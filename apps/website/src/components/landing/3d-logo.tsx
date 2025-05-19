@@ -53,7 +53,7 @@ export function Logo3D() {
       >
         <Image
           src="/logo.png"
-          alt="Stagewise Logo"
+          alt="stagewise Logo"
           width={48}
           height={48}
           className="rounded-full"
