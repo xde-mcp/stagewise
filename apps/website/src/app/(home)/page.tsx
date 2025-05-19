@@ -136,6 +136,7 @@ export default function Home() {
               className="w-full"
               autoPlay
               muted
+              loop
               preload="auto"
               playsInline
             />
