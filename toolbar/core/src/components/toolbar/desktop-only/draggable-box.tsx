@@ -70,27 +70,38 @@ export function ToolbarDraggableBox() {
       className="pointer-events-auto absolute p-0.5"
     >
       {/* This is the complete toolbar area where we can stack different stuff. The main toolbar content stands out. */}
-      <div className="flex flex-row items-end justify-end">
+      <div
+        className={cn(
+          'flex justify-end',
+          draggable.position.isLeftHalf ? 'flex-row-reverse' : 'flex-row',
+          draggable.position.isTopHalf ? 'items-start' : 'items-end',
+        )}
+      >
         <div
           className={cn(
-            'flex flex-col items-stretch justify-end gap-0',
+            'flex flex-col items-stretch justify-end gap-2',
             draggable.position.isTopHalf && 'flex-col-reverse',
           )}
         >
-          {chatState.isPromptCreationActive && (
-            <div className="pt-2 pr-2">
-              <ToolbarChatArea />
-            </div>
-          )}
+          <div
+            className={cn(
+              'origin-bottom-right px-2 transition-all duration-300',
+              chatState.isPromptCreationActive
+                ? 'pointer-events-auto scale-100 opacity-100 blur-none'
+                : 'pointer-events-none scale-50 opacity-0 blur-md',
+            )}
+          >
+            <ToolbarChatArea />
+          </div>
         </div>
         <div
           ref={draggable.handleRef}
           className={cn(
-            'rounded-full border border-border/30 bg-white/80 px-0.5 shadow-md backdrop-blur transition-all duration-300 ease-out',
+            'rounded-full border border-border/30 bg-zinc-50/80 px-0.5 shadow-md backdrop-blur transition-all duration-300 ease-out',
             draggable.position.isTopHalf
               ? 'flex-col-reverse divide-y-reverse'
               : 'flex-col',
-            minimized ? 'h-10 w-10' : 'h-[calc-size(auto,size)] w-auto',
+            minimized ? 'h-10 w-10' : 'h-[calc-size(auto,size)] h-auto w-auto',
           )}
         >
           <Button
@@ -132,13 +143,16 @@ export function ToolbarDraggableBox() {
             )}
             <ToolbarSection>
               <ToolbarButton
-                onClick={() => chatState.startPromptCreation()}
+                onClick={() =>
+                  chatState.isPromptCreationActive
+                    ? chatState.stopPromptCreation()
+                    : chatState.startPromptCreation()
+                }
                 className={cn(
-                  'rounded-full transition-all duration-150',
+                  'rounded-full border-border/0 transition-all duration-150',
                   chatState.isPromptCreationActive &&
                     'border border-border/30 bg-white shadow-md',
                 )}
-                badgeContent={<>2</>}
               >
                 <MessageCircleIcon className="size-4 stroke-zinc-950" />
               </ToolbarButton>

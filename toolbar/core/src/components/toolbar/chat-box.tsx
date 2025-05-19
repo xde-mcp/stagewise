@@ -35,10 +35,6 @@ export function ToolbarChatArea() {
     [currentChat?.inputValue],
   );
 
-  const showBigBox = useMemo(() => {
-    return currentInput.split('\n').length > 1 || currentInput.length > 30;
-  }, [currentInput]);
-
   const handleInputChange = useCallback(
     (value: string) => {
       chatState.setChatInput(chatState.currentChatId, value);
@@ -81,7 +77,7 @@ export function ToolbarChatArea() {
   const buttonClassName = useMemo(
     () =>
       cn(
-        'flex size-6 items-center justify-center rounded-full bg-transparent p-1 text-zinc-950 opacity-20',
+        'flex size-8 items-center justify-center rounded-full bg-transparent p-1 text-zinc-950 opacity-20',
         currentInput.length > 0 && 'bg-blue-600 text-white opacity-100',
       ),
     [currentInput.length],
@@ -90,10 +86,9 @@ export function ToolbarChatArea() {
   const textareaClassName = useMemo(
     () =>
       cn(
-        'w-full flex-1 resize-none bg-transparent text-zinc-950 placeholder:text-zinc-950/50 focus:outline-none',
-        showBigBox ? 'h-[4.5em]' : 'h-6',
+        'h-full w-full flex-1 resize-none bg-transparent text-zinc-950 placeholder:text-zinc-950/50 focus:outline-none',
       ),
-    [showBigBox],
+    [],
   );
 
   const ctrlAltCText = useHotkeyListenerComboText(HotkeyActions.CTRL_ALT_C);
@@ -101,7 +96,7 @@ export function ToolbarChatArea() {
   return (
     <div
       className={cn(
-        'flex h-36 w-80 flex-1 flex-row items-end gap-1 rounded-3xl border border-border/30 bg-zinc-50/80 p-3 text-sm text-zinc-950 shadow-md backdrop-blur transition-all duration-150 placeholder:text-zinc-950/70',
+        'flex h-24 w-80 flex-1 flex-row items-end gap-1 rounded-2xl border border-border/30 bg-zinc-50/80 p-4 text-sm text-zinc-950 shadow-md backdrop-blur transition-all duration-150 placeholder:text-zinc-950/70',
       )}
       onClick={() => chatState.startPromptCreation()}
       role="button"
@@ -110,7 +105,6 @@ export function ToolbarChatArea() {
       <Textarea
         ref={inputRef}
         className={textareaClassName}
-        rows={showBigBox ? 4 : 1}
         value={currentInput}
         onChange={(e) => handleInputChange(e.currentTarget.value)}
         onKeyDown={handleKeyDown}
@@ -125,7 +119,7 @@ export function ToolbarChatArea() {
         disabled={currentInput.length === 0}
         onClick={handleSubmit}
       >
-        <Send className="size-3" />
+        <Send className="size-4" />
       </Button>
     </div>
   );
