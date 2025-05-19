@@ -19,7 +19,7 @@
 // It is only used in desktop cases, since the mobile toolbar is placed inside a modal card.
 
 import { Button } from '@headlessui/react';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, PuzzleIcon } from 'lucide-react';
 import { ToolbarChatBox } from '../chat-box';
 import { ToolbarMoreActionsButton } from '../more-actions-button';
 import { useDraggable } from '@/hooks/use-draggable';
@@ -28,6 +28,7 @@ import { DraggableContext } from '@/hooks/use-draggable';
 import type { DraggableContextType } from '@/hooks/use-draggable';
 import { usePlugins } from '@/hooks/use-plugins';
 import { ToolbarSection } from '../section';
+import { ToolbarButton } from '../button';
 
 export function ToolbarDraggableBox() {
   const provider = useContext(DraggableContext) as DraggableContextType | null;
@@ -45,6 +46,10 @@ export function ToolbarDraggableBox() {
 
   const plugins = usePlugins();
 
+  const pluginsWithActions = plugins.plugins.filter(
+    (plugin) => plugin.onActionClick,
+  );
+
   return (
     <div
       ref={draggable.draggableRef}
@@ -61,13 +66,20 @@ export function ToolbarDraggableBox() {
           <ToolbarSection>
             <ToolbarChatBox />
           </ToolbarSection>
-          {Object.values(plugins.pluginToolbarActions).length > 0 && (
+          {pluginsWithActions.length > 0 && (
             <ToolbarSection>
-              {Object.entries(plugins.pluginToolbarActions).map(
-                ([key, Action]) => (
-                  <Action key={key} />
-                ),
-              )}
+              {pluginsWithActions.map((plugin) => (
+                <ToolbarButton
+                  key={plugin.pluginName}
+                  onClick={plugin.onActionClick}
+                >
+                  {plugin.iconSvg ? (
+                    <img src={plugin.iconSvg} alt={plugin.displayName} />
+                  ) : (
+                    <PuzzleIcon className="size-4" />
+                  )}
+                </ToolbarButton>
+              ))}
             </ToolbarSection>
           )}
           <ToolbarSection>

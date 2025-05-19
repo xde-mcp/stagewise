@@ -15,28 +15,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import {
-  type ComponentChildren,
-  createContext,
-  type FunctionComponent,
-} from 'preact';
-import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { type ComponentChildren, createContext } from 'preact';
+import { useContext, useEffect, useMemo, useRef } from 'preact/hooks';
 import type { ToolbarContext, ToolbarPlugin } from '@/plugin';
 import { useSRPCBridge } from './use-srpc-bridge';
 
 export interface PluginContextType {
   plugins: ToolbarPlugin[];
   toolbarContext: ToolbarContext;
-  pluginToolbarActions: Record<string, FunctionComponent>;
 }
 
 const PluginContext = createContext<PluginContextType>({
   plugins: [],
   toolbarContext: {
     sendPrompt: () => {},
-    renderToolbarAction: () => ({ remove: () => {} }),
   },
-  pluginToolbarActions: {},
 });
 
 export function PluginProvider({
@@ -48,10 +41,6 @@ export function PluginProvider({
 }) {
   const { bridge } = useSRPCBridge();
 
-  const [pluginToolbarActions, setPluginToolbarActions] = useState<
-    Record<string, FunctionComponent>
-  >({});
-
   const toolbarContext = useMemo(() => {
     return {
       sendPrompt: async (prompt: string) => {
@@ -62,20 +51,6 @@ export function PluginProvider({
             onUpdate: (update) => {},
           },
         );
-      },
-      renderToolbarAction: (component: FunctionComponent) => {
-        const key =
-          Date.now().toString() + Math.random().toString(36).substring(2);
-        setPluginToolbarActions((prev) => ({ ...prev, [key]: component }));
-        return {
-          remove: () => {
-            setPluginToolbarActions((prev) => {
-              const newState = { ...prev };
-              delete newState[key];
-              return newState;
-            });
-          },
-        };
       },
     };
   }, [bridge]);
@@ -94,9 +69,8 @@ export function PluginProvider({
     return {
       plugins,
       toolbarContext,
-      pluginToolbarActions,
     };
-  }, [plugins, toolbarContext, pluginToolbarActions]);
+  }, [plugins, toolbarContext]);
 
   return (
     <PluginContext.Provider value={value}>{children}</PluginContext.Provider>
