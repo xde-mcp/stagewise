@@ -22,7 +22,7 @@ import { Button, Textarea } from '@headlessui/react';
 import { Send } from 'lucide-react';
 import { useEffect, useMemo, useRef, useCallback } from 'preact/hooks';
 
-export function ToolbarChatBox() {
+export function ToolbarChatArea() {
   const chatState = useChatState();
 
   const currentChat = useMemo(
@@ -101,7 +101,7 @@ export function ToolbarChatBox() {
   return (
     <div
       className={cn(
-        'flex h-fit w-80 flex-1 flex-row items-end gap-1 rounded-2xl border border-border/10 bg-zinc-950/5 p-1.5 pl-2 text-sm text-zinc-950 shadow-inner transition-all duration-150 placeholder:text-zinc-950/70',
+        'flex h-64 w-80 flex-1 flex-row items-end gap-1 rounded-lg border border-border/30 bg-white/40 p-1.5 pl-2 text-sm text-zinc-950 shadow-md transition-all duration-150 placeholder:text-zinc-950/70',
         chatState.isPromptCreationActive && 'ring-2 ring-blue-600',
       )}
       onClick={() => chatState.startPromptCreation()}

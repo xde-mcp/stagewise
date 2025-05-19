@@ -19,9 +19,8 @@
 // It is only used in desktop cases, since the mobile toolbar is placed inside a modal card.
 
 import { Button } from '@headlessui/react';
-import { GripVertical, PuzzleIcon } from 'lucide-react';
-import { ToolbarChatBox } from '../chat-box';
-import { ToolbarMoreActionsButton } from '../more-actions-button';
+import { GripVertical, MessageCircleIcon, X, PuzzleIcon } from 'lucide-react';
+import { ToolbarChatArea } from '../chat-box';
 import { useDraggable } from '@/hooks/use-draggable';
 import { useContext } from 'preact/hooks';
 import { DraggableContext } from '@/hooks/use-draggable';
@@ -29,6 +28,8 @@ import type { DraggableContextType } from '@/hooks/use-draggable';
 import { usePlugins } from '@/hooks/use-plugins';
 import { ToolbarSection } from '../section';
 import { ToolbarButton } from '../button';
+import { useChatState } from '@/hooks/use-chat-state';
+import { cn } from '@/utils';
 
 export function ToolbarDraggableBox() {
   const provider = useContext(DraggableContext) as DraggableContextType | null;
@@ -40,7 +41,7 @@ export function ToolbarDraggableBox() {
 
   const draggable = useDraggable({
     startThreshold: 10,
-    initialSnapArea: 'bottomCenter',
+    initialSnapArea: 'bottomRight',
   });
   if (!isReady) return null; // Wait until borderLocation is valid
 
@@ -49,6 +50,7 @@ export function ToolbarDraggableBox() {
   const pluginsWithActions = plugins.plugins.filter(
     (plugin) => plugin.onActionClick,
   );
+  const chatState = useChatState();
 
   return (
     <div
@@ -56,15 +58,35 @@ export function ToolbarDraggableBox() {
       className="pointer-events-auto absolute p-0.5"
     >
       {/* This is the complete toolbar area where we can stack different stuff. The main toolbar content stands out. */}
-      <div className="pointer-events-auto flex w-min max-w-[80vw] flex-col items-stretch justify-center rounded-3xl border border-border/30 border-solid bg-zinc-50/80 p-0 shadow-lg backdrop-blur-lg transition-colors">
+      <div
+        className={cn(
+          'pointer-events-auto flex w-[calc-size(auto)] max-w-[80vw] flex-col items-stretch justify-center gap-2 rounded-3xl border border-border/30 border-solid bg-zinc-50/80 p-0 shadow-lg backdrop-blur-lg transition-all duration-150',
+          chatState.isPromptCreationActive && 'rounded-t-2xl',
+        )}
+      >
         {/* <ToolbarDraggingGrip /> */}
         {/* If the app state is right, we also render the button that enables dragging the toolbar around */}
+        {/* This is the plugin content area */}
+        {chatState.isPromptCreationActive && (
+          <div className="p-2">
+            <ToolbarChatArea />
+          </div>
+        )}
         <div
           ref={draggable.handleRef}
-          className="flex w-fit flex-row items-center justify-center rounded-3xl border-border/30 border-t bg-background/40 p-1.5 shadow-lg transition-colors first:border-none"
+          className="flex flex-row items-center justify-center p-1.5"
         >
           <ToolbarSection>
-            <ToolbarChatBox />
+            <ToolbarButton
+              onClick={() => chatState.startPromptCreation()}
+              className={cn(
+                'rounded-full transition-all duration-150',
+                chatState.isPromptCreationActive &&
+                  'border border-border/30 bg-white shadow-md',
+              )}
+            >
+              <MessageCircleIcon className="size-4 stroke-zinc-950" />
+            </ToolbarButton>
           </ToolbarSection>
           {pluginsWithActions.length > 0 && (
             <ToolbarSection>
@@ -83,7 +105,9 @@ export function ToolbarDraggableBox() {
             </ToolbarSection>
           )}
           <ToolbarSection>
-            <ToolbarMoreActionsButton />
+            <ToolbarButton>
+              <X className="size-3 stroke-zinc-600/80" />
+            </ToolbarButton>
           </ToolbarSection>
         </div>
       </div>
