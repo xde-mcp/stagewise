@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CopyIcon, CheckIcon } from 'lucide-react';
+import { usePostHog } from 'posthog-js/react';
 
 export function Clipboard({
   text,
@@ -9,11 +10,13 @@ export function Clipboard({
   text: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const posthog = usePostHog();
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      posthog?.capture('quickstart_toolbar_copy_click');
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
       // Optionally handle error

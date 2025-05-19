@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from '@stagewise/ui/components/tooltip';
 import { SiNpm } from 'react-icons/si';
+import { usePostHog } from 'posthog-js/react';
 
 export function ActionButtons() {
   return (
@@ -37,10 +38,11 @@ export function ActionButtons() {
 
 export default function CopyNPMInstallCommandButton() {
   const [copied, setCopied] = useState<boolean>(false);
-
+  const posthog = usePostHog();
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText('npm install @stagewise/toolbar');
+      posthog?.capture('quickstart_copy_npm_click');
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (err) {
