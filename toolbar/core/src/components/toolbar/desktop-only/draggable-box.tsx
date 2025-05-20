@@ -94,10 +94,18 @@ export function ToolbarDraggableBox() {
         {/* This is the plugin box. It is only visible when a plugin is selected. */}
         <div
           className={cn(
-            'flex min-h-0 flex-1 origin-bottom-right flex-col items-stretch justify-end px-2 transition-all duration-300 ease-out',
+            'flex min-h-0 flex-1 origin-bottom-right flex-col items-stretch px-2 transition-all duration-300 ease-out',
             pluginBox
               ? 'pointer-events-auto scale-100 opacity-100 blur-none'
               : 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
+            draggable.position.isTopHalf ? 'justify-start' : 'justify-end',
+            draggable.position.isTopHalf
+              ? draggable.position.isLeftHalf
+                ? 'origin-top-left'
+                : 'origin-top-right'
+              : draggable.position.isLeftHalf
+                ? 'origin-bottom-left'
+                : 'origin-bottom-right',
           )}
         >
           {pluginBox?.component}
@@ -105,10 +113,18 @@ export function ToolbarDraggableBox() {
         {/* This is the chat area. It is only visible when the prompt creation is active. */}
         <div
           className={cn(
-            'z-20 w-full origin-bottom-right px-2 transition-all duration-300 ease-out',
+            'z-20 w-full px-2 transition-all duration-300 ease-out',
             chatState.isPromptCreationActive
-              ? 'pointer-events-auto mt-2 scale-100 opacity-100 blur-none'
+              ? 'pointer-events-auto scale-100 opacity-100 blur-none'
               : 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
+            draggable.position.isTopHalf ? 'mb-2' : 'mt-2',
+            draggable.position.isTopHalf
+              ? draggable.position.isLeftHalf
+                ? 'origin-top-left'
+                : 'origin-top-right'
+              : draggable.position.isLeftHalf
+                ? 'origin-bottom-left'
+                : 'origin-bottom-right',
           )}
         >
           <ToolbarChatArea />
@@ -190,7 +206,12 @@ export function ToolbarDraggableBox() {
           <ToolbarSection>
             <ToolbarButton
               onClick={() => minimize()}
-              className="h-5 rounded-t-lg rounded-b-3xl"
+              className={cn(
+                'h-5',
+                draggable.position.isTopHalf
+                  ? 'rounded-t-3xl rounded-b-lg'
+                  : 'rounded-t-lg rounded-b-3xl',
+              )}
             >
               {draggable.position.isTopHalf ? (
                 <ChevronUpIcon className="size-4 text-zinc-500/80" />
