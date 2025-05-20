@@ -45,7 +45,6 @@ export const DraggableProvider = ({
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }) => {
-  // Set borderLocation once on mount, do not update on scroll/resize/box resize
   const [borderLocation, setBorderLocation] = useState({
     top: 0,
     left: 0,
@@ -53,23 +52,40 @@ export const DraggableProvider = ({
     bottom: 0,
   });
 
+  // Update border location when container dimensions change
   useEffect(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setBorderLocation({
-        top: rect.top,
-        left: rect.left,
-        right: rect.right,
-        bottom: rect.bottom,
-      });
-    } else {
-      // Optionally handle if containerRef.current is null after mount,
-      // though the hook assumes a valid containerRef.
-      console.warn(
-        'DraggableProvider: containerRef.current is null after mount. borderLocation might be incorrect.',
-      );
-    }
-  }, []); // Empty dependency array ensures this runs once after mount
+    if (!containerRef.current) return;
+
+    const updateBorderLocation = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setBorderLocation({
+          top: rect.top,
+          left: rect.left,
+          right: rect.right,
+          bottom: rect.bottom,
+        });
+      }
+    };
+
+    // Initial update
+    updateBorderLocation();
+
+    // Create ResizeObserver to watch for container size changes
+    const resizeObserver = new ResizeObserver(updateBorderLocation);
+    resizeObserver.observe(containerRef.current);
+
+    // Watch for window resize events
+    window.addEventListener('resize', updateBorderLocation);
+
+    return () => {
+      if (containerRef.current) {
+        resizeObserver.unobserve(containerRef.current);
+      }
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateBorderLocation);
+    };
+  }, [containerRef]);
 
   const dragStartListeners = useRef<Set<() => void>>(new Set());
   const dragEndListeners = useRef<Set<() => void>>(new Set());
