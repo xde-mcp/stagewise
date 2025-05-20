@@ -1,7 +1,5 @@
 import {
   Panel,
-  Header,
-  Content,
   Button,
   useToolbar,
   useEffect,
@@ -84,8 +82,8 @@ export const A11yComponent = () => {
 
   return (
     <Panel>
-      <Header title="Accessibility Checker" />
-      <Content>
+      <Panel.Header title="Accessibility Checker" />
+      <Panel.Content>
         {/* Filters */}
         <div
           style={{
@@ -198,7 +196,7 @@ export const A11yComponent = () => {
             </div>
           ))}
         </div>
-      </Content>
+      </Panel.Content>
     </Panel>
   );
 };
