@@ -16,8 +16,6 @@ export const useToolbar = () => {
   return plugins.toolbarContext;
 };
 
-export {
-  Panel,
-  Button,
-  Badge,
-} from '@/plugin-ui/components/plugin-box';
+export * from '@/plugin-ui/components/panel';
+export * from '@/plugin-ui/components/badge';
+export * from '@/plugin-ui/components/button';
