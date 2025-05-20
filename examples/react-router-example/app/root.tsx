@@ -6,6 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from 'react-router';
+import { StagewiseToolbar } from '@stagewise/toolbar-react';
 
 import type { Route } from './+types/root';
 import './app.css';
@@ -34,6 +35,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body>
         {children}
         <ScrollRestoration />
+        <StagewiseToolbar />
         <Scripts />
       </body>
     </html>
