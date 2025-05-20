@@ -92,8 +92,8 @@ export function ToolbarDraggableBox() {
       >
         <div
           className={cn(
-            'flex w-96 max-w-[40vw] flex-col-reverse items-stretch justify-end gap-2 transition-all duration-300 ease-out',
-            draggable.position.isTopHalf && 'flex-col',
+            'flex w-96 max-w-[40vw] flex-col items-stretch justify-end gap-2 transition-all duration-300 ease-out',
+            draggable.position.isTopHalf && 'flex-col-reverse',
           )}
         >
           {/* This is the plugin box. It is only visible when a plugin is selected. */}
@@ -102,7 +102,7 @@ export function ToolbarDraggableBox() {
               'h-full min-h-0 origin-bottom-right px-2 transition-all duration-300 ease-out',
               pluginBox
                 ? 'pointer-events-auto scale-100 opacity-100 blur-none'
-                : 'pointer-events-none h-0 scale-0 opacity-0 blur-md',
+                : 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
             )}
           >
             {pluginBox?.component}
@@ -113,7 +113,7 @@ export function ToolbarDraggableBox() {
               'z-20 w-full origin-bottom-right px-2 transition-all duration-300 ease-out',
               chatState.isPromptCreationActive
                 ? 'pointer-events-auto mt-2 scale-100 opacity-100 blur-none'
-                : 'pointer-events-none h-0 scale-0 opacity-0 blur-md',
+                : 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
             )}
           >
             <ToolbarChatArea />
@@ -156,11 +156,6 @@ export function ToolbarDraggableBox() {
               <ToolbarSection>
                 {pluginsWithActions.map((plugin) => (
                   <ToolbarButton
-                    className={cn(
-                      'rounded-full ring ring-border/0 transition-all duration-150',
-                      pluginBox?.pluginName === plugin.pluginName &&
-                        'bg-white ring-blue-600',
-                    )}
                     key={plugin.pluginName}
                     onClick={() => {
                       if (pluginBox?.pluginName !== plugin.pluginName) {
@@ -176,6 +171,7 @@ export function ToolbarDraggableBox() {
                         setPluginBox(null);
                       }
                     }}
+                    active={pluginBox?.pluginName === plugin.pluginName}
                   >
                     {plugin.iconSvg ? (
                       <img src={plugin.iconSvg} alt={plugin.displayName} />
@@ -193,16 +189,16 @@ export function ToolbarDraggableBox() {
                     ? chatState.stopPromptCreation()
                     : chatState.startPromptCreation()
                 }
-                className={cn(
-                  'rounded-full ring ring-border/0 transition-all duration-150',
-                  chatState.isPromptCreationActive && 'bg-white ring-border/30',
-                )}
+                active={chatState.isPromptCreationActive}
               >
                 <MessageCircleIcon className="size-4 stroke-zinc-950" />
               </ToolbarButton>
             </ToolbarSection>
             <ToolbarSection>
-              <ToolbarButton onClick={() => minimize()}>
+              <ToolbarButton
+                onClick={() => minimize()}
+                className="h-6 rounded-t-md rounded-b-2xl"
+              >
                 {draggable.position.isTopHalf ? (
                   <ChevronUpIcon className="size-4 text-zinc-500/80" />
                 ) : (
