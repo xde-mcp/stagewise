@@ -1,8 +1,17 @@
+import { cn } from '@/utils';
 import type { ComponentChildren } from 'preact';
 
-function Panel({ children }: { children: ComponentChildren }) {
+function Panel({
+  children,
+  alwaysFullHeight = false,
+}: { children: ComponentChildren; alwaysFullHeight?: boolean }) {
   return (
-    <section className="flex h-full max-h-auto max-h-full min-h-48 w-auto flex-col items-center justify-center rounded-2xl border border-border/30 bg-white/80 p-4 backdrop-blur-md">
+    <section
+      className={cn(
+        'flex max-h-full min-h-48 flex-col items-stretch justify-start rounded-2xl border border-border/30 bg-zinc-50/80 p-4 shadow-md backdrop-blur-md',
+        alwaysFullHeight && 'h-full',
+      )}
+    >
       {children}
     </section>
   );
@@ -16,7 +25,7 @@ Panel.Header = function PanelHeader({
   description?: string;
 }) {
   return (
-    <header className="mb-3 flex w-full flex-col gap-1 bg-white text-zinc-950">
+    <header className="mb-3 flex flex-col gap-1 text-zinc-950">
       {title && <h3 className="font-semibold text-lg ">{title}</h3>}
       {description && (
         <p className="font-medium text-zinc-600">{description}</p>
