@@ -1,37 +1,109 @@
 import { cn } from '@/utils';
 import type { ComponentChildren } from 'preact';
+import { cva, type VariantProps } from 'class-variance-authority';
 
-interface BadgeProps {
+const badgeVariants = cva('rounded-md p-2', {
+  variants: {
+    color: {
+      blue: '',
+      green: '',
+      red: '',
+      yellow: '',
+      purple: '',
+      orange: '',
+      pink: '',
+    },
+    style: {
+      default: 'text-white',
+      outline: 'border text-zinc-950',
+    },
+  },
+  compoundVariants: [
+    {
+      style: 'default',
+      color: 'blue',
+      className: 'bg-blue-500',
+    },
+    {
+      style: 'default',
+      color: 'green',
+      className: 'bg-green-500',
+    },
+    {
+      style: 'default',
+      color: 'red',
+      className: 'bg-red-500',
+    },
+    {
+      style: 'default',
+      color: 'yellow',
+      className: 'bg-yellow-500',
+    },
+    {
+      style: 'default',
+      color: 'purple',
+      className: 'bg-purple-500',
+    },
+    {
+      style: 'default',
+      color: 'orange',
+      className: 'bg-orange-500',
+    },
+    {
+      style: 'default',
+      color: 'pink',
+      className: 'bg-pink-500',
+    },
+    {
+      style: 'outline',
+      color: 'blue',
+      className: 'border-blue-500',
+    },
+    {
+      style: 'outline',
+      color: 'green',
+      className: 'border-green-500',
+    },
+    {
+      style: 'outline',
+      color: 'red',
+      className: 'border-red-500',
+    },
+    {
+      style: 'outline',
+      color: 'yellow',
+      className: 'border-yellow-500',
+    },
+    {
+      style: 'outline',
+      color: 'purple',
+      className: 'border-purple-500',
+    },
+    {
+      style: 'outline',
+      color: 'orange',
+      className: 'border-orange-500',
+    },
+    {
+      style: 'outline',
+      color: 'pink',
+      className: 'border-pink-500',
+    },
+  ],
+  defaultVariants: {
+    color: 'blue',
+    style: 'default',
+  },
+});
+
+interface BadgeProps extends VariantProps<typeof badgeVariants> {
   children: ComponentChildren;
-  color: 'blue' | 'green' | 'red' | 'yellow' | 'purple' | 'orange' | 'pink';
-  style: 'default' | 'outline';
+  className?: string;
 }
 
-export function Badge({ children, color, style }: BadgeProps) {
+export function Badge({ children, color, style, className }: BadgeProps) {
   return (
-    <span
-      className={cn(
-        'rounded-md p-2 text-white',
-        style === 'default' && {
-          'bg-blue-500': color === 'blue',
-          'bg-green-500': color === 'green',
-          'bg-red-500': color === 'red',
-          'bg-yellow-500': color === 'yellow',
-          'bg-purple-500': color === 'purple',
-          'bg-orange-500': color === 'orange',
-          'bg-pink-500': color === 'pink',
-        },
-        style === 'outline' && {
-          'border border-blue-500 text-zinc-950': color === 'blue',
-          'border border-green-500 text-zinc-950': color === 'green',
-          'border border-red-500 text-zinc-950': color === 'red',
-          'border border-yellow-500 text-zinc-950': color === 'yellow',
-          'border border-purple-500 text-zinc-950': color === 'purple',
-          'border border-orange-500 text-zinc-950': color === 'orange',
-          'border border-pink-500 text-zinc-950': color === 'pink',
-        },
-      )}
-    >
+    <span className={cn(badgeVariants({ color, style }), className)}>
       {children}
     </span>
   );

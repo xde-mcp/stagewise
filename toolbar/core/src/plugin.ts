@@ -150,10 +150,10 @@ export interface UIHandle {
   remove: () => void;
 }
 
-import type { TriggerAgentPromptRequest } from '@stagewise/extension-toolbar-srpc-contract';
+import type { PromptRequest } from '@stagewise/extension-toolbar-srpc-contract';
 import type { VNode } from 'preact';
 export interface ToolbarContext {
-  sendPrompt: (prompt: string | TriggerAgentPromptRequest) => void;
+  sendPrompt: (prompt: string | PromptRequest) => void;
 }
 
 /** A context snippet that get's added into the prompt. */

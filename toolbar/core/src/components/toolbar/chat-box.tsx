@@ -19,7 +19,7 @@ import { useChatState } from '@/hooks/use-chat-state';
 import { useHotkeyListenerComboText } from '@/hooks/use-hotkey-listener-combo-text';
 import { cn, HotkeyActions } from '@/utils';
 import { Button, Textarea } from '@headlessui/react';
-import { Send } from 'lucide-react';
+import { SendIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useCallback } from 'preact/hooks';
 
 export function ToolbarChatArea() {
@@ -119,7 +119,7 @@ export function ToolbarChatArea() {
         disabled={currentInput.length === 0}
         onClick={handleSubmit}
       >
-        <Send className="size-4" />
+        <SendIcon className="size-4" />
       </Button>
     </div>
   );
