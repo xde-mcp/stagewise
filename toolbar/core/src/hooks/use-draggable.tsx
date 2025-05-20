@@ -16,8 +16,10 @@ export interface DraggableContextType {
   };
   snapAreas: {
     topLeft: boolean;
+    topCenter: boolean;
     topRight: boolean;
     bottomLeft: boolean;
+    bottomCenter: boolean;
     bottomRight: boolean;
   };
   registerDragStart?: (cb: () => void) => () => void;
@@ -216,10 +218,13 @@ export function useDraggable(config: DraggableConfig) {
     borderLocation: DraggableContextType['borderLocation'],
   ) {
     const { top, left, right, bottom } = borderLocation;
+    const centerX = (left + right) / 2;
     return {
       topLeft: { x: left, y: top },
+      topCenter: { x: centerX, y: top },
       topRight: { x: right, y: top },
       bottomLeft: { x: left, y: bottom },
+      bottomCenter: { x: centerX, y: bottom },
       bottomRight: { x: right, y: bottom },
     };
   }

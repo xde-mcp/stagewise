@@ -32,6 +32,8 @@ export function ToolbarArea() {
             topRight: true,
             bottomLeft: true,
             bottomRight: true,
+            topCenter: true,
+            bottomCenter: true,
           }}
         >
           <ToolbarDraggableBox />
