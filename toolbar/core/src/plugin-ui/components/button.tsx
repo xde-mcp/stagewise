@@ -9,6 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean;
   disabled?: boolean;
 }
+
 export function Button({
   children,
   style = 'primary',
@@ -35,13 +36,13 @@ export function Button({
       {...props}
       onClick={onClick}
       className={cn(
-        'flex h-12 cursor-pointer items-center justify-center rounded-md p-2 text-white',
+        'flex h-12 cursor-pointer items-center justify-center rounded-lg px-4 py-2 font-medium text-sm text-white',
         size === 'sm' && 'h-8',
         size === 'md' && 'h-12',
         size === 'lg' && 'h-16',
-        style === 'primary' && 'bg-blue-500',
-        style === 'secondary' && 'bg-gray-500',
-        style === 'outline' && 'border border-blue-500 bg-white text-blue-500',
+        style === 'primary' && 'bg-blue-600',
+        style === 'secondary' && 'bg-zinc-500/40',
+        style === 'outline' && 'border border-zinc-500 bg-white text-blue-500',
         style === 'ghost' && 'bg-transparent text-blue-500',
       )}
       type="submit"
