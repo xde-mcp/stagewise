@@ -197,7 +197,7 @@ export interface ToolbarPlugin {
   description: string;
 
   /** A monochrome svg icon that will be rendered in places where the plugin is shown */
-  iconSvg: string | null;
+  iconSvg: VNode | null;
 
   onActionClick?: () => undefined | VNode;
 
