@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  create-stagewise-plugin: link:../../../../Library/pnpm/global/5/node_modules/create-stagewise-plugin
-
 patchedDependencies:
   '@headlessui/react@2.2.2':
     hash: 058c956527a7ce89f57a9b19b87837155dd2b3c21e1293af7d9e8cd9b790d072
@@ -15,10 +12,6 @@ patchedDependencies:
 importers:
 
   .:
-    dependencies:
-      create-stagewise-plugin:
-        specifier: link:../../../../Library/pnpm/global/5/node_modules/create-stagewise-plugin
-        version: link:../../../../Library/pnpm/global/5/node_modules/create-stagewise-plugin
     devDependencies:
       '@biomejs/biome':
         specifier: 1.9.4
