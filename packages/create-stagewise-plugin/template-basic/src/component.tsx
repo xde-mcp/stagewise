@@ -7,8 +7,8 @@ export const ExampleComponent = () => {
     <Panel>
       <Panel.Header title="Example Plugin" />
       <Panel.Content>
-        <Button onClick={() => toolbar.sendPrompt('Hello from plugin!')}>
-          Open Example Panel
+        <Button onClick={() => toolbar.sendPrompt('Hello world!')}>
+          Send "Hello world!" to Cursor!
         </Button>
       </Panel.Content>
     </Panel>
