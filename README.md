@@ -25,7 +25,6 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 
 * ⚡ Works out of the box
 * 🛠️ Customise using your own configuration file
-* 🔌 Connect to your own MCP server
 * 📦 Does not impact bundle size
 * 🧠 Sends DOM elements, screenshots & metadata to your AI agent
 * 👇 Comment directly on live elements in the browser
@@ -39,12 +38,6 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 ### 1. 🧩 **Install the vs-code extension** 
 
 Install the extension here: https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension
-
-> [!NOTE]
-> 💬 **Enable MCP support (Cursor):** 
-> - The extension will auto-install a **stagewise MCP server**.
-> - Cursor will prompt you to *enable* the server.
-> - Click *enable* to let your agent call MCP-tools that the toolbar provides. ([Read more](#write-custom-mcp-tools))
 
 ### 2. 👨🏽‍💻 **Install and inject the toolbar**
 
