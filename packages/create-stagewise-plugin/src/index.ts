@@ -61,8 +61,7 @@ async function init() {
   prompts.log.step(`Scaffolding project in ${root}...`);
   const templateDir = path.resolve(
     fileURLToPath(import.meta.url),
-    '../..',
-    'template-basic',
+    '../../../../plugins/template',
   );
 
   copyDir(templateDir, root);
