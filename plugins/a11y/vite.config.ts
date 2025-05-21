@@ -25,7 +25,7 @@ import preserveDirectives from 'rollup-preserve-directives';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react({
       jsxImportSource: '@stagewise/toolbar/plugin-ui',
@@ -35,6 +35,12 @@ export default defineConfig({
     }) as PluginOption,
     preserveDirectives(),
   ],
+  server: {
+    watch: {
+      usePolling: true,
+    },
+    hmr: true,
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
@@ -55,6 +61,7 @@ export default defineConfig({
       fileName: (format) => `index.${format}.js`,
       formats: ['es', 'cjs'],
     },
+    watch: mode === 'development' ? {} : null,
     rollupOptions: {
       output: {
         manualChunks: undefined,
@@ -72,12 +79,12 @@ export default defineConfig({
       ],
       treeshake: true,
     },
-    minify: false,
-    cssMinify: false,
+    minify: mode === 'production',
+    cssMinify: mode === 'production',
   },
   optimizeDeps: {
     esbuildOptions: {
       mainFields: ['module', 'main'],
     },
   },
-});
+}));

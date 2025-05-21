@@ -16,14 +16,18 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.es.js",
-  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs.js",
+      "default": "./dist/index.es.js"
+    }
+  },
   "files": ["dist"],
   "license": "AGPL-3.0-only",
   "scripts": {
     "clean": "rm -rf .turbo node_modules",
-    "dev": "tsc -b && vite build --mode development",
+    "dev": "vite build --watch --mode development",
     "build": "tsc -b && vite build --mode production"
   },
   "dependencies": {
