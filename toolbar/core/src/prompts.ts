@@ -197,6 +197,7 @@ export interface PluginContextSnippets {
  * @param userPrompt - The user's natural language instruction.
  * @param url - The URL of the page where the interaction occurred.
  * @param contextSnippets - An array of context snippets from a list of plugins.
+ * @param directories - An optional array of directories to prioritize in search.
  * @returns A formatted string prompt for the LLM.
  */
 export function createPrompt(
@@ -204,6 +205,7 @@ export function createPrompt(
   userPrompt: string,
   url: string,
   contextSnippets: PluginContextSnippets[],
+  directories?: string[],
 ): string {
   const pluginContext = contextSnippets
     .map((snippet) =>
@@ -217,11 +219,16 @@ ${snippet.contextSnippets.map((snippet) => `    <${snippet.promptContextName}>${
     )
     .join('\n');
 
+  const directoriesSection =
+    directories && directories.length > 0
+      ? `\n  <search_directories>When searching for relevant code or files, prioritize these directories (relative to the project root):\n${directories.map((dir) => `    <directory>${dir}</directory>`).join('\n')}\n  </search_directories>`
+      : '';
+
   if (!selectedElements || selectedElements.length === 0) {
     return `
     <request>
       <user_goal>${userPrompt}</user_goal>
-      <url>${url}</url>
+      <url>${url}</url>${directoriesSection}
   <context>No specific element was selected on the page. Please analyze the page code in general or ask for clarification.</context>
   ${pluginContext}
 </request>`.trim();
@@ -235,7 +242,7 @@ ${snippet.contextSnippets.map((snippet) => `    <${snippet.promptContextName}>${
   return `
 <request>
   <user_goal>${userPrompt}</user_goal>
-  <url>${url}</url>
+  <url>${url}</url>${directoriesSection}
   <selected_elements>
     ${detailedContext.trim()}
   </selected_elements>

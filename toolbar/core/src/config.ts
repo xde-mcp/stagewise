@@ -18,5 +18,8 @@
 import type { ToolbarPlugin } from './plugin.ts';
 
 export interface ToolbarConfig {
-  plugins: ToolbarPlugin[];
+  /** Plugins to load. To learn more about plugins, see the documentation on [stagewise](https://stagewise.io/docs/plugins). */
+  plugins?: ToolbarPlugin[];
+  /** Restrict the toolbar to a specific set of directories. These should be absolute paths from the root of your repository. */
+  directories?: string[];
 }

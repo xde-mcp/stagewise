@@ -22,6 +22,7 @@ import { createPrompt, type PluginContextSnippets } from '@/prompts';
 import { useAppState } from './use-app-state';
 import { usePlugins } from './use-plugins';
 import type { ContextElementContext } from '@/plugin';
+import { useConfig } from './use-config';
 
 interface Message {
   id: string;
@@ -120,6 +121,8 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   }, [isMinimized]);
 
   const { bridge } = useSRPCBridge();
+
+  const config = useConfig();
 
   const createChat = useCallback(() => {
     const newChatId = crypto.randomUUID();
@@ -326,6 +329,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
         content,
         window.location.href,
         pluginContextSnippets,
+        config?.directories,
       );
 
       const newMessage: Message = {
@@ -374,6 +378,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       chats,
       setIsPromptCreationMode,
       internalSetChatAreaState,
+      config,
     ],
   );
 

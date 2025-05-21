@@ -21,6 +21,7 @@ import { ChatStateProvider } from '@/hooks/use-chat-state';
 import { LocationProvider } from '../hooks/use-location';
 import type { ComponentChildren } from 'preact';
 import { SRPCBridgeProvider } from '@/hooks/use-srpc-bridge';
+import { ConfigProvider } from '@/hooks/use-config';
 
 export function ContextProviders({
   children,
@@ -30,12 +31,14 @@ export function ContextProviders({
   config?: ToolbarConfig;
 }) {
   return (
-    <LocationProvider>
-      <SRPCBridgeProvider>
-        <PluginProvider plugins={config?.plugins || []}>
-          <ChatStateProvider>{children}</ChatStateProvider>
-        </PluginProvider>
-      </SRPCBridgeProvider>
-    </LocationProvider>
+    <ConfigProvider config={config}>
+      <LocationProvider>
+        <SRPCBridgeProvider>
+          <PluginProvider plugins={config?.plugins || []}>
+            <ChatStateProvider>{children}</ChatStateProvider>
+          </PluginProvider>
+        </SRPCBridgeProvider>
+      </LocationProvider>
+    </ConfigProvider>
   );
 }
