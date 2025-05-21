@@ -586,6 +586,8 @@ export function useDraggable(config: DraggableConfig) {
     }
   }, [areaSnapThreshold, springStiffness, springDampness]);
 
+  const [wasDragged, setWasDragged] = useState(false);
+
   // This will be listened to globally if the mouse was pressed down on the draggable element
   const mouseUpHandler = useCallback(
     (e: MouseEvent) => {
@@ -594,6 +596,10 @@ export function useDraggable(config: DraggableConfig) {
         if (latestProviderDataRef.current?.emitDragEnd) {
           latestProviderDataRef.current.emitDragEnd();
         }
+        // Set wasDragged to true when a drag operation ends
+        setWasDragged(true);
+        // Reset wasDragged after a short delay to allow click handlers to check it
+        setTimeout(() => setWasDragged(false), 0);
         // --- Persist the new position on drag end ---
         const draggableEl = movingElementRef.current;
         const provider = latestProviderDataRef.current;
@@ -892,5 +898,6 @@ export function useDraggable(config: DraggableConfig) {
         ? persistedRelativeCenterRef.current.x <= 0.5
         : true,
     },
+    wasDragged,
   };
 }

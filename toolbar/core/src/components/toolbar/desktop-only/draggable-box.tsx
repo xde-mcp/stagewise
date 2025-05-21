@@ -51,6 +51,18 @@ export function ToolbarDraggableBox() {
     startThreshold: 10,
     initialSnapArea: 'bottomRight',
   });
+
+  // Create a wrapper function to handle button clicks
+  const handleButtonClick = (handler: () => void) => (e: MouseEvent) => {
+    // If we just finished dragging, prevent the click
+    if (draggable.wasDragged) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    handler();
+  };
+
   if (!isReady) return null; // Wait until borderLocation is valid
 
   const plugins = usePlugins();
@@ -166,7 +178,7 @@ export function ToolbarDraggableBox() {
               {pluginsWithActions.map((plugin) => (
                 <ToolbarButton
                   key={plugin.pluginName}
-                  onClick={() => {
+                  onClick={handleButtonClick(() => {
                     if (pluginBox?.pluginName !== plugin.pluginName) {
                       const component = plugin.onActionClick();
 
@@ -179,7 +191,7 @@ export function ToolbarDraggableBox() {
                     } else {
                       setPluginBox(null);
                     }
-                  }}
+                  })}
                   active={pluginBox?.pluginName === plugin.pluginName}
                 >
                   {plugin.iconSvg ? (
@@ -193,11 +205,11 @@ export function ToolbarDraggableBox() {
           )}
           <ToolbarSection>
             <ToolbarButton
-              onClick={() =>
+              onClick={handleButtonClick(() =>
                 chatState.isPromptCreationActive
                   ? chatState.stopPromptCreation()
-                  : chatState.startPromptCreation()
-              }
+                  : chatState.startPromptCreation(),
+              )}
               active={chatState.isPromptCreationActive}
             >
               <MessageCircleIcon className="size-4 stroke-zinc-950" />
@@ -205,7 +217,7 @@ export function ToolbarDraggableBox() {
           </ToolbarSection>
           <ToolbarSection>
             <ToolbarButton
-              onClick={() => minimize()}
+              onClick={handleButtonClick(() => minimize())}
               className={cn(
                 'h-5',
                 draggable.position.isTopHalf
