@@ -1,0 +1,15 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "stagewise-vscode-extension": "0.2.2",
+    "create-stagewise-plugin": "0.0.1",
+    "@stagewise/extension-toolbar-srpc-contract": "0.0.1",
+    "@stagewise/srpc": "0.1.1",
+    "@stagewise/toolbar": "0.2.1",
+    "@stagewise/toolbar-next": "0.1.2",
+    "@stagewise/toolbar-react": "0.1.2",
+    "@stagewise/toolbar-vue": "0.1.2"
+  },
+  "changesets": []
+}
