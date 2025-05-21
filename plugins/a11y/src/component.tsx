@@ -184,8 +184,33 @@ export const A11yComponent = () => {
                   size="sm"
                   onClick={() =>
                     toolbar.sendPrompt({
-                      prompt: `Fix the following accessibility issue: ${v.description}`,
-                      files: [],
+                      prompt: `Please help fix the following accessibility issue:
+
+VIOLATION DETAILS:
+- Description: ${v.description}
+- Impact Level: ${v.impact}
+- WCAG Guidelines: ${v.tags.join(', ')}
+- Help URL: ${v.helpUrl}
+
+AFFECTED ELEMENTS:
+${v.nodes
+  .map(
+    (node) => `
+Element: ${node.html}
+Location: ${node.target.join(' ')}
+Summary: ${node.failureSummary}
+Fix Suggestions: ${node.all.map((check) => check.message).join('\n')}
+`,
+  )
+  .join('\n')}
+
+Please provide:
+1. A clear explanation of the accessibility issue
+2. The specific WCAG guidelines being violated
+3. Step-by-step fixes needed
+4. The corrected code for each affected element
+`,
+                      files: v.nodes.map((node) => node.target.join(' ')),
                       images: [],
                     })
                   }
