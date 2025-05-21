@@ -1,5 +1,12 @@
 # @stagewise/toolbar-react
 
+## 0.2.0-alpha.1
+
+### Patch Changes
+
+- Updated dependencies [e148009]
+  - @stagewise/toolbar@0.3.0-alpha.1
+
 ## 0.2.0-alpha.0
 
 ### Minor Changes
