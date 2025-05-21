@@ -9,6 +9,7 @@ import { setupToolbar } from './setup-toolbar';
 import { getCurrentIDE } from 'src/utils/get-current-ide';
 import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import { getCurrentWindowInfo } from '../utils/window-discovery';
+import { trackEvent, shutdownAnalytics } from '../utils/analytics';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -30,6 +31,11 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(fakeDiagCollection); // Dispose on deactivation
 
   try {
+    // Track extension activation
+    await trackEvent('extension_activated', {
+      ide,
+    });
+
     // Find an available port
     const port = await findAvailablePort(DEFAULT_PORT);
 
@@ -58,6 +64,9 @@ export async function activate(context: vscode.ExtensionContext) {
             },
           };
         }
+        await trackEvent('agent_prompt_triggered');
+        await dispatchAgentCall(request);
+        sendUpdate.sendUpdate({ updateText: 'Called the agent' });
 
         await dispatchAgentCall(request);
         sendUpdate.sendUpdate({
@@ -71,7 +80,16 @@ export async function activate(context: vscode.ExtensionContext) {
         };
       },
     });
+
+    // Track successful server start
+    await trackEvent('server_started', {
+      port,
+    });
   } catch (error) {
+    // Track activation error
+    await trackEvent('activation_error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     vscode.window.showErrorMessage(`Failed to start server: ${error}`);
     throw error;
   }
@@ -79,11 +97,30 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register the setupToolbar command
   const setupToolbarCommand = vscode.commands.registerCommand(
     'stagewise.setupToolbar',
-    setupToolbarHandler,
+    async () => {
+      try {
+        await setupToolbarHandler();
+      } catch (error) {
+        console.error(
+          'Error during toolbar setup:',
+          error instanceof Error ? error.message : String(error),
+        );
+        throw error;
+      }
+    },
   );
   context.subscriptions.push(setupToolbarCommand);
 }
 
 export async function deactivate() {
-  await stopServer();
+  try {
+    await stopServer();
+    await shutdownAnalytics();
+  } catch (error) {
+    // Log error but don't throw during deactivation
+    console.error(
+      'Error during extension deactivation:',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 }
