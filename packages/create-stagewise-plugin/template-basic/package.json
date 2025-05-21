@@ -36,8 +36,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@stagewise/typescript-config": "workspace:*",
-    "@stagewise/toolbar": "workspace:*",
+    "@stagewise/toolbar": "latest",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.3",
