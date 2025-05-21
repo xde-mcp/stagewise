@@ -172,7 +172,6 @@ export abstract class WebSocketRpcBridge {
     };
 
     ws.onclose = () => {
-      console.log('WebSocket disconnected');
       this.handleDisconnect();
     };
 
