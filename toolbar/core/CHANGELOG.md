@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.3.0-alpha.1
+
+### Patch Changes
+
+- e148009: Fix the height of the toolbar-chat.
+
 ## 0.3.0-alpha.0
 
 ### Minor Changes
