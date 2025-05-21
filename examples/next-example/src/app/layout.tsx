@@ -28,7 +28,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <StagewiseToolbar config={{ plugins: [] }} />
+        <StagewiseToolbar
+          config={{
+            plugins: [],
+            directories: ['./examples/next-example/'],
+          }}
+        />
         {children}
       </body>
     </html>
