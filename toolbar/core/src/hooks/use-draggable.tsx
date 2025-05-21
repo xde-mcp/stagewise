@@ -688,7 +688,6 @@ export function useDraggable(config: DraggableConfig) {
       }
       mouseDownPosRef.current = null;
       isDraggingRef.current = false;
-      console.log('Stop moving');
       window.removeEventListener('mousemove', mouseMoveHandler, {
         capture: true,
       });
@@ -725,7 +724,6 @@ export function useDraggable(config: DraggableConfig) {
           latestProviderDataRef.current.emitDragStart();
         }
         requestAnimationFrame(updateDraggablePosition);
-        console.log('Start dragging');
       }
 
       currentMousePosRef.current = { x: e.clientX, y: e.clientY };
@@ -736,8 +734,6 @@ export function useDraggable(config: DraggableConfig) {
   // This is attached to the draggable item or its handle
   const mouseDownHandler = useCallback(
     (e: MouseEvent) => {
-      console.log('Mouse down on draggable/handle area');
-
       // Only proceed if it's the main mouse button (usually left-click)
       if (e.button !== 0) {
         return;
@@ -748,13 +744,6 @@ export function useDraggable(config: DraggableConfig) {
 
       if (handleNode) {
         if (!handleNode.contains(e.target as Node) && e.target !== handleNode) {
-          console.log(
-            'Mousedown was not on the handle element or its children. Current target:',
-            e.target,
-            'Expected handle:',
-            handleNode,
-            'Ignoring drag start.',
-          );
           return;
         }
       } else if (draggableItemNode) {
@@ -762,13 +751,6 @@ export function useDraggable(config: DraggableConfig) {
           !draggableItemNode.contains(e.target as Node) &&
           e.target !== draggableItemNode
         ) {
-          console.log(
-            'Mousedown was not on the draggable item or its children (no handle specified). Current target:',
-            e.target,
-            'Expected draggable item:',
-            draggableItemNode,
-            'Ignoring drag start.',
-          );
           return;
         }
       } else {
@@ -777,9 +759,6 @@ export function useDraggable(config: DraggableConfig) {
         );
         return;
       }
-
-      // If we've reached here, the click was on the correct drag-initiating element.
-      console.log('Valid drag target. Proceeding with drag setup.');
 
       mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
 

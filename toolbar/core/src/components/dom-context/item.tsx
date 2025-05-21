@@ -65,8 +65,6 @@ export function ContextItem({ refElement, ...props }: ContextItemProps) {
     chatState.removeChatDomContext(chatState.currentChatId, refElement);
   }, [chatState, refElement]);
 
-  console.log(props.pluginContext);
-
   const { plugins } = usePlugins();
 
   return (
