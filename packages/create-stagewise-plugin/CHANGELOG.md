@@ -1,0 +1,9 @@
+# create-stagewise-plugin
+
+## 0.1.0-alpha.0
+
+### Minor Changes
+
+- 79e11fa: Align versions to match 0.3
+- 4abc02e: Add plugin-components and change toolbar design
+- 79e11fa: Align versions to match 0.3

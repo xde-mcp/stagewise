@@ -11,5 +11,18 @@
     "@stagewise/toolbar-react": "0.1.2",
     "@stagewise/toolbar-vue": "0.1.2"
   },
-  "changesets": []
+  "changesets": [
+    "calm-phones-build",
+    "cyan-numbers-look",
+    "eleven-loops-begin",
+    "empty-heads-double",
+    "forty-spiders-allow",
+    "gold-socks-cheat",
+    "old-clowns-dig",
+    "public-clubs-play",
+    "red-bags-kneel",
+    "salty-banks-fail",
+    "shy-terms-sell",
+    "strong-planets-jog"
+  ]
 }
