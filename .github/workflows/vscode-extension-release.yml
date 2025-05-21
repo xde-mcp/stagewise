@@ -4,7 +4,7 @@ name: VSCode Extension Release
 on:
   push:
     tags:
-      - stagewise-vscode-extension**
+      - 'stagewise-vscode-extension@**' # Ensure tag pattern is specific enough
   workflow_dispatch:
 
 jobs:
@@ -31,48 +31,60 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build VS Code Extension
-        # This command should build your extension and place output in the correct directory
-        # that vsce package will look for (usually the root of the extension package).
         run: pnpm build --filter stagewise-vscode-extension
 
-      # Determine the package name and version from the tag
-      - name: Get VSIX Filename from Tag
-        id: get_filename
-        # Extracts 'stagewise-vscode-extension' and '1.2.3' from 'stagewise-vscode-extension@1.2.3'
+      - name: Get Version Info from Tag
+        id: get_version_info
         run: |
           TAG_NAME="${{ github.ref_name }}"
           PACKAGE_NAME=$(echo "$TAG_NAME" | cut -d'@' -f1)
           VERSION_NUMBER=$(echo "$TAG_NAME" | cut -d'@' -f2)
-          echo "vsix_filename=${PACKAGE_NAME}-${VERSION_NUMBER}.vsix" >> $GITHUB_OUTPUT
+          VSIX_FILENAME="${PACKAGE_NAME}-${VERSION_NUMBER}.vsix"
+          echo "vsix_filename=${VSIX_FILENAME}" >> $GITHUB_OUTPUT
           echo "package_version=${VERSION_NUMBER}" >> $GITHUB_OUTPUT
+          if [[ "${VERSION_NUMBER}" == *-* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Package Extension using vsce
-        # Run from the directory of the extension or specify path
-        # This creates the .vsix file
         run: |
           cd apps/vscode-extension 
-          pnpm exec vsce package --out ${{ steps.get_filename.outputs.vsix_filename }} --no-dependencies
+          pnpm exec vsce package --out ${{ steps.get_version_info.outputs.vsix_filename }} --no-dependencies
 
       - name: Publish to Visual Studio Marketplace
-        # Run from the directory of the extension or specify path
+        env:
+          IS_PRERELEASE: ${{ steps.get_version_info.outputs.is_prerelease }}
+          VSIX_FILENAME: ${{ steps.get_version_info.outputs.vsix_filename }}
         run: |
-          cd apps/vscode-extension # Or the path to your extension
-          pnpm exec vsce publish --packagePath ${{ steps.get_filename.outputs.vsix_filename }} --pat ${{ secrets.VSCE_PAT }} --no-dependencies
+          cd apps/vscode-extension
+          VSCE_FLAGS=""
+          if [ "$IS_PRERELEASE" == "true" ]; then
+            VSCE_FLAGS="--pre-release"
+          fi
+          pnpm exec vsce publish --packagePath "$VSIX_FILENAME" --pat ${{ secrets.VSCE_PAT }} --no-dependencies $VSCE_FLAGS
 
       - name: Publish to Open VSX Registry
-        # Run from the directory of the extension or specify path
+        env:
+          IS_PRERELEASE: ${{ steps.get_version_info.outputs.is_prerelease }}
+          VSIX_FILENAME: ${{ steps.get_version_info.outputs.vsix_filename }}
         run: |
-          cd apps/vscode-extension # Or the path to your extension
-          pnpm exec ovsx publish ${{ steps.get_filename.outputs.vsix_filename }} -p ${{ secrets.OPEN_VSX_ACCESS_TOKEN }}
+          cd apps/vscode-extension
+          OVSX_FLAGS=""
+          if [ "$IS_PRERELEASE" == "true" ]; then
+            OVSX_FLAGS="--pre-release" # -P is the shorthand for ovsx
+          fi
+          pnpm exec ovsx publish "$VSIX_FILENAME" -p ${{ secrets.OPEN_VSX_ACCESS_TOKEN }} $OVSX_FLAGS
 
       - name: Create/Update GitHub Release and Upload VSIX
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-          body: "Release of stagewise VS Code Extension version ${{ steps.get_filename.outputs.package_version }}. See CHANGELOG.md for details."
+          body: "Release of stagewise VS Code Extension version ${{ steps.get_version_info.outputs.package_version }}. See CHANGELOG.md for details."
           draft: false
-          prerelease: false
-          files: apps/vscode-extension/${{ steps.get_filename.outputs.vsix_filename }} # Path to the .vsix file
+          prerelease: ${{ steps.get_version_info.outputs.is_prerelease == 'true' }}
+          files: apps/vscode-extension/${{ steps.get_version_info.outputs.vsix_filename }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
