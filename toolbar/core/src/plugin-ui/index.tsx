@@ -1,5 +1,7 @@
 import { usePlugins } from '@/hooks/use-plugins';
+import type { ToolbarContext } from '@/plugin';
 
+export type { ToolbarContext }; // Necessary to make the type available in the built package
 export {
   useState,
   useEffect,
