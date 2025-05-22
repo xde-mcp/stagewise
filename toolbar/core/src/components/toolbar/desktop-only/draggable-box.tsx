@@ -89,14 +89,11 @@ export function ToolbarDraggableBox() {
   }, [minimized]);
 
   return (
-    <div
-      ref={draggable.draggableRef}
-      className="pointer-events-auto absolute p-0.5"
-    >
+    <div ref={draggable.draggableRef} className="absolute p-0.5">
       {/* This is the complete toolbar area where we can stack different stuff. The main toolbar content stands out. */}
       <div
         className={cn(
-          'absolute flex max-h-[calc(100vh-32px)] w-96 max-w-[40vw] items-stretch justify-end transition-all duration-300 ease-out',
+          'absolute flex h-[calc(100vh-32px)] w-96 max-w-[40vw] items-stretch justify-end transition-all duration-300 ease-out',
           draggable.position.isTopHalf
             ? 'top-0 flex-col-reverse'
             : 'bottom-0 flex-col',
@@ -145,7 +142,7 @@ export function ToolbarDraggableBox() {
       <div
         ref={draggable.handleRef}
         className={cn(
-          'z-50 rounded-full border border-border/30 bg-zinc-50/80 px-0.5 shadow-md backdrop-blur transition-all duration-300 ease-out',
+          'pointer-events-auto z-50 rounded-full border border-border/30 bg-zinc-50/80 px-0.5 shadow-md backdrop-blur transition-all duration-300 ease-out',
           draggable.position.isTopHalf
             ? 'flex-col-reverse divide-y-reverse'
             : 'flex-col',
