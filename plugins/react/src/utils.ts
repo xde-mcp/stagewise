@@ -15,8 +15,7 @@ interface FiberNode {
 // These constants help in identifying the type of a Fiber node.
 const FunctionComponent = 0;
 const ClassComponent = 1;
-const HostComponent = 5; // Represents a DOM element like <div>, <p>, etc.
-// const HostRoot = 3; // Represents the root of a React tree.
+const HostComponent = 5;
 
 export interface ComponentInfo {
   name: string;
@@ -55,18 +54,12 @@ export function getReactComponentHierarchy(
   );
 
   if (!fiberKey) {
-    console.warn(
-      "React internal Fiber key not found on the element. This element might not be managed by React or it's a production build with different internals.",
-    );
     return null;
   }
 
   let currentFiber: FiberNode | null = (element as any)[fiberKey];
 
-  console.log('currentFiber', currentFiber);
-
   if (!currentFiber) {
-    console.warn('Fiber node not found for the element via key:', fiberKey);
     return null;
   }
 
@@ -136,4 +129,37 @@ export function formatReactComponentHierarchy(
   description += parts.join(' child of ');
 
   return description;
+}
+
+export function getSelectedElementAnnotation(element: HTMLElement) {
+  const hierarchy = getReactComponentHierarchy(element);
+  if (hierarchy[0]) {
+    return {
+      annotation: `${hierarchy[0].name}${hierarchy[0].type === 'rsc' ? ' (RSC)' : ''}`,
+    };
+  }
+  return { annotation: null };
+}
+
+export function getSelectedElementsPrompt(elements: HTMLElement[]) {
+  const selectedComponentHierarchies = elements.map((e) =>
+    getReactComponentHierarchy(e),
+  );
+
+  if (selectedComponentHierarchies.some((h) => h.length > 0)) {
+    const content = `This is additional information on the elements that the user selected. Use this information to find the correct element in the codebase.
+
+  ${selectedComponentHierarchies.map((h, index) => {
+    return `
+<element index="${index + 1}">
+  ${h.length === 0 ? 'No React component as parent detected' : `React component tree (from closest to farthest, 3 closest elements): ${h.map((c) => `{name: ${c.name}, type: ${c.type}}`).join(' child of ')}`}
+</element>
+    `;
+  })}
+  `;
+
+    return content;
+  }
+
+  return null;
 }
