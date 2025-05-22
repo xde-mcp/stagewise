@@ -113,44 +113,62 @@ Expose custom tools, resources, or prompts to your AI agent by implementing the 
 
 - Use `pnpm dev` to start development
 - Use `pnpm build` to produce a distributable package
-- You can publish your plugin to npm or use it locally
 
-## 5.1. Using Local NPM Linking with pnpm
+There are two main approaches to test your plugin during development, depending on your project structure:
 
-During development, you may want to test your plugin in a real stagewise-enabled app before publishing it to npm. You can do this using local linking with `pnpm`.
+### Option A: Using workspace:* in a Monorepo
 
-### Why use local linking?
-Local linking lets you make changes to your plugin and see them reflected immediately in your example or test project, without publishing to the npm registry.
+If your plugin is part of a monorepo setup, the simplest approach is to use workspace dependencies:
 
-### Step-by-step: Local Linking with pnpm
+1. In your test project's `package.json`, add your plugin as a workspace dependency:
+```json
+{
+  "dependencies": {
+    "@stagewise/plugin-example": "workspace:*"
+  }
+}
+```
 
-#### 1. Build your plugin (from the plugin directory)
+2. Run `pnpm install` to set up the workspace dependency
+
+This approach automatically makes your plugin available to other packages in your workspace, and changes will be reflected immediately after rebuilding the plugin.
+
+### Option B: Using Local NPM Linking with pnpm
+
+If you're developing your plugin outside of a monorepo, you can use pnpm's linking feature to test it locally:
+
+#### Step-by-step: Local Linking with pnpm
+
+1. Build your plugin (from the plugin directory):
 ```bash
 pnpm build
 ```
 
-#### 2. Link your plugin locally
+2. Link your plugin locally:
 ```bash
 pnpm link --global
 ```
 
-#### 3. Link the plugin in your example project
+3. Link the plugin in your example project:
 Navigate to your example app (e.g., `examples/next-example/`):
 ```bash
 pnpm link --global @stagewise/plugin-example
 ```
 
-#### 4. Use your plugin in the example app
+4. Use your plugin in the example app:
 Import and add your plugin to the toolbar config as you would with a published package.
 
-#### 5. Develop and test
-- Changes to your plugin source will be reflected after you rebuild (`pnpm build`) in the plugin directory.
-- Restart your example app's dev server if needed.
+5. Develop and test:
+- Changes to your plugin source will be reflected after you rebuild (`pnpm build`) in the plugin directory
+- Restart your example app's dev server if needed
 
-> **Tip:** When you're done, you can unlink with `pnpm unlink --global @stagewise/plugin-example` in your example app and `pnpm unlink --global` in your plugin directory.
+> **Tip:** When you're done with local linking, you can unlink with `pnpm unlink --global @stagewise/plugin-example` in your example app and `pnpm unlink --global` in your plugin directory.
+
+Once your plugin is ready, you can publish it to npm or continue using it locally with either of the above approaches.
 
 ## 6. Full Example
 
+The plugin:
 ```tsx
 // src/index.tsx
 import type { ToolbarPlugin } from '@stagewise/toolbar';
@@ -180,6 +198,35 @@ export const ExampleComponent = () => {
     </Panel>
   );
 };
+```
+
+Using the plugin in your next-app:
+
+```tsx
+// app/layout.tsx
+import type { Metadata } from 'next';
+import { StagewiseToolbar } from '@stagewise/toolbar-next';
+import { ExamplePlugin } from '@stagewise/plugin-example'; // <-- replace this with your plugin-name
+
+export const metadata: Metadata = {
+  title: 'My Next.js App',
+  description: 'An app using stagewise plugins',
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>
+        <StagewiseToolbar config={{ plugins: [ExamplePlugin] }} />
+        {children}
+      </body>
+    </html>
+  );
+}
 ```
 
 ---
