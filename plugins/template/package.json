@@ -31,7 +31,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "clean": "rm -rf .turbo node_modules",
-    "dev": "tsc -b && vite build --mode development",
+    "dev": "tsc -b --watch & vite build --mode development --watch",
     "build": "tsc -b && vite build --mode production"
   },
   "dependencies": {},
