@@ -2,6 +2,7 @@
 import type { ToolbarPlugin } from '@stagewise/toolbar';
 import { ReactLogo } from './logo';
 import { getReactComponentName } from './utils';
+import { ExampleComponent } from './component';
 
 export const ReactPlugin: ToolbarPlugin = {
   displayName: 'React',
@@ -15,4 +16,5 @@ export const ReactPlugin: ToolbarPlugin = {
       annotation,
     };
   },
+  onActionClick: () => <ExampleComponent />,
 };

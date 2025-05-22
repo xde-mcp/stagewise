@@ -5,10 +5,13 @@ export const ExampleComponent = () => {
 
   return (
     <Panel>
-      <Panel.Header title="Example Plugin" />
+      <Panel.Header title="React Plugin" />
       <Panel.Content>
-        <Button onClick={() => toolbar.sendPrompt('Hello world!')}>
-          Send "Hello world!" to Cursor!
+        <Button
+          style="ghost"
+          onClick={() => toolbar.sendPrompt('Hello world!')}
+        >
+          REACT PLUGIN LOL
         </Button>
       </Panel.Content>
     </Panel>

@@ -15,6 +15,8 @@
   },
   "devDependencies": {
     "@stagewise/toolbar-next": "workspace:*",
+    "@stagewise/react-plugin": "workspace:*",
+    "test-plugin": "workspace:*",
     "@tailwindcss/postcss": "^4.1.5",
     "@types/node": "22.15.2",
     "@types/react": "^19.1.3",
