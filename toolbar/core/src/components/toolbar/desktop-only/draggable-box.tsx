@@ -192,7 +192,9 @@ export function ToolbarDraggableBox() {
                   active={pluginBox?.pluginName === plugin.pluginName}
                 >
                   {plugin.iconSvg ? (
-                    <span>{plugin.iconSvg}</span>
+                    <span className="size-4 stroke-zinc-950 text-zinc-950 *:size-full">
+                      {plugin.iconSvg}
+                    </span>
                   ) : (
                     <PuzzleIcon className="size-4" />
                   )}

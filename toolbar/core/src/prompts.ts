@@ -16,57 +16,6 @@ import type { ContextSnippet } from './plugin';
 
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
-/**
- * Extracts React component names and source location from an HTMLElement.
- * @param element - The HTMLElement to extract React info from.
- * @returns An object containing component names and source location.
- */
-export function getReactInfo(element: HTMLElement | null): {
-  componentNames: string[];
-  sourceLocation: string | null;
-} {
-  if (!element) {
-    return { componentNames: [], sourceLocation: null };
-  }
-  try {
-    // Find React Fiber key
-    const fiberKey = Object.getOwnPropertyNames(element).find(
-      (k) =>
-        k.startsWith('__reactFiber$') ||
-        k.startsWith('__reactInternalInstance$'),
-    );
-
-    if (!fiberKey) {
-      return { componentNames: [], sourceLocation: null };
-    }
-
-    let fiber: any = (element as any)[fiberKey];
-    const componentStack: string[] = [];
-
-    // Walk up the Fiber tree and collect up to 10 component names
-    while (fiber && componentStack.length < 10) {
-      if (typeof fiber.type === 'function') {
-        const name = fiber.type.displayName || fiber.type.name || 'Anonymous';
-        if (!componentStack.includes(name)) {
-          // Avoid duplicates
-          componentStack.push(name);
-        }
-      }
-      fiber = fiber.return;
-    }
-
-    // For source location, we could potentially get this from fiber._debugSource
-    // but this is very internal and unstable, so leaving as null for now
-    const sourceLocation = null;
-
-    return {
-      componentNames: componentStack,
-      sourceLocation,
-    };
-  } catch (e) {
-    return { componentNames: [], sourceLocation: null };
-  }
-}
 
 /**
  * Extracts relevant attributes from an HTMLElement.
