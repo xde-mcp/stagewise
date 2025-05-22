@@ -3,7 +3,7 @@
 name: 📚 Documentation
 description: Request changes related to the documentation
 title: 'docs: '
-labels: ['📚 documentation / examples']
+labels: ['documentation']
 body:
   - type: markdown
     attributes:

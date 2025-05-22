@@ -2,7 +2,7 @@
 name: 🐞 Bug Report
 description: Create a bug report for the core packages
 title: 'bug: '
-labels: ['🐛 bug: unconfirmed']
+labels: ['bug: unconfirmed']
 body:
   - type: markdown
     attributes:
