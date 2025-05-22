@@ -4,12 +4,12 @@ title: Plugins
 
 export const metadata = {
   title: "Plugins",
-  description: "Learn how to create and use Stagewise plugins.",
+  description: "Learn how to create and use stagewise plugins.",
 };
 
-# Stagewise Plugins
+# stagewise Plugins
 
-Stagewise plugins let you extend the browser toolbar with custom UI, actions, and context for your AI-powered code workflows. Plugins can provide new buttons, panels, and even custom tools that your AI agent can call via MCP (Multi-Context Protocol).
+stagewise plugins let you extend the browser toolbar with custom UI, actions, and context for your AI-powered code workflows. Plugins can provide new buttons, panels, and even custom tools that your AI agent can call via MCP (Multi-Context Protocol).
 
 ## 1. Getting Started
 
@@ -40,7 +40,7 @@ my-plugin/
 
 ## 2. Anatomy of a Plugin
 
-A Stagewise plugin is an object that implements the `ToolbarPlugin` interface from `@stagewise/toolbar`. Here's a minimal example:
+A stagewise plugin is an object that implements the `ToolbarPlugin` interface from `@stagewise/toolbar`. Here's a minimal example:
 
 ```tsx
 // src/index.tsx
@@ -67,7 +67,7 @@ See the [full interface in the codebase](https://github.com/stagewise-io/stagewi
 
 ## 3. Building Plugin UI with `@plugin-ui`
 
-Stagewise provides a set of UI primitives for building plugin panels:
+stagewise provides a set of UI primitives for building plugin panels:
 
 ### Available Components
 - `Panel`: Card-like container with optional `Header`, `Content`, and `Footer`
@@ -117,7 +117,7 @@ Expose custom tools, resources, or prompts to your AI agent by implementing the 
 
 ## 5.1. Using Local NPM Linking with pnpm
 
-During development, you may want to test your plugin in a real Stagewise-enabled app before publishing it to npm. You can do this using local linking with `pnpm`.
+During development, you may want to test your plugin in a real stagewise-enabled app before publishing it to npm. You can do this using local linking with `pnpm`.
 
 ### Why use local linking?
 Local linking lets you make changes to your plugin and see them reflected immediately in your example or test project, without publishing to the npm registry.
@@ -184,4 +184,4 @@ export const ExampleComponent = () => {
 
 ---
 
-For more advanced examples and API details, see the [Stagewise repository](https://github.com/stagewise-io/stagewise) and the [ToolbarPlugin interface](https://github.com/stagewise-io/stagewise/blob/main/toolbar/core/src/plugin.ts). 
+For more advanced examples and API details, see the [stagewise repository](https://github.com/stagewise-io/stagewise) and the [ToolbarPlugin interface](https://github.com/stagewise-io/stagewise/blob/main/toolbar/core/src/plugin.ts). 
