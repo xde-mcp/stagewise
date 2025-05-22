@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import { StagewiseToolbar, type ToolbarConfig } from '@stagewise/toolbar-vue';
+import { StagewiseToolbar } from '@stagewise/toolbar-vue';
 
 import HelloWorld from './components/HelloWorld.vue';
-
-const config: ToolbarConfig = {
-  plugins: [],
-};
 </script>
 
 <template>
-  <StagewiseToolbar :config="config" />
+  <StagewiseToolbar />
   <div>
     <a href="https://vite.dev" target="_blank">
       <img src="/vite.svg" class="logo" alt="Vite logo" />
