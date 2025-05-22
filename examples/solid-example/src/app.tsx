@@ -1,10 +1,23 @@
 import { MetaProvider, Title } from '@solidjs/meta';
 import { Router } from '@solidjs/router';
 import { FileRoutes } from '@solidjs/start/router';
-import { Suspense } from 'solid-js';
+import { Suspense, onMount } from 'solid-js';
 import './app.css';
 
+let toolbarInitialized = false;
+
 export default function App() {
+  onMount(() => {
+    if (import.meta.env.DEV && !toolbarInitialized) {
+      setTimeout(() => {
+        import('@stagewise/toolbar').then(({ initToolbar }) => {
+          initToolbar({ plugins: [] });
+          toolbarInitialized = true;
+        });
+      }, 0); // Defer to next event loop, after hydration
+    }
+  });
+
   return (
     <Router
       root={(props) => (
