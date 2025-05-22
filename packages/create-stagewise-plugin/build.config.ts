@@ -29,35 +29,6 @@ function getLatestVersion(pkg: string) {
   }
 }
 
-function replaceWorkspaceWithLatest(pkgJsonPath: string) {
-  if (!fs.existsSync(pkgJsonPath)) return;
-  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
-  let changed = false;
-
-  [
-    'dependencies',
-    'devDependencies',
-    'peerDependencies',
-    'optionalDependencies',
-  ].forEach((depType) => {
-    if (pkgJson[depType]) {
-      for (const dep in pkgJson[depType]) {
-        if (pkgJson[depType][dep] === 'workspace:*') {
-          pkgJson[depType][dep] = 'latest';
-          changed = true;
-        }
-      }
-    }
-  });
-
-  if (changed) {
-    fs.writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2));
-    console.log(
-      `Replaced all \"workspace:*\" with \"latest\" in ${pkgJsonPath}`,
-    );
-  }
-}
-
 function getLocalToolbarVersion() {
   // Adjust the path if your toolbar package is elsewhere
   const toolbarPkgPath = path.resolve(

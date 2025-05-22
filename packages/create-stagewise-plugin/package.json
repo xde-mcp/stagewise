@@ -8,10 +8,10 @@
     "access": "public"
   },
   "bin": {
-    "create-stagewise-plugin": "index.js",
-    "cva": "index.js"
+    "create-stagewise-plugin": "dist/index.mjs",
+    "cva": "dist/index.mjs"
   },
-  "files": ["index.js", "template-*", "dist", "template"],
+  "files": ["dist"],
   "scripts": {
     "dev": "unbuild --stub",
     "build": "unbuild",
