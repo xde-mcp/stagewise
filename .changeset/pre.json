@@ -9,7 +9,8 @@
     "@stagewise/toolbar": "0.2.1",
     "@stagewise/toolbar-next": "0.1.2",
     "@stagewise/toolbar-react": "0.1.2",
-    "@stagewise/toolbar-vue": "0.1.2"
+    "@stagewise/toolbar-vue": "0.1.2",
+    "@stagewise/plugin-example": "0.0.0"
   },
   "changesets": [
     "calm-phones-build",
@@ -24,6 +25,7 @@
     "red-bags-kneel",
     "salty-banks-fail",
     "shy-terms-sell",
-    "strong-planets-jog"
+    "strong-planets-jog",
+    "witty-bottles-sleep"
   ]
 }
