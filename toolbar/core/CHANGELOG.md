@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.3.0-alpha.2
+
+### Patch Changes
+
+- ddc9c9b: Remove all dependencies from toolbar/core
+
 ## 0.3.0-alpha.1
 
 ### Patch Changes
