@@ -35,7 +35,7 @@
     "build": "tsc -b && vite build --mode production"
   },
   "peerDependencies": {
-    "@stagewise/toolbar": ">=0.3.0-alpha.1"
+    "@stagewise/toolbar": "workspace:*"
   },
   "dependencies": {},
   "devDependencies": {
