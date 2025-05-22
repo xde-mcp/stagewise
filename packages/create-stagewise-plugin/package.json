@@ -3,8 +3,10 @@
   "version": "0.1.0-alpha.0",
   "type": "module",
   "license": "AGPL-3.0-only",
-  "private": true,
-  "author": "Goetze, Scharpff & Toews",
+  "author": "Goetze, Scharpff & Toews GbR",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "create-stagewise-plugin": "index.js",
     "cva": "index.js"
