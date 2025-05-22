@@ -305,27 +305,6 @@ export default function Home() {
                   >
                     <GradientButton>Get Extension</GradientButton>
                   </Link>
-                  <div className="mt-4 rounded-lg border border-gray-200 bg-gray-100 p-4 dark:border-gray-800 dark:bg-gray-900">
-                    <p className="font-medium text-gray-700 dark:text-gray-300">
-                      Enable MCP support (Cursor):
-                    </p>
-                    <ul className="mt-2 list-disc pl-5 text-gray-600 dark:text-gray-400">
-                      <li>
-                        The extension will auto-install a{' '}
-                        <strong>stagewise MCP server</strong>.
-                      </li>
-                      <li>
-                        Cursor will prompt you to <em>enable</em> the server.
-                      </li>
-                      <li>
-                        Click <em>enable</em> to let your agent call MCP-tools
-                        that the toolbar provides.{' '}
-                        <Link href="#" className="ml-1 underline">
-                          Read more
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
                 </div>
               </div>
               {/* Step 2: Install and inject the toolbar */}
