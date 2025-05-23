@@ -301,18 +301,25 @@ Check out our [project roadmap](./.github/ROADMAP.md) for upcoming features, bug
 
 ## 📜 License
 
-stagewise is developed by Goetze, Scharpff & Toews GbR under an **Open Core** model:
+stagewise is licensed under the AGPL v3 to ensure contributions remain open and transparent.
 
-* 🧩 99% is open-source under AGPLv3
-* 🏢 1% (enterprise features) is commercial
+✅ You will not need a commercial license if:
+- You’re using the official, unmodified version
 
-This allows us to:
+- Your usage is limited to development, testing, or evaluation environments
 
-* Keep core tech open and transparent
-* Ensure sustainability and quality
-* Prevent misuse by closed-source platforms
+- stagewise is not exposed to users over a network (e.g., not part of an internal tool, dashboard, or SaaS application)
 
-We believe this model creates a fair, open ecosystem that benefits both individuals and companies.
+This applies even if you're operating under SOC 2, ISO 27001, or similar compliance frameworks — as long as the above conditions are met.
+
+
+🔐 You will need a commercial license if:
+- You want to use stagewise in a production environment (even internally)
+- You plan to fork or modify stagewise
+- You’re integrating stagewise into a proprietary or closed-source product
+- You need to remain compliant with SOC 2, ISO 27001, or similar standards but go beyond the exempted use above
+
+📩 Reach out at sales@stagewise.io to learn more or request a license.
 
 ## 🤝 Contributing
 
