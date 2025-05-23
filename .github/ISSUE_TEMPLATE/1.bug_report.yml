@@ -2,7 +2,8 @@
 name: 🐞 Bug Report
 description: Create a bug report for the core packages
 title: 'bug: '
-labels: ['bug: unconfirmed']
+labels:
+  - 'bug: unconfirmed'
 body:
   - type: markdown
     attributes:
@@ -17,19 +18,23 @@ body:
         Run these commands in your project root and paste the results:
 
         To get the envinfo result, run:
+
           ```terminal
-          npx envinfo --system --binaries --browsers --npmPackages "typescript,next,react,@stagewise/toolbar,@stagewise/toolbar-next,@stagewise/toolbar-react,@stagewise/toolbar-vue"
+          npx envinfo \
+            --system \
+            --binaries \
+            --browsers \
+            --npmPackages "typescript,next,react,vue,@angular/core,@angular/cli,svelte,@sveltejs/kit,ember-source,preact,gatsby,nuxt,astro,@stagewise/toolbar,@stagewise/toolbar-next,@stagewise/toolbar-react,@stagewise/toolbar-vue,@stagewise/toolbar-angular,@stagewise/toolbar-svelte,@stagewise/toolbar-preact,@stagewise/toolbar-ember,@stagewise/toolbar-gatsby,@stagewise/toolbar-nuxt,@stagewise/toolbar-astro"
           ```
 
         To get the VS Code extension version, run:
+
           ```terminal
           code --list-extensions --show-versions | grep stagewise
-          cursor --list-extensions --show-versions | grep stagewise
-          windsurf --list-extensions --show-versions | grep stagewise
-          trea --list-extensions --show-versions | grep stagewise
           ```
 
         To get the npm list result, run:
+
           ```bash
           npm list --depth=0
           ```
