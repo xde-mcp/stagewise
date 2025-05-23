@@ -9,59 +9,67 @@ body:
       value: |
         Thanks for taking the time to file a bug report! Please fill out this form as completely as possible.
         Note that the more precise you are, the quicker we will be able to investigate the bug.
+
   - type: textarea
     attributes:
       label: Provide environment information
       description: |
         Run these commands in your project root and paste the results:
 
-      To get the envinfo result, run:
-        ```terminal
-        npx envinfo --system --binaries --browsers --npmPackages "typescript,next,react,@stagewise/toolbar,@stagewise/next,@stagewise/react,@stagewise/vue,@stagewise/nextjs"
-        ```
+        To get the envinfo result, run:
+          ```terminal
+          npx envinfo --system --binaries --browsers --npmPackages "typescript,next,react,@stagewise/toolbar,@stagewise/next,@stagewise/react,@stagewise/vue,@stagewise/nextjs"
+          ```
 
-      To get the vs code extension version, run:
-        ```terminal
-        code --list-extensions --show-versions | grep stagewise
-        cursor --list-extensions --show-versions | grep stagewise 
-        windsurf --list-extensions --show-versions | grep stagewise 
-        trea --list-extensions --show-versions | grep stagewise 
-        ```
+        To get the VS Code extension version, run:
+          ```terminal
+          code --list-extensions --show-versions | grep stagewise
+          cursor --list-extensions --show-versions | grep stagewise
+          windsurf --list-extensions --show-versions | grep stagewise
+          trea --list-extensions --show-versions | grep stagewise
+          ```
 
-      To get the npm list result, run:
-
-      placeholder: |
-        ``` 
-        <Paste npm list result here> 
-        ```
+        To get the npm list result, run:
+          ```bash
+          npm list --depth=0
+          ```
+      placeholder: '<Paste npm list result here>'
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: Describe the bug
-      description: Please describe the bug as clear and concise as possible, as well as the behavior you were expecting whilst encountering the bug.
+      description: |
+        Please describe the bug as clearly and concisely as possible, and what behavior you were expecting.
     validations:
       required: true
+
   - type: input
     attributes:
       label: Link to reproduction
-      description: Please provide a link to a reproduction of the bug. This can be a link to a repository or a StackBlitz/CodeSandbox etc. 
+      description: >
+        Please provide a link to a reproduction of the bug (repo, StackBlitz, CodeSandbox, etc.).
       placeholder: Link to reproduction
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: To reproduce
-      description: Describe how to reproduce your bug. Can be either code or a link to a reproduction repo, StackBlitz etc.
+      description: |
+        Describe how to reproduce your bug. Can be code or a link to a reproduction.
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: Additional information
       description: Add any other information related to the bug here.
+
   - type: checkboxes
     attributes:
       label: 👨‍👧‍👦 Contributing
-      description: We love contributors in any shape or form. Would you be willing to implement a fix?
+      description: We love contributors! Would you be willing to implement a fix?
       options:
         - label: 🙋‍♂️ Yes, I'd be down to file a PR fixing this bug!
