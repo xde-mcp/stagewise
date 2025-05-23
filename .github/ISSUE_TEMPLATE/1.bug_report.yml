@@ -18,7 +18,7 @@ body:
 
         To get the envinfo result, run:
           ```terminal
-          npx envinfo --system --binaries --browsers --npmPackages "typescript,next,react,@stagewise/toolbar,@stagewise/next,@stagewise/react,@stagewise/vue,@stagewise/nextjs"
+          npx envinfo --system --binaries --browsers --npmPackages "typescript,next,react,@stagewise/toolbar,@stagewise/toolbar-next,@stagewise/toolbar-react,@stagewise/toolbar-vue"
           ```
 
         To get the VS Code extension version, run:
