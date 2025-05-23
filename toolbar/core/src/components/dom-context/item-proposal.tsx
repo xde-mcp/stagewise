@@ -70,7 +70,6 @@ export function ContextItemProposal({
 
   useCyclicUpdate(updateBoxPosition, 30);
 
-
   return (
     <div
       {...props}
