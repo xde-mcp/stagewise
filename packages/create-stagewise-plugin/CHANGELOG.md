@@ -1,5 +1,11 @@
 # create-stagewise-plugin
 
+## 0.1.0-alpha.2
+
+### Minor Changes
+
+- 8de8414: No changes: Aligning package versions
+
 ## 0.1.0-alpha.1
 
 ### Minor Changes

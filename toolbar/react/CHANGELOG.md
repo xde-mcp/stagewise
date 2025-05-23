@@ -1,5 +1,16 @@
 # @stagewise/toolbar-react
 
+## 0.2.0-alpha.3
+
+### Minor Changes
+
+- 8de8414: No changes: Aligning package versions
+
+### Patch Changes
+
+- Updated dependencies [da84c16]
+  - @stagewise/toolbar@0.3.0-alpha.3
+
 ## 0.2.0-alpha.2
 
 ### Patch Changes
