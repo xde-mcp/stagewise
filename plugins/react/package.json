@@ -1,5 +1,5 @@
 {
-  "name": "@stagewise/react-plugin",
+  "name": "@stagewise-plugins/react",
   "version": "0.0.0",
   "type": "module",
   "keywords": ["stagewise", "toolbar", "ai", "devtool", "agent", "interaction"],

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { StagewiseToolbar } from '@stagewise/toolbar-next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { ReactPlugin } from '@stagewise/react-plugin';
+import { ReactPlugin } from '@stagewise-plugins/react';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

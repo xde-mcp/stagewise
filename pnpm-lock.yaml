@@ -224,7 +224,7 @@ importers:
         specifier: ^19.1.0
         version: 19.1.0(react@19.1.0)
     devDependencies:
-      '@stagewise/react-plugin':
+      '@stagewise-plugins/react':
         specifier: workspace:*
         version: link:../../plugins/react
       '@stagewise/toolbar-next':
