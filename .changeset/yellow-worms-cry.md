@@ -1,5 +1,5 @@
 ---
-"@stagewise/react-plugin": patch
+"@stagewise-plugins/react": patch
 "@stagewise/toolbar": patch
 ---
 
