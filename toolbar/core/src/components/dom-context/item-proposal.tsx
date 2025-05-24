@@ -17,9 +17,10 @@
 
 import { useWindowSize } from '@/hooks/use-window-size';
 import { useCyclicUpdate } from '@/hooks/use-cyclic-update';
-import { useCallback, useRef } from 'preact/hooks';
+import { useCallback, useMemo, useRef } from 'preact/hooks';
 import type { HTMLAttributes } from 'preact/compat';
 import { PlusIcon } from 'lucide-react';
+import { usePlugins } from '@/hooks/use-plugins';
 
 export interface ItemProposalProps extends HTMLAttributes<HTMLDivElement> {
   refElement: HTMLElement;
@@ -32,6 +33,20 @@ export function ContextItemProposal({
   const boxRef = useRef<HTMLDivElement>(null);
 
   const windowSize = useWindowSize();
+
+  const { plugins } = usePlugins();
+
+  const hoveredElementPluginContext = useMemo(() => {
+    if (!refElement) return [];
+    const pluginsWithContextGetters = plugins.filter(
+      (plugin) => plugin.onContextElementSelect,
+    );
+
+    return pluginsWithContextGetters.map((plugin) => ({
+      pluginName: plugin.pluginName,
+      context: plugin.onContextElementSelect?.(refElement),
+    }));
+  }, [refElement]);
 
   const updateBoxPosition = useCallback(() => {
     if (boxRef.current) {
@@ -64,20 +79,18 @@ export function ContextItemProposal({
       style={{ zIndex: 1000 }}
       ref={boxRef}
     >
-      <div
-        style={{
-          position: 'absolute',
-          top: '2px',
-          left: '2px',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          color: 'white',
-          padding: '1px 2px',
-          fontSize: '12px',
-          borderRadius: '3px',
-          zIndex: 1001,
-        }}
-      >
-        {refElement.tagName.toLowerCase()}
+      <div className="absolute top-0.5 left-0.5 flex w-full flex-row items-start justify-start gap-1">
+        <div className="flex flex-row items-center justify-center gap-0.5 overflow-hidden rounded-md bg-zinc-700/80 px-1 py-0 font-medium text-white text-xs">
+          <span className="truncate">{refElement.tagName.toLowerCase()}</span>
+        </div>
+        {hoveredElementPluginContext.map((plugin) => (
+          <div className="flex flex-row items-center justify-center gap-0.5 overflow-hidden rounded-md bg-zinc-700/80 px-1 py-0 font-medium text-white text-xs">
+            <span className="size-3 shrink-0 stroke-white text-white *:size-full">
+              {plugins.find((p) => p.pluginName === plugin.pluginName)?.iconSvg}
+            </span>
+            <span className="truncate">{plugin.context.annotation}</span>
+          </div>
+        ))}
       </div>
       <PlusIcon className="size-6 drop-shadow-black drop-shadow-md" />
     </div>

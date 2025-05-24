@@ -44,5 +44,8 @@
       "@headlessui/react@2.2.2": "patches/@headlessui__react.patch"
     },
     "onlyBuiltDependencies": ["esbuild"]
+  },
+  "dependencies": {
+    "create-stagewise-plugin": "link:packages/create-stagewise-plugin"
   }
 }

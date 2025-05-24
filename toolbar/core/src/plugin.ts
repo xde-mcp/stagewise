@@ -221,6 +221,11 @@ export interface ToolbarPlugin {
     | ((prompt: UserMessage) => PromptContext | Promise<PromptContext> | null)
     | null;
 
+  /** Called when a context element is hovered in the context menu. This only happens in prompting mode. */
+  onContextElementHover?:
+    | ((element: HTMLElement) => ContextElementContext)
+    | null;
+
   /** Called when a context element is selected in the context menu. This only happens in prompting mode. */
   onContextElementSelect?:
     | ((element: HTMLElement) => ContextElementContext)

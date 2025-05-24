@@ -78,13 +78,16 @@ export function ContextItem({ refElement, ...props }: ContextItemProps) {
       role="button"
       tabIndex={0}
     >
-      <div className="absolute bottom-[100%] flex w-full flex-row items-start justify-start gap-1 py-1">
+      <div className="absolute top-0.5 left-0.5 flex w-full flex-row items-start justify-start gap-1">
+        <div className="flex flex-row items-center justify-center gap-0.5 overflow-hidden rounded-md bg-zinc-700/80 px-1 py-0 font-medium text-white text-xs">
+          <span className="truncate">{refElement.tagName.toLowerCase()}</span>
+        </div>
         {props.pluginContext.map((plugin) => (
-          <div className="flex flex-row items-center justify-center gap-0.5 rounded-md bg-blue-500 px-1 py-0 font-medium text-white text-xs">
-            <span className="size-3 rounded-sm bg-white">
+          <div className="flex flex-row items-center justify-center gap-0.5 overflow-hidden rounded-md bg-zinc-700/80 px-1 py-0 font-medium text-white text-xs">
+            <span className="size-3 shrink-0 stroke-white text-white *:size-full">
               {plugins.find((p) => p.pluginName === plugin.pluginName)?.iconSvg}
             </span>
-            <span>{plugin.context.annotation}</span>
+            <span className="truncate">{plugin.context.annotation}</span>
           </div>
         ))}
       </div>
