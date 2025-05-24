@@ -25,7 +25,6 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 
 * ⚡ Works out of the box
 * 🛠️ Customise using your own configuration file
-* 🔌 Connect to your own MCP server
 * 📦 Does not impact bundle size
 * 🧠 Sends DOM elements, screenshots & metadata to your AI agent
 * 👇 Comment directly on live elements in the browser
@@ -39,12 +38,6 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 ### 1. 🧩 **Install the vs-code extension** 
 
 Install the extension here: https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension
-
-> [!NOTE]
-> 💬 **Enable MCP support (Cursor):** 
-> - The extension will auto-install a **stagewise MCP server**.
-> - Cursor will prompt you to *enable* the server.
-> - Click *enable* to let your agent call MCP-tools that the toolbar provides. ([Read more](#write-custom-mcp-tools))
 
 ### 2. 👨🏽‍💻 **Install and inject the toolbar**
 
@@ -103,6 +96,14 @@ function setupStagewise() {
 setupStagewise();
 ```
 > ⚡️ The toolbar will **automatically connect** to the extension!
+
+> [!IMPORTANT]
+> 🚫 **If nothing happens when a prompt is sent:**
+> 
+> If you have multiple Cursor windows open, the toolbar may send prompts to the wrong window, making it appear as if "no prompt is being sent". To ensure reliable operation:
+> - Keep only one Cursor window open when using stagewise
+>
+> A fix for this is on the way!
 
 ### Framework-specific integration examples
 
@@ -308,18 +309,25 @@ Check out our [project roadmap](./.github/ROADMAP.md) for upcoming features, bug
 
 ## 📜 License
 
-stagewise is developed by Goetze, Scharpff & Toews GbR under an **Open Core** model:
+stagewise is licensed under the AGPL v3 to ensure contributions remain open and transparent.
 
-* 🧩 99% is open-source under AGPLv3
-* 🏢 1% (enterprise features) is commercial
+✅ You will not need a commercial license if:
+- You're using the official, unmodified version
 
-This allows us to:
+- Your usage is limited to development, testing, or evaluation environments
 
-* Keep core tech open and transparent
-* Ensure sustainability and quality
-* Prevent misuse by closed-source platforms
+- stagewise is not exposed to users over a network (e.g., not part of an internal tool, dashboard, or SaaS application)
 
-We believe this model creates a fair, open ecosystem that benefits both individuals and companies.
+This applies even if you're operating under SOC 2, ISO 27001, or similar compliance frameworks — as long as the above conditions are met.
+
+
+🔐 You will need a commercial license if:
+- You want to use stagewise in a production environment (even internally)
+- You plan to fork or modify stagewise
+- You're integrating stagewise into a proprietary or closed-source product
+- You need to remain compliant with SOC 2, ISO 27001, or similar standards but go beyond the exempted use above
+
+📩 Reach out at sales@stagewise.io to learn more or request a license.
 
 ## 🤝 Contributing
 
