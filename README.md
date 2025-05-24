@@ -97,6 +97,14 @@ setupStagewise();
 ```
 > ⚡️ The toolbar will **automatically connect** to the extension!
 
+> [!IMPORTANT]
+> 🚫 **If nothing happens when a prompt is sent:**
+> 
+> If you have multiple Cursor windows open, the toolbar may send prompts to the wrong window, making it appear as if "no prompt is being sent". To ensure reliable operation:
+> - Keep only one Cursor window open when using stagewise
+>
+> A fix for this is on the way!
+
 ### Framework-specific integration examples
 
 For easier integration, we provide framework-specific NPM packages that come with dedicated toolbar components (e.g., `<StagewiseToolbar>`). You can usually import these from `@stagewise/[framework-name]`.
@@ -304,7 +312,7 @@ Check out our [project roadmap](./.github/ROADMAP.md) for upcoming features, bug
 stagewise is licensed under the AGPL v3 to ensure contributions remain open and transparent.
 
 ✅ You will not need a commercial license if:
-- You’re using the official, unmodified version
+- You're using the official, unmodified version
 
 - Your usage is limited to development, testing, or evaluation environments
 
@@ -316,7 +324,7 @@ This applies even if you're operating under SOC 2, ISO 27001, or similar complia
 🔐 You will need a commercial license if:
 - You want to use stagewise in a production environment (even internally)
 - You plan to fork or modify stagewise
-- You’re integrating stagewise into a proprietary or closed-source product
+- You're integrating stagewise into a proprietary or closed-source product
 - You need to remain compliant with SOC 2, ISO 27001, or similar standards but go beyond the exempted use above
 
 📩 Reach out at sales@stagewise.io to learn more or request a license.
