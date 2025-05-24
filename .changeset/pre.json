@@ -10,7 +10,8 @@
     "@stagewise/toolbar-next": "0.1.2",
     "@stagewise/toolbar-react": "0.1.2",
     "@stagewise/toolbar-vue": "0.1.2",
-    "@stagewise/plugin-example": "0.0.0"
+    "@stagewise/plugin-example": "0.0.0",
+    "@stagewise-plugins/react": "0.3.0"
   },
   "changesets": [
     "calm-phones-build",
@@ -19,6 +20,7 @@
     "eleven-loops-begin",
     "empty-heads-double",
     "forty-spiders-allow",
+    "funny-items-invite",
     "giant-masks-repeat",
     "gold-socks-cheat",
     "odd-women-cry",
@@ -29,6 +31,9 @@
     "shy-terms-sell",
     "strong-planets-jog",
     "thick-spies-bet",
-    "witty-bottles-sleep"
+    "whole-breads-listen",
+    "witty-bottles-sleep",
+    "witty-clocks-sing",
+    "yellow-worms-cry"
   ]
 }

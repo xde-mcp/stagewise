@@ -1,5 +1,13 @@
 # @stagewise/toolbar
 
+## 0.3.0-alpha.4
+
+### Patch Changes
+
+- 3b637e8: Update README.md to include multiple-window-caveat
+- a5c1d5b: Add a react plugin
+- 319e0e1: Added initial version of react plugin and streamlined UI for plugin annotations in context element selectors
+
 ## 0.3.0-alpha.3
 
 ### Patch Changes
