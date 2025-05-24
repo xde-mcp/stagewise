@@ -1,5 +1,19 @@
 # @stagewise/toolbar-vue
 
+## 0.2.0-alpha.4
+
+### Minor Changes
+
+- 9f36e3f: No changes, aligning versions.
+
+### Patch Changes
+
+- 3b637e8: Update README.md to include multiple-window-caveat
+- Updated dependencies [3b637e8]
+- Updated dependencies [a5c1d5b]
+- Updated dependencies [319e0e1]
+  - @stagewise/toolbar@0.3.0-alpha.4
+
 ## 0.2.0-alpha.3
 
 ### Minor Changes

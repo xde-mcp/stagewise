@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.3.1-alpha.0
+
+### Patch Changes
+
+- 3b637e8: Update README.md to include multiple-window-caveat
+
 ## 0.3.0-alpha.0
 
 ### Minor Changes

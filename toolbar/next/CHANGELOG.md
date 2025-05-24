@@ -1,5 +1,19 @@
 # @stagewise/toolbar-next
 
+## 0.2.0-alpha.4
+
+### Minor Changes
+
+- 9f36e3f: No changes, aligning versions.
+
+### Patch Changes
+
+- 3b637e8: Update README.md to include multiple-window-caveat
+- a5c1d5b: Add a react plugin
+- Updated dependencies [3b637e8]
+- Updated dependencies [9f36e3f]
+  - @stagewise/toolbar-react@0.2.0-alpha.4
+
 ## 0.2.0-alpha.3
 
 ### Minor Changes
