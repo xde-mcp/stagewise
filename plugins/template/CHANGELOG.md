@@ -1,5 +1,12 @@
 # @stagewise/plugin-example
 
+## 0.1.0-alpha.4
+
+### Patch Changes
+
+- Updated dependencies [92407bd]
+  - @stagewise/toolbar@0.3.0-alpha.5
+
 ## 0.1.0-alpha.3
 
 ### Patch Changes
