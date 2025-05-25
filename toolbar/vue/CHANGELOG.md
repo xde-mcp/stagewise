@@ -1,5 +1,13 @@
 # @stagewise/toolbar-vue
 
+## 0.2.0-alpha.5
+
+### Patch Changes
+
+- 92407bd: Update license field in readme.
+- Updated dependencies [92407bd]
+  - @stagewise/toolbar@0.3.0-alpha.5
+
 ## 0.2.0-alpha.4
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.3.0-alpha.5
+
+### Patch Changes
+
+- 92407bd: Update license field in readme.
+
 ## 0.3.0-alpha.4
 
 ### Patch Changes

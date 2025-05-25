@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.3.1-alpha.1
+
+### Patch Changes
+
+- 92407bd: Update license field in readme.
+
 ## 0.3.1-alpha.0
 
 ### Patch Changes
