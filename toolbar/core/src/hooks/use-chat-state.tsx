@@ -363,14 +363,15 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
             // Handle response based on success/error
             if (result.result.success) {
               // On success, show success state briefly then reset
-              setTimeout(() => {
-                setPromptState('success');
-              }, 1000);
               setChats((prev) =>
                 prev.map((chat) =>
                   chat.id === chatId ? { ...chat, inputValue: '' } : chat,
                 ),
               );
+              // On success, show agent-reached state in MCP UI
+              const appState = useAppState.getState();
+              appState.setAgentReached();
+              setPromptState('loading');
             } else {
               // On error, go to error state
               setPromptState('error');
