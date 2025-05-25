@@ -9,10 +9,12 @@ import {
   PuzzleIcon,
   RefreshCwIcon,
   WifiOffIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from 'lucide-react';
 import { ToolbarChatArea } from '../chat-box';
 import { useDraggable } from '@/hooks/use-draggable';
-import { useContext, useEffect, useState } from 'preact/hooks';
+import { useContext, useEffect } from 'preact/hooks';
 import { DraggableContext } from '@/hooks/use-draggable';
 import type { DraggableContextType } from '@/hooks/use-draggable';
 import { usePlugins } from '@/hooks/use-plugins';
@@ -27,6 +29,80 @@ import { SettingsButton, SettingsPanel } from '../settings';
 import { useVSCode } from '@/hooks/use-vscode';
 import { DisconnectedStatePanel } from './panels/disconnected';
 
+import { useState } from 'preact/hooks';
+
+// Subcomponent for tool details (input schema and arguments)
+function ToolDetailsSection({
+  toolName,
+  inputSchema,
+  inputArguments,
+}: {
+  toolName?: string;
+  inputSchema?: Record<string, any>;
+  inputArguments?: Record<string, any>;
+}) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  if (!toolName && !inputSchema && !inputArguments) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-blue-300 bg-blue-100/50 p-2">
+      <button
+        type="button"
+        onClick={() => setShowDetails(!showDetails)}
+        className="flex w-full items-center gap-2 font-medium text-blue-800 text-xs hover:text-blue-900"
+      >
+        <PuzzleIcon className="size-3" />
+        <span>Tool Details{toolName && `: ${toolName}`}</span>
+        <span className="ml-auto text-blue-600">
+          {showDetails ? 'Hide' : 'Show'}
+        </span>
+      </button>
+
+      {showDetails && (
+        <div className="mt-2 space-y-2 border-blue-200 border-t pt-2">
+          {toolName && (
+            <div>
+              <span className="font-medium text-blue-700 text-xs">Tool:</span>
+              <code className="ml-1 rounded bg-blue-200 px-1 py-0.5 text-blue-800 text-xs">
+                {toolName}
+              </code>
+            </div>
+          )}
+
+          {inputArguments && Object.keys(inputArguments).length > 0 && (
+            <div>
+              <span className="font-medium text-blue-700 text-xs">
+                Input Arguments:
+              </span>
+              <div className="mt-1 max-h-32 overflow-y-auto rounded bg-blue-200/50 p-2">
+                <pre className="text-blue-800 text-xs">
+                  {JSON.stringify(inputArguments, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {inputSchema && Object.keys(inputSchema).length > 0 && (
+            <div>
+              <span className="font-medium text-blue-700 text-xs">
+                Input Schema:
+              </span>
+              <div className="mt-1 max-h-32 overflow-y-auto rounded bg-blue-200/50 p-2">
+                <pre className="text-blue-800 text-xs">
+                  {JSON.stringify(inputSchema, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Subcomponent for loading state content
 function LoadingStateContent() {
   return (
@@ -38,6 +114,393 @@ function LoadingStateContent() {
 
       <div className="text-blue-700 text-sm">
         <p>Looking for VS Code windows...</p>
+      </div>
+    </div>
+  );
+}
+
+// Enhanced completion state with MCP tool call integration
+function CompletionStateContent({
+  completionState,
+  completionMessage,
+  onReset,
+}: {
+  completionState: 'loading' | 'success' | 'error';
+  completionMessage: string | null;
+  onReset: () => void;
+}) {
+  // For backward compatibility, map old states to new enhanced UI
+  // TODO: This will be replaced with actual MCP tool call state management
+
+  if (completionState === 'loading') {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50/90 p-4 shadow-lg backdrop-blur">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="size-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <h3 className="font-semibold text-blue-800">AI Agent Working</h3>
+        </div>
+        <div className="space-y-2 text-blue-700 text-sm">
+          <p className="text-blue-600 text-sm">📋 Processing your request...</p>
+          <p className="text-blue-500 text-xs">
+            💡 The agent is analyzing and implementing changes
+          </p>
+
+          {/* Progress visualization for loading state */}
+          <div className="mt-3 h-2 w-full rounded-full bg-blue-200">
+            <div
+              className="h-2 animate-pulse rounded-full bg-blue-500"
+              style={{ width: '60%' }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (completionState === 'success') {
+    return (
+      <div className="rounded-lg border border-green-200 bg-green-50/90 p-4 shadow-lg backdrop-blur">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex size-5 items-center justify-center rounded-full bg-green-500">
+            <CheckCircleIcon className="size-3 text-white" />
+          </div>
+          <h3 className="font-semibold text-green-800">
+            Task Completed Successfully
+          </h3>
+        </div>
+        <div className="space-y-3 text-green-700 text-sm">
+          <p className="text-green-700 text-sm">
+            {completionMessage ||
+              'The agent has completed your request successfully.'}
+          </p>
+
+          {/* Show completion details */}
+          <div className="mt-2 space-y-2">
+            <p className="text-green-600 text-xs">✅ Implementation finished</p>
+            <p className="text-green-500 text-xs">
+              📁 Files have been modified
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-green-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-green-700"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (completionState === 'error') {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50/90 p-4 shadow-lg backdrop-blur">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex size-5 items-center justify-center rounded-full bg-red-500">
+            <XCircleIcon className="size-3 text-white" />
+          </div>
+          <h3 className="font-semibold text-red-800">Error Occurred</h3>
+        </div>
+        <div className="space-y-3 text-red-700 text-sm">
+          <p className="text-red-700 text-sm">
+            {completionMessage ||
+              'The agent encountered an error while processing your request.'}
+          </p>
+
+          {/* Show error details */}
+          <div className="mt-2">
+            <p className="text-red-500 text-xs">
+              ⚠️ Task could not be completed
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-red-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-red-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Enhanced MCP tool call status component
+function McpToolCallStatusContent({
+  mcpToolCall,
+  onReset,
+}: {
+  mcpToolCall: any; // Using McpToolCallState from app state
+  onReset: () => void;
+}) {
+  if (mcpToolCall.status === 'starting') {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50/90 p-4 shadow-lg backdrop-blur">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="size-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <h3 className="font-semibold text-blue-800">AI Agent Starting</h3>
+        </div>
+        <div className="space-y-2 text-blue-700 text-sm">
+          {mcpToolCall.currentTask && (
+            <p className="text-blue-600 text-sm">
+              📋 {mcpToolCall.currentTask}
+            </p>
+          )}
+          {mcpToolCall.estimatedSteps && (
+            <p className="text-blue-500 text-xs">
+              ⏱️ Estimated: {mcpToolCall.estimatedSteps} steps
+            </p>
+          )}
+        </div>
+
+        <ToolDetailsSection
+          toolName={mcpToolCall.toolName}
+          inputSchema={mcpToolCall.inputSchema}
+          inputArguments={mcpToolCall.inputArguments}
+        />
+      </div>
+    );
+  }
+
+  if (mcpToolCall.status === 'in-progress') {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50/90 p-4 shadow-lg backdrop-blur">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="size-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <h3 className="font-semibold text-blue-800">AI Agent Working</h3>
+        </div>
+        <div className="space-y-2 text-blue-700 text-sm">
+          {mcpToolCall.currentTask && (
+            <p className="text-blue-600 text-sm">
+              📋 {mcpToolCall.currentTask}
+            </p>
+          )}
+          {mcpToolCall.progress && (
+            <div className="space-y-2">
+              <p className="text-blue-700 text-sm">
+                {mcpToolCall.progress.currentStep &&
+                mcpToolCall.progress.totalSteps
+                  ? `Step ${mcpToolCall.progress.currentStep}/${mcpToolCall.progress.totalSteps}: `
+                  : ''}
+                {mcpToolCall.progress.step}
+              </p>
+              {mcpToolCall.progress.details && (
+                <p className="text-blue-500 text-xs">
+                  💡 {mcpToolCall.progress.details}
+                </p>
+              )}
+              {mcpToolCall.progress.currentStep &&
+                mcpToolCall.progress.totalSteps && (
+                  <div className="mt-2 h-2 w-full rounded-full bg-blue-200">
+                    <div
+                      className="h-2 rounded-full bg-blue-500 transition-all duration-300"
+                      style={{
+                        width: `${(mcpToolCall.progress.currentStep / mcpToolCall.progress.totalSteps) * 100}%`,
+                      }}
+                    />
+                  </div>
+                )}
+            </div>
+          )}
+        </div>
+
+        <ToolDetailsSection
+          toolName={mcpToolCall.toolName}
+          inputSchema={mcpToolCall.inputSchema}
+          inputArguments={mcpToolCall.inputArguments}
+        />
+      </div>
+    );
+  }
+
+  if (mcpToolCall.status === 'completed') {
+    const success = mcpToolCall.result?.success ?? true;
+    return (
+      <div
+        className={`rounded-lg border p-4 shadow-lg backdrop-blur ${
+          success
+            ? 'border-green-200 bg-green-50/90'
+            : 'border-red-200 bg-red-50/90'
+        }`}
+      >
+        <div className="mb-3 flex items-center gap-3">
+          <div
+            className={`flex size-5 items-center justify-center rounded-full ${
+              success ? 'bg-green-500' : 'bg-red-500'
+            }`}
+          >
+            {success ? (
+              <CheckCircleIcon className="size-3 text-white" />
+            ) : (
+              <XCircleIcon className="size-3 text-white" />
+            )}
+          </div>
+          <h3
+            className={`font-semibold ${
+              success ? 'text-green-800' : 'text-red-800'
+            }`}
+          >
+            {success ? 'Task Completed Successfully' : 'Task Failed'}
+          </h3>
+        </div>
+        <div
+          className={`space-y-3 text-sm ${
+            success ? 'text-green-700' : 'text-red-700'
+          }`}
+        >
+          <p>
+            {mcpToolCall.result?.message ||
+              (success
+                ? 'The agent has completed your request successfully.'
+                : 'The agent failed to complete your request.')}
+          </p>
+
+          {mcpToolCall.result?.filesModified &&
+            mcpToolCall.result.filesModified.length > 0 && (
+              <div className="mt-2">
+                <p
+                  className={`mb-1 text-xs ${success ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  📁 Files modified:
+                </p>
+                <div className="space-y-1">
+                  {mcpToolCall.result.filesModified.map(
+                    (file: string, index: number) => (
+                      <span
+                        key={file}
+                        className={`mr-1 inline-block rounded px-2 py-1 text-xs ${
+                          success
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {file}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+
+          <button
+            type="button"
+            onClick={onReset}
+            className={`flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 font-medium text-sm text-white transition-colors ${
+              success
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-red-600 hover:bg-red-700'
+            }`}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mcpToolCall.status === 'error') {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50/90 p-4 shadow-lg backdrop-blur">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex size-5 items-center justify-center rounded-full bg-red-500">
+            <XCircleIcon className="size-3 text-white" />
+          </div>
+          <h3 className="font-semibold text-red-800">Error Occurred</h3>
+        </div>
+        <div className="space-y-3 text-red-700 text-sm">
+          <p>
+            {mcpToolCall.error?.error ||
+              'An unexpected error occurred during task execution.'}
+          </p>
+
+          {mcpToolCall.error?.context && (
+            <p className="text-red-500 text-xs">
+              Context: {mcpToolCall.error.context}
+            </p>
+          )}
+
+          {mcpToolCall.error?.recoverable !== undefined && (
+            <p className="text-red-500 text-xs">
+              {mcpToolCall.error.recoverable
+                ? '🔄 Recoverable error'
+                : '❌ Task aborted'}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-red-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-red-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Subcomponent for disconnected state content
+function DisconnectedStateContent({
+  discover,
+  discoveryError,
+}: {
+  discover: () => Promise<void>;
+  discoveryError: string | null;
+}) {
+  return (
+    <div className="rounded-lg border border-orange-200 bg-orange-50/90 p-4 shadow-lg backdrop-blur">
+      <div className="mb-3 flex items-center gap-3">
+        <WifiOffIcon className="size-5 text-orange-600" />
+        <h3 className="font-semibold text-orange-800">Not Connected</h3>
+      </div>
+
+      <div className="space-y-3 text-orange-700 text-sm">
+        <p>The Stagewise toolbar isn't connected to any VS Code window.</p>
+
+        {discoveryError && (
+          <div className="rounded border border-red-200 bg-red-100 p-2 text-red-700">
+            <strong>Error:</strong> {discoveryError}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="font-medium">To connect:</p>
+          <ol className="list-inside list-decimal space-y-1 pl-2 text-xs">
+            <li>Open VS Code</li>
+            <li>Install the Stagewise extension</li>
+            <li>Make sure the extension is active</li>
+            <li>Click refresh below</li>
+          </ol>
+        </div>
+
+        <button
+          type="button"
+          onClick={discover}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-orange-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-orange-700"
+        >
+          <RefreshCwIcon className="size-4" />
+          Retry Connection
+        </button>
+
+        <div className="border-orange-200 border-t pt-2">
+          <a
+            href="https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-600 text-xs hover:text-orange-800 hover:underline"
+          >
+            Get VS Code Extension →
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -156,6 +619,15 @@ export function ToolbarDraggableBox() {
   const minimize = useAppState((state) => state.minimize);
   const expand = useAppState((state) => state.expand);
 
+  // Legacy completion flow state
+  const completionState = useAppState((state) => state.completionState);
+  const completionMessage = useAppState((state) => state.completionMessage);
+  const resetCompletion = useAppState((state) => state.resetCompletion);
+
+  // Enhanced MCP tool call state
+  const mcpToolCall = useAppState((state) => state.mcpToolCall);
+  const resetMcpTask = useAppState((state) => state.resetMcpTask);
+
   useEffect(() => {
     if (minimized) {
       setPluginBox(null);
@@ -240,7 +712,11 @@ export function ToolbarDraggableBox() {
         <div
           className={cn(
             'flex min-h-0 flex-1 origin-bottom-right flex-col items-stretch px-2 transition-all duration-300 ease-out',
-            (pluginBox || openPanel === 'settings' || !isConnectedState) &&
+            (pluginBox ||
+              openPanel === 'settings' ||
+              !isConnectedState ||
+              (isConnectedState && completionState !== 'idle') ||
+              (isConnectedState && mcpToolCall.status !== 'idle')) &&
               !minimized
               ? 'pointer-events-auto scale-100 opacity-100 blur-none'
               : 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
@@ -262,6 +738,21 @@ export function ToolbarDraggableBox() {
               discoveryError={discoveryError}
             />
           )}
+          {isConnectedState && mcpToolCall.status !== 'idle' && (
+            <McpToolCallStatusContent
+              mcpToolCall={mcpToolCall}
+              onReset={resetMcpTask}
+            />
+          )}
+          {isConnectedState &&
+            completionState !== 'idle' &&
+            mcpToolCall.status === 'idle' && (
+              <CompletionStateContent
+                completionState={completionState}
+                completionMessage={completionMessage}
+                onReset={resetCompletion}
+              />
+            )}
           {isConnectedState && openPanel === 'settings' && (
             <SettingsPanel onClose={() => setOpenPanel(null)} />
           )}
