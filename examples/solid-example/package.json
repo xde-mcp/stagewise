@@ -1,6 +1,7 @@
 {
   "name": "solid-example",
   "type": "module",
+  "private": true,
   "scripts": {
     "dev": "vinxi dev --port 3006",
     "build": "vinxi build",
