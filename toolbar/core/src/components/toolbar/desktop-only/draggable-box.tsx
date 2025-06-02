@@ -75,7 +75,7 @@ function DisconnectedStateContent({
       </div>
 
       <div className="space-y-3 text-orange-700 text-sm">
-        <p>The Stagewise toolbar isn't connected to any VS Code window.</p>
+        <p>The stagewise toolbar isn&apos;t connected to any IDE window.</p>
 
         {discoveryError && (
           <div className="rounded border border-red-200 bg-red-100 p-2 text-red-700">
@@ -86,8 +86,8 @@ function DisconnectedStateContent({
         <div className="space-y-2">
           <p className="font-medium">To connect:</p>
           <ol className="list-inside list-decimal space-y-1 pl-2 text-xs">
-            <li>Open VS Code</li>
-            <li>Install the Stagewise extension</li>
+            <li>Open your IDE (Cursor, Windsurf, etc.)</li>
+            <li>Install the stagewise extension</li>
             <li>Make sure the extension is active</li>
             <li>Click refresh below</li>
           </ol>
