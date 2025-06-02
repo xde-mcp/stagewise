@@ -79,7 +79,7 @@ export function Footer() {
             Impressum
           </Link>
           <Link
-            href="/trademark-policy"
+            href="/docs/trademark-policy"
             className="text-gray-500 text-xs hover:underline dark:text-gray-400"
           >
             Trademark Policy
