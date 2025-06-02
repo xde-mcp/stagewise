@@ -374,8 +374,15 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
 
             // Handle response based on success/error
             if (result.result.success) {
-              // On success, stay in loading state (will be handled by reload)
-              setPromptState('loading');
+              // On success, show success state briefly then reset
+              setTimeout(() => {
+                setPromptState('success');
+              }, 1000);
+              setChats((prev) =>
+                prev.map((chat) =>
+                  chat.id === chatId ? { ...chat, inputValue: '' } : chat,
+                ),
+              );
             } else {
               // On error, go to error state
               setPromptState('error');
@@ -389,7 +396,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
                     chat.id === chatId ? { ...chat, inputValue: '' } : chat,
                   ),
                 );
-              }, 3000);
+              }, 1000);
             }
           } catch (error) {
             // On exception, go to error state
@@ -404,7 +411,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
                   chat.id === chatId ? { ...chat, inputValue: '' } : chat,
                 ),
               );
-            }, 3000);
+            }, 1000);
           }
         } else {
           // No bridge available, go to error state
@@ -418,7 +425,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
                 chat.id === chatId ? { ...chat, inputValue: '' } : chat,
               ),
             );
-          }, 3000);
+          }, 1000);
         }
       }
 
