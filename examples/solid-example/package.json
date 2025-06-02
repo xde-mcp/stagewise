@@ -16,7 +16,7 @@
     "vinxi": "^0.5.3"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
   },
   "devDependencies": {
     "@stagewise/toolbar": "workspace:*"
