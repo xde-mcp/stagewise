@@ -1,5 +1,11 @@
 # @stagewise/extension-toolbar-srpc-contract
 
+## 0.1.0-alpha.1
+
+### Minor Changes
+
+- f4b085d: Add session management and connection state
+
 ## 0.1.0-alpha.0
 
 ### Minor Changes

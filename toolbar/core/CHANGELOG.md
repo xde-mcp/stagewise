@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.3.0-alpha.6
+
+### Minor Changes
+
+- f4b085d: Add session management and connection state
+
 ## 0.3.0-alpha.5
 
 ### Patch Changes

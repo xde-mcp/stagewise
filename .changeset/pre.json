@@ -11,7 +11,8 @@
     "@stagewise/toolbar-react": "0.1.2",
     "@stagewise/toolbar-vue": "0.1.2",
     "@stagewise/plugin-example": "0.0.0",
-    "@stagewise-plugins/react": "0.3.0"
+    "@stagewise-plugins/react": "0.3.0",
+    "next-pages-example": "0.1.0"
   },
   "changesets": [
     "calm-phones-build",
@@ -20,6 +21,7 @@
     "eleven-loops-begin",
     "empty-heads-double",
     "forty-spiders-allow",
+    "four-yaks-fail",
     "funny-items-invite",
     "giant-masks-repeat",
     "gold-socks-cheat",
