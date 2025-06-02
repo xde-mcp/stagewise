@@ -9,7 +9,6 @@ import { setupToolbar } from './setup-toolbar';
 import { getCurrentIDE } from 'src/utils/get-current-ide';
 import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import { getCurrentWindowInfo } from '../utils/window-discovery';
-import { getWindowShortId } from '../utils/window-discovery';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -34,18 +33,12 @@ export async function activate(context: vscode.ExtensionContext) {
     // Find an available port
     const port = await findAvailablePort(DEFAULT_PORT);
 
-    console.log(
-      `[Stagewise] Starting extension on port ${port} for window: ${getWindowShortId()}`,
-    );
-
     // Register MCP server with the actual port
     // updateCursorMcpConfig(port); // Disabled for now, since MCP tools are not available yet
 
     // Start the HTTP server with the same port
     const server = await startServer(port);
     const bridge = getExtensionBridge(server);
-
-    console.log(`[Stagewise] Extension bridge ready on port ${port}`);
 
     bridge.register({
       getSessionInfo: async (request, sendUpdate) => {
@@ -65,10 +58,6 @@ export async function activate(context: vscode.ExtensionContext) {
             },
           };
         }
-
-        console.log(
-          `[Stagewise] Processing agent prompt for window: ${getWindowShortId()}`,
-        );
 
         await dispatchAgentCall(request);
         sendUpdate.sendUpdate({
