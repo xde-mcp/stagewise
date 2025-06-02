@@ -1,5 +1,16 @@
 # stagewise-vscode-extension
 
+## 0.4.0-alpha.2
+
+### Minor Changes
+
+- f4b085d: Add session management and connection state
+
+### Patch Changes
+
+- Updated dependencies [f4b085d]
+  - @stagewise/extension-toolbar-srpc-contract@0.1.0-alpha.1
+
 ## 0.3.1-alpha.1
 
 ### Patch Changes
