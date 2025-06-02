@@ -70,5 +70,5 @@
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   },
-  "version": null
+  "version": "0.0.0"
 }
