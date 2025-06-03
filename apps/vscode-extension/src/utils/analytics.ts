@@ -81,3 +81,41 @@ export async function trackEvent(
 export async function shutdownAnalytics(): Promise<void> {
   await client.shutdown();
 }
+
+/**
+ * Special function to track telemetry state changes
+ * This bypasses the normal isAnalyticsEnabled() check for the disable event
+ * since we want to track when users opt-out before respecting their choice
+ */
+export async function trackTelemetryStateChange(
+  enabled: boolean,
+): Promise<void> {
+  try {
+    const machineId = vscode.env.machineId;
+    const eventName = enabled ? 'telemetry_enabled' : 'telemetry_disabled';
+
+    await client.capture({
+      distinctId: hashId(machineId),
+      event: eventName,
+      properties: {
+        vscodeVersion: vscode.version,
+        appName: vscode.env.appName,
+        extensionVersion: vscode.extensions.getExtension(
+          'stagewise.stagewise-vscode-extension',
+        )?.packageJSON.version,
+        platform: process.platform,
+      },
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Analytics] Telemetry state change tracked: ${eventName}`);
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error(
+        '[Analytics] Error tracking telemetry state change:',
+        error,
+      );
+    }
+  }
+}

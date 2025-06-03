@@ -62,6 +62,16 @@
       "classification": "SystemMetaData",
       "purpose": "FeatureInsight",
       "comment": "Tracks when the extension is deactivated"
+    },
+    "telemetry_disabled": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user disables telemetry collection. This helps understand opt-out rates and is tracked once when the setting changes before telemetry is actually disabled."
+    },
+    "telemetry_enabled": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user re-enables telemetry collection after previously disabling it."
     }
   }
 }

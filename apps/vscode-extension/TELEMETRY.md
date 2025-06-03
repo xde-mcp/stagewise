@@ -13,6 +13,8 @@ We collect the following types of telemetry data:
   - Port numbers for diagnostic purposes
 - Agent usage (`agent_prompt_triggered`)
   - When the AI agent is invoked
+- Telemetry setting changes (`telemetry_disabled`, `telemetry_enabled`)
+  - When users opt-out or opt-in to telemetry collection
 
 ### Error Data
 - Extension activation errors (`activation_error`)
@@ -30,6 +32,13 @@ We collect the following types of telemetry data:
 #### Feature Usage Events
 - `agent_prompt_triggered`: Triggered when the AI agent is invoked
   - No additional properties collected
+
+#### Privacy Events
+- `telemetry_disabled`: Triggered when a user disables telemetry collection
+  - Tracked once when the setting changes, before telemetry is actually disabled
+  - Helps us understand opt-out rates and improve our privacy practices
+- `telemetry_enabled`: Triggered when a user re-enables telemetry collection
+  - Tracked when users opt back in after previously disabling telemetry
 
 #### Error Events
 - `activation_error`: Triggered when the extension fails to activate

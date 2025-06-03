@@ -9,7 +9,11 @@ import { setupToolbar } from './setup-toolbar';
 import { getCurrentIDE } from 'src/utils/get-current-ide';
 import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import { getCurrentWindowInfo } from '../utils/window-discovery';
-import { trackEvent, shutdownAnalytics } from '../utils/analytics';
+import {
+  trackEvent,
+  shutdownAnalytics,
+  trackTelemetryStateChange,
+} from '../utils/analytics';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -29,6 +33,21 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
   context.subscriptions.push(fakeDiagCollection); // Dispose on deactivation
+
+  // Add configuration change listener to track telemetry setting changes
+  const configChangeListener = vscode.workspace.onDidChangeConfiguration(
+    async (e) => {
+      if (e.affectsConfiguration('stagewise.telemetry.enabled')) {
+        const config = vscode.workspace.getConfiguration('stagewise');
+        const telemetryEnabled = config.get<boolean>('telemetry.enabled', true);
+
+        // Track the telemetry state change using the dedicated function
+        await trackTelemetryStateChange(telemetryEnabled);
+      }
+    },
+  );
+
+  context.subscriptions.push(configChangeListener);
 
   try {
     // Track extension activation
