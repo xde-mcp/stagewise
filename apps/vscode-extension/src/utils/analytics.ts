@@ -52,6 +52,7 @@ export async function trackEvent(
       properties: {
         ...properties,
         vscodeVersion: vscode.version,
+        appName: vscode.env.appName,
         extensionVersion: vscode.extensions.getExtension(
           'stagewise.stagewise-vscode-extension',
         )?.packageJSON.version,
