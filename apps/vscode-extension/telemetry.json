@@ -24,6 +24,11 @@
         }
       }
     },
+    "toolbar_auto_setup_started": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when the automatic toolbar setup process is initiated"
+    },
     "toolbar_setup_completed": {
       "classification": "SystemMetaData",
       "purpose": "FeatureInsight",

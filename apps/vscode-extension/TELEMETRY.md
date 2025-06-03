@@ -13,6 +13,8 @@ We collect the following types of telemetry data:
   - Port numbers for diagnostic purposes
 - Agent usage (`agent_prompt_triggered`)
   - When the AI agent is invoked
+- Toolbar setup events (`toolbar_auto_setup_started`)
+  - When the automatic toolbar setup process is initiated
 - Telemetry setting changes (`telemetry_disabled`, `telemetry_enabled`)
   - When users opt-out or opt-in to telemetry collection
 
@@ -31,6 +33,8 @@ We collect the following types of telemetry data:
 
 #### Feature Usage Events
 - `agent_prompt_triggered`: Triggered when the AI agent is invoked
+  - No additional properties collected
+- `toolbar_auto_setup_started`: Triggered when the automatic toolbar setup process is initiated
   - No additional properties collected
 
 #### Privacy Events
@@ -126,4 +130,4 @@ We are committed to GDPR compliance:
 
 If you have questions about our telemetry practices, please:
 1. File an issue on our [GitHub repository](https://github.com/stagewise-io/stagewise/issues)
-2. Contact us through our [website](https://stagewise.io/contact) 
+2. Contact us through our [website](https://stagewise.io/contact)
