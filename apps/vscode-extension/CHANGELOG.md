@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.4.2
+
+### Patch Changes
+
+- 3d8613e: Update the README agent list
+
 ## 0.4.1
 
 ### Patch Changes
