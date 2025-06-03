@@ -84,8 +84,6 @@ export async function activate(context: vscode.ExtensionContext) {
           };
         }
         await trackEvent('agent_prompt_triggered');
-        await dispatchAgentCall(request);
-        sendUpdate.sendUpdate({ updateText: 'Called the agent' });
 
         await dispatchAgentCall(request);
         sendUpdate.sendUpdate({
