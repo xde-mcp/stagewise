@@ -40,6 +40,8 @@ export async function setupToolbar() {
 
     Include the StagewiseToolbar component (exported by the \`\@stagewise/toolbar-react\` package) inside the top-most component of the app.
     Set the \`config\` prop to an object with the plugins array containing the \`ReactPlugin\` (exported by the \`\@stagewise-plugins/react\` package).
+
+    Note: The \`@stagewise/toolbar-react\` package already handles rendering the toolbar only in development mode. The "enabled" prop can be overriden with custom logic to conditionally load the toolbar.
   </react>
   
   <next>
@@ -50,6 +52,7 @@ export async function setupToolbar() {
     Set the \`config\` prop to an object with the plugins array containing the \`ReactPlugin\` (exported by the \`\@stagewise-plugins/react\` package).
 
     Note: The \`@stagewise/toolbar-next\` package already handles opt-out of SSR so that a simple integration of the component is enough.
+    Note: The \`@stagewise/toolbar-next\` package already handles rendering the toolbar only in development mode. The "enabled" prop can be overriden with custom logic to conditionally load the toolbar.
   </next>
   
   <vue>
