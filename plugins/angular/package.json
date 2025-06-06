@@ -1,7 +1,6 @@
 {
   "name": "@stagewise-plugins/angular",
   "version": "0.4.0",
-  "private": true,
   "type": "module",
   "keywords": ["stagewise", "toolbar", "ai", "devtool", "agent", "interaction"],
   "author": "tiq UG (haftungsbeschränkt)",
@@ -13,6 +12,9 @@
     "type": "git",
     "url": "https://github.com/stagewise-io/stagewise.git",
     "directory": "packages/toolbar"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "exports": {
     ".": {
