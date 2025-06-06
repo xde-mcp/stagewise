@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.4.3
+
+### Patch Changes
+
+- 2ebfe5e: Update tailwind names
+
 ## 0.4.2
 
 ### Patch Changes
