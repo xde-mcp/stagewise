@@ -370,6 +370,9 @@ importers:
 
   examples/nuxt-example:
     dependencies:
+      '@stagewise-plugins/vue':
+        specifier: workspace:*
+        version: link:../../plugins/vue
       '@stagewise/toolbar-vue':
         specifier: workspace:*
         version: link:../../toolbar/vue
