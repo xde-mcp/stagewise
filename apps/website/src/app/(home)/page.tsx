@@ -69,8 +69,9 @@ export default function Home() {
                 Right in your codebase.
               </h1>
               <p className="mx-auto mb-8 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-                Connect your frontend UI to your code AI agents. Select
-                elements, leave comments, and let your AI do the magic.
+                The stagewise vscode extension connects your frontend UI to your
+                code AI agents. Select elements, leave comments, and let your AI
+                do the magic.
               </p>
               <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row">
                 <Link
@@ -441,15 +442,15 @@ export default function Home() {
               <tbody>
                 <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">Cursor</td>
-                  <td className="px-4 py-3 text-green-500">Supported (v0.1)</td>
+                  <td className="px-4 py-3 text-green-500">Supported</td>
                 </tr>
                 <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">GitHub Copilot</td>
-                  <td className="px-4 py-3 text-yellow-500">In Progress</td>
+                  <td className="px-4 py-3 text-green-500">Supported</td>
                 </tr>
                 <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">Windsurf</td>
-                  <td className="px-4 py-3 text-green-500">Supported (v0.2)</td>
+                  <td className="px-4 py-3 text-green-500">Supported</td>
                 </tr>
                 <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">Cline</td>
