@@ -2,19 +2,16 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import { useMemo } from 'preact/hooks';
-import { UAParser } from 'ua-parser-js';
+import bowser from 'bowser';
 
 const useBrowserInfo = () => {
   const browserInfo = useMemo(() => {
     {
-      const parser = new (UAParser as any)();
-      const result = parser.getResult();
+      const result = bowser.parse(window.navigator.userAgent);
       return {
         browser: result.browser,
         engine: result.engine,
         os: result.os,
-        device: result.device,
-        cpu: result.cpu,
       };
     }
   }, []);
