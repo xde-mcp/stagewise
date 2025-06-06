@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.4.4
+
+### Patch Changes
+
+- 9b96cb5: Replace ua-parser-js with bowser
+
 ## 0.4.3
 
 ### Patch Changes
