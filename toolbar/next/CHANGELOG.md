@@ -1,5 +1,11 @@
 # @stagewise/toolbar-next
 
+## 0.4.4
+
+### Patch Changes
+
+- @stagewise/toolbar-react@0.4.4
+
 ## 0.4.3
 
 ### Patch Changes

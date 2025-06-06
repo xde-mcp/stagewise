@@ -1,5 +1,12 @@
 # @stagewise-plugins/angular
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [9b96cb5]
+  - @stagewise/toolbar@0.4.4
+
 ## 0.4.1
 
 ### Patch Changes
