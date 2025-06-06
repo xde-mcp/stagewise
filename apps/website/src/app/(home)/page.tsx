@@ -16,9 +16,17 @@ import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { GradientButton } from '@/components/landing/gradient-button';
 import { Clipboard } from '../../components/clipboard';
 import { usePostHog } from 'posthog-js/react';
+import Image from 'next/image';
+import AdobeLogo from './_components/company_logos/adobe.png';
+import AirBnBLogo from './_components/company_logos/airbnb.png';
+import AmazonLogo from './_components/company_logos/amazon.png';
+import MicrosoftLogo from './_components/company_logos/microsoft.png';
+import OracleLogo from './_components/company_logos/oracle.png';
+import SamsungLogo from './_components/company_logos/samsung.png';
+import ZendeskLogo from './_components/company_logos/zendesk.png';
 
 // GradientStarIcon: Star with gradient fill using mask
-function GradientStarIcon({ className = '' }: { className?: string }) {
+function StarIcon({ className = '' }: { className?: string }) {
   return (
     <span
       className={`inline-block ${className}`}
@@ -54,16 +62,16 @@ export default function Home() {
           <ScrollReveal>
             <div className="mb-12 text-center">
               <h1 className="mb-6 font-bold text-4xl tracking-tight md:text-6xl">
-                Eyesight for your
-                <span className="bg-gradient-to-r from-indigo-500 to-pink-500 bg-clip-text text-transparent">
-                  {' '}
-                  AI-powered{' '}
+                <span className="bg-gradient-to-tr from-blue-700 via-violet-500 to-indigo-800 bg-clip-text text-transparent">
+                  Visual vibe coding.
                 </span>
-                Code Editor
+                <br />
+                Right in your codebase.
               </h1>
-              <p className="mx-auto mb-8 max-w-2xl text-gray-600 text-lg dark:text-gray-400">
-                Connect your frontend UI to your code AI agents. Select
-                elements, leave comments, and let your AI do the magic.
+              <p className="mx-auto mb-8 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
+                The stagewise vscode extension connects your frontend UI to your
+                code AI agents. Select elements, leave comments, and let your AI
+                do the magic.
               </p>
               <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row">
                 <Link
@@ -80,7 +88,7 @@ export default function Home() {
                   onClick={() => posthog?.capture('hero_github_star_click')}
                 >
                   <GradientButton variant="outline" size="lg">
-                    <GradientStarIcon className="mr-2 h-4 w-4 text-yellow-500" />
+                    <StarIcon className="mr-2 h-4 w-4 text-yellow-500" />
                     Star on GitHub
                     <div className="ml-1 rounded-full bg-zinc-500/10 px-1.5 py-0.5 font-medium text-xs text-zinc-500">
                       3K+
@@ -88,7 +96,7 @@ export default function Home() {
                   </GradientButton>
                 </Link>
               </div>
-              <div className="flex items-center justify-center gap-4 text-gray-600 text-sm dark:text-gray-400">
+              <div className="flex items-center justify-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
                 <div className="flex items-center">
                   <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
                   VS Code Extension
@@ -110,17 +118,62 @@ export default function Home() {
               <WebsiteDemo />
             </div>
           </ScrollReveal>
+
+          <ScrollReveal delay={200}>
+            <div className="mt-32 mb-8 w-full">
+              <p className="mx-auto mb-16 text-center text-base text-zinc-600 dark:text-zinc-400">
+                embraced by engineers from leading companies
+              </p>
+              <div className="flex flex-row flex-wrap items-center justify-center gap-x-20 gap-y-12">
+                <Image
+                  src={AdobeLogo}
+                  alt="Adobe"
+                  className="w-20 opacity-60"
+                />
+                <Image
+                  src={AirBnBLogo}
+                  alt="AirBnB"
+                  className="w-20 opacity-60"
+                />
+                <Image
+                  src={AmazonLogo}
+                  alt="Amazon"
+                  className="w-24 opacity-60"
+                />
+                <Image
+                  src={MicrosoftLogo}
+                  alt="Microsoft"
+                  className="w-24 opacity-60"
+                />
+                <Image
+                  src={OracleLogo}
+                  alt="Oracle"
+                  className="w-24 opacity-60"
+                />
+                <Image
+                  src={SamsungLogo}
+                  alt="Samsung"
+                  className="w-24 opacity-60"
+                />
+                <Image
+                  src={ZendeskLogo}
+                  alt="Zendesk"
+                  className="w-16 opacity-60"
+                />
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Demo Section */}
-      <section className="container relative z-10 mx-auto border-gray-200 border-t px-4 py-16 md:py-24 dark:border-gray-800">
+      <section className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-16 md:py-24 dark:border-zinc-800">
         <ScrollReveal>
           <div className="mx-auto mb-12 max-w-4xl text-center">
             <h2 className="mb-6 font-bold text-3xl md:text-4xl">
               See It In Action
             </h2>
-            <p className="mx-auto max-w-2xl text-gray-600 text-lg dark:text-gray-400">
+            <p className="mx-auto max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
               Watch how stagewise connects your browser UI to your code editor,
               providing real-time context for your AI agents.
             </p>
@@ -130,7 +183,7 @@ export default function Home() {
         <ScrollReveal delay={200}>
           <div className="mx-auto max-w-4xl scale-[1.02] transform overflow-hidden rounded-xl border border-indigo-900/50 shadow-[0_0_40px_rgba(128,90,213,0.25)] transition-transform duration-500">
             <video
-              src="https://github.com/stagewise-io/assets/raw/refs/heads/main/media/demo-video-v1.mp4"
+              src="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
               width={1200}
               height={675}
               className="w-full"
@@ -147,12 +200,12 @@ export default function Home() {
       {/* Features Section */}
       <section
         id="features"
-        className="container relative z-10 mx-auto border-gray-200 border-t px-4 py-24 md:py-32 dark:border-gray-800"
+        className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-24 md:py-32 dark:border-zinc-800"
       >
         <ScrollReveal>
           <div className="mx-auto mb-16 max-w-4xl">
             <h2 className="mb-6 font-bold text-3xl md:text-4xl">Features</h2>
-            <p className="text-gray-600 text-lg dark:text-gray-400">
+            <p className="text-lg text-zinc-600 dark:text-zinc-400">
               The stagewise Toolbar makes it incredibly easy to edit your
               frontend code with AI agents
             </p>
@@ -202,12 +255,12 @@ export default function Home() {
             },
           ].map((feature, i) => (
             <ScrollReveal key={feature.title} delay={feature.delay}>
-              <div className="group -translate-y-1 rounded-lg border border-indigo-600 bg-gray-100 p-6 shadow-[0_0_30px_rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-gray-900">
+              <div className="group -translate-y-1 rounded-lg border border-indigo-600 bg-zinc-100 p-6 shadow-[0_0_30px_rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-zinc-900">
                 <div className="mb-4 inline-flex rounded-lg bg-indigo-100 p-3 transition-colors dark:bg-indigo-900/20">
                   {feature.icon}
                 </div>
                 <h3 className="mb-2 font-semibold text-xl">{feature.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-zinc-600 dark:text-zinc-400">
                   {feature.description}
                 </p>
               </div>
@@ -217,13 +270,13 @@ export default function Home() {
       </section>
 
       {/* Framework Support Section */}
-      <section className="container relative z-10 mx-auto border-gray-200 border-t px-4 py-16 md:py-24 dark:border-gray-800">
+      <section className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-16 md:py-24 dark:border-zinc-800">
         <ScrollReveal>
           <div className="mx-auto mb-16 max-w-4xl text-center">
             <h2 className="mb-6 font-bold text-3xl md:text-4xl">
               Works With Your Stack
             </h2>
-            <p className="mx-auto max-w-2xl text-gray-600 text-lg dark:text-gray-400">
+            <p className="mx-auto max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
               stagewise integrates seamlessly with popular frontend frameworks
             </p>
           </div>
@@ -265,7 +318,7 @@ export default function Home() {
             <ScrollReveal key={framework.name} delay={i * 100} direction="up">
               <Link
                 href={framework.href}
-                className="group flex cursor-pointer items-center gap-2 rounded-full border border-indigo-600/50 bg-gray-50 px-6 py-2 shadow-[0_0_20px_rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-gray-900"
+                className="group flex cursor-pointer items-center gap-2 rounded-full border border-indigo-600/50 bg-zinc-50 px-6 py-2 shadow-[0_0_20px_rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-zinc-900"
                 target="_blank"
                 onClick={() =>
                   posthog?.capture('framework_link_click', {
@@ -284,7 +337,7 @@ export default function Home() {
       {/* Quickstart Section */}
       <section
         id="quickstart"
-        className="container relative z-10 mx-auto border-gray-200 border-t px-4 py-24 md:py-32 dark:border-gray-800"
+        className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-24 md:py-32 dark:border-zinc-800"
       >
         <ScrollReveal>
           <div className="mx-auto max-w-4xl">
@@ -292,14 +345,14 @@ export default function Home() {
             <div className="space-y-12">
               {/* Step 1: Install VS Code Extension */}
               <div className="flex flex-col items-start gap-8 md:flex-row">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-200 font-bold text-slate-900 text-xl dark:bg-gray-800 dark:text-white">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 font-bold text-slate-900 text-xl dark:bg-zinc-800 dark:text-white">
                   1
                 </div>
                 <div>
                   <h3 className="mb-4 font-semibold text-2xl">
                     Install the VS Code extension
                   </h3>
-                  <p className="mb-4 text-gray-600 dark:text-gray-400">
+                  <p className="mb-4 text-zinc-600 dark:text-zinc-400">
                     Install the extension from the Visual Studio Marketplace.
                   </p>
                   <Link
@@ -314,27 +367,27 @@ export default function Home() {
               </div>
               {/* Step 2: Install and inject the toolbar */}
               <div className="flex flex-col items-start gap-8 md:flex-row">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-200 font-bold text-slate-900 text-xl dark:bg-gray-800 dark:text-white">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 font-bold text-slate-900 text-xl dark:bg-zinc-800 dark:text-white">
                   2
                 </div>
                 <div>
                   <h3 className="mb-4 font-semibold text-2xl">
                     Install and inject the toolbar
                   </h3>
-                  <div className="mb-4 rounded-lg border border-gray-200 bg-gray-100 p-4 dark:border-gray-800 dark:bg-gray-900">
-                    <p className="font-medium text-gray-700 dark:text-gray-300">
+                  <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-100 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <p className="font-medium text-zinc-700 dark:text-zinc-300">
                       🪄 Auto-Install the toolbar (AI-guided):
                     </p>
-                    <ol className="mt-2 list-decimal pl-5 text-gray-600 dark:text-gray-400">
+                    <ol className="mt-2 list-decimal pl-5 text-zinc-600 dark:text-zinc-400">
                       <li>
                         In Cursor, Press{' '}
-                        <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">
+                        <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">
                           CMD + Shift + P
                         </code>
                       </li>
                       <li>
                         Enter{' '}
-                        <code className="rounded bg-gray-200 px-1 dark:bg-gray-800">
+                        <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">
                           setupToolbar
                         </code>
                       </li>
@@ -344,13 +397,13 @@ export default function Home() {
                       </li>
                     </ol>
                   </div>
-                  <p className="mb-4 text-gray-600 dark:text-gray-400">
+                  <p className="mb-4 text-zinc-600 dark:text-zinc-400">
                     Or follow the manual way:
                   </p>
                   <Clipboard text="pnpm i -D @stagewise/toolbar" />
                   ⚡️ The toolbar will <strong>automatically connect</strong> to
                   the extension!
-                  <p className="mt-4 text-gray-600 text-sm dark:text-gray-400">
+                  <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
                     Check out the{' '}
                     <Link href="/docs/quickstart" className="underline">
                       Quickstart Guide
@@ -365,41 +418,41 @@ export default function Home() {
       </section>
 
       {/* Agent Support Section */}
-      <section className="container relative z-10 mx-auto border-gray-200 border-t px-4 py-24 md:py-32 dark:border-gray-800">
+      <section className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-24 md:py-32 dark:border-zinc-800">
         <ScrollReveal>
           <div className="mx-auto mb-16 max-w-4xl">
             <h2 className="mb-6 font-bold text-3xl md:text-4xl">
               Agent Support
             </h2>
-            <p className="text-gray-600 text-lg dark:text-gray-400">
+            <p className="text-lg text-zinc-600 dark:text-zinc-400">
               Compatible with popular AI coding assistants
             </p>
           </div>
         </ScrollReveal>
 
         <ScrollReveal delay={200}>
-          <div className="mx-auto max-w-4xl rounded-lg bg-gradient-to-br from-gray-100 to-indigo-200/30 p-12 shadow-[0_0_50px_rgba(128,90,213,0.2)] transition-all duration-500 dark:from-gray-900 dark:to-indigo-900/30">
+          <div className="mx-auto max-w-4xl rounded-lg bg-gradient-to-br from-zinc-100 to-indigo-200/30 p-12 shadow-[0_0_50px_rgba(128,90,213,0.2)] transition-all duration-500 dark:from-zinc-900 dark:to-indigo-900/30">
             <table className="w-full">
               <thead>
-                <tr className="border-gray-300 border-b dark:border-gray-800">
+                <tr className="border-zinc-300 border-b dark:border-zinc-800">
                   <th className="px-4 py-3 text-left font-semibold">Agent</th>
                   <th className="px-4 py-3 text-left font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-gray-300 border-b dark:border-gray-700">
+                <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">Cursor</td>
-                  <td className="px-4 py-3 text-green-500">Supported (v0.1)</td>
+                  <td className="px-4 py-3 text-green-500">Supported</td>
                 </tr>
-                <tr className="border-gray-300 border-b dark:border-gray-700">
+                <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">GitHub Copilot</td>
-                  <td className="px-4 py-3 text-yellow-500">In Progress</td>
+                  <td className="px-4 py-3 text-green-500">Supported</td>
                 </tr>
-                <tr className="border-gray-300 border-b dark:border-gray-700">
+                <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">Windsurf</td>
-                  <td className="px-4 py-3 text-green-500">Supported (v0.2)</td>
+                  <td className="px-4 py-3 text-green-500">Supported</td>
                 </tr>
-                <tr className="border-gray-300 border-b dark:border-gray-700">
+                <tr className="border-zinc-300 border-b dark:border-zinc-700">
                   <td className="px-4 py-3">Cline</td>
                   <td className="px-4 py-3 text-red-500">Not Supported</td>
                 </tr>
@@ -414,13 +467,13 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="container relative z-10 mx-auto border-gray-200 border-t px-4 py-16 md:py-24 dark:border-gray-800">
+      <section className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-16 md:py-24 dark:border-zinc-800">
         <ScrollReveal>
-          <div className="mx-auto max-w-4xl rounded-lg bg-gradient-to-br from-gray-100 to-indigo-200/30 p-12 shadow-[0_0_50px_rgba(128,90,213,0.2)] transition-all duration-500 dark:from-gray-900 dark:to-indigo-900/30">
+          <div className="mx-auto max-w-4xl rounded-lg bg-gradient-to-br from-zinc-100 to-indigo-200/30 p-12 shadow-[0_0_50px_rgba(128,90,213,0.2)] transition-all duration-500 dark:from-zinc-900 dark:to-indigo-900/30">
             <h2 className="mb-6 text-center font-bold text-3xl md:text-4xl">
               Ready to enhance your AI coding experience?
             </h2>
-            <p className="mx-auto mb-8 max-w-2xl text-center text-gray-700 text-xl dark:text-gray-300">
+            <p className="mx-auto mb-8 max-w-2xl text-center text-xl text-zinc-700 dark:text-zinc-300">
               Join our growing community of developers using stagewise to
               supercharge their AI-powered coding workflow.
             </p>
