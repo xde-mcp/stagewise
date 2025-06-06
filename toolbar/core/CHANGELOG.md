@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.4.2
+
+### Patch Changes
+
+- e2cb10f: Render context element plugin badges only if content is returned
+
 ## 0.4.1
 
 ### Patch Changes
