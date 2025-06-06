@@ -4,11 +4,11 @@ import * as vscode from 'vscode';
 export async function setupToolbar() {
   const prompt = `
 <task>
-  Implement the stagewise dev-tool into an existing web project to provide AI-powered editing capabilities through a browser toolbar.
+  Implement the stagewise toolbar into an existing web project to provide AI-powered editing capabilities through a browser toolbar.
 </task>
 
 <context>
-  stagewise is a browser toolbar that connects frontend UI to code AI agents in your code editor. It allows developers to select elements in a web app, leave comments, and let AI agents make changes based on that context.
+  stagewise is a browser toolbar that connects frontend UI to coding AI agents in your code editor. It allows developers to select elements in a web app, leave comments, and let AI agents make changes based on that context.
 </context>
 
 <requirements>
@@ -21,95 +21,81 @@ export async function setupToolbar() {
     Identify the project's package manager (npm, yarn, pnpm, etc.). You must use the same package manager to install the stagewise package.
   </step_0>
   <step_1>
-    Identify the project's frontend framework (React, Next.js, Vue, Svelte, etc.) and install the appropriate stagewise package.
-    - For framework-agnostic (as fallback): @stagewise/toolbar
-    - For React: @stagewise/toolbar-react
-    - For Next.js: @stagewise/toolbar-next
-    - For Vue/Nuxt: @stagewise/toolbar-vue
+    Identify, if the repository only contains one web app project or multiple. If multiple projects are located inside the repository, ask the user to which project the toolbar should be installed to.
   </step_1>
-
   <step_2>
-    Locate the appropriate entry point file for toolbar integration based on the framework:
-    - React: src/main.tsx or similar entry file
-    - Next.js: src/app/layout.tsx or similar root layout
-    - Vue: src/App.vue or main entry file
-    - Nuxt: app.vue or a layout file
-    - SvelteKit: src/routes/+layout.svelte
+    Identify, if the specific project already uses a stagewise package. If so, ask the user if they want to use the existing package or replace it with a new one.
   </step_2>
-
   <step_3>
-    Create a basic toolbar configuration object with empty plugins array:
-    \`\`\`typescript
-    const stagewiseConfig = {
-      plugins: []
-    };
-    \`\`\`
+    If the project already included stagewise, chek for correct integration and do changes if necessary.
+    If the project does not include stagewise, install the appropriate stagewise package and follow the framework specific steps.
+    If there is no description on how to install stagewise for the used framework, reject the users request and say that the user needs to install the stagewise package manually.
   </step_3>
-
-  <step_4>
-    Implement the toolbar using the framework-specific approach:
-    
-    - For React/React-based frameworks:
-    \`\`\`tsx
-    import { StagewiseToolbar } from '@stagewise/toolbar-react';
-    // Add <StagewiseToolbar config={stagewiseConfig} /> to your component
-    \`\`\`
-    
-    - For Next.js:
-    \`\`\`tsx
-    import { StagewiseToolbar } from '@stagewise/toolbar-next';
-    // Add in layout.tsx: <StagewiseToolbar config={stagewiseConfig} />
-    \`\`\`
-    
-    - For Vue/Nuxt:
-    \`\`\`vue
-    import { StagewiseToolbar } from '@stagewise/toolbar-vue';
-    // Add in template: <StagewiseToolbar :config="config" />
-    \`\`\`
-    
-    - For framework-agnostic:
-    \`\`\`ts
-    import { initToolbar } from '@stagewise/toolbar';
-    // Call initToolbar(stagewiseConfig) in development mode
-    \`\`\`
-  </step_4>
-
-  <step_5>
-    Ensure the toolbar only runs in development mode:
-    \`\`\`typescript
-    if (process.env.NODE_ENV === 'development') {
-      // Initialize toolbar here
-    }
-    \`\`\`
-  </step_5>
 </implementation_steps>
-
-<important_notes>
-  - The toolbar should NOT be included in production builds
-  - For React apps, initialize the toolbar in a separate React root to avoid interfering with the main app
-</important_notes>
 
 <framework_specific_integrations>
   <react>
-    Create a separate React root for the toolbar to avoid interfering with the main app tree.
-    Use createRoot to render the StagewiseToolbar component in a dedicated DOM element.
+    Use the \`@stagewise/toolbar-react\` package for integration.
+    Also, install and use the \`@stagewise-plugins/react\` package for react specific functionality.
+
+    Include the StagewiseToolbar component (exported by the \`\@stagewise/toolbar-react\` package) inside the top-most component of the app.
+    Set the \`config\` prop to an object with the plugins array containing the \`ReactPlugin\` (exported by the \`\@stagewise-plugins/react\` package).
   </react>
   
   <next>
+    Use the \`@stagewise/toolbar-next\` package for integration.
+    Also, install and use the \`@stagewise-plugins/react\` package for react specific functionality.
+
     Include the StagewiseToolbar component in the root layout file (layout.tsx).
+    Set the \`config\` prop to an object with the plugins array containing the \`ReactPlugin\` (exported by the \`\@stagewise-plugins/react\` package).
+
+    Note: The \`@stagewise/toolbar-next\` package already handles opt-out of SSR so that a simple integration of the component is enough.
   </next>
   
   <vue>
-    Add the StagewiseToolbar component to your main App component.
+    Use the \`@stagewise/toolbar-vue\` package for integration.
+    Also, install and use the \`@stagewise-plugins/vue\` package for vue specific functionality.
+
+    Add the StagewiseToolbar component to the main App component.
+    Set the \`config\` prop to an object with the plugins array containing the \`VuePlugin\` (exported by the \`\@stagewise-plugins/vue\` package).
   </vue>
   
   <nuxt>
+    Use the \`@stagewise/toolbar-nuxt\` package for integration.
+    Also, install and use the \`@stagewise-plugins/vue\` package for vue specific functionality.
+
     Wrap the StagewiseToolbar component in a ClientOnly component to ensure it only renders on the client side.
+    Set the \`config\` prop to an object with the plugins array containing the \`VuePlugin\` (exported by the \`\@stagewise-plugins/vue\` package).
   </nuxt>
   
   <svelte>
-    Use onMount and browser check to ensure the toolbar only initializes on the client side.
-    Create a wrapper component if needed for cleaner integration.
+    Use the \`@stagewise/toolbar\` package for integration.
+
+    If the project is using SvelteKit, put the following code into the \`hooks.client.ts\` file:
+    \`\`\`ts
+    import { initToolbar } from '@stagewise/toolbar';
+
+    export function init() {
+      // Keep other functionality that may already exist in the file
+      // Just add the below initToolbar call (conditionally, depending if a dev mode is detected)
+
+      // If the users uses other existing metrics to check for dev mode, use that instead of import.meta.env.DEV
+      if (import.meta.env.DEV) {
+        initToolbar({
+          plugins: [],
+        });
+      }
+    }
+    \`\`\` 
+
+    If the project is using Svelte without SvelteKit, put the following code into the \`main.ts\` file (or any other file that is the entry to the app):
+    \`\`\`ts
+    import { initToolbar } from '@stagewise/toolbar';
+
+    initToolbar({
+      plugins: [],
+    });
+    \`\`\`
   </svelte>
 </framework_specific_integrations>
 
@@ -118,6 +104,8 @@ export async function setupToolbar() {
   1. Appears only in development mode
   2. Is not included in production builds
   3. Does not lead to any linting errors
+  4. Is loaded once on initial opening in the browser
+  5. Is only executed in the browser and not any SSR or server environment
 </expected_outcome>`;
 
   await dispatchAgentCall({

@@ -128,37 +128,37 @@ export default function Home() {
                 <Image
                   src={AdobeLogo}
                   alt="Adobe"
-                  className="w-20 opacity-60"
+                  className="w-20 opacity-60 dark:invert"
                 />
                 <Image
                   src={AirBnBLogo}
                   alt="AirBnB"
-                  className="w-20 opacity-60"
+                  className="w-20 opacity-60 dark:invert"
                 />
                 <Image
                   src={AmazonLogo}
                   alt="Amazon"
-                  className="w-24 opacity-60"
+                  className="w-24 opacity-60 dark:invert"
                 />
                 <Image
                   src={MicrosoftLogo}
                   alt="Microsoft"
-                  className="w-24 opacity-60"
+                  className="w-24 opacity-60 dark:invert"
                 />
                 <Image
                   src={OracleLogo}
                   alt="Oracle"
-                  className="w-24 opacity-60"
+                  className="w-24 opacity-60 dark:invert"
                 />
                 <Image
                   src={SamsungLogo}
                   alt="Samsung"
-                  className="w-24 opacity-60"
+                  className="w-24 opacity-60 dark:invert"
                 />
                 <Image
                   src={ZendeskLogo}
                   alt="Zendesk"
-                  className="w-16 opacity-60"
+                  className="w-16 opacity-60 dark:invert"
                 />
               </div>
             </div>
