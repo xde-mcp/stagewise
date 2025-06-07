@@ -21,19 +21,16 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.es.js",
       "import": "./dist/index.es.js",
       "require": "./dist/index.umd.js"
     },
     "./plugin-ui": {
       "types": "./dist/plugin-ui.d.ts",
-      "default": "./dist/plugin-ui.es.js",
       "import": "./dist/plugin-ui.es.js",
       "require": "./dist/plugin-ui.umd.js"
     },
     "./plugin-ui/jsx-runtime": {
       "types": "./dist/plugin-ui/jsx-runtime.d.ts",
-      "default": "./dist/plugin-ui/jsx-runtime.es.js",
       "import": "./dist/plugin-ui/jsx-runtime.es.js",
       "require": "./dist/plugin-ui/jsx-runtime.umd.js"
     }

@@ -3,13 +3,17 @@
   "private": false,
   "version": "0.4.3",
   "type": "module",
-  "main": "dist/index.umd.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
   "files": ["dist"],
   "license": "AGPL-3.0-only",
   "publishConfig": {
     "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.umd.cjs"
+    }
   },
   "scripts": {
     "clean": "rm -rf .turbo dist node_modules",
