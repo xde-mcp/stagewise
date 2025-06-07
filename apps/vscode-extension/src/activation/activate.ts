@@ -14,7 +14,6 @@ import {
   shutdownAnalytics,
   trackTelemetryStateChange,
 } from '../utils/analytics';
-
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
   vscode.languages.createDiagnosticCollection('stagewise');
@@ -57,9 +56,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Find an available port
     const port = await findAvailablePort(DEFAULT_PORT);
-
-    // Register MCP server with the actual port
-    // updateCursorMcpConfig(port); // Disabled for now, since MCP tools are not available yet
 
     // Start the HTTP server with the same port
     const server = await startServer(port);
