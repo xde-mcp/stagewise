@@ -105,9 +105,7 @@ export function formatVueComponentHierarchy(
 }
 
 export function getSelectedElementAnnotation(element: HTMLElement) {
-  console.log('getSelectedElementAnnotation', element);
   const hierarchy = getVueComponentHierarchy(element);
-  console.log('hierarchy', hierarchy);
   if (hierarchy?.[0]) {
     return {
       annotation: `${hierarchy[0].name}`,

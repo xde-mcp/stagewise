@@ -133,7 +133,7 @@ export function formatReactComponentHierarchy(
 
 export function getSelectedElementAnnotation(element: HTMLElement) {
   const hierarchy = getReactComponentHierarchy(element);
-  if (hierarchy[0]) {
+  if (hierarchy?.[0]) {
     return {
       annotation: `${hierarchy[0].name}${hierarchy[0].type === 'rsc' ? ' (RSC)' : ''}`,
     };

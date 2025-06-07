@@ -116,8 +116,6 @@ export function getSelectedElementsPrompt(elements: HTMLElement[] | null) {
     .join('')}
   `;
 
-    console.log('content', content);
-
     return content;
   }
 
