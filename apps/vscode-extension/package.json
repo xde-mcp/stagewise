@@ -78,7 +78,7 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.10.2",
+    "@modelcontextprotocol/sdk": "1.12.1",
     "@stagewise/extension-toolbar-srpc-contract": "workspace:*",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.1",
