@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type PluginOption } from 'vite';
 import dts from 'vite-plugin-dts';
+import analyzer from 'vite-bundle-analyzer';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -13,6 +14,7 @@ export default defineConfig({
       reactAliasesEnabled: true,
     }),
     dts({ rollupTypes: true }) as PluginOption,
+    analyzer(),
   ],
   resolve: {
     alias: {
@@ -22,7 +24,7 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
   },
   esbuild: {
-    minifyIdentifiers: false,
+    minifyIdentifiers: true,
     treeShaking: true,
   },
   build: {
@@ -54,8 +56,8 @@ export default defineConfig({
       },
       treeshake: true,
     },
-    minify: false,
-    cssMinify: false,
+    minify: true,
+    cssMinify: true,
   },
   optimizeDeps: {
     include: ['@stagewise/extension-toolbar-srpc-contract'],
