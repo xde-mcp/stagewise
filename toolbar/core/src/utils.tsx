@@ -260,3 +260,9 @@ const customTwMerge = extendTailwindMerge({
 export function cn(...inputs: ClassValue[]) {
   return customTwMerge(clsx(inputs));
 }
+
+export const generateId = (length = 16): string => {
+  return Math.random()
+    .toString(36)
+    .substring(2, length + 2);
+};

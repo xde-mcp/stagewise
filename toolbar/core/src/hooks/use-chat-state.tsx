@@ -6,6 +6,7 @@ import { useAppState } from './use-app-state';
 import { usePlugins } from './use-plugins';
 import type { ContextElementContext } from '@/plugin';
 import { useVSCode } from './use-vscode';
+import { generateId } from '@/utils';
 
 interface Message {
   id: string;
@@ -125,7 +126,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   const { bridge } = useSRPCBridge();
 
   const createChat = useCallback(() => {
-    const newChatId = crypto.randomUUID();
+    const newChatId = generateId();
     const newChat: Chat = {
       id: newChatId,
       title: null,
@@ -282,7 +283,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
 
       const pluginProcessingPromises = plugins.map(async (plugin) => {
         const userMessagePayload = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           text: content,
           contextElements:
             chat?.domContextElements.map((el) => el.element) || [],
@@ -340,7 +341,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       );
 
       const newMessage: Message = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         content: content.trim(),
         sender: 'user',
         type: 'regular',
