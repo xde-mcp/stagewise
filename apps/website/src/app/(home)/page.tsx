@@ -341,7 +341,7 @@ export default function Home() {
         <ScrollReveal>
           <div className="mx-auto mb-16 max-w-4xl text-center">
             <h2 className="mb-6 font-bold text-3xl md:text-4xl">
-              Upgrade your workflow with plugins
+              Upgrade Your Workflow With Plugins
             </h2>
             <p className="mx-auto max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
               stagewise can be easily extended to fit your needs with existing
