@@ -24,6 +24,9 @@ import MicrosoftLogo from './_components/company_logos/microsoft.png';
 import OracleLogo from './_components/company_logos/oracle.png';
 import SamsungLogo from './_components/company_logos/samsung.png';
 import ZendeskLogo from './_components/company_logos/zendesk.png';
+import ReactLogo from './_components/plugin_logos/react.svg';
+import VueLogo from './_components/plugin_logos/vue.svg';
+import AngularLogo from './_components/plugin_logos/angular.svg';
 
 // GradientStarIcon: Star with gradient fill using mask
 function StarIcon({ className = '' }: { className?: string }) {
@@ -62,16 +65,15 @@ export default function Home() {
           <ScrollReveal>
             <div className="mb-12 text-center">
               <h1 className="mb-6 font-bold text-4xl tracking-tight md:text-6xl">
-                <span className="bg-gradient-to-tr from-blue-700 via-violet-500 to-indigo-800 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-tr from-blue-700 via-violet-500 to-indigo-800 bg-clip-text text-transparent dark:from-cyan-400 dark:via-violet-500 dark:to-indigo-400">
                   Visual vibe coding.
                 </span>
                 <br />
                 Right in your codebase.
               </h1>
               <p className="mx-auto mb-8 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-                The stagewise vscode extension connects your frontend UI to your
-                code AI agents. Select elements, leave comments, and let your AI
-                do the magic.
+                Our code editor extension connects your app frontend to your
+                code agent and lets you edit your UI with prompts.
               </p>
               <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row">
                 <Link
@@ -96,14 +98,14 @@ export default function Home() {
                   </GradientButton>
                 </Link>
               </div>
-              <div className="flex items-center justify-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-zinc-600 dark:text-zinc-400">
                 <div className="flex items-center">
                   <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  VS Code Extension
+                  Cursor, Windsurf & VS Code Support
                 </div>
                 <div className="flex items-center">
                   <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  Cursor Support
+                  Works with all frameworks
                 </div>
                 <div className="flex items-center">
                   <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
@@ -203,10 +205,10 @@ export default function Home() {
         className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-24 md:py-32 dark:border-zinc-800"
       >
         <ScrollReveal>
-          <div className="mx-auto mb-16 max-w-4xl">
+          <div className="mx-auto mb-16 max-w-4xl text-center">
             <h2 className="mb-6 font-bold text-3xl md:text-4xl">Features</h2>
             <p className="text-lg text-zinc-600 dark:text-zinc-400">
-              The stagewise Toolbar makes it incredibly easy to edit your
+              The stagewise toolbar makes it incredibly easy to edit your
               frontend code with AI agents
             </p>
           </div>
@@ -255,7 +257,7 @@ export default function Home() {
             },
           ].map((feature, i) => (
             <ScrollReveal key={feature.title} delay={feature.delay}>
-              <div className="group -translate-y-1 rounded-lg border border-indigo-600 bg-zinc-100 p-6 shadow-[0_0_30px_rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-zinc-900">
+              <div className="group -translate-y-1 rounded-2xl border border-zinc-500/20 bg-white p-6 shadow-2xl shadow-[rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-zinc-900">
                 <div className="mb-4 inline-flex rounded-lg bg-indigo-100 p-3 transition-colors dark:bg-indigo-900/20">
                   {feature.icon}
                 </div>
@@ -329,6 +331,59 @@ export default function Home() {
                 <div className={`h-3 w-3 rounded-full ${framework.color}`} />
                 <span className="font-medium">{framework.name}</span>
               </Link>
+            </ScrollReveal>
+          ))}
+        </div>
+      </section>
+
+      {/* Plugin Section */}
+      <section className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-16 md:py-24 dark:border-zinc-800">
+        <ScrollReveal>
+          <div className="mx-auto mb-16 max-w-4xl text-center">
+            <h2 className="mb-6 font-bold text-3xl md:text-4xl">
+              Upgrade your workflow with plugins
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
+              stagewise can be easily extended to fit your needs with existing
+              plugins - or you simply build your own.
+            </p>
+          </div>
+        </ScrollReveal>
+
+        <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-3">
+          {[
+            {
+              icon: <Image src={ReactLogo} alt="React" className="size-8" />,
+              title: 'React',
+              description: 'Improve prompts with context on your React app.',
+              delay: 100,
+            },
+            {
+              icon: <Image src={VueLogo} alt="Vue" className="size-8" />,
+              title: 'Vue',
+              description:
+                'Get more accurate prompts with info on selected Vue components.',
+              delay: 300,
+            },
+            {
+              icon: (
+                <Image src={AngularLogo} alt="Angular" className="size-8" />
+              ),
+              title: 'Angular',
+              description: 'First-class support for Angular apps.',
+              delay: 500,
+            },
+          ].map((feature, i) => (
+            <ScrollReveal key={feature.title} delay={feature.delay}>
+              <div className="group -translate-y-1 h-full rounded-2xl border border-zinc-500/20 bg-white p-6 shadow-2xl shadow-[rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-zinc-900">
+                <div className="mb-4 inline-flex rounded-lg bg-zinc-50 p-3 transition-colors dark:bg-zinc-900/10">
+                  {feature.icon}
+                </div>
+                <h3 className="mb-2 font-semibold text-xl">{feature.title}</h3>
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  {feature.description}
+                </p>
+              </div>
             </ScrollReveal>
           ))}
         </div>
