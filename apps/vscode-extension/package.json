@@ -2,7 +2,7 @@
   "name": "stagewise-vscode-extension",
   "displayName": "stagewise",
   "private": true,
-  "description": "Eyesight for your AI-powered Code Editor.",
+  "description": "Visual vibe coding. Right in your codebase.",
   "version": "0.4.3",
   "publisher": "stagewise",
   "icon": "icon.png",

@@ -11,20 +11,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'stagewise | Eyesight for your AI-powered Code Editor',
+  title: 'stagewise | Visual vibe coding. Right in your codebase.',
   description:
-    'stagewise is a browser toolbar that connects your frontend UI to your code AI agents in your code editor. Select elements, leave comments, and let your AI-Agent do the magic.',
+    'Our toolbar connects your app frontend to your favorite code agent and lets you edit your web app UI with prompts.',
   openGraph: {
-    title: 'stagewise | Eyesight for your AI-powered Code Editor',
+    title: 'stagewise | Visual vibe coding. Right in your codebase.',
     description:
-      'stagewise is a browser toolbar that connects your frontend UI to your code AI agents in your code editor.',
+      'Our toolbar connects your app frontend to your favorite code agent and lets you edit your web app UI with prompts.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'stagewise | Eyesight for your AI-powered Code Editor',
+    title: 'stagewise | Visual vibe coding. Right in your codebase.',
     description:
-      'stagewise is a browser toolbar that connects your frontend UI to your code AI agents in your code editor.',
+      'Our toolbar connects your app frontend to your favorite code agent and lets you edit your web app UI with prompts.',
   },
 };
 

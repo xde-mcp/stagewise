@@ -1,6 +1,6 @@
 # <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
 
-# Eyesight for your AI-powered Code Editor.
+# Visual vibe coding. Right in your codebase.
 
 [![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise-vscode-extension?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/gkdGsDYaKA) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
 
@@ -273,17 +273,10 @@ You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
 
 | **Agent**      | **Supported**  |
 | -------------- | -------------- |
-| Cursor         | ✅              |
-| Windsurf       | ✅              |
-| GitHub Copilot | ✅              |
-| Cline          | ❌              |
-| BLACKBOXAI     | ❌              |
-| Console Ninja  | ❌              |
-| Continue.dev   | ❌              |
-| Claude Code    | ❌              |
-| Amazon Q       | ❌              |
-| Cody           | ❌              |
-| Qodo           | ❌              |
+| Cursor          | ✅             |
+| GitHub Copilot  | ✅             |
+| Windsurf        | ✅             |
+| Cline           | 🚧 [See issue](https://github.com/stagewise-io/stagewise/issues/186)            |
 
 
 ## 🛣️ Roadmap

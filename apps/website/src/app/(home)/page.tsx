@@ -72,8 +72,8 @@ export default function Home() {
                 Right in your codebase.
               </h1>
               <p className="mx-auto mb-8 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-                Our code editor extension connects your app frontend to your
-                code agent and lets you edit your UI with prompts.
+                Our toolbar connects your app frontend to your favorite code
+                agent and lets you edit your web app UI with prompts.
               </p>
               <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row">
                 <Link

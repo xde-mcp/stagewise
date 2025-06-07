@@ -1,4 +1,4 @@
 export const siteConfig = {
   title: 'stagewise',
-  description: 'Eyesight for AI Agents',
+  description: 'Visual vibe coding. Right in your codebase.',
 };
