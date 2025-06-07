@@ -1,5 +1,11 @@
 # @stagewise-plugins/angular
 
+## 0.4.3
+
+### Patch Changes
+
+- 96bd3fd: Remove unnecessary logs
+
 ## 0.4.2
 
 ### Patch Changes

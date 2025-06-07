@@ -1,5 +1,11 @@
 # @stagewise-plugins/react
 
+## 0.4.5
+
+### Patch Changes
+
+- 96bd3fd: Fix potential crash in element selection annotation generation
+
 ## 0.4.4
 
 ### Patch Changes

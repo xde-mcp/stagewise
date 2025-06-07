@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.4.4
+
+### Patch Changes
+
+- 0c81ec9: Improved toolbar setup prompt
+
 ## 0.4.3
 
 ### Patch Changes
