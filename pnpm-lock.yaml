@@ -340,6 +340,9 @@ importers:
       '@eslint/eslintrc':
         specifier: ^3
         version: 3.3.1
+      '@stagewise-plugins/react':
+        specifier: workspace:*
+        version: link:../../plugins/react
       '@stagewise/toolbar-next':
         specifier: workspace:*
         version: link:../../toolbar/next
