@@ -56,7 +56,6 @@
     "bowser": "^2.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "javascript-time-ago": "^2.5.11",
     "lucide-react": "^0.503.0",
     "postcss": "^8.5.3",
     "postcss-prefix-selector": "^2.1.1",
