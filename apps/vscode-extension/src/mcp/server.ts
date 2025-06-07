@@ -8,7 +8,7 @@ export function createMcpServer() {
     description:
       "A Model Context Protocol server that enables AI agents to interact with and monitor the user's browser environment in real-time.",
   });
+  return mcpServer;
 }
 
-// Export a default instance for convenience
 export const mcpServer = createMcpServer();
