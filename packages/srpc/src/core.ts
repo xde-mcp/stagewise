@@ -1,4 +1,11 @@
 import type { WebSocket as NodeWebSocket, ErrorEvent } from 'ws';
+
+const generateId = (length = 16): string => {
+  return Math.random()
+    .toString(36)
+    .substring(2, length + 2);
+};
+
 // Define a union type for both browser and Node.js WebSocket
 type WebSocketType = NodeWebSocket | WebSocket;
 
@@ -121,7 +128,7 @@ export abstract class WebSocketRpcBridge {
       throw new Error('WebSocket is not connected');
     }
 
-    const id = crypto.randomUUID();
+    const id = generateId();
     const requestMessage: RequestMessage<TRequest> = {
       id,
       messageType: 'request',
