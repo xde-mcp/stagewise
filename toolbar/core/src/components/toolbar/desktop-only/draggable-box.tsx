@@ -152,9 +152,7 @@ export function ToolbarDraggableBox() {
 
   const chatState = useChatState();
 
-  const minimized = useAppState((state) => state.minimized);
-  const minimize = useAppState((state) => state.minimize);
-  const expand = useAppState((state) => state.expand);
+  const { minimized, minimize, expand } = useAppState();
 
   useEffect(() => {
     if (minimized) {

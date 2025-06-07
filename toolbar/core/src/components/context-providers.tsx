@@ -5,6 +5,7 @@ import type { ComponentChildren } from 'preact';
 import { SRPCBridgeProvider } from '@/hooks/use-srpc-bridge';
 import { VSCodeProvider } from '@/hooks/use-vscode';
 import { ConfigProvider } from '@/hooks/use-config';
+import { AppStateProvider } from '@/hooks/use-app-state';
 
 export function ContextProviders({
   children,
@@ -18,7 +19,9 @@ export function ContextProviders({
       <SRPCBridgeProvider>
         <VSCodeProvider>
           <PluginProvider>
-            <ChatStateProvider>{children}</ChatStateProvider>
+            <AppStateProvider>
+              <ChatStateProvider>{children}</ChatStateProvider>
+            </AppStateProvider>
           </PluginProvider>
         </VSCodeProvider>
       </SRPCBridgeProvider>

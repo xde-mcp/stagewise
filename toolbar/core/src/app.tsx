@@ -10,7 +10,7 @@ import { useAppState } from './hooks/use-app-state';
 import type { ToolbarConfig } from './config';
 
 export function App(config?: ToolbarConfig) {
-  const isMainAppBlocked = useAppState((state) => state.isMainAppBlocked);
+  const { isMainAppBlocked } = useAppState();
 
   return (
     <>

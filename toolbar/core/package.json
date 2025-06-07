@@ -60,8 +60,6 @@
     "postcss": "^8.5.3",
     "postcss-prefix-selector": "^2.1.1",
     "preact": "^10.26.6",
-    "react-remove-scroll": "^2.6.3",
-    "superjson": "^2.2.2",
     "tailwind-merge": "^3.2.0",
     "tailwindcss": "^4.1.5",
     "tsup": "^8.4.0",
@@ -70,7 +68,6 @@
     "vite-bundle-analyzer": "^0.19.0",
     "vite-plugin-css-injected-by-js": "^3.5.2",
     "vite-plugin-dts": "^4.5.3",
-    "zod": "^3.24.4",
-    "zustand": "^5.0.4"
+    "zod": "^3.24.4"
   }
 }
