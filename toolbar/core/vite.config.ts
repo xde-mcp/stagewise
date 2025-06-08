@@ -54,8 +54,8 @@ export default defineConfig({
       },
       treeshake: true,
     },
-    minify: false,
-    cssMinify: false,
+    minify: true,
+    cssMinify: true,
   },
   optimizeDeps: {
     include: ['@stagewise/extension-toolbar-srpc-contract'],
