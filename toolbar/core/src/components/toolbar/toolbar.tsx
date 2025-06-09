@@ -154,7 +154,7 @@ export function ToolbarDraggableBox() {
           )}
         >
           {/* Render content based on state */}
-          {true && <ConnectingStatePanel />}
+          {isLoadingState && <ConnectingStatePanel />}
           {isDisconnectedState && (
             <DisconnectedStatePanel
               discover={discover}
