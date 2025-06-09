@@ -1,7 +1,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import { createContext, useContext, useEffect, useState } from 'preact/compat';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'preact/compat';
 import type { ComponentChildren } from 'preact';
 import { createSRPCClientBridge, type ZodClient } from '@stagewise/srpc/client';
 import { contract } from '@stagewise/extension-toolbar-srpc-contract';
@@ -28,19 +34,19 @@ export function SRPCBridgeProvider({
     error: null,
   });
 
-  useEffect(() => {
-    async function initializeBridge() {
+  const { selectedSession } = useVSCode();
+
+  const initializeBridge = useCallback(
+    async (port: number) => {
+      if (state.bridge) await state.bridge.close();
+
       try {
-        const { selectedSession } = useVSCode();
-        const port = selectedSession?.port;
-        if (!port) {
-          throw new Error('No port found');
-        }
         const bridge = createSRPCClientBridge(
           `ws://localhost:${port}`,
           contract,
         );
         await bridge.connect();
+
         setState({
           bridge,
           isConnecting: false,
@@ -53,10 +59,13 @@ export function SRPCBridgeProvider({
           error: error instanceof Error ? error : new Error(String(error)),
         });
       }
-    }
+    },
+    [selectedSession],
+  );
 
-    initializeBridge();
-  }, []);
+  useEffect(() => {
+    if (selectedSession) initializeBridge(selectedSession.port);
+  }, [selectedSession]);
 
   return (
     <SRPCBridgeContext.Provider value={state}>
