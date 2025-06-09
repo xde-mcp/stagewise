@@ -7,45 +7,11 @@ import { createSRPCClientBridge } from '@stagewise/srpc/client';
 import { contract } from '@stagewise/extension-toolbar-srpc-contract';
 import type { z } from 'zod';
 
-export async function findPort(
-  maxAttempts = 10,
-  timeout = 300,
-): Promise<number | null> {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const port = DEFAULT_PORT + attempt;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-      try {
-        const response = await fetch(
-          `http://localhost:${port}${PING_ENDPOINT}`,
-          {
-            signal: controller.signal,
-          },
-        );
-
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          const text = await response.text();
-          if (text === PING_RESPONSE) {
-            return port;
-          }
-        }
-      } catch (error) {
-        clearTimeout(timeoutId);
-        // Continue to next port if request fails
-        continue;
-      }
-    } catch (error) {
-      // Continue to next port if any other error occurs
-      continue;
-    }
-  }
-
-  return null;
-}
+/**
+ * Maximum number of consecutive connection errors before stopping the discovery process.
+ * This prevents unnecessary network requests when no VS Code instances are running.
+ */
+const MAX_CONSECUTIVE_ERRORS = 2;
 
 export type VSCodeContext = z.infer<
   typeof contract.server.getSessionInfo.response
@@ -59,6 +25,7 @@ export async function discoverVSCodeWindows(
   timeout = 300,
 ): Promise<VSCodeContext[]> {
   const windows: VSCodeContext[] = [];
+  let consecutiveErrors = 0;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const port = DEFAULT_PORT + attempt;
@@ -73,6 +40,9 @@ export async function discoverVSCodeWindows(
       });
 
       clearTimeout(timeoutId);
+
+      // Reset consecutive errors on successful response
+      consecutiveErrors = 0;
 
       if (response.ok && (await response.text()) === PING_RESPONSE) {
         // Port is active, now get session info
@@ -95,11 +65,30 @@ export async function discoverVSCodeWindows(
         } catch (error) {
           console.warn(`Failed to get session info from port ${port}:`, error);
         }
+      } else {
+        // Port is available but it's another service running on it, so we continue searching
+        continue;
       }
     } catch (error) {
-      // Port not available, continue to next
+      consecutiveErrors++;
+
+      // Stop searching after 2 consecutive connection errors
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        console.warn(
+          `⬆️⬆️⬆️ Those two errors are expected! (Everything is fine, they are part of stagewise's discovery mechanism!) ✅`,
+        );
+        break;
+      }
+
+      // Any other error occurs, continue searching
       continue;
     }
+  }
+
+  if (windows.length === 0) {
+    console.warn(
+      `No VS Code windows found, please start an IDE with the stagewise extension installed! ❌`,
+    );
   }
 
   return windows;

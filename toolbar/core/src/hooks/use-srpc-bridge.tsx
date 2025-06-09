@@ -1,11 +1,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import { createContext, useContext, useEffect, useState } from 'preact/compat';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'preact/compat';
 import type { ComponentChildren } from 'preact';
 import { createSRPCClientBridge, type ZodClient } from '@stagewise/srpc/client';
 import { contract } from '@stagewise/extension-toolbar-srpc-contract';
-import { findPort } from '../srpc';
+import { useVSCode } from './use-vscode';
 
 interface SRPCBridgeContextValue {
   bridge: ZodClient<typeof contract> | null;
@@ -28,31 +35,35 @@ export function SRPCBridgeProvider({
     error: null,
   });
 
-  useEffect(() => {
-    async function initializeBridge() {
-      try {
-        const port = await findPort();
-        const bridge = createSRPCClientBridge(
-          `ws://localhost:${port}`,
-          contract,
-        );
-        await bridge.connect();
-        setState({
-          bridge,
-          isConnecting: false,
-          error: null,
-        });
-      } catch (error) {
-        setState({
-          bridge: null,
-          isConnecting: false,
-          error: error instanceof Error ? error : new Error(String(error)),
-        });
-      }
-    }
+  const { selectedSession } = useVSCode();
+  const bridgeRef = useRef<ZodClient<typeof contract> | null>(null);
 
-    initializeBridge();
+  const initializeBridge = useCallback(async (port: number) => {
+    if (bridgeRef.current) await bridgeRef.current.close();
+
+    try {
+      const bridge = createSRPCClientBridge(`ws://localhost:${port}`, contract);
+      await bridge.connect();
+      bridgeRef.current = bridge;
+
+      setState({
+        bridge,
+        isConnecting: false,
+        error: null,
+      });
+    } catch (error) {
+      bridgeRef.current = null;
+      setState({
+        bridge: null,
+        isConnecting: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    if (selectedSession) initializeBridge(selectedSession.port);
+  }, [selectedSession, initializeBridge]);
 
   return (
     <SRPCBridgeContext.Provider value={state}>

@@ -15,13 +15,13 @@ export function ContextProviders({
 }) {
   return (
     <ConfigProvider config={config}>
-      <SRPCBridgeProvider>
-        <VSCodeProvider>
+      <VSCodeProvider>
+        <SRPCBridgeProvider>
           <PluginProvider>
             <ChatStateProvider>{children}</ChatStateProvider>
           </PluginProvider>
-        </VSCodeProvider>
-      </SRPCBridgeProvider>
+        </SRPCBridgeProvider>
+      </VSCodeProvider>
     </ConfigProvider>
   );
 }
