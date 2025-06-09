@@ -11,41 +11,49 @@ export async function findPort(
   maxAttempts = 10,
   timeout = 300,
 ): Promise<number | null> {
+  let consecutiveErrors = 0;
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const port = DEFAULT_PORT + attempt;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      const response = await fetch(`http://localhost:${port}${PING_ENDPOINT}`, {
+        signal: controller.signal,
+      });
 
-      try {
-        const response = await fetch(
-          `http://localhost:${port}${PING_ENDPOINT}`,
-          {
-            signal: controller.signal,
-          },
-        );
+      clearTimeout(timeoutId);
 
-        clearTimeout(timeoutId);
+      // Reset consecutive errors on successful response
+      consecutiveErrors = 0;
 
-        if (response.ok) {
-          const text = await response.text();
-          // Port is available and it's the stagewise extension
-          if (text === PING_RESPONSE) return port;
-        } else {
-          // Port is available but it's another service running on it, so we continue searching
-          continue;
-        }
-      } catch (error) {
-        clearTimeout(timeoutId);
-        // Port not available, stop searching
-        break;
+      if (response.ok) {
+        const text = await response.text();
+        // Port is available and it's the stagewise extension
+        if (text === PING_RESPONSE) return port;
+      } else {
+        // Port is available but it's another service running on it, so we continue searching
+        continue;
       }
     } catch (error) {
-      // Any other error occurs, stop searching
-      break;
+      clearTimeout(timeoutId);
+      consecutiveErrors++;
+
+      // Stop searching after 2 consecutive connection errors
+      if (consecutiveErrors >= 2) break;
+
+      // Port not available, continue searching
+      console.warn(
+        `⬆️⬆️⬆️ This error is expected! (Everything is fine, it is part of stagewise's discovery mechanism!) ✅`,
+      );
+      continue;
     }
   }
 
+  console.warn(
+    `Could not find a running stagewise extension, please start an IDE with the stagewise extension installed ❌`,
+  );
   return null;
 }
 
@@ -61,6 +69,7 @@ export async function discoverVSCodeWindows(
   timeout = 300,
 ): Promise<VSCodeContext[]> {
   const windows: VSCodeContext[] = [];
+  let consecutiveErrors = 0;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const port = DEFAULT_PORT + attempt;
@@ -75,6 +84,9 @@ export async function discoverVSCodeWindows(
       });
 
       clearTimeout(timeoutId);
+
+      // Reset consecutive errors on successful response
+      consecutiveErrors = 0;
 
       if (response.ok && (await response.text()) === PING_RESPONSE) {
         // Port is active, now get session info
@@ -102,9 +114,23 @@ export async function discoverVSCodeWindows(
         continue;
       }
     } catch (error) {
-      // Any other error occurs, stop searching
-      break;
+      consecutiveErrors++;
+
+      // Stop searching after 2 consecutive connection errors
+      if (consecutiveErrors >= 2) break;
+
+      // Any other error occurs, continue searching
+      console.warn(
+        `⬆️⬆️⬆️ This error is expected! (Everything is fine, it is part of stagewise's discovery mechanism!) ✅`,
+      );
+      continue;
     }
+  }
+
+  if (windows.length === 0) {
+    console.warn(
+      `No VS Code windows found, please start an IDE with the stagewise extension installed`,
+    );
   }
 
   return windows;
