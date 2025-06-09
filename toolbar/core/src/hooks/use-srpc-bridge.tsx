@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'preact/compat';
 import type { ComponentChildren } from 'preact';
@@ -35,37 +36,34 @@ export function SRPCBridgeProvider({
   });
 
   const { selectedSession } = useVSCode();
+  const bridgeRef = useRef<ZodClient<typeof contract> | null>(null);
 
-  const initializeBridge = useCallback(
-    async (port: number) => {
-      if (state.bridge) await state.bridge.close();
+  const initializeBridge = useCallback(async (port: number) => {
+    if (bridgeRef.current) await bridgeRef.current.close();
 
-      try {
-        const bridge = createSRPCClientBridge(
-          `ws://localhost:${port}`,
-          contract,
-        );
-        await bridge.connect();
+    try {
+      const bridge = createSRPCClientBridge(`ws://localhost:${port}`, contract);
+      await bridge.connect();
+      bridgeRef.current = bridge;
 
-        setState({
-          bridge,
-          isConnecting: false,
-          error: null,
-        });
-      } catch (error) {
-        setState({
-          bridge: null,
-          isConnecting: false,
-          error: error instanceof Error ? error : new Error(String(error)),
-        });
-      }
-    },
-    [state.bridge, selectedSession],
-  );
+      setState({
+        bridge,
+        isConnecting: false,
+        error: null,
+      });
+    } catch (error) {
+      bridgeRef.current = null;
+      setState({
+        bridge: null,
+        isConnecting: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedSession) initializeBridge(selectedSession.port);
-  }, [selectedSession]);
+  }, [selectedSession, initializeBridge]);
 
   return (
     <SRPCBridgeContext.Provider value={state}>
