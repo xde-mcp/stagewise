@@ -29,8 +29,10 @@ export async function findPort(
 
         if (response.ok) {
           const text = await response.text();
+          // Port is available and it's the stagewise extension
           if (text === PING_RESPONSE) return port;
         } else {
+          // Port is available but it's another service running on it, so we continue searching
           continue;
         }
       } catch (error) {
@@ -96,11 +98,11 @@ export async function discoverVSCodeWindows(
           console.warn(`Failed to get session info from port ${port}:`, error);
         }
       } else {
-        // Port responded but with wrong response, stop searching
-        break;
+        // Port is available but it's another service running on it, so we continue searching
+        continue;
       }
     } catch (error) {
-      // Port not available, stop searching
+      // Any other error occurs, stop searching
       break;
     }
   }
