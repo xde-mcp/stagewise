@@ -7,6 +7,12 @@ import { createSRPCClientBridge } from '@stagewise/srpc/client';
 import { contract } from '@stagewise/extension-toolbar-srpc-contract';
 import type { z } from 'zod';
 
+/**
+ * Maximum number of consecutive connection errors before stopping the discovery process.
+ * This prevents unnecessary network requests when no VS Code instances are running.
+ */
+const MAX_CONSECUTIVE_ERRORS = 2;
+
 export type VSCodeContext = z.infer<
   typeof contract.server.getSessionInfo.response
 >;
@@ -67,7 +73,7 @@ export async function discoverVSCodeWindows(
       consecutiveErrors++;
 
       // Stop searching after 2 consecutive connection errors
-      if (consecutiveErrors >= 2) {
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         console.warn(
           `⬆️⬆️⬆️ Those two errors are expected! (Everything is fine, they are part of stagewise's discovery mechanism!) ✅`,
         );

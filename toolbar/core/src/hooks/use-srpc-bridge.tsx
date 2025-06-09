@@ -60,7 +60,7 @@ export function SRPCBridgeProvider({
         });
       }
     },
-    [selectedSession],
+    [state.bridge, selectedSession],
   );
 
   useEffect(() => {
