@@ -29,18 +29,18 @@ export async function findPort(
 
         if (response.ok) {
           const text = await response.text();
-          if (text === PING_RESPONSE) {
-            return port;
-          }
+          if (text === PING_RESPONSE) return port;
+        } else {
+          continue;
         }
       } catch (error) {
         clearTimeout(timeoutId);
-        // Continue to next port if request fails
-        continue;
+        // Port not available, stop searching
+        break;
       }
     } catch (error) {
-      // Continue to next port if any other error occurs
-      continue;
+      // Any other error occurs, stop searching
+      break;
     }
   }
 
