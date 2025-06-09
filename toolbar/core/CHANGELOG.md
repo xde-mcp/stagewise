@@ -1,5 +1,15 @@
 # @stagewise/toolbar
 
+## 0.4.5
+
+### Patch Changes
+
+- bef562d: Changed branding slogan
+- ff3a30e: Fix infinite loading state
+- 6144c99: Support character composition in chat input box
+- 9e7610d: Replace randomUUID calls with (unsafer, but universally working) Math.random generated IDs
+- 1b47ca5: Reducing error logs in windows discovery
+
 ## 0.4.4
 
 ### Patch Changes
