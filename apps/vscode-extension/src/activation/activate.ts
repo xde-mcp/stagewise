@@ -18,6 +18,8 @@ import {
   createGettingStartedPanel,
   shouldShowGettingStarted,
 } from '../webviews/getting-started';
+import { ExtensionStorage } from '../data-storage';
+
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
   vscode.languages.createDiagnosticCollection('stagewise');
@@ -36,6 +38,8 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
   context.subscriptions.push(fakeDiagCollection); // Dispose on deactivation
+
+  const storage = new ExtensionStorage(context);
 
   // Add configuration change listener to track telemetry setting changes
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
@@ -135,7 +139,7 @@ export async function activate(context: vscode.ExtensionContext) {
     async () => {
       try {
         await trackEvent('getting_started_panel_manual_show');
-        createGettingStartedPanel(context, setupToolbarHandler);
+        createGettingStartedPanel(context, storage, setupToolbarHandler);
       } catch (error) {
         console.error(
           'Error showing getting started panel:',
@@ -147,10 +151,10 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(showGettingStartedCommand);
 
-  // Show getting started panel for first-time users
-  if (shouldShowGettingStarted(context)) {
+  if (await shouldShowGettingStarted(storage)) {
+    // Show getting started panel for first-time users
     await trackEvent('getting_started_panel_shown');
-    createGettingStartedPanel(context, setupToolbarHandler);
+    createGettingStartedPanel(context, storage, setupToolbarHandler);
   }
 }
 
