@@ -95,10 +95,13 @@ export async function discoverVSCodeWindows(
         } catch (error) {
           console.warn(`Failed to get session info from port ${port}:`, error);
         }
+      } else {
+        // Port responded but with wrong response, stop searching
+        break;
       }
     } catch (error) {
-      // Port not available, continue to next
-      continue;
+      // Port not available, stop searching
+      break;
     }
   }
 
