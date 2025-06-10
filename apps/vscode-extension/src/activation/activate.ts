@@ -165,7 +165,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export async function deactivate(context: vscode.ExtensionContext) {
+export async function deactivate() {
   try {
     // Track extension deactivation before shutting down analytics
     await trackEvent('extension_deactivated');
