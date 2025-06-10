@@ -77,6 +77,33 @@
       "classification": "SystemMetaData",
       "purpose": "FeatureInsight",
       "comment": "Tracks when a user re-enables telemetry collection after previously disabling it."
+    },
+    "getting_started_panel_shown": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when the getting started panel is automatically shown to first-time users"
+    },
+    "getting_started_panel_manual_show": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user manually opens the getting started panel via command"
+    },
+    "post_setup_feedback": {
+      "classification": "EndUserPseudonymizedInformation",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks user feedback after toolbar setup completion",
+      "properties": {
+        "type": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The type of feedback provided by the user"
+        },
+        "text": {
+          "classification": "EndUserPseudonymizedInformation",
+          "purpose": "FeatureInsight",
+          "comment": "The feedback text provided by the user"
+        }
+      }
     }
   }
 }

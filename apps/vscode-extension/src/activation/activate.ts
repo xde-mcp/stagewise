@@ -19,10 +19,14 @@ import {
   shouldShowGettingStarted,
 } from '../webviews/getting-started';
 import { ExtensionStorage } from '../data-storage';
+import { VScodeContext } from '../utils/vscode-context';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
   vscode.languages.createDiagnosticCollection('stagewise');
+
+// Create output channel for stagewise
+const outputChannel = vscode.window.createOutputChannel('stagewise');
 
 // Dummy handler for the setupToolbar command
 async function setupToolbarHandler() {
@@ -30,6 +34,9 @@ async function setupToolbarHandler() {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
+  // Initialize VScodeContext first
+  await VScodeContext.initialize(context);
+
   const ide = getCurrentIDE();
   if (ide === 'UNKNOWN') {
     vscode.window.showInformationMessage(
@@ -38,6 +45,7 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
   context.subscriptions.push(fakeDiagCollection); // Dispose on deactivation
+  context.subscriptions.push(outputChannel); // Dispose output channel on deactivation
 
   const storage = new ExtensionStorage(context);
 
@@ -58,9 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   try {
     // Track extension activation
-    await trackEvent('extension_activated', {
-      ide,
-    });
+    await trackEvent('extension_activated', { ide });
 
     // Find an available port
     const port = await findAvailablePort(DEFAULT_PORT);

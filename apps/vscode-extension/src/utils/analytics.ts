@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { PostHog } from 'posthog-node';
 import { createHash } from 'node:crypto';
+import { EnvironmentInfo } from './environment-info';
+import { VScodeContext } from './vscode-context';
 
 // Initialize PostHog client
 // Note: The API key should be your actual PostHog API key
@@ -19,6 +21,18 @@ function hashId(id: string): string {
   return createHash('sha256')
     .update(id + SALT)
     .digest('hex');
+}
+
+/**
+ * Gets the extension version and toolbar version using EnvironmentInfo
+ * @returns Object containing extension and toolbar versions
+ */
+async function getVersions() {
+  const environmentInfo = await EnvironmentInfo.getInstance();
+  return {
+    extensionVersion: environmentInfo.getExtensionVersion(),
+    toolbarVersion: environmentInfo.getToolbarInstalledVersion() || 'unknown',
+  };
 }
 
 /**
@@ -44,33 +58,35 @@ export async function trackEvent(
   }
 
   try {
-    // Get a unique identifier for the user
-    // Using a machine-specific ID that's anonymized
     const machineId = vscode.env.machineId;
+    const { extensionVersion, toolbarVersion } = await getVersions();
+    const vscodeContext = await VScodeContext.getInstance();
 
-    await client?.capture({
+    const eventData = {
       distinctId: hashId(machineId),
       event: eventName,
       properties: {
         ...properties,
         vscodeVersion: vscode.version,
         appName: vscode.env.appName,
-        extensionVersion: vscode.extensions.getExtension(
-          'stagewise.stagewise-vscode-extension',
-        )?.packageJSON.version,
+        extensionVersion,
+        toolbarVersion,
         platform: process.platform,
       },
-    });
+    };
 
-    if (process.env.NODE_ENV === 'development') {
+    await client?.capture(eventData);
+
+    // Enhanced debug logging
+    if (vscodeContext.isDevelopmentMode()) {
       console.log(
-        `[Analytics] Event sent to PostHog: ${eventName}`,
-        properties || {},
+        '[Analytics] Event data:',
+        JSON.stringify(eventData, null, 2),
       );
     }
   } catch (error) {
-    // Log error in development, but don't throw to avoid disrupting the user experience
-    if (process.env.NODE_ENV === 'development') {
+    const vscodeContext = await VScodeContext.getInstance();
+    if (vscodeContext.isDevelopmentMode()) {
       console.error('[Analytics] Error sending event to PostHog:', error);
     }
   }
@@ -95,25 +111,32 @@ export async function trackTelemetryStateChange(
   try {
     const machineId = vscode.env.machineId;
     const eventName = enabled ? 'telemetry_enabled' : 'telemetry_disabled';
+    const { extensionVersion, toolbarVersion } = await getVersions();
+    const vscodeContext = await VScodeContext.getInstance();
 
-    await client?.capture({
+    const eventData = {
       distinctId: hashId(machineId),
       event: eventName,
       properties: {
         vscodeVersion: vscode.version,
         appName: vscode.env.appName,
-        extensionVersion: vscode.extensions.getExtension(
-          'stagewise.stagewise-vscode-extension',
-        )?.packageJSON.version,
+        extensionVersion,
+        toolbarVersion,
         platform: process.platform,
       },
-    });
+    };
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Analytics] Telemetry state change tracked: ${eventName}`);
+    await client?.capture(eventData);
+
+    if (vscodeContext.isDevelopmentMode()) {
+      console.log(
+        '[Analytics] Telemetry state change event data:',
+        JSON.stringify(eventData, null, 2),
+      );
     }
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
+    const vscodeContext = await VScodeContext.getInstance();
+    if (vscodeContext.isDevelopmentMode()) {
       console.error(
         '[Analytics] Error tracking telemetry state change:',
         error,

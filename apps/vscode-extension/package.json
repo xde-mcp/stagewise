@@ -63,6 +63,7 @@
     "build": "webpack --mode production --config webpack.config.js"
   },
   "devDependencies": {
+    "@types/axios": "^0.14.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.15.2",
     "@types/vscode": "^1.85.0",
@@ -87,6 +88,7 @@
     "@stagewise/extension-toolbar-srpc-contract": "workspace:*",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.1",
+    "axios": "^1.6.7",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "posthog-node": "^4.17.1",
