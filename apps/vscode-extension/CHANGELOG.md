@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.5.0
+
+### Minor Changes
+
+- 49f75c9: Add a getting started onboarding flow
+
 ## 0.4.4
 
 ### Patch Changes
