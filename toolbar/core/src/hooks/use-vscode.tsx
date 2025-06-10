@@ -155,15 +155,11 @@ export function VSCodeProvider({ children }: { children: ComponentChildren }) {
             !discoveredWindows.some((w) => w.sessionId === storedSessionId)); // Saved sessionId not in discovered windows
 
         setShouldPromptWindowSelection(shouldPrompt);
-      }
 
-      // If selected session is no longer available, clear it
-      if (
-        selectedSessionId &&
-        !discoveredWindows.some((w) => w.sessionId === selectedSessionId)
-      ) {
-        setSelectedSessionId(undefined);
-        setStoredSessionId(undefined);
+        if (shouldPrompt) {
+          setSelectedSessionId(undefined);
+          setStoredSessionId(undefined);
+        }
       }
     } catch (err) {
       setDiscoveryError(
