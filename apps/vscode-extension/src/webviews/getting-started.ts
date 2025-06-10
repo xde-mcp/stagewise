@@ -75,7 +75,7 @@ function getWebviewContent(
   const stagewiseUrl =
     context.extensionMode === vscode.ExtensionMode.Development
       ? 'http://localhost:3000/vscode-extension/welcome'
-      : 'http://localhost:3000/vscode-extension/welcome'; //'https://stagewise.io/vscode-extension/welcome';
+      : 'https://stagewise.io/vscode-extension/welcome';
 
   return `<!DOCTYPE html>
 <html lang="en">
