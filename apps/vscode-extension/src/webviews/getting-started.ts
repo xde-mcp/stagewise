@@ -32,6 +32,7 @@ export function createGettingStartedPanel(
               success: false,
               error: error instanceof Error ? error.message : String(error),
             });
+            panel.reveal();
           }
           break;
         case 'openDocs':
@@ -40,6 +41,7 @@ export function createGettingStartedPanel(
               'https://stagewise.io/docs/quickstart#2-install-and-inject-the-toolbar',
             ),
           );
+          panel.reveal();
           break;
         case 'captureFeedback':
           // Create posthog event
