@@ -45,10 +45,14 @@ export function createGettingStartedPanel(
           break;
         case 'captureFeedback':
           // Create posthog event
-          await trackEvent('post_setup_feedback', {
-            type: message.data.type,
-            text: message.data.text,
-          });
+          await trackEvent(
+            'post_setup_feedback',
+            {
+              type: message.data.type,
+              text: message.data.text,
+            },
+            context,
+          );
           break;
         case 'showRepo':
           vscode.env.openExternal(

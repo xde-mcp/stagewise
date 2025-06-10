@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { PostHog } from 'posthog-node';
 import { createHash } from 'node:crypto';
+import { EnvironmentInfo } from './environment-info';
 
 // Initialize PostHog client
 // Note: The API key should be your actual PostHog API key
@@ -22,6 +23,18 @@ function hashId(id: string): string {
 }
 
 /**
+ * Gets the extension version and toolbar version using EnvironmentInfo
+ * @returns Object containing extension and toolbar versions
+ */
+async function getVersions() {
+  const environmentInfo = await EnvironmentInfo.getInstance();
+  return {
+    extensionVersion: environmentInfo.getExtensionVersion(),
+    toolbarVersion: environmentInfo.getToolbarInstalledVersion() || 'unknown',
+  };
+}
+
+/**
  * Checks if analytics/telemetry is enabled in the extension settings
  * @returns boolean indicating if analytics is enabled
  */
@@ -38,39 +51,40 @@ export function isAnalyticsEnabled(): boolean {
 export async function trackEvent(
   eventName: string,
   properties?: Record<string, any>,
+  context?: vscode.ExtensionContext,
 ): Promise<void> {
   if (!isAnalyticsEnabled()) {
     return;
   }
 
   try {
-    // Get a unique identifier for the user
-    // Using a machine-specific ID that's anonymized
     const machineId = vscode.env.machineId;
+    const { extensionVersion, toolbarVersion } = await getVersions();
 
-    await client?.capture({
+    const eventData = {
       distinctId: hashId(machineId),
       event: eventName,
       properties: {
         ...properties,
         vscodeVersion: vscode.version,
         appName: vscode.env.appName,
-        extensionVersion: vscode.extensions.getExtension(
-          'stagewise.stagewise-vscode-extension',
-        )?.packageJSON.version,
+        extensionVersion,
+        toolbarVersion,
         platform: process.platform,
       },
-    });
+    };
 
-    if (process.env.NODE_ENV === 'development') {
+    await client?.capture(eventData);
+
+    // Enhanced debug logging
+    if (context?.extensionMode === vscode.ExtensionMode.Development) {
       console.log(
-        `[Analytics] Event sent to PostHog: ${eventName}`,
-        properties || {},
+        '[Analytics] Event data:',
+        JSON.stringify(eventData, null, 2),
       );
     }
   } catch (error) {
-    // Log error in development, but don't throw to avoid disrupting the user experience
-    if (process.env.NODE_ENV === 'development') {
+    if (context?.extensionMode === vscode.ExtensionMode.Development) {
       console.error('[Analytics] Error sending event to PostHog:', error);
     }
   }
@@ -91,29 +105,35 @@ export async function shutdownAnalytics(): Promise<void> {
  */
 export async function trackTelemetryStateChange(
   enabled: boolean,
+  context?: vscode.ExtensionContext,
 ): Promise<void> {
   try {
     const machineId = vscode.env.machineId;
     const eventName = enabled ? 'telemetry_enabled' : 'telemetry_disabled';
+    const { extensionVersion, toolbarVersion } = await getVersions();
 
-    await client?.capture({
+    const eventData = {
       distinctId: hashId(machineId),
       event: eventName,
       properties: {
         vscodeVersion: vscode.version,
         appName: vscode.env.appName,
-        extensionVersion: vscode.extensions.getExtension(
-          'stagewise.stagewise-vscode-extension',
-        )?.packageJSON.version,
+        extensionVersion,
+        toolbarVersion,
         platform: process.platform,
       },
-    });
+    };
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Analytics] Telemetry state change tracked: ${eventName}`);
+    await client?.capture(eventData);
+
+    if (context?.extensionMode === vscode.ExtensionMode.Development) {
+      console.log(
+        '[Analytics] Telemetry state change event data:',
+        JSON.stringify(eventData, null, 2),
+      );
     }
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
+    if (context?.extensionMode === vscode.ExtensionMode.Development) {
       console.error(
         '[Analytics] Error tracking telemetry state change:',
         error,
