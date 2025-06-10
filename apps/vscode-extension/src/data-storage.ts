@@ -20,7 +20,6 @@ export class ExtensionStorage {
     // The globalStorageUri is a directory specific to this extension.
     // It's the perfect place for data that should be removed upon uninstall.
     this.storageUri = context.globalStorageUri;
-    console.log('Storage URI:', this.storageUri);
   }
 
   /**
@@ -32,23 +31,19 @@ export class ExtensionStorage {
   public async get<T>(key: string, defaultValue?: T): Promise<T | undefined> {
     const fileUri = this.getUriForKey(key);
 
-    console.log('Getting value for key:', key);
-
     try {
       // Read the file content from the storage directory.
       const fileContents = await vscode.workspace.fs.readFile(fileUri);
       // Decode the content from bytes to a string and parse it as JSON.
       const storedValue = JSON.parse(this.textDecoder.decode(fileContents));
-      console.log('Stored value:', storedValue);
       return storedValue as T;
     } catch (error) {
       // If the file doesn't exist, it's not an error we need to throw.
-      // We just return the default value.
       if (
         error instanceof vscode.FileSystemError &&
         error.code === 'FileNotFound'
       ) {
-        console.log('File not found, returning default value');
+        // We just return the default value.
         return defaultValue;
       }
       // For any other errors, we re-throw them.
@@ -65,8 +60,6 @@ export class ExtensionStorage {
     const fileUri = this.getUriForKey(key);
     // Serialize the value to a JSON string, then encode it as UTF-8 bytes.
     const fileContents = this.textEncoder.encode(JSON.stringify(value));
-
-    console.log('Setting value for key:', key);
 
     try {
       // Ensure the storage directory exists
