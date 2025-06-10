@@ -19,6 +19,7 @@ import {
   shouldShowGettingStarted,
 } from '../webviews/getting-started';
 import { ExtensionStorage } from '../data-storage';
+import { VScodeContext } from '../utils/vscode-context';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -33,6 +34,9 @@ async function setupToolbarHandler() {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
+  // Initialize VScodeContext first
+  await VScodeContext.initialize(context);
+
   const ide = getCurrentIDE();
   if (ide === 'UNKNOWN') {
     vscode.window.showInformationMessage(
@@ -62,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   try {
     // Track extension activation
-    await trackEvent('extension_activated', { ide }, context);
+    await trackEvent('extension_activated', { ide });
 
     // Find an available port
     const port = await findAvailablePort(DEFAULT_PORT);
@@ -90,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
             },
           };
         }
-        await trackEvent('agent_prompt_triggered', undefined, context);
+        await trackEvent('agent_prompt_triggered');
 
         await dispatchAgentCall(request);
         sendUpdate.sendUpdate({
@@ -106,22 +110,14 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     // Track successful server start
-    await trackEvent(
-      'server_started',
-      {
-        port,
-      },
-      context,
-    );
+    await trackEvent('server_started', {
+      port,
+    });
   } catch (error) {
     // Track activation error
-    await trackEvent(
-      'activation_error',
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      context,
-    );
+    await trackEvent('activation_error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     vscode.window.showErrorMessage(`Failed to start server: ${error}`);
     throw error;
   }
@@ -131,7 +127,7 @@ export async function activate(context: vscode.ExtensionContext) {
     'stagewise.setupToolbar',
     async () => {
       try {
-        await trackEvent('toolbar_auto_setup_started', undefined, context);
+        await trackEvent('toolbar_auto_setup_started');
         await setupToolbarHandler();
       } catch (error) {
         console.error(
@@ -149,11 +145,7 @@ export async function activate(context: vscode.ExtensionContext) {
     'stagewise.showGettingStarted',
     async () => {
       try {
-        await trackEvent(
-          'getting_started_panel_manual_show',
-          undefined,
-          context,
-        );
+        await trackEvent('getting_started_panel_manual_show');
         createGettingStartedPanel(context, storage, setupToolbarHandler);
       } catch (error) {
         console.error(
@@ -168,7 +160,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   if (await shouldShowGettingStarted(storage)) {
     // Show getting started panel for first-time users
-    await trackEvent('getting_started_panel_shown', undefined, context);
+    await trackEvent('getting_started_panel_shown');
     createGettingStartedPanel(context, storage, setupToolbarHandler);
   }
 }
@@ -176,7 +168,7 @@ export async function activate(context: vscode.ExtensionContext) {
 export async function deactivate(context: vscode.ExtensionContext) {
   try {
     // Track extension deactivation before shutting down analytics
-    await trackEvent('extension_deactivated', undefined, context);
+    await trackEvent('extension_deactivated');
     await stopServer();
     await shutdownAnalytics();
   } catch (error) {

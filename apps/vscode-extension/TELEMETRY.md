@@ -9,25 +9,34 @@ We collect the following types of telemetry data:
 ### System Metadata
 - Extension activation events (`extension_activated`)
   - IDE information (VS Code version)
+- Extension deactivation events (`extension_deactivated`)
+  - When the extension is shut down
 - Server information (`server_started`)
   - Port numbers for diagnostic purposes
 - Agent usage (`agent_prompt_triggered`)
   - When the AI agent is invoked
-- Toolbar setup events (`toolbar_auto_setup_started`)
-  - When the automatic toolbar setup process is initiated
+- Toolbar setup events (`toolbar_auto_setup_started`, `toolbar_setup_completed`, `toolbar_setup_failed`)
+  - When the automatic toolbar setup process is initiated, completed, or fails
+- Getting started panel events (`getting_started_panel_shown`, `getting_started_panel_manual_show`)
+  - When the getting started panel is shown automatically to new users or manually opened
+- User feedback (`post_setup_feedback`)
+  - Feedback provided by users after toolbar setup (includes feedback type and text)
 - Telemetry setting changes (`telemetry_disabled`, `telemetry_enabled`)
   - When users opt-out or opt-in to telemetry collection
 
 ### Error Data
 - Extension activation errors (`activation_error`)
   - Error messages (scrubbed of personal information)
-- Server startup failures (included in `activation_error`)
+- Toolbar setup failures (`toolbar_setup_failed`)
+  - Error messages when toolbar setup fails
 
 ### Event Details
 
 #### Extension Lifecycle Events
 - `extension_activated`: Triggered when the extension starts up
   - Includes: IDE type
+- `extension_deactivated`: Triggered when the extension shuts down
+  - No additional properties collected
 - `server_started`: Triggered when the local server successfully starts
   - Includes: Port number used
 
@@ -36,6 +45,14 @@ We collect the following types of telemetry data:
   - No additional properties collected
 - `toolbar_auto_setup_started`: Triggered when the automatic toolbar setup process is initiated
   - No additional properties collected
+- `toolbar_setup_completed`: Triggered when the toolbar setup is completed successfully
+  - No additional properties collected
+- `getting_started_panel_shown`: Triggered when the getting started panel is automatically shown to first-time users
+  - No additional properties collected
+- `getting_started_panel_manual_show`: Triggered when a user manually opens the getting started panel via command
+  - No additional properties collected
+- `post_setup_feedback`: Triggered when a user provides feedback after toolbar setup
+  - Includes: feedback type and feedback text
 
 #### Privacy Events
 - `telemetry_disabled`: Triggered when a user disables telemetry collection
@@ -46,6 +63,8 @@ We collect the following types of telemetry data:
 
 #### Error Events
 - `activation_error`: Triggered when the extension fails to activate
+  - Includes: Error message (scrubbed of PII)
+- `toolbar_setup_failed`: Triggered when the toolbar setup process fails
   - Includes: Error message (scrubbed of PII)
 
 ### Data Collection Method

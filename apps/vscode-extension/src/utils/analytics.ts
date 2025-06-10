@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { PostHog } from 'posthog-node';
 import { createHash } from 'node:crypto';
 import { EnvironmentInfo } from './environment-info';
+import { VScodeContext } from './vscode-context';
 
 // Initialize PostHog client
 // Note: The API key should be your actual PostHog API key
@@ -51,7 +52,6 @@ export function isAnalyticsEnabled(): boolean {
 export async function trackEvent(
   eventName: string,
   properties?: Record<string, any>,
-  context?: vscode.ExtensionContext,
 ): Promise<void> {
   if (!isAnalyticsEnabled()) {
     return;
@@ -60,6 +60,7 @@ export async function trackEvent(
   try {
     const machineId = vscode.env.machineId;
     const { extensionVersion, toolbarVersion } = await getVersions();
+    const vscodeContext = await VScodeContext.getInstance();
 
     const eventData = {
       distinctId: hashId(machineId),
@@ -77,14 +78,15 @@ export async function trackEvent(
     await client?.capture(eventData);
 
     // Enhanced debug logging
-    if (context?.extensionMode === vscode.ExtensionMode.Development) {
+    if (vscodeContext.isDevelopmentMode()) {
       console.log(
         '[Analytics] Event data:',
         JSON.stringify(eventData, null, 2),
       );
     }
   } catch (error) {
-    if (context?.extensionMode === vscode.ExtensionMode.Development) {
+    const vscodeContext = await VScodeContext.getInstance();
+    if (vscodeContext.isDevelopmentMode()) {
       console.error('[Analytics] Error sending event to PostHog:', error);
     }
   }
@@ -105,12 +107,12 @@ export async function shutdownAnalytics(): Promise<void> {
  */
 export async function trackTelemetryStateChange(
   enabled: boolean,
-  context?: vscode.ExtensionContext,
 ): Promise<void> {
   try {
     const machineId = vscode.env.machineId;
     const eventName = enabled ? 'telemetry_enabled' : 'telemetry_disabled';
     const { extensionVersion, toolbarVersion } = await getVersions();
+    const vscodeContext = await VScodeContext.getInstance();
 
     const eventData = {
       distinctId: hashId(machineId),
@@ -126,14 +128,15 @@ export async function trackTelemetryStateChange(
 
     await client?.capture(eventData);
 
-    if (context?.extensionMode === vscode.ExtensionMode.Development) {
+    if (vscodeContext.isDevelopmentMode()) {
       console.log(
         '[Analytics] Telemetry state change event data:',
         JSON.stringify(eventData, null, 2),
       );
     }
   } catch (error) {
-    if (context?.extensionMode === vscode.ExtensionMode.Development) {
+    const vscodeContext = await VScodeContext.getInstance();
+    if (vscodeContext.isDevelopmentMode()) {
       console.error(
         '[Analytics] Error tracking telemetry state change:',
         error,
