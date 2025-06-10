@@ -19,6 +19,11 @@
         "command": "stagewise.setupToolbar",
         "title": "Auto-setup the stagewise toolbar (AI-Assisted)",
         "category": "stagewise"
+      },
+      {
+        "command": "stagewise.showGettingStarted",
+        "title": "Show Getting Started Guide",
+        "category": "stagewise"
       }
     ],
     "configuration": {

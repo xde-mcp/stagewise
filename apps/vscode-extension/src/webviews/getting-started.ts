@@ -1,0 +1,142 @@
+import * as vscode from 'vscode';
+import type { ExtensionStorage } from '../data-storage';
+import { trackEvent } from 'src/utils/analytics';
+
+export function createGettingStartedPanel(
+  context: vscode.ExtensionContext,
+  storage: ExtensionStorage,
+  onSetupToolbar: () => Promise<void>,
+): vscode.WebviewPanel {
+  const panel = vscode.window.createWebviewPanel(
+    'stagewiseGettingStarted',
+    'Getting Started with stagewise',
+    vscode.ViewColumn.One,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+    },
+  );
+  panel.webview.html = getWebviewContent(panel.webview, context);
+
+  // Handle messages from the webview
+  panel.webview.onDidReceiveMessage(
+    async (message) => {
+      switch (message.command) {
+        case 'setupToolbar':
+          try {
+            await onSetupToolbar();
+          } catch (error) {
+            // Show error message in webview
+            panel.webview.postMessage({
+              command: 'setupComplete',
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            panel.reveal();
+          }
+          break;
+        case 'openDocs':
+          vscode.env.openExternal(
+            vscode.Uri.parse(
+              'https://stagewise.io/docs/quickstart#2-install-and-inject-the-toolbar',
+            ),
+          );
+          panel.reveal();
+          break;
+        case 'captureFeedback':
+          // Create posthog event
+          await trackEvent('post_setup_feedback', {
+            type: message.data.type,
+            text: message.data.text,
+          });
+          break;
+        case 'showRepo':
+          vscode.env.openExternal(
+            vscode.Uri.parse('https://github.com/stagewise-io/stagewise'),
+          );
+          break;
+        case 'dismissPanel':
+          panel.dispose();
+          break;
+        case 'markGettingStartAsSeen':
+          await storage.set('stagewise.hasSeenGettingStarted', true);
+          break;
+      }
+    },
+    undefined,
+    context.subscriptions,
+  );
+
+  return panel;
+}
+
+function getWebviewContent(
+  webview: vscode.Webview,
+  context: vscode.ExtensionContext,
+): string {
+  const stagewiseUrl =
+    context.extensionMode === vscode.ExtensionMode.Development
+      ? 'http://localhost:3000/vscode-extension/welcome'
+      : 'https://stagewise.io/vscode-extension/welcome';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src ${webview.cspSource} https://stagewise.io http://localhost:3000; style-src ${webview.cspSource} 'unsafe-inline' https://stagewise.io http://localhost:3000; script-src ${webview.cspSource} 'unsafe-inline' https://stagewise.io http://localhost:3000;">
+    <title>Getting Started with stagewise</title>
+    <style>
+        body {
+            padding: 0px;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-color: transparent;
+        }
+        #maincontent_iframe {
+            position:absolute;
+            inset:0;
+            top:0px;
+            left:0px;
+            bottom:0px;
+            right:0px;
+            height: 100%;
+            width: 100%;
+            z-index: 100;    
+        }
+    </style>
+</head>
+<body>
+<iframe src="${stagewiseUrl}" id="maincontent_iframe"></iframe>
+<script>
+    // Get the VS Code API
+    const vscode = acquireVsCodeApi();
+    const iframe = document.getElementById('maincontent_iframe');
+
+    // Single event listener to handle messages from both VS Code and iframe
+    window.addEventListener('message', event => {
+        const message = event.data;
+        console.log('Received message:', message);
+
+        // Handle messages from VS Code
+        if (event.source === window) {
+            iframe.contentWindow.postMessage(message, '*');
+        }
+        // Handle messages from iframe
+        else {
+            vscode.postMessage(message);
+        }
+    });
+</script>
+</body>
+</html>`;
+}
+
+export async function shouldShowGettingStarted(
+  storage: ExtensionStorage,
+): Promise<boolean> {
+  // Show getting started panel if the user hasn't seen it before
+  return !(await storage.get('stagewise.hasSeenGettingStarted', false));
+}
