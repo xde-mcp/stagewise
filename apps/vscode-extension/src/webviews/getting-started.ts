@@ -24,7 +24,6 @@ export function createGettingStartedPanel(
       switch (message.command) {
         case 'setupToolbar':
           try {
-            await storage.set('stagewise.hasSeenGettingStarted', true);
             await onSetupToolbar();
           } catch (error) {
             // Show error message in webview
@@ -42,16 +41,6 @@ export function createGettingStartedPanel(
             ),
           );
           break;
-        case 'showManualSetup':
-          await context.globalState.update(
-            'stagewise.hasSeenGettingStarted',
-            true,
-          );
-          // Navigate to manual setup view
-          panel.webview.postMessage({
-            command: 'showManualSetup',
-          });
-          break;
         case 'captureFeedback':
           // Create posthog event
           await trackEvent('post_setup_feedback', {
@@ -65,9 +54,10 @@ export function createGettingStartedPanel(
           );
           break;
         case 'dismissPanel':
-          // Set a flag to indicate the user has seen the getting started panel
-          await storage.set('stagewise.hasSeenGettingStarted', true);
           panel.dispose();
+          break;
+        case 'markGettingStartAsSeen':
+          await storage.set('stagewise.hasSeenGettingStarted', true);
           break;
       }
     },
@@ -85,7 +75,7 @@ function getWebviewContent(
   const stagewiseUrl =
     context.extensionMode === vscode.ExtensionMode.Development
       ? 'http://localhost:3000/vscode-extension/welcome'
-      : 'https://stagewise.io/vscode-extension/welcome';
+      : 'http://localhost:3000/vscode-extension/welcome'; //'https://stagewise.io/vscode-extension/welcome';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -146,6 +136,5 @@ export async function shouldShowGettingStarted(
   storage: ExtensionStorage,
 ): Promise<boolean> {
   // Show getting started panel if the user hasn't seen it before
-
   return !(await storage.get('stagewise.hasSeenGettingStarted', false));
 }

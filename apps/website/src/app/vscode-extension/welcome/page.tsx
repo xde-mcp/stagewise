@@ -11,6 +11,7 @@ export default function WelcomePage() {
   const [isDocsLoading, setIsDocsLoading] = useState(false);
 
   const handleRedirect = useCallback(() => {
+    window.parent.postMessage({ command: 'markGettingStartAsSeen' }, '*');
     router.push('/vscode-extension/setup-finished');
   }, [router]);
 
@@ -28,10 +29,6 @@ export default function WelcomePage() {
     setTimeout(() => {
       handleRedirect();
     }, 1000);
-  }, [handleRedirect]);
-
-  const handleDismissPanel = useCallback(() => {
-    handleRedirect();
   }, [handleRedirect]);
 
   const isAnyButtonLoading = isSetupLoading || isDocsLoading;
@@ -113,7 +110,7 @@ export default function WelcomePage() {
       <button
         type="button"
         className="text-sm text-zinc-500 transition-colors hover:text-zinc-400"
-        onClick={handleDismissPanel}
+        onClick={handleRedirect}
       >
         Skip this step
       </button>
