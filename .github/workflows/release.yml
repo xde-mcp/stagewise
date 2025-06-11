@@ -58,19 +58,19 @@ jobs:
         run: |
           # Get the SHA of the commit made by changesets/action (should be HEAD)
           RELEASE_COMMIT_SHA=$(git rev-parse HEAD)
-          echo "Checking for changes to VS Code extension in commit $RELEASE_COMMIT_SHA"
+          echo "Checking for changes to VSCode extension in commit $RELEASE_COMMIT_SHA"
 
           # Check if the specific package.json was changed in this commit compared to its parent
           # Use exit code: 0 = no changes, 1 = changes.
           # Use git diff-tree to check files changed in the commit.
           # The `!` negates the exit code, so the block executes if grep finds the file (exit code 0 -> !0 -> true)
           if ! git diff-tree --no-commit-id --name-only -r $RELEASE_COMMIT_SHA | grep -q "^apps/vscode-extension/package.json$"; then
-            echo "VS Code extension package.json not modified in this release commit. Skipping VSCode extension release."
+            echo "VSCode extension package.json not modified in this release commit. Skipping VSCode extension release."
             echo "VSCODE_EXTENSION_CHANGED=false" >> $GITHUB_ENV
             exit 0 # Exit successfully, no release needed
           fi
 
-          echo "VS Code extension package.json was modified. Proceeding with VSCode extension release."
+          echo "VSCode extension package.json was modified. Proceeding with VSCode extension release."
           echo "VSCODE_EXTENSION_CHANGED=true" >> $GITHUB_ENV
 
           # Read the new version directly from the package.json at the release commit
@@ -123,7 +123,7 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: Release ${{ env.TAG_NAME }}
-          body: "Release of stagewise VS Code Extension version ${{ env.VSCODE_EXTENSION_VERSION }}. See CHANGELOG.md for details."
+          body: "Release of stagewise VSCode Extension version ${{ env.VSCODE_EXTENSION_VERSION }}. See CHANGELOG.md for details."
           draft: false
           prerelease: false
           files: apps/vscode-extension/${{ env.VSIX_FILENAME }}
