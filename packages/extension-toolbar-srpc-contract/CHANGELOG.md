@@ -1,5 +1,11 @@
 # @stagewise/extension-toolbar-srpc-contract
 
+## 0.1.2
+
+### Patch Changes
+
+- 02bd300: Adding a window-select-hint when multiple windows are selected
+
 ## 0.1.1
 
 ### Patch Changes
