@@ -24,13 +24,9 @@
 The stagewise Toolbar makes it incredibly easy to edit your frontend code with AI agents:
 
 * ⚡ Works out of the box
-* 🛠️ Customise using your own configuration file
-* 📦 Does not impact bundle size
-* 🧠 Sends DOM elements, screenshots & metadata to your AI agent
-* 👇 Comment directly on live elements in the browser
-* 🧪 Comes with playgrounds for React, Vue, and Svelte (`./playgrounds`)
-
-
+* 🧩 Customise and extend functionality with Plugins
+* 🧠 Sends DOM elements & more metadata to your AI agent
+* 🧪 Comes with examples for React, Vue, Svelte and more
 
 
 ## 📖 Quickstart 
@@ -276,7 +272,8 @@ You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
 | Cursor          | ✅             |
 | GitHub Copilot  | ✅             |
 | Windsurf        | ✅             |
-| Cline           | 🚧 [See issue](https://github.com/stagewise-io/stagewise/issues/186)            |
+| Cline           | ✅             |
+| Roo-code        | ✅             |
 
 
 ## 🛣️ Roadmap

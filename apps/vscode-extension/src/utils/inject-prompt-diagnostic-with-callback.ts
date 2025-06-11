@@ -52,13 +52,13 @@ export async function injectPromptDiagnosticWithCallback(params: {
   );
 
   try {
-    // Use a large range or the current selection - using full doc range here
-    const selectionOrFullDocRange = editor.selection.isEmpty
-      ? new vscode.Range(0, 0, document.lineCount, 0) // Fallback to full doc if no selection
+    // Use the current selection or just the current line
+    const selectionOrCurrentLine = editor.selection.isEmpty
+      ? document.lineAt(editor.selection.active.line).range // Use current line if no selection
       : editor.selection; // Use actual selection if available
     // 1. Create the fake diagnostic object
     const fakeDiagnostic = new vscode.Diagnostic(
-      selectionOrFullDocRange,
+      selectionOrCurrentLine,
       params.prompt,
       vscode.DiagnosticSeverity.Error,
     );
@@ -69,8 +69,8 @@ export async function injectPromptDiagnosticWithCallback(params: {
 
     // 3. Ensure cursor is within the diagnostic range (e.g., start)
     editor.selection = new vscode.Selection(
-      selectionOrFullDocRange.start,
-      selectionOrFullDocRange.start,
+      selectionOrCurrentLine.start,
+      selectionOrCurrentLine.start,
     );
 
     // 5. Execute the callback command

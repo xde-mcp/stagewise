@@ -29,8 +29,6 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 * 🧪 Comes with examples for React, Vue, Svelte and more
 
 
-
-
 ## 📖 Quickstart 
 
 ### 1. 🧩 **Install the vs-code extension** 
@@ -274,7 +272,8 @@ You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
 | Cursor          | ✅             |
 | GitHub Copilot  | ✅             |
 | Windsurf        | ✅             |
-| Cline           | 🚧 [See issue](https://github.com/stagewise-io/stagewise/issues/186)            |
+| Cline           | ✅             |
+| Roo-code        | ✅             |
 
 
 ## 🛣️ Roadmap
