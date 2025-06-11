@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 /**
- * Checks if the GitHub Copilot Chat extension is installed.
+ * Checks if the Cline extension is installed.
  * @returns True if the extension is installed, false otherwise.
  */
 export function isClineInstalled(): boolean {
