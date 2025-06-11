@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+  POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -49,7 +53,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_PUBLISH_ACCESS_TOKEN }} # Ensure secret name is correct
 
-      - name: Check for VSCode Extension Version Change and Tag
+      - name: Check for VSCode Extension Version Change and Release
         # This step runs after changesets/action has committed the version bump
         run: |
           # Get the SHA of the commit made by changesets/action (should be HEAD)
@@ -61,11 +65,13 @@ jobs:
           # Use git diff-tree to check files changed in the commit.
           # The `!` negates the exit code, so the block executes if grep finds the file (exit code 0 -> !0 -> true)
           if ! git diff-tree --no-commit-id --name-only -r $RELEASE_COMMIT_SHA | grep -q "^apps/vscode-extension/package.json$"; then
-            echo "VS Code extension package.json not modified in this release commit. Skipping tag."
-            exit 0 # Exit successfully, no tag needed
+            echo "VS Code extension package.json not modified in this release commit. Skipping VSCode extension release."
+            echo "VSCODE_EXTENSION_CHANGED=false" >> $GITHUB_ENV
+            exit 0 # Exit successfully, no release needed
           fi
 
-          echo "VS Code extension package.json was modified. Proceeding to tag."
+          echo "VS Code extension package.json was modified. Proceeding with VSCode extension release."
+          echo "VSCODE_EXTENSION_CHANGED=true" >> $GITHUB_ENV
 
           # Read the new version directly from the package.json at the release commit
           # Ensure we're in the workspace root for pnpm filter to work correctly
@@ -77,13 +83,49 @@ jobs:
             exit 1 # Exit with error
           fi
 
-          # Construct the tag name
-          TAG_NAME="stagewise-vscode-extension@$VERSION"
-          echo "Creating and pushing tag: $TAG_NAME"
-
-          # Create and push the tag
-          git tag $TAG_NAME $RELEASE_COMMIT_SHA # Tag the specific release commit
-          git push origin $TAG_NAME
+          # Store version for subsequent steps
+          echo "VSCODE_EXTENSION_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VSIX_FILENAME=stagewise-vscode-extension-$VERSION.vsix" >> $GITHUB_ENV
+          echo "TAG_NAME=stagewise-vscode-extension@$VERSION" >> $GITHUB_ENV
         env:
-          # Use GITHUB_TOKEN or a PAT with permission to push tags
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package VSCode Extension
+        if: env.VSCODE_EXTENSION_CHANGED == 'true'
+        run: |
+          cd apps/vscode-extension 
+          pnpm exec vsce package --out ${{ env.VSIX_FILENAME }} --no-dependencies
+
+      - name: Publish to Visual Studio Marketplace
+        if: env.VSCODE_EXTENSION_CHANGED == 'true'
+        run: |
+          cd apps/vscode-extension
+          pnpm exec vsce publish --packagePath ${{ env.VSIX_FILENAME }} --pat ${{ secrets.VSCE_PAT }} --no-dependencies
+
+      - name: Publish to Open VSX Registry
+        if: env.VSCODE_EXTENSION_CHANGED == 'true'
+        run: |
+          cd apps/vscode-extension
+          pnpm exec ovsx publish ${{ env.VSIX_FILENAME }} -p ${{ secrets.OPEN_VSX_ACCESS_TOKEN }}
+
+      - name: Create Git Tag for VSCode Extension
+        if: env.VSCODE_EXTENSION_CHANGED == 'true'
+        run: |
+          RELEASE_COMMIT_SHA=$(git rev-parse HEAD)
+          git tag ${{ env.TAG_NAME }} $RELEASE_COMMIT_SHA
+          git push origin ${{ env.TAG_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release for VSCode Extension
+        if: env.VSCODE_EXTENSION_CHANGED == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: Release ${{ env.TAG_NAME }}
+          body: "Release of stagewise VS Code Extension version ${{ env.VSCODE_EXTENSION_VERSION }}. See CHANGELOG.md for details."
+          draft: false
+          prerelease: false
+          files: apps/vscode-extension/${{ env.VSIX_FILENAME }}
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
