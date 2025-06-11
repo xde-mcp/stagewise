@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.4.6
+
+### Patch Changes
+
+- 02bd300: Adding a window-select-hint when multiple windows are selected
+
 ## 0.4.5
 
 ### Patch Changes
