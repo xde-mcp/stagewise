@@ -3,8 +3,12 @@ import { callCursorAgent } from './call-cursor-agent';
 import { isCopilotChatInstalled } from './is-copilot-chat-installed';
 import { callCopilotAgent } from './call-copilot-agent';
 import { callWindsurfAgent } from './call-windsurf-agent';
+import { isRoocodeInstalled } from './is-roocode-installed';
+import { callRoocodeAgent } from './call-roocode-agent';
+import { callClineAgent } from './call-cline-agent';
 import * as vscode from 'vscode';
 import type { PromptRequest } from '@stagewise/extension-toolbar-srpc-contract';
+import { isClineInstalled } from './is-cline-installed';
 
 export async function dispatchAgentCall(request: PromptRequest) {
   const ide = getCurrentIDE();
@@ -14,6 +18,8 @@ export async function dispatchAgentCall(request: PromptRequest) {
     case 'WINDSURF':
       return await callWindsurfAgent(request);
     case 'VSCODE':
+      if (isClineInstalled()) return await callClineAgent(request);
+      if (isRoocodeInstalled()) return await callRoocodeAgent(request);
       if (isCopilotChatInstalled()) return await callCopilotAgent(request);
       else {
         vscode.window.showErrorMessage(
