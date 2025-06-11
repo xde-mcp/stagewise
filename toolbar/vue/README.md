@@ -19,7 +19,6 @@
 > Perfect for devs tired of pasting folder paths into prompts. stagewise gives your AI real-time, browser-powered context.
 
 
-
 ## ✨ Features
 
 The stagewise Toolbar makes it incredibly easy to edit your frontend code with AI agents:
@@ -28,8 +27,6 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 * 🧩 Customise and extend functionality with Plugins
 * 🧠 Sends DOM elements & more metadata to your AI agent
 * 🧪 Comes with examples for React, Vue, Svelte and more
-
-
 
 
 ## 📖 Quickstart 
@@ -275,7 +272,8 @@ You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
 | Cursor          | ✅             |
 | GitHub Copilot  | ✅             |
 | Windsurf        | ✅             |
-| Cline           | 🚧 [See issue](https://github.com/stagewise-io/stagewise/issues/186)            |
+| Cline           | ✅             |
+| Roo-code        | ✅             |
 
 
 ## 🛣️ Roadmap
