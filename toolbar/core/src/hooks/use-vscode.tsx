@@ -149,21 +149,17 @@ export function VSCodeProvider({ children }: { children: ComponentChildren }) {
         setShouldPromptWindowSelection(false);
       } else {
         // Determine if we should prompt for selection (only for multiple windows)
-        const shouldPrompt =
+        const noSessionIdSavedForCurrentPort =
           (discoveredWindows.length > 1 && !storedSessionId) || // No saved sessionId for current port
           (storedSessionId &&
             !discoveredWindows.some((w) => w.sessionId === storedSessionId)); // Saved sessionId not in discovered windows
 
-        setShouldPromptWindowSelection(shouldPrompt);
-      }
+        setShouldPromptWindowSelection(noSessionIdSavedForCurrentPort);
 
-      // If selected session is no longer available, clear it
-      if (
-        selectedSessionId &&
-        !discoveredWindows.some((w) => w.sessionId === selectedSessionId)
-      ) {
-        setSelectedSessionId(undefined);
-        setStoredSessionId(undefined);
+        if (noSessionIdSavedForCurrentPort) {
+          setSelectedSessionId(undefined);
+          setStoredSessionId(undefined);
+        }
       }
     } catch (err) {
       setDiscoveryError(
