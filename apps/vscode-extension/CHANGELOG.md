@@ -1,5 +1,13 @@
 # stagewise-vscode-extension
 
+## 0.5.1
+
+### Patch Changes
+
+- 2e121ac: Updated the README to clarify how framework-specific packages are named
+- Updated dependencies [2e121ac]
+  - @stagewise/extension-toolbar-srpc-contract@0.1.3
+
 ## 0.5.0
 
 ### Minor Changes
