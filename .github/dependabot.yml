@@ -1,12 +1,11 @@
-
 version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
-    version: 
     schedule:
       interval: "daily"
-    update-types: "minor"
+    allow:
+      - update-types: ["minor"]
     reviewers:
       - "juliangoetze"
     ignore:
