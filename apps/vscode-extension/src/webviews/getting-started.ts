@@ -18,12 +18,16 @@ export function createGettingStartedPanel(
   );
   panel.webview.html = getWebviewContent(panel.webview, context);
 
+  // Immediately mark as seen
+  storage.set('stagewise.hasSeenGettingStarted', true);
+
   // Handle messages from the webview
   panel.webview.onDidReceiveMessage(
     async (message) => {
       switch (message.command) {
         case 'setupToolbar':
           try {
+            await trackEvent('clicked_setup_toolbar_in_getting_started_panel');
             await onSetupToolbar();
           } catch (error) {
             // Show error message in webview
@@ -36,6 +40,7 @@ export function createGettingStartedPanel(
           }
           break;
         case 'openDocs':
+          await trackEvent('clicked_open_docs_in_getting_started_panel');
           vscode.env.openExternal(
             vscode.Uri.parse(
               'https://stagewise.io/docs/quickstart#2-install-and-inject-the-toolbar',
@@ -56,10 +61,11 @@ export function createGettingStartedPanel(
           );
           break;
         case 'dismissPanel':
+          await trackEvent('dismissed_getting_started_panel');
           panel.dispose();
           break;
         case 'markGettingStartAsSeen':
-          await storage.set('stagewise.hasSeenGettingStarted', true);
+          await trackEvent('interacted_with_getting_started_panel');
           break;
       }
     },

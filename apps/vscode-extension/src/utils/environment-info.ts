@@ -31,6 +31,19 @@ export class EnvironmentInfo {
   private toolbarInstallations: Array<{ version: string; path: string }> = [];
   private static readonly WORKSPACE_VERSION = 'dev';
   private static readonly DEFAULT_VERSION = '0.0.0';
+  private webAppWorkspace = false;
+  private static readonly webAppDeps = [
+    'next',
+    'react',
+    'vue',
+    'preact',
+    'angular',
+    'solidjs',
+    'svelte',
+    'sveltekit',
+    'htmx',
+    // Add more as needed
+  ];
 
   private constructor() {
     // Set up workspace change listeners
@@ -134,6 +147,10 @@ export class EnvironmentInfo {
 
   public getLatestAvailableExtensionVersion(): string | null {
     return this.latestExtensionVersion;
+  }
+
+  public get isWebAppWorkspace(): boolean {
+    return this.webAppWorkspace;
   }
 
   private isFixedVersion(version: string): boolean {
@@ -273,6 +290,90 @@ export class EnvironmentInfo {
     }
   }
 
+  private checkWebAppWorkspaceDepsInPackageLock(content: string): boolean {
+    try {
+      const data = JSON.parse(content);
+      const deps = { ...data.dependencies, ...data.devDependencies };
+      for (const dep of Object.keys(deps || {})) {
+        if (EnvironmentInfo.webAppDeps.includes(dep)) return true;
+      }
+      // Also check nested dependencies in package-lock.json
+      if (data.packages) {
+        for (const pkgDataRaw of Object.values(data.packages)) {
+          if (
+            pkgDataRaw &&
+            typeof pkgDataRaw === 'object' &&
+            'dependencies' in pkgDataRaw &&
+            pkgDataRaw.dependencies &&
+            typeof pkgDataRaw.dependencies === 'object'
+          ) {
+            const depsObj = (
+              pkgDataRaw as { dependencies: Record<string, unknown> }
+            ).dependencies;
+            for (const dep of Object.keys(depsObj)) {
+              if (EnvironmentInfo.webAppDeps.includes(dep)) return true;
+            }
+          }
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  private checkWebAppWorkspaceDepsInYarnLock(content: string): boolean {
+    try {
+      for (const dep of EnvironmentInfo.webAppDeps) {
+        if (content.includes(`"${dep}@`) || content.includes(`${dep}@`)) {
+          return true;
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  private checkWebAppWorkspaceDepsInPnpmLock(content: string): boolean {
+    try {
+      const data = yaml.load(content) as any;
+      const allDeps = [];
+      if (data.importers) {
+        for (const pkgDataRaw of Object.values(data.importers)) {
+          const pkgData = pkgDataRaw as {
+            dependencies?: Record<string, unknown>;
+            devDependencies?: Record<string, unknown>;
+          };
+          allDeps.push(...Object.keys(pkgData.dependencies || {}));
+          allDeps.push(...Object.keys(pkgData.devDependencies || {}));
+        }
+      }
+      for (const dep of allDeps) {
+        if (EnvironmentInfo.webAppDeps.includes(dep)) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  private checkWebAppWorkspaceDepsInBunLock(content: string): boolean {
+    try {
+      const data = JSON.parse(content);
+      if (data.packages) {
+        for (const pkgName of Object.keys(data.packages)) {
+          for (const dep of EnvironmentInfo.webAppDeps) {
+            if (pkgName.startsWith(`${dep}@`) || pkgName === dep) return true;
+          }
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   private async checkToolbarInstallation() {
     try {
       const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -282,12 +383,14 @@ export class EnvironmentInfo {
         this.toolbarInstalled = false;
         this.toolbarInstalledVersion = null;
         this.toolbarInstallations = [];
+        this.webAppWorkspace = false;
         console.log('[EnvironmentInfo] No workspace loaded');
         return;
       }
 
       this.toolbarInstallations = [];
       let oldestVersion: string | null = null;
+      let foundWebAppDep = false;
 
       for (const folder of workspaceFolders) {
         // Check lock files
@@ -295,13 +398,26 @@ export class EnvironmentInfo {
           {
             name: 'package-lock.json',
             parser: this.parsePackageLock.bind(this),
+            webAppCheck: this.checkWebAppWorkspaceDepsInPackageLock.bind(this),
           },
-          { name: 'yarn.lock', parser: this.parseYarnLock.bind(this) },
-          { name: 'pnpm-lock.yaml', parser: this.parsePnpmLock.bind(this) },
-          { name: 'bun.lock', parser: this.parseBunLock.bind(this) },
+          {
+            name: 'yarn.lock',
+            parser: this.parseYarnLock.bind(this),
+            webAppCheck: this.checkWebAppWorkspaceDepsInYarnLock.bind(this),
+          },
+          {
+            name: 'pnpm-lock.yaml',
+            parser: this.parsePnpmLock.bind(this),
+            webAppCheck: this.checkWebAppWorkspaceDepsInPnpmLock.bind(this),
+          },
+          {
+            name: 'bun.lock',
+            parser: this.parseBunLock.bind(this),
+            webAppCheck: this.checkWebAppWorkspaceDepsInBunLock.bind(this),
+          },
         ];
 
-        for (const { name, parser } of lockFiles) {
+        for (const { name, parser, webAppCheck } of lockFiles) {
           const lockFilePath = path.join(folder.uri.fsPath, name);
           if (fs.existsSync(lockFilePath)) {
             try {
@@ -320,6 +436,10 @@ export class EnvironmentInfo {
                   oldestVersion = version;
                 }
               }
+              // Check for web app deps
+              if (!foundWebAppDep && webAppCheck(content)) {
+                foundWebAppDep = true;
+              }
             } catch (error) {
               console.error(
                 `Error processing lock file ${lockFilePath}:`,
@@ -332,12 +452,14 @@ export class EnvironmentInfo {
 
       this.toolbarInstalled = this.toolbarInstallations.length > 0;
       this.toolbarInstalledVersion = oldestVersion;
+      this.webAppWorkspace = foundWebAppDep;
     } catch (error) {
       console.error('Error in checkToolbarInstallation:', error);
       // Set safe default values
       this.toolbarInstalled = false;
       this.toolbarInstalledVersion = null;
       this.toolbarInstallations = [];
+      this.webAppWorkspace = false;
     }
   }
 

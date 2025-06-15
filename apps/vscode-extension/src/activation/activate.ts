@@ -75,6 +75,29 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(configChangeListener);
 
+  // Function to show getting started panel if needed
+  const showGettingStartedIfNeeded = async () => {
+    if (await shouldShowGettingStarted(storage)) {
+      await trackEvent('getting_started_panel_shown');
+      createGettingStartedPanel(context, storage, setupToolbarHandler);
+    }
+  };
+
+  if (vscode.workspace.workspaceFolders?.length) {
+    // Show getting started panel on workspace load (activation)
+    await showGettingStartedIfNeeded();
+  }
+
+  // Listen for workspace folder changes (workspace loaded)
+  const workspaceFolderListener = vscode.workspace.onDidChangeWorkspaceFolders(
+    async () => {
+      if (vscode.workspace.workspaceFolders?.length) {
+        await showGettingStartedIfNeeded();
+      }
+    },
+  );
+  context.subscriptions.push(workspaceFolderListener);
+
   try {
     // Track extension activation
     await trackEvent('extension_activated', { ide });
@@ -168,12 +191,6 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
   context.subscriptions.push(showGettingStartedCommand);
-
-  if (await shouldShowGettingStarted(storage)) {
-    // Show getting started panel for first-time users
-    await trackEvent('getting_started_panel_shown');
-    createGettingStartedPanel(context, storage, setupToolbarHandler);
-  }
 }
 
 export async function deactivate() {
