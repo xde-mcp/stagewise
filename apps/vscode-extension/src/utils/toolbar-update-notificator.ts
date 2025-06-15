@@ -3,7 +3,7 @@ import type { ExtensionStorage } from '../data-storage';
 import { EnvironmentInfo } from './environment-info';
 import { updateToolbar } from 'src/auto-prompts/update-toolbar';
 import { compareVersions } from './lock-file-parsers/version-comparator';
-import { trackEvent } from './analytics';
+import { trackEvent, EventName } from './analytics';
 
 interface ToolbarVersionInfo {
   installedVersion: string;
@@ -103,25 +103,27 @@ export class ToolbarUpdateNotificator {
   ): Promise<void> {
     const message = `A new version of the stagewise toolbar is available (${latestVersion}). You are currently using version ${installedVersion}. We highly recommend updating to benefit from the latest features.`;
 
-    const result = await vscode.window.showInformationMessage(
-      message,
-      'Auto-update',
-      'Ignore',
-    );
-    trackEvent('show-toolbar-update-notification');
-
-    if (result === 'Ignore') {
-      // Store the version info to prevent showing the notification again
-      trackEvent('toolbar-update-notification-ignored');
-      await this.storage.set<ToolbarVersionInfo>(storageKey, {
-        installedVersion,
-        latestVersion,
-        workspaceId,
+    vscode.window
+      .showInformationMessage(message, 'Auto-update', 'Ignore')
+      .then(async (result) => {
+        if (result === 'Auto-update') {
+          trackEvent(EventName.TOOLBAR_UPDATE_NOTIFICATION_AUTO_UPDATE);
+          await this.sendToolbarAutoUpdatePrompt(workspaceId, latestVersion);
+          return 'Auto-update';
+        } else if (result === 'Ignore') {
+          trackEvent(EventName.TOOLBAR_UPDATE_NOTIFICATION_IGNORED);
+          await this.storage.set<ToolbarVersionInfo>(storageKey, {
+            installedVersion,
+            latestVersion,
+            workspaceId,
+          });
+          return 'Ignore';
+        } else {
+          trackEvent(EventName.TOOLBAR_UPDATE_NOTIFICATION_DISMISSED);
+          return 'Dismissed';
+        }
       });
-    } else if (result === 'Auto-update') {
-      trackEvent('toolbar-update-notification-auto-update');
-      await this.sendToolbarAutoUpdatePrompt(workspaceId, latestVersion);
-    }
+    trackEvent(EventName.SHOW_TOOLBAR_UPDATE_NOTIFICATION);
   }
 
   private async sendToolbarAutoUpdatePrompt(

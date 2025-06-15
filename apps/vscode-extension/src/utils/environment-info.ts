@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { compareVersions as compareVersionsUtil } from './lock-file-parsers/version-comparator';
 import { RegistryService } from './registry-service';
 import { WorkspaceService } from './workspace-service';
+import { trackEvent, EventName } from './analytics';
 
 export class EnvironmentInfo {
   private static instance: EnvironmentInfo;
@@ -21,9 +22,15 @@ export class EnvironmentInfo {
     this.registryService = new RegistryService();
     // Set up workspace change listeners
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
-      this.refreshState().catch((error) => {
-        console.error('Error refreshing environment state:', error);
-      });
+      this.refreshState()
+        .then(() => {
+          if (this.webAppWorkspace) {
+            trackEvent(EventName.OPENED_WEB_APP_WORKSPACE);
+          }
+        })
+        .catch((error) => {
+          console.error('Error refreshing environment state:', error);
+        });
     });
   }
 
@@ -56,6 +63,10 @@ export class EnvironmentInfo {
         latestExtensionVersion: this.latestExtensionVersion,
         webAppWorkspace: this.webAppWorkspace,
       });
+
+      if (this.webAppWorkspace) {
+        trackEvent(EventName.OPENED_WEB_APP_WORKSPACE);
+      }
     } catch (error) {
       console.error('Error initializing EnvironmentInfo:', error);
     }

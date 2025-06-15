@@ -13,6 +13,7 @@ import {
   trackEvent,
   shutdownAnalytics,
   trackTelemetryStateChange,
+  EventName,
 } from '../utils/analytics';
 import {
   createGettingStartedPanel,
@@ -78,7 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Function to show getting started panel if needed
   const showGettingStartedIfNeeded = async () => {
     if (await shouldShowGettingStarted(storage)) {
-      await trackEvent('getting_started_panel_shown');
+      await trackEvent(EventName.GETTING_STARTED_PANEL_SHOWN);
       createGettingStartedPanel(context, storage, setupToolbarHandler);
     }
   };
@@ -100,7 +101,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   try {
     // Track extension activation
-    await trackEvent('extension_activated', { ide });
+    await trackEvent(EventName.EXTENSION_ACTIVATED, { ide });
 
     // Find an available port
     const port = await findAvailablePort(DEFAULT_PORT);
@@ -128,7 +129,7 @@ export async function activate(context: vscode.ExtensionContext) {
             },
           };
         }
-        await trackEvent('agent_prompt_triggered');
+        await trackEvent(EventName.AGENT_PROMPT_TRIGGERED);
 
         await dispatchAgentCall(request);
         sendUpdate.sendUpdate({
@@ -142,14 +143,9 @@ export async function activate(context: vscode.ExtensionContext) {
         };
       },
     });
-
-    // Track successful server start
-    await trackEvent('server_started', {
-      port,
-    });
   } catch (error) {
     // Track activation error
-    await trackEvent('activation_error', {
+    await trackEvent(EventName.ACTIVATION_ERROR, {
       error: error instanceof Error ? error.message : String(error),
     });
     vscode.window.showErrorMessage(`Failed to start server: ${error}`);
@@ -161,7 +157,7 @@ export async function activate(context: vscode.ExtensionContext) {
     'stagewise.setupToolbar',
     async () => {
       try {
-        await trackEvent('toolbar_auto_setup_started');
+        await trackEvent(EventName.TOOLBAR_AUTO_SETUP_STARTED);
         await setupToolbarHandler();
       } catch (error) {
         console.error(
@@ -179,7 +175,7 @@ export async function activate(context: vscode.ExtensionContext) {
     'stagewise.showGettingStarted',
     async () => {
       try {
-        await trackEvent('getting_started_panel_manual_show');
+        await trackEvent(EventName.GETTING_STARTED_PANEL_MANUAL_SHOW);
         createGettingStartedPanel(context, storage, setupToolbarHandler);
       } catch (error) {
         console.error(
@@ -196,7 +192,6 @@ export async function activate(context: vscode.ExtensionContext) {
 export async function deactivate() {
   try {
     // Track extension deactivation before shutting down analytics
-    await trackEvent('extension_deactivated');
     await stopServer();
     await shutdownAnalytics();
   } catch (error) {
