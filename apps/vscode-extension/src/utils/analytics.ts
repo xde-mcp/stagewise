@@ -61,6 +61,8 @@ export enum EventName {
 
   TOOLBAR_AUTO_SETUP_STARTED = 'toolbar_auto_setup_started',
 
+  TOOLBAR_CONNECTED = 'toolbar_connected',
+
   AGENT_PROMPT_TRIGGERED = 'agent_prompt_triggered',
 
   SHOW_TOOLBAR_UPDATE_NOTIFICATION = 'show_toolbar_update_notification',

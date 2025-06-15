@@ -110,6 +110,11 @@ export async function activate(context: vscode.ExtensionContext) {
     const server = await startServer(port);
     const bridge = getExtensionBridge(server);
 
+    server.on('connect', () => {
+      console.log('Toolbar connected');
+      trackEvent(EventName.TOOLBAR_CONNECTED);
+    });
+
     bridge.register({
       getSessionInfo: async (request, sendUpdate) => {
         return getCurrentWindowInfo(port);

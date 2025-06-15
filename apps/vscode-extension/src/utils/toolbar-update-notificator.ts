@@ -4,6 +4,7 @@ import { EnvironmentInfo } from './environment-info';
 import { updateToolbar } from 'src/auto-prompts/update-toolbar';
 import { compareVersions } from './lock-file-parsers/version-comparator';
 import { trackEvent, EventName } from './analytics';
+import { getWorkspaceId } from './get-workspace-id';
 
 interface ToolbarVersionInfo {
   installedVersion: string;
@@ -14,19 +15,20 @@ interface ToolbarVersionInfo {
 export class ToolbarUpdateNotificator {
   private static readonly STORAGE_KEY_PREFIX = 'toolbar_version_';
   private storage: ExtensionStorage;
-  private environmentInfo: EnvironmentInfo | null = null;
   private disposables: vscode.Disposable[] = [];
 
   constructor(storage: ExtensionStorage) {
+    console.log('[ToolbarUpdateNotificator]: Constructor');
     this.storage = storage;
-    this.setupWorkspaceListener();
+    void this.setupWorkspaceListener();
   }
 
-  private setupWorkspaceListener() {
+  private async setupWorkspaceListener() {
+    console.log('[ToolbarUpdateNotificator]: Setting up workspace listener');
     // Listen for workspace folder changes
     const workspaceListener = vscode.workspace.onDidChangeWorkspaceFolders(
       async () => {
-        const workspaceId = vscode.env.machineId;
+        const workspaceId = await getWorkspaceId();
         if (workspaceId) {
           await this.checkForUpdates(workspaceId);
         }
@@ -34,7 +36,7 @@ export class ToolbarUpdateNotificator {
     );
 
     // Also check when the extension is activated
-    const initialWorkspaceId = vscode.env.machineId;
+    const initialWorkspaceId = await getWorkspaceId();
     if (initialWorkspaceId) {
       this.checkForUpdates(initialWorkspaceId).catch((error) => {
         console.error(
@@ -58,13 +60,10 @@ export class ToolbarUpdateNotificator {
    * @param workspaceId The unique identifier of the current workspace
    */
   public async checkForUpdates(workspaceId: string): Promise<void> {
-    if (!this.environmentInfo) {
-      this.environmentInfo = await EnvironmentInfo.getInstance();
-    }
+    const envInfo = await EnvironmentInfo.getInstance();
 
-    const installedVersion = this.environmentInfo.getToolbarInstalledVersion();
-    const latestVersion =
-      this.environmentInfo.getLatestAvailableToolbarVersion();
+    const installedVersion = envInfo.getToolbarInstalledVersion();
+    const latestVersion = envInfo.getLatestAvailableToolbarVersion();
 
     if (!installedVersion || !latestVersion) {
       return;
@@ -101,7 +100,8 @@ export class ToolbarUpdateNotificator {
     installedVersion: string,
     latestVersion: string,
   ): Promise<void> {
-    const message = `A new version of the stagewise toolbar is available (${latestVersion}). You are currently using version ${installedVersion}. We highly recommend updating to benefit from the latest features.`;
+    console.log('Showing update notification');
+    const message = `Your currently installed version of stagewise is outdated (${installedVersion})! We recommend updating to the latest version of stagewise (${latestVersion}) in order to keep compatibility with the extension and benefit from the latest features.`;
 
     vscode.window
       .showInformationMessage(message, 'Auto-update', 'Ignore')
