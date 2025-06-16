@@ -31,7 +31,7 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 
 ## 📖 Quickstart 
 
-### 1. 🧩 **Install the code editor extension (Cursor.com, Windsurf.com, VS Code)**
+### 1. 🧩 **Install the code editor extension (Cursor, Windsurf, VS Code)**
 
 Install the extension here: https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension
 
