@@ -12,17 +12,15 @@
         }
       }
     },
-    "server_started": {
+    "toolbar_connected": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when the toolbar in web app dev mode connects to the extension"
+    },
+    "opened_web_app_workspace": {
       "classification": "EndUserPseudonymizedInformation",
       "purpose": "PerformanceAndHealth",
-      "comment": "Tracks when the server is successfully started",
-      "properties": {
-        "port": {
-          "classification": "SystemMetaData",
-          "purpose": "PerformanceAndHealth",
-          "comment": "The port number the server is running on"
-        }
-      }
+      "comment": "Tracks when the user opens a workspace with web apps"
     },
     "toolbar_auto_setup_started": {
       "classification": "SystemMetaData",
@@ -88,6 +86,26 @@
       "purpose": "FeatureInsight",
       "comment": "Tracks when a user manually opens the getting started panel via command"
     },
+    "interacted_with_getting_started_panel": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user interacts with the getting started panel"
+    },
+    "dismissed_getting_started_panel": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user dismisses the getting started panel"
+    },
+    "clicked_setup_toolbar_in_getting_started_panel": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user clicks the setup toolbar button in the getting started panel"
+    },
+    "clicked_open_docs_in_getting_started_panel": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user clicks the open docs button in the getting started panel"
+    },
     "post_setup_feedback": {
       "classification": "EndUserPseudonymizedInformation",
       "purpose": "FeatureInsight",
@@ -104,6 +122,31 @@
           "comment": "The feedback text provided by the user"
         }
       }
+    },
+    "show_toolbar_update_notification": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a new toolbar version is available"
+    },
+    "toolbar_update_notification_auto_update": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user clicks the update button in the toolbar update notification"
+    },
+    "toolbar_update_notification_ignored": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user clicks the ignore button in the toolbar update notification"
+    },
+    "toolbar_update_notification_dismissed": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user dismisses the toolbar update notification"
+    },
+    "toolbar_auto_update_prompt_sent": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a prompt for auto-updating the toolbar is sent"
     }
   }
 }
