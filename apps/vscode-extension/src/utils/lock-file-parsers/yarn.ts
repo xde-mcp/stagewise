@@ -11,7 +11,8 @@ export function getInstalledDependencies(
     const parsed = parse(lockFileContent);
     const lockFileObject = parsed.object;
 
-    for (const [name, value] of Object.entries(lockFileObject)) {
+    for (const [key, value] of Object.entries(lockFileObject)) {
+      const name = key.match(/^((?:@)?(?:[^@]+))(.*)$/)?.[1];
       const version = value.version;
       if (name && version) {
         if (

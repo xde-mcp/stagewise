@@ -79,7 +79,7 @@ scheduler@^0.20.2:
 describe('yarn lock file parser', () => {
   it('should parse yarn lock file correctly', () => {
     const dependencies = getInstalledDependencies(lockFileDummy);
-    expect(dependencies).to.deep.equal({
+    expect(dependencies).toEqual({
       '@babel/code-frame': '7.16.7',
       '@babel/highlight': '7.16.7',
       '@babel/helper-validator-identifier': '7.16.7',
