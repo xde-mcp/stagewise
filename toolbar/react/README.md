@@ -31,7 +31,7 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 
 ## 📖 Quickstart 
 
-### 1. 🧩 **Install the vs-code extension** 
+### 1. 🧩 **Install the code editor extension (Cursor.com, Windsurf.com, VS Code)**
 
 Install the extension here: https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension
 
@@ -269,11 +269,11 @@ You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
 
 | **Agent**      | **Supported**  |
 | -------------- | -------------- |
-| Cursor          | ✅             |
-| GitHub Copilot  | ✅             |
-| Windsurf        | ✅             |
-| Cline           | ✅             |
-| Roo-code        | ✅             |
+| Cursor         | ✅             |
+| GitHub Copilot | ✅             |
+| Windsurf       | ✅             |
+| Cline          | ✅             |
+| Roo Code       | ✅             |
 
 
 ## 🛣️ Roadmap
