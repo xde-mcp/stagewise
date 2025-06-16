@@ -1,6 +1,6 @@
 # stagewise-vscode-extension
 
-## 0.6.0
+## 0.5.1
 
 ### Minor Changes
 
