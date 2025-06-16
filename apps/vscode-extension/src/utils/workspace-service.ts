@@ -4,13 +4,13 @@ import * as path from 'node:path';
 import { getInstalledDependencies as getInstalledDependenciesFromBun } from './lock-file-parsers/bun';
 import { getInstalledDependencies as getInstalledDependenciesFromNpm } from './lock-file-parsers/npm';
 import { getInstalledDependencies as getInstalledDependenciesFromPnpm } from './lock-file-parsers/pnpm';
-import { getInstalledDependenciesFromYarnLock } from './lock-file-parsers/yarn';
+import { getInstalledDependencies as getInstalledDependenciesFromYarn } from './lock-file-parsers/yarn';
 import type { Dependencies } from './lock-file-parsers/types';
 import { compareVersions as compareVersionsUtil } from './lock-file-parsers/version-comparator';
 
 const LOCK_FILES = [
   { name: 'package-lock.json', parser: getInstalledDependenciesFromNpm },
-  { name: 'yarn.lock', parser: getInstalledDependenciesFromYarnLock },
+  { name: 'yarn.lock', parser: getInstalledDependenciesFromYarn },
   { name: 'pnpm-lock.yaml', parser: getInstalledDependenciesFromPnpm },
   { name: 'bun.lock', parser: getInstalledDependenciesFromBun },
 ];

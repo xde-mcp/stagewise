@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ExtensionStorage } from '../data-storage';
-import { trackEvent, EventName } from 'src/utils/analytics';
+import { trackEvent, EventName } from '../utils/analytics';
 
 export function createGettingStartedPanel(
   context: vscode.ExtensionContext,

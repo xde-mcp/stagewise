@@ -22,6 +22,7 @@ export function getInstalledDependencies(
         !dependencies[name] ||
         compareVersions(dependencies[name], version) > 0
       ) {
+        // We only want the lowest version of each dependency
         dependencies[name] = version;
       }
     }

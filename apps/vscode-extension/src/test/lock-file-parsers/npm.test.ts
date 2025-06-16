@@ -245,7 +245,7 @@ const lockFileV3Dummy = `
 describe('npm lock file parser', () => {
   it('should parse npm lock file v1 correctly', () => {
     const dependencies = getInstalledDependencies(lockFileV1Dummy);
-    expect(dependencies).to.deep.equal({
+    expect(dependencies).toEqual({
       'aurora-validation-engine': '2.1.3',
       'celestial-data-parser': '1.5.0',
       'quantum-form-generator': '3.0.1',
@@ -256,7 +256,7 @@ describe('npm lock file parser', () => {
 
   it('should parse npm lock file v2 correctly', () => {
     const dependencies = getInstalledDependencies(lockFileV2Dummy);
-    expect(dependencies).to.deep.equal({
+    expect(dependencies).toEqual({
       '@faker-js/faker': '8.4.1',
       'astro-icon': '1.1.0',
       'iconify-icon': '1.0.8',
@@ -271,7 +271,7 @@ describe('npm lock file parser', () => {
 
   it('should parse npm lock file v3 correctly', () => {
     const dependencies = getInstalledDependencies(lockFileV3Dummy);
-    expect(dependencies).to.deep.equal({
+    expect(dependencies).toEqual({
       'awesome-framework': '7.2.1',
       'core-utils': '4.5.0',
       'data-visualizer': '3.0.0',
@@ -283,6 +283,6 @@ describe('npm lock file parser', () => {
 
   it('should handle empty lock file', () => {
     const dependencies = getInstalledDependencies('{}');
-    expect(dependencies).to.deep.equal({});
+    expect(dependencies).toEqual({});
   });
 });

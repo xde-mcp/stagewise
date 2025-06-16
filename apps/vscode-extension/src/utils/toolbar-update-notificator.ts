@@ -20,7 +20,9 @@ export class ToolbarUpdateNotificator {
   constructor(storage: ExtensionStorage) {
     console.log('[ToolbarUpdateNotificator]: Constructor');
     this.storage = storage;
-    void this.setupWorkspaceListener();
+    void this.setupWorkspaceListener().catch((err) =>
+      console.error('[ToolbarUpdateNotificator] Failed to initialise', err),
+    );
   }
 
   private async setupWorkspaceListener() {
