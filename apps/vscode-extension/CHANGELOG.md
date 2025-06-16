@@ -2,6 +2,12 @@
 
 ## 0.5.1
 
+### Minor Changes
+
+- a1e0027: Add update recommendations for outdated toolbar packages
+
+## 0.5.1
+
 ### Patch Changes
 
 - 263c871: Add roo-code and cline support
