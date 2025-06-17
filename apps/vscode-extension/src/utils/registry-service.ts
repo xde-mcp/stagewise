@@ -77,7 +77,11 @@ export class RegistryService {
       if (extensions && extensions.length > 0) {
         const versions = extensions[0].versions;
         if (versions && versions.length > 0) {
-          return versions[0].version;
+          const newest = versions.reduce(
+            (a: { version: string }, b: { version: string }) =>
+              this.compareVersions(a.version, b.version) > 0 ? a : b,
+          ).version;
+          return newest;
         }
       }
 
