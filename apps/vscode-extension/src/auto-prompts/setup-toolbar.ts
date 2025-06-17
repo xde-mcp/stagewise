@@ -135,6 +135,8 @@ export async function setupToolbar() {
 
   await dispatchAgentCall({
     prompt,
+    user_request: prompt,
+    url: '',
     sessionId: vscode.env.sessionId,
   });
 }

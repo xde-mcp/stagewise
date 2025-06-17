@@ -14,6 +14,9 @@ const config = {
     filename: 'extension.js',
     libraryTarget: 'commonjs2', // Required for VS Code extensions
   },
+  watchOptions: {
+    poll: 1000,
+  },
   plugins: [
     new webpack.DefinePlugin({
       'process.env.POSTHOG_API_KEY': JSON.stringify(

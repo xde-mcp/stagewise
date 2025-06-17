@@ -47,5 +47,9 @@
   },
   "dependencies": {
     "create-stagewise-plugin": "link:packages/create-stagewise-plugin"
+  },
+  "overrides": {
+    "@stagewise-agent/core": "file:/Users/juliangoetze/Arbeit/stagewise/agent/packages/core",
+    "@stagewise-agent/types": "file:/Users/juliangoetze/Arbeit/stagewise/agent/packages/types"
   }
 }

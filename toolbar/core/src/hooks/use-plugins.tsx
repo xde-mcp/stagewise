@@ -38,12 +38,16 @@ export function PluginProvider({
           typeof prompt === 'string'
             ? {
                 prompt,
+                user_request: prompt,
+                url: window.location.href,
                 ...(selectedSession && {
                   sessionId: selectedSession.sessionId,
                 }),
               }
             : {
                 prompt: prompt.prompt,
+                user_request: prompt.prompt,
+                url: window.location.href,
                 model: prompt.model,
                 files: prompt.files,
                 images: prompt.images,

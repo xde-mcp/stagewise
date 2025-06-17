@@ -7,6 +7,40 @@ export const DEFAULT_PORT = 5746; // This is the default port for the extension'
 export const PING_ENDPOINT = '/ping/stagewise'; // Will be used by the toolbar to check if the extension is running and find the correct port
 export const PING_RESPONSE = 'stagewise'; // The response to the ping request
 
+// Serializable representation of HTMLElement data for RPC transmission
+const SerializableElement = z.object({
+  tagName: z.string(),
+  id: z.string().optional(),
+  classes: z.array(z.string()).optional(),
+  attributes: z.record(z.string()).optional(),
+  text: z.string().optional(),
+  parent: z
+    .object({
+      tagName: z.string(),
+      id: z.string().optional(),
+      classes: z.array(z.string()).optional(),
+    })
+    .optional(),
+  styles: z
+    .object({
+      color: z.string().optional(),
+      backgroundColor: z.string().optional(),
+      fontSize: z.string().optional(),
+      fontWeight: z.string().optional(),
+      display: z.string().optional(),
+    })
+    .optional(),
+  bounds: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number(),
+      height: z.number(),
+    })
+    .optional(),
+  xpath: z.string().optional(),
+});
+
 export const contract = createBridgeContract({
   server: {
     getSessionInfo: {
@@ -29,6 +63,9 @@ export const contract = createBridgeContract({
       request: z.object({
         sessionId: z.string().optional(),
         prompt: z.string(),
+        user_request: z.string(),
+        url: z.string().optional(),
+        selected_elements: z.array(SerializableElement).optional(),
         model: z
           .string()
           .optional()
@@ -70,3 +107,5 @@ export type PromptRequest = z.infer<
 export type VSCodeContext = z.infer<
   typeof contract.server.getSessionInfo.response
 >;
+
+export type SerializableElementType = z.infer<typeof SerializableElement>;

@@ -355,6 +355,39 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
             const result = await bridge.call.triggerAgentPrompt(
               {
                 prompt,
+                user_request: content,
+                url: window.location.href,
+                selected_elements: chat?.domContextElements.map((e) => {
+                  const element = e.element;
+                  const rect = element.getBoundingClientRect();
+
+                  // Convert attributes NamedNodeMap to plain object
+                  const attributes: Record<string, string> = {};
+                  for (let i = 0; i < element.attributes.length; i++) {
+                    const attr = element.attributes[i];
+                    attributes[attr.name] = attr.value;
+                  }
+
+                  return {
+                    tagName: element.tagName.toLowerCase(),
+                    id: element.id || undefined,
+                    classes:
+                      element.classList.length > 0
+                        ? Array.from(element.classList)
+                        : undefined,
+                    attributes:
+                      Object.keys(attributes).length > 0
+                        ? attributes
+                        : undefined,
+                    text: element.innerText?.trim() || undefined,
+                    bounds: {
+                      x: rect.x,
+                      y: rect.y,
+                      width: rect.width,
+                      height: rect.height,
+                    },
+                  };
+                }),
                 sessionId: selectedSession?.sessionId,
               },
               { onUpdate: (update) => {} },

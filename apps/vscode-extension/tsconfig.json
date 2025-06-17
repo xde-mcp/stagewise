@@ -15,7 +15,16 @@
       "@stagewise/extension-toolbar-srpc-contract": [
         "../packages/extension-toolbar-srpc-contract/dist"
       ],
-      "@stagewise/srpc": ["../packages/srpc/dist"]
+      "@stagewise/srpc": ["../packages/srpc/dist"],
+      "@stagewise-agent/core": [
+        "/Users/juliangoetze/Arbeit/stagewise/agent/packages/core"
+      ],
+      "@stagewise-agent/types": [
+        "/Users/juliangoetze/Arbeit/stagewise/agent/packages/types"
+      ],
+      "@stagewise-agent/prompts": [
+        "/Users/juliangoetze/Arbeit/stagewise/agent/packages/prompts"
+      ]
     }
   },
   "include": ["src", "scripts"],

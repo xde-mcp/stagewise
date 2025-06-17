@@ -28,5 +28,6 @@ export async function updateToolbar() {
   await dispatchAgentCall({
     prompt,
     sessionId: vscode.env.sessionId,
+    user_request: prompt,
   });
 }
