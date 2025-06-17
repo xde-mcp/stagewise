@@ -147,6 +147,21 @@
       "classification": "SystemMetaData",
       "purpose": "FeatureInsight",
       "comment": "Tracks when a prompt for auto-updating the toolbar is sent"
+    },
+    "show_toolbar_integration_notification": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user is shown a recommendation to integrate stagewise into their app"
+    },
+    "toolbar_integration_notification_ignore": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user ignores the toolbar integration notification"
+    },
+    "toolbar_integration_notification_dismissed": {
+      "classification": "SystemMetaData",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when a user dismisses the toolbar integration notification"
     }
   }
 }

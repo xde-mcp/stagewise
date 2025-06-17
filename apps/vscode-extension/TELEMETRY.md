@@ -22,6 +22,8 @@ We collect the following types of telemetry data:
   - Feedback provided by users after toolbar setup (includes feedback type and text)
 - Toolbar update recommendation events (`show_toolbar_update_notification`, `toolbar_update_notification_auto_update`, `toolbar_update_notification_ignored`, `toolbar_update_notification_dismissed`)
   - When users get recommended updating the stagewise toolbar on loading of workspaces
+- Toolbar integration recommendation events (`show_toolbar_integration_notification`, `toolbar_integration_notification_ignore`, `toolbar_integration_notification_dismissed`)
+  - When users get recommended integrating the toolbar into their project
 - Toolbar dependency auto-updating triggered (`toolbar_auto_update_prompt_sent`)
   - When users trigger an auto-update sequence for the toolbar packages
 - Telemetry setting changes (`telemetry_disabled`, `telemetry_enabled`)
@@ -57,6 +59,12 @@ We collect the following types of telemetry data:
 - `toolbar_update_notification_dismissed`: Triggered when the user dismisses the toolbar update notification
   - No additional properties collected
 - `toolbar_auto_update_prompt_sent`: Triggered then the prompt for updating the toolbar was actually sent
+  - No additional properties collected
+- `show_toolbar_integration_notification`: Triggered when the user is shown a recommendation to integrate stagewise into their app
+  - No additional properties collected
+- `toolbar_integration_notification_ignore`: Triggered when the user decides to explicitly ignore the integration recommendation
+  - No additional properties collected
+- `toolbar_integration_notification_dismissed`: Triggered when the user dismisses the toolbar integration notification
   - No additional properties collected
 
 #### Privacy Events
