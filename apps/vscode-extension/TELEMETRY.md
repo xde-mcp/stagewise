@@ -1,6 +1,6 @@
 # Telemetry Data Collection
 
-The Stagewise VS Code extension collects pseudonymized usage data to help improve our products and services. We take your privacy seriously and are committed to transparency about our data collection practices.
+The stagewise code editor extension collects pseudonymized usage data to help improve our products and services. We take your privacy seriously and are committed to transparency about our data collection practices.
 
 ## What We Collect
 
@@ -9,36 +9,31 @@ We collect the following types of telemetry data:
 ### System Metadata
 - Extension activation events (`extension_activated`)
   - IDE information (VS Code version)
-- Extension deactivation events (`extension_deactivated`)
-  - When the extension is shut down
-- Server information (`server_started`)
-  - Port numbers for diagnostic purposes
+- Loading of workspace with web apps (`opened_web_app_workspace`)
+  - When a workspace with some popular web framework is loaded
+- Toolbar connection events (`toolbar_connected`)
 - Agent usage (`agent_prompt_triggered`)
   - When the AI agent is invoked
-- Toolbar setup events (`toolbar_auto_setup_started`, `toolbar_setup_completed`, `toolbar_setup_failed`)
-  - When the automatic toolbar setup process is initiated, completed, or fails
-- Getting started panel events (`getting_started_panel_shown`, `getting_started_panel_manual_show`)
+- Toolbar setup events (`toolbar_auto_setup_started`)
+  - When the automatic toolbar setup process is initiated
+- Getting started panel events (`getting_started_panel_shown`, `getting_started_panel_manual_show`, `interacted_with_getting_started_panel`, `dismissed_getting_started_panel`, `clicked_setup_toolbar_in_getting_started_panel`, `clicked_open_docs_in_getting_started_panel`)
   - When the getting started panel is shown automatically to new users or manually opened
 - User feedback (`post_setup_feedback`)
   - Feedback provided by users after toolbar setup (includes feedback type and text)
+- Toolbar update recommendation events (`show_toolbar_update_notification`, `toolbar_update_notification_auto_update`, `toolbar_update_notification_ignored`, `toolbar_update_notification_dismissed`)
+  - When users get recommended updating the stagewise toolbar on loading of workspaces
+- Toolbar dependency auto-updating triggered (`toolbar_auto_update_prompt_sent`)
+  - When users trigger an auto-update sequence for the toolbar packages
 - Telemetry setting changes (`telemetry_disabled`, `telemetry_enabled`)
   - When users opt-out or opt-in to telemetry collection
-
-### Error Data
-- Extension activation errors (`activation_error`)
-  - Error messages (scrubbed of personal information)
-- Toolbar setup failures (`toolbar_setup_failed`)
-  - Error messages when toolbar setup fails
 
 ### Event Details
 
 #### Extension Lifecycle Events
 - `extension_activated`: Triggered when the extension starts up
   - Includes: IDE type
-- `extension_deactivated`: Triggered when the extension shuts down
-  - No additional properties collected
-- `server_started`: Triggered when the local server successfully starts
-  - Includes: Port number used
+- `toolbar_connected`: Triggered when the toolbar in web app dev mode connects to the extension
+
 
 #### Feature Usage Events
 - `agent_prompt_triggered`: Triggered when the AI agent is invoked
@@ -53,6 +48,16 @@ We collect the following types of telemetry data:
   - No additional properties collected
 - `post_setup_feedback`: Triggered when a user provides feedback after toolbar setup
   - Includes: feedback type and feedback text
+- `show_toolbar_update_notification`: Triggered when a auto-update reocmmendation for the toolbar pops up
+  - No additional properties collected
+- `toolbar_update_notification_auto_update`: Triggered when the user decides to proceed with the auto-update
+  - No additional properties collected
+- `toolbar_update_notification_ignored`: Triggered when the user decides to explicitly ignore auto-update
+  - No additional properties collected
+- `toolbar_update_notification_dismissed`: Triggered when the user dismisses the toolbar update notification
+  - No additional properties collected
+- `toolbar_auto_update_prompt_sent`: Triggered then the prompt for updating the toolbar was actually sent
+  - No additional properties collected
 
 #### Privacy Events
 - `telemetry_disabled`: Triggered when a user disables telemetry collection
