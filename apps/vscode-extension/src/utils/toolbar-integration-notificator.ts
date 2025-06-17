@@ -102,7 +102,7 @@ export class ToolbarIntegrationNotificator {
       return;
     }
     console.log('Showing integration notification');
-    const message = `We recommend setting up stagewise in this project in order to make changes with our toolbar right in your web app!`;
+    const message = `Set up stagewise to edit frontend code directly in the browser?`;
 
     vscode.window
       .showInformationMessage(message, 'Enable stagewise', 'Ignore')
