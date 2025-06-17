@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.5.2
+
+### Patch Changes
+
+- e147977: Give users improved situational recommendations for actions
+
 ## 0.5.1
 
 ### Minor Changes
