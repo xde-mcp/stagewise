@@ -141,16 +141,29 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         await trackEvent(EventName.AGENT_PROMPT_TRIGGERED);
 
-        await dispatchAgentCall(request);
-        sendUpdate.sendUpdate({
-          sessionId: vscode.env.sessionId,
-          updateText: 'Called the agent',
-        });
+        try {
+          // Iterate over the chunks from dispatchAgentCall
+          for await (const chunk of dispatchAgentCall(request)) {
+            sendUpdate.sendUpdate({
+              sessionId: vscode.env.sessionId,
+              updateText: chunk,
+            });
+          }
 
-        return {
-          sessionId: vscode.env.sessionId,
-          result: { success: true },
-        };
+          return {
+            sessionId: vscode.env.sessionId,
+            result: { success: true },
+          };
+        } catch (error) {
+          console.error('Error during agent call:', error);
+          return {
+            sessionId: vscode.env.sessionId,
+            result: {
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          };
+        }
       },
     });
   } catch (error) {

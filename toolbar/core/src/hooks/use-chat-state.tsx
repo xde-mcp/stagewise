@@ -14,6 +14,7 @@ interface Message {
   sender: 'user' | 'assistant';
   type: 'regular' | 'user_request';
   timestamp: Date;
+  isStreaming?: boolean;
 }
 
 type ChatId = string;
@@ -341,13 +342,38 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
         pluginContextSnippets,
       );
 
-      const newMessage: Message = {
+      const userMessage: Message = {
         id: generateId(),
         content: content.trim(),
         sender: 'user',
         type: 'regular',
         timestamp: new Date(),
       };
+
+      // Create initial assistant message
+      const assistantMessageId = generateId();
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        content: '',
+        sender: 'assistant',
+        type: 'regular',
+        timestamp: new Date(),
+        isStreaming: true,
+      };
+
+      // Add both messages
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                messages: [...chat.messages, userMessage, assistantMessage],
+                inputValue: content.trim(),
+                domContextElements: [],
+              }
+            : chat,
+        ),
+      );
 
       async function triggerAgentPrompt() {
         if (bridge) {
@@ -390,20 +416,55 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
                 }),
                 sessionId: selectedSession?.sessionId,
               },
-              { onUpdate: (update) => {} },
+              {
+                onUpdate: (update) => {
+                  // Update the assistant message content
+                  setChats((prev) =>
+                    prev.map((chat) =>
+                      chat.id === chatId
+                        ? {
+                            ...chat,
+                            messages: chat.messages.map((msg) =>
+                              msg.id === assistantMessageId
+                                ? {
+                                    ...msg,
+                                    content: msg.content + update.updateText,
+                                  }
+                                : msg,
+                            ),
+                          }
+                        : chat,
+                    ),
+                  );
+                },
+              },
             );
 
             // Handle response based on success/error
             if (result.result.success) {
+              // Mark streaming as complete
+              setChats((prev) =>
+                prev.map((chat) =>
+                  chat.id === chatId
+                    ? {
+                        ...chat,
+                        messages: chat.messages.map((msg) =>
+                          msg.id === assistantMessageId
+                            ? {
+                                ...msg,
+                                isStreaming: false,
+                              }
+                            : msg,
+                        ),
+                        inputValue: '',
+                      }
+                    : chat,
+                ),
+              );
               // On success, show success state briefly then reset
               setTimeout(() => {
                 setPromptState('success');
               }, 1000);
-              setChats((prev) =>
-                prev.map((chat) =>
-                  chat.id === chatId ? { ...chat, inputValue: '' } : chat,
-                ),
-              );
             } else {
               if (
                 result.result.errorCode &&
@@ -428,7 +489,6 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
           } catch (error) {
             // On exception, go to error state
             setPromptState('error');
-            // TODO: show the error message
             // Auto-reset to idle and close prompt creation after error animation
             setTimeout(() => {
               setPromptState('idle');
@@ -460,24 +520,9 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
 
       triggerAgentPrompt();
 
-      // Don't close prompt creation mode immediately - keep it open to show loading state
-
       if (chatAreaState === 'hidden') {
         internalSetChatAreaState('compact');
       }
-
-      setChats((prev) =>
-        prev.map((chat) =>
-          chat.id === chatId
-            ? {
-                ...chat,
-                messages: [...chat.messages, newMessage],
-                inputValue: content.trim(), // Keep the original prompt instead of clearing
-                domContextElements: [],
-              }
-            : chat,
-        ),
-      );
     },
     [
       chatAreaState,

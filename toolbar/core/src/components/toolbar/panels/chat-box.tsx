@@ -56,6 +56,7 @@ export function ToolbarChatArea() {
   }, []);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const blurHandler = () => inputRef.current?.focus();
@@ -71,6 +72,11 @@ export function ToolbarChatArea() {
       inputRef.current?.removeEventListener('blur', blurHandler);
     };
   }, [chatState.isPromptCreationActive]);
+
+  // Auto scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [currentChat?.messages]);
 
   const buttonClassName = useMemo(
     () =>
@@ -96,7 +102,7 @@ export function ToolbarChatArea() {
   // Container styles based on prompt state
   const containerClassName = useMemo(() => {
     const baseClasses =
-      'flex h-24 w-full flex-1 flex-row items-end gap-1 rounded-2xl p-4 text-sm text-zinc-950 shadow-md backdrop-blur transition-all duration-150 placeholder:text-zinc-950/70';
+      'flex h-auto min-h-[6rem] w-full flex-1 flex-col gap-4 rounded-2xl p-4 text-sm text-zinc-950 shadow-md backdrop-blur transition-all duration-150 placeholder:text-zinc-950/70';
 
     switch (chatState.promptState) {
       case 'loading':
@@ -131,32 +137,57 @@ export function ToolbarChatArea() {
       role="button"
       tabIndex={0}
     >
-      <Textarea
-        ref={inputRef}
-        className={textareaClassName}
-        value={currentInput}
-        onChange={(e) => handleInputChange(e.currentTarget.value)}
-        onKeyDown={handleKeyDown}
-        onCompositionStart={handleCompositionStart}
-        onCompositionEnd={handleCompositionEnd}
-        placeholder={
-          chatState.isPromptCreationActive
-            ? chatState.promptState === 'loading'
-              ? 'Processing...'
-              : 'Enter prompt...'
-            : `What do you want to change? (${ctrlAltCText})`
-        }
-        disabled={chatState.promptState === 'loading'}
-      />
-      <Button
-        className={buttonClassName}
-        disabled={
-          currentInput.length === 0 || chatState.promptState === 'loading'
-        }
-        onClick={handleSubmit}
-      >
-        <SendIcon className="size-4" />
-      </Button>
+      {/* Messages area */}
+      <div className="flex max-h-96 flex-col gap-2 overflow-y-auto">
+        {currentChat?.messages.map((message) => (
+          <div
+            key={message.id}
+            className={cn(
+              'rounded-lg p-2',
+              message.sender === 'user'
+                ? 'bg-blue-100 text-blue-900'
+                : 'bg-gray-100 text-gray-900',
+              message.isStreaming && 'animate-pulse',
+            )}
+          >
+            <div className="mb-1 font-medium text-xs">
+              {message.sender === 'user' ? 'You' : 'Assistant'}
+            </div>
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input area */}
+      <div className="flex flex-row items-end gap-1">
+        <Textarea
+          ref={inputRef}
+          className={textareaClassName}
+          value={currentInput}
+          onChange={(e) => handleInputChange(e.currentTarget.value)}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
+          placeholder={
+            chatState.isPromptCreationActive
+              ? chatState.promptState === 'loading'
+                ? 'Processing...'
+                : 'Enter prompt...'
+              : `What do you want to change? (${ctrlAltCText})`
+          }
+          disabled={chatState.promptState === 'loading'}
+        />
+        <Button
+          className={buttonClassName}
+          disabled={
+            currentInput.length === 0 || chatState.promptState === 'loading'
+          }
+          onClick={handleSubmit}
+        >
+          <SendIcon className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 }
