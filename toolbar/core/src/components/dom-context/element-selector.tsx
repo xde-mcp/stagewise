@@ -37,13 +37,18 @@ export function ElementSelector(props: ElementSelectorProps) {
     props.onElementUnhovered();
   }, [props]);
 
-  const handleMouseClick = useCallback<
-    MouseEventHandler<HTMLDivElement>
-  >(() => {
-    if (!lastHoveredElement.current) return;
-    if (props.ignoreList.includes(lastHoveredElement.current)) return;
-    props.onElementSelected(lastHoveredElement.current);
-  }, [props]);
+  const handleMouseClick = useCallback<MouseEventHandler<HTMLDivElement>>(
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!lastHoveredElement.current) return;
+      if (props.ignoreList.includes(lastHoveredElement.current)) return;
+
+      props.onElementSelected(lastHoveredElement.current);
+    },
+    [props],
+  );
 
   return (
     <div
