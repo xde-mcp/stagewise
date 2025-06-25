@@ -1,5 +1,13 @@
 # @stagewise-plugins/angular
 
+## 0.4.7
+
+### Patch Changes
+
+- 642efa8: Fix plugin hang when no elements are selected
+- Updated dependencies [9682a4a]
+  - @stagewise/toolbar@0.4.9
+
 ## 0.4.6
 
 ### Patch Changes

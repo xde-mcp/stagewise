@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.4.9
+
+### Patch Changes
+
+- 9682a4a: Fixing the issue that popups close after selecting them with stagewise.
+
 ## 0.4.8
 
 ### Patch Changes
