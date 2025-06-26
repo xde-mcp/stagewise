@@ -236,7 +236,7 @@ importers:
   examples/angular-example:
     dependencies:
       '@angular/common':
-        specifier: ^19.2.0
+        specifier: ^19.2.14
         version: 19.2.14(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/compiler':
         specifier: ^19.2.0
