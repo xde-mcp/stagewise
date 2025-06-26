@@ -71,7 +71,6 @@ export function getVueComponentHierarchy(
 
   if (components.length === 0 && !hasWarnedNoVue) {
     // Only warn once
-    // eslint-disable-next-line no-console
     console.warn(
       '[stagewise/vue] No Vue installation detected on the selected element. Make sure you are running in development mode and Vue is available.',
     );

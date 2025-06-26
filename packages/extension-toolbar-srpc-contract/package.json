@@ -9,7 +9,6 @@
     "build": "tsup",
     "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "lint": "eslint src --ext .ts",
     "format": "biome format --write \"**/*.{ts,tsx,md}\""
   },
   "dependencies": {
