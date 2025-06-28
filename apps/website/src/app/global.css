@@ -4,6 +4,13 @@
 /* Additional watch source for tailwind */
 @source "../../../../packages/ui/src";
 
+@theme {
+  --animate-shine: shine 3s ease-in-out infinite;
+  --animate-shine-fast: shine-fast 1.5s ease-in-out infinite;
+  --animate-button-shine: button-shine 2s ease-in-out infinite;
+  --animate-button-shine-fast: button-shine-fast 1s ease-in-out infinite;
+}
+
 :root {
   --color-fd-background: #fff;
   --color-fd-foreground: #09090b;
@@ -15,4 +22,55 @@
   --color-fd-background: #09090b;
   --color-fd-foreground: #fff;
   /* ... */
+}
+
+@keyframes gradient {
+  0% {
+    opacity: 0.5;
+    transform: translateX(-100%);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0.5;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes shine-fast {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes button-shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes button-shine-fast {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
 }

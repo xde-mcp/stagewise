@@ -28,6 +28,7 @@ import ZendeskLogo from './_components/company_logos/zendesk.png';
 import ReactLogo from './_components/plugin_logos/react.svg';
 import VueLogo from './_components/plugin_logos/vue.svg';
 import AngularLogo from './_components/plugin_logos/angular.svg';
+import { WaitlistBanner } from './_components/waitlist-banner';
 
 import CursorLogo from './_components/ide_logos/cursor.png';
 import WindsurfLogo from './_components/ide_logos/windsurf.png';
@@ -73,8 +74,11 @@ export default function Home() {
     <div className="relative min-h-screen overflow-hidden bg-white text-slate-900 dark:bg-black dark:text-white">
       <AnimatedBackground />
 
+      {/* Early Access Banner */}
+      <WaitlistBanner />
+
       {/* Hero Section */}
-      <section className="container relative z-10 mx-auto px-4 py-24 md:py-32">
+      <section className="container relative z-10 mx-auto px-4 pt-26 pb-24 sm:pt-32 md:pb-32">
         <div className="mx-auto max-w-4xl">
           <ScrollReveal>
             <div className="mb-12 text-center">
