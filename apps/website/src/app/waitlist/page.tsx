@@ -1,5 +1,6 @@
 import { AnimatedBackground } from '@/components/landing/animated-background';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
+import { CustomVideoPlayer } from '@/components/landing/custom-video-player';
 import { WaitlistForm } from './_components/waitlist-form';
 
 export default function WaitlistPage() {
@@ -25,13 +26,16 @@ export default function WaitlistPage() {
                 </h1>
                 {/* Video Preview Placeholder */}
                 <div className="aspect-video w-full overflow-hidden rounded-lg">
-                  <video
-                    src="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
+                  <CustomVideoPlayer
+                    videoSrc="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
+                    thumbnailSrc="https://i.ytimg.com/vi/WzDmoTydaEk/maxresdefault.jpg"
+                    alt="stagewise demo video"
                     width={1200}
                     height={675}
-                    className="w-full"
                     controls
-                    poster="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo-thumbnail.jpg"
+                    autoPlay={false}
+                    muted={false}
+                    loop={false}
                     preload="none"
                     playsInline
                   />

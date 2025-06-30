@@ -126,12 +126,12 @@ export function FormRegistered({
         </p>
 
         {/* Copyable Link */}
-        <div className="relative">
+        <div className="flex gap-2">
           <input
             type="text"
             value={`https://stagewise.io/waitlist?referral_code=${data.referral_code}`}
             readOnly
-            className="w-full rounded-lg border border-zinc-200 bg-white/50 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-white dark:placeholder:text-zinc-400"
+            className="flex-1 rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-700 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
           />
           <button
             type="button"
@@ -142,7 +142,7 @@ export function FormRegistered({
                 `https://stagewise.io/waitlist?referral_code=${data.referral_code}`,
               );
             }}
-            className="-translate-y-1/2 absolute top-1/2 right-2 rounded-md bg-white p-1.5 text-zinc-500 hover:text-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="flex items-center justify-center rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2.5 text-zinc-600 transition-colors hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
             aria-label="Copy link"
           >
             {isCopied ? (
