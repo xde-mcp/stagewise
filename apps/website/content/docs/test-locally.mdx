@@ -1,0 +1,45 @@
+---
+title: Test stagewise Locally
+---
+
+export const metadata = {
+  title: "Test stagewise locally",
+  description: "Learn how to test and debug stagewise locally.",
+};
+
+# Testing stagewise Locally
+
+Want to contribute to stagewise or test your changes locally? Follow these steps to get the development environment up and running.
+
+## Quick Setup
+
+1. Clone the repository and navigate to the project:
+```bash
+git clone https://github.com/stagewise-io/stagewise && cd stagewise
+```
+
+2. Install dependencies and start the development server:
+```bash
+pnpm i && pnpm dev
+```
+
+3. Open the `stagewise` project in your IDE
+
+4. Prepare the extension environment:
+   - Uninstall or disable the official `stagewise` extension
+   - Press F5 (this will open a new IDE window with the local extension version installed)
+
+5. Visit `http://localhost:3002` to see the example application
+
+## What to Expect
+
+Once set up, you'll see:
+- A Next.js example application with the `stagewise` toolbar already configured
+- The toolbar will be connected to your local extension in `apps/vscode-extension`
+- Any changes you make to the extension code will be reflected in real-time
+
+## Next Steps
+
+- 👾 Need help? [Join our Discord](https://discord.gg/gkdGsDYaKA)
+- 🐛 Found a bug? [Open an issue](https://github.com/stagewise-io/stagewise/issues)
+- 📖 Want to contribute? Check out our [Contributing Guide](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) 
