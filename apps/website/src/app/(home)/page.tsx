@@ -676,7 +676,7 @@ export default function Home() {
                 <Image
                   src={framework.logo}
                   alt={framework.name}
-                  className="h-6 w-6"
+                  className="h-6 w-6 dark:invert"
                 />
                 <span className="font-medium">{framework.name}</span>
               </div>
