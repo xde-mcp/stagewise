@@ -5,7 +5,7 @@ import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import { useEffect } from 'react';
 
 export const copyA = {
-  title: 'The 10x Faster Frontend Agent is Coming.',
+  title: 'A 10x Faster Frontend Agent is Coming. The stagewise agent.',
   button: 'Get Early Access',
 };
 
