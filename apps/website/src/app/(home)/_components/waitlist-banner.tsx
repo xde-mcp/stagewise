@@ -1,12 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
-import { useEffect, useRef } from 'react';
-import {
-  FluidSplats,
-  type FluidSplatsRef,
-} from '@stagewise/ui/components/fluid-splats';
+import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { useEffect } from 'react';
 
 export const copyA = {
   title: 'The 10x Faster Frontend Agent is Coming.',
@@ -31,10 +27,21 @@ export const copyD = {
 export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const fluidSplatsRef = useRef<FluidSplatsRef>(null);
 
-  const rotateX = useTransform(mouseY, [-300, 300], [4, -4]);
-  const rotateY = useTransform(mouseX, [-300, 300], [-2, 2]);
+  // Add spring physics to the mouse tracking for smoother animation
+  const springMouseX = useSpring(mouseX, {
+    stiffness: 150,
+    damping: 25,
+    mass: 0.1,
+  });
+  const springMouseY = useSpring(mouseY, {
+    stiffness: 150,
+    damping: 25,
+    mass: 0.1,
+  });
+
+  const rotateX = useTransform(springMouseY, [-300, 300], [4, -4]);
+  const rotateY = useTransform(springMouseX, [-300, 300], [-2, 2]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -57,171 +64,9 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [mouseX, mouseY]);
 
-  // Synchronize fluid splats with banner tilt
-  useEffect(() => {
-    let lastSplatTime = 0;
-    const splatThrottle = 0; // No throttling for instant response
-
-    const unsubscribeRotateX = rotateX.on('change', (value) => {
-      const currentTime = Date.now();
-      if (currentTime - lastSplatTime < splatThrottle) return;
-
-      if (fluidSplatsRef.current && Math.abs(value) > 1) {
-        const bannerElement = document.querySelector('#waitlist-banner');
-        const bannerRect = bannerElement?.getBoundingClientRect();
-
-        if (bannerRect) {
-          lastSplatTime = currentTime;
-
-          // FluidSplats container extends 20px left/right and 10px up/down from banner
-          // So banner center in FluidSplats coordinates is:
-          const fluidCenterX = window.innerWidth / 2;
-          const fluidCenterY = 120; //+ bannerRect.height / 2; // 10px offset from -inset-y-10
-
-          // Opposite force to the tilt direction
-          const forceMultiplier = 2.5;
-          const forceY =
-            value > 0 ? -forceMultiplier * 50 : forceMultiplier * 50; // Opposite to tilt
-
-          fluidSplatsRef.current.splat(
-            fluidCenterX + (Math.random() - 0.5) * 100, // Add some randomness
-            fluidCenterY + (Math.random() - 0.5) * 50,
-            0, // No X force for rotateX changes
-            forceY,
-            [0.15, 0.08, 0.25], // Purple color
-          );
-        }
-      }
-    });
-
-    const unsubscribeRotateY = rotateY.on('change', (value) => {
-      const currentTime = Date.now();
-      if (currentTime - lastSplatTime < splatThrottle) return;
-
-      if (fluidSplatsRef.current && Math.abs(value) > 1) {
-        const bannerElement = document.querySelector('#waitlist-banner');
-        const bannerRect = bannerElement?.getBoundingClientRect();
-
-        if (bannerRect) {
-          lastSplatTime = currentTime;
-
-          // FluidSplats container extends 20px left/right and 10px up/down from banner
-          // So banner center in FluidSplats coordinates is:
-          const fluidCenterX = window.innerWidth / 2;
-          const fluidCenterY = 120; //+ bannerRect.height / 2; // 10px offset from -inset-y-10
-
-          // Opposite force to the tilt direction
-          const forceMultiplier = 2.5;
-          const forceX =
-            value > 0 ? -forceMultiplier * 250 : forceMultiplier * 250; // Opposite to tilt
-
-          fluidSplatsRef.current.splat(
-            fluidCenterX + (Math.random() - 0.5) * 100, // Add some randomness
-            fluidCenterY + (Math.random() - 0.5) * 50,
-            forceX,
-            0, // No Y force for rotateY changes
-            [0.15, 0.08, 0.25], // Purple color
-          );
-        }
-      }
-    });
-
-    return () => {
-      unsubscribeRotateX();
-      unsubscribeRotateY();
-    };
-  }, [rotateX, rotateY]);
-
-  // Scroll-based "blow away" effect
-  useEffect(() => {
-    let lastScrollTime = 0;
-    let lastScrollY = window.scrollY;
-    const scrollThrottle = 50; // Add throttling to make it less frequent
-    const scrollThreshold = 15; // Increased threshold for less sensitivity
-
-    const handleScroll = () => {
-      const currentTime = Date.now();
-      const currentScrollY = window.scrollY;
-      const scrollDelta = currentScrollY - lastScrollY;
-
-      // Trigger on both upward and downward scroll if enough time has passed
-      if (
-        Math.abs(scrollDelta) > scrollThreshold &&
-        currentTime - lastScrollTime > scrollThrottle &&
-        fluidSplatsRef.current
-      ) {
-        const bannerElement = document.querySelector('#waitlist-banner');
-        const bannerRect = bannerElement?.getBoundingClientRect();
-
-        if (bannerRect) {
-          lastScrollTime = currentTime;
-
-          // Create fewer splats across the banner width to simulate wind
-          const numSplats = 3; // Reduced number of splats
-          const bannerWidth = bannerRect.width;
-          const bannerLeft = bannerRect.left;
-
-          // Determine wind direction based on scroll direction
-          // Scroll down -> blow up (positive force)
-          // Scroll up -> blow down (negative force)
-          const isScrollingDown = scrollDelta > 0;
-          const baseForce = isScrollingDown ? 750 : -750; // Reduced speed by half
-
-          for (let i = 0; i < numSplats; i++) {
-            // Distribute splats across the banner width
-            const splatX =
-              bannerLeft +
-              (bannerWidth / numSplats) * i +
-              bannerWidth / numSplats / 2;
-            const fluidX = splatX;
-            const fluidY = 120; // Same Y position as other effects
-
-            // Wind force based on scroll direction with increased randomness
-            const forceY = baseForce + (Math.random() - 0.5) * 2000; // Increased randomness
-            const forceX = (Math.random() - 0.5) * 1000; // Increased horizontal randomness
-
-            fluidSplatsRef.current.splat(
-              fluidX + (Math.random() - 0.5) * 30, // Increased horizontal randomness
-              fluidY + (Math.random() - 0.5) * 20, // Increased vertical randomness
-              forceX,
-              forceY,
-              [0.1, 0.05, 0.2], // Slightly darker purple for wind effect
-            );
-          }
-        }
-      }
-
-      lastScrollY = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   return (
     <div className="-translate-x-1/2 fixed top-14 left-1/2 z-50 mt-4 w-[95%] max-w-[1400px] lg:w-auto">
       <div className="relative">
-        {/* Fluid splats container - confined to banner area */}
-        <div className="-inset-x-20 -inset-y-10 absolute inset-0 overflow-hidden rounded-3xl">
-          <FluidSplats
-            ref={fluidSplatsRef}
-            className="pointer-events-none absolute inset-0"
-            style={{ width: '100%', height: '100%' }}
-            config={{
-              TRANSPARENT: true,
-              DENSITY_DISSIPATION: 8,
-              VELOCITY_DISSIPATION: 3,
-              SPLAT_RADIUS: 0.8,
-              SPLAT_FORCE: 1000000,
-              COLOR_UPDATE_SPEED: 1,
-              PRESSURE: 0.8,
-              CURL: 0,
-              DYE_RESOLUTION: 1024,
-              SIM_RESOLUTION: 128,
-              SHADING: true,
-            }}
-          />
-        </div>
         {/* biome-ignore lint/nursery/useUniqueElementIds: Required for mouse tracking functionality */}
         <motion.div
           id="waitlist-banner"
