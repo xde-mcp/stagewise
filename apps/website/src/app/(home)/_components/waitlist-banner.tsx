@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import {
   FluidSplats,
@@ -33,11 +33,8 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
   const mouseY = useMotionValue(0);
   const fluidSplatsRef = useRef<FluidSplatsRef>(null);
 
-  const rotateX = useTransform(mouseY, [-300, 300], [15, -15]);
-  const rotateY = useTransform(mouseX, [-300, 300], [-15, 15]);
-
-  const springRotateX = useSpring(rotateX, { stiffness: 300, damping: 30 });
-  const springRotateY = useSpring(rotateY, { stiffness: 300, damping: 30 });
+  const rotateX = useTransform(mouseY, [-300, 300], [4, -4]);
+  const rotateY = useTransform(mouseX, [-300, 300], [-2, 2]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -63,9 +60,9 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
   // Synchronize fluid splats with banner tilt
   useEffect(() => {
     let lastSplatTime = 0;
-    const splatThrottle = 50; // Throttle splats to every 50ms
+    const splatThrottle = 0; // No throttling for instant response
 
-    const unsubscribeRotateX = springRotateX.on('change', (value) => {
+    const unsubscribeRotateX = rotateX.on('change', (value) => {
       const currentTime = Date.now();
       if (currentTime - lastSplatTime < splatThrottle) return;
 
@@ -84,7 +81,7 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
           // Opposite force to the tilt direction
           const forceMultiplier = 2.5;
           const forceY =
-            value > 0 ? -forceMultiplier * 15 : forceMultiplier * 15; // Opposite to tilt
+            value > 0 ? -forceMultiplier * 50 : forceMultiplier * 50; // Opposite to tilt
 
           fluidSplatsRef.current.splat(
             fluidCenterX + (Math.random() - 0.5) * 100, // Add some randomness
@@ -97,7 +94,7 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
       }
     });
 
-    const unsubscribeRotateY = springRotateY.on('change', (value) => {
+    const unsubscribeRotateY = rotateY.on('change', (value) => {
       const currentTime = Date.now();
       if (currentTime - lastSplatTime < splatThrottle) return;
 
@@ -116,7 +113,7 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
           // Opposite force to the tilt direction
           const forceMultiplier = 2.5;
           const forceX =
-            value > 0 ? -forceMultiplier * 15 : forceMultiplier * 15; // Opposite to tilt
+            value > 0 ? -forceMultiplier * 250 : forceMultiplier * 250; // Opposite to tilt
 
           fluidSplatsRef.current.splat(
             fluidCenterX + (Math.random() - 0.5) * 100, // Add some randomness
@@ -133,23 +130,23 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
       unsubscribeRotateX();
       unsubscribeRotateY();
     };
-  }, [springRotateX, springRotateY]);
+  }, [rotateX, rotateY]);
 
   // Scroll-based "blow away" effect
   useEffect(() => {
     let lastScrollTime = 0;
     let lastScrollY = window.scrollY;
-    const scrollThrottle = 100; // Throttle to every 100ms
-    const scrollThreshold = 20; // Minimum scroll distance to trigger effect
+    const scrollThrottle = 50; // Add throttling to make it less frequent
+    const scrollThreshold = 15; // Increased threshold for less sensitivity
 
     const handleScroll = () => {
       const currentTime = Date.now();
       const currentScrollY = window.scrollY;
       const scrollDelta = currentScrollY - lastScrollY;
 
-      // Only trigger on downward scroll and if enough time has passed
+      // Trigger on both upward and downward scroll if enough time has passed
       if (
-        scrollDelta > scrollThreshold &&
+        Math.abs(scrollDelta) > scrollThreshold &&
         currentTime - lastScrollTime > scrollThrottle &&
         fluidSplatsRef.current
       ) {
@@ -159,10 +156,16 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
         if (bannerRect) {
           lastScrollTime = currentTime;
 
-          // Create multiple splats across the banner width to simulate wind
-          const numSplats = 8; // Number of splats to create
+          // Create fewer splats across the banner width to simulate wind
+          const numSplats = 3; // Reduced number of splats
           const bannerWidth = bannerRect.width;
           const bannerLeft = bannerRect.left;
+
+          // Determine wind direction based on scroll direction
+          // Scroll down -> blow up (positive force)
+          // Scroll up -> blow down (negative force)
+          const isScrollingDown = scrollDelta > 0;
+          const baseForce = isScrollingDown ? 750 : -750; // Reduced speed by half
 
           for (let i = 0; i < numSplats; i++) {
             // Distribute splats across the banner width
@@ -173,14 +176,13 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
             const fluidX = splatX;
             const fluidY = 120; // Same Y position as other effects
 
-            // Strong upward force with some randomness
-            const baseForce = 8000; // Strong upward force
-            const forceY = baseForce + (Math.random() - 0.5) * 2000;
-            const forceX = (Math.random() - 0.5) * 1000; // Small horizontal randomness
+            // Wind force based on scroll direction with increased randomness
+            const forceY = baseForce + (Math.random() - 0.5) * 2000; // Increased randomness
+            const forceX = (Math.random() - 0.5) * 1000; // Increased horizontal randomness
 
             fluidSplatsRef.current.splat(
-              fluidX + (Math.random() - 0.5) * 30, // Small horizontal randomness
-              fluidY + (Math.random() - 0.5) * 20, // Small vertical randomness
+              fluidX + (Math.random() - 0.5) * 30, // Increased horizontal randomness
+              fluidY + (Math.random() - 0.5) * 20, // Increased vertical randomness
               forceX,
               forceY,
               [0.1, 0.05, 0.2], // Slightly darker purple for wind effect
@@ -207,25 +209,26 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
             style={{ width: '100%', height: '100%' }}
             config={{
               TRANSPARENT: true,
-              DENSITY_DISSIPATION: 1,
-              VELOCITY_DISSIPATION: 0.2,
+              DENSITY_DISSIPATION: 8,
+              VELOCITY_DISSIPATION: 3,
               SPLAT_RADIUS: 0.8,
-              SPLAT_FORCE: 500000,
+              SPLAT_FORCE: 1000000,
               COLOR_UPDATE_SPEED: 1,
               PRESSURE: 0.8,
               CURL: 0,
               DYE_RESOLUTION: 1024,
               SIM_RESOLUTION: 128,
+              SHADING: true,
             }}
           />
         </div>
-
+        {/* biome-ignore lint/nursery/useUniqueElementIds: Required for mouse tracking functionality */}
         <motion.div
           id="waitlist-banner"
           className="group relative flex h-auto min-h-[3rem] items-center justify-center overflow-hidden rounded-2xl border border-white/30 bg-gradient-to-r from-indigo-600/40 to-purple-600/40 p-2 shadow-indigo-500/20 shadow-lg backdrop-blur-xl backdrop-saturate-150 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-r before:from-white/10 before:to-transparent sm:h-12 sm:p-4 dark:from-indigo-900/40 dark:to-purple-900/40 dark:shadow-purple-500/20"
           style={{
-            rotateX: springRotateX,
-            rotateY: springRotateY,
+            rotateX: rotateX,
+            rotateY: rotateY,
             transformPerspective: 1000,
             transformStyle: 'preserve-3d',
           }}
