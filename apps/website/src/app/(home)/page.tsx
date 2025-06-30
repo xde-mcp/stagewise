@@ -577,7 +577,7 @@ export default function Home() {
                     <p className="font-medium text-zinc-700 dark:text-zinc-300">
                       🪄 Auto-Install the toolbar (AI-guided):
                     </p>
-                    <ol className="mt-2 list-decimal pl-5 text-zinc-600 dark:text-zinc-400">
+                    <ol className="mt-2 list-decimal pl-5 text-start text-zinc-600 dark:text-zinc-400">
                       <li>
                         In Cursor, Press{' '}
                         <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">
