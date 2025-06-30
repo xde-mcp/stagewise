@@ -325,7 +325,7 @@ export const FluidSplats = forwardRef<FluidSplatsRef, FluidSplatsProps>(
         if (!keywords) return source;
         let keywordsString = '';
         keywords.forEach((keyword) => {
-          keywordsString += '#define ' + keyword + '\n';
+          keywordsString += `#define ${keyword}\n`;
         });
         return keywordsString + source;
       }
@@ -1328,7 +1328,7 @@ export const FluidSplats = forwardRef<FluidSplatsRef, FluidSplatsProps>(
         return { r: arr[0], g: arr[1], b: arr[2] };
       }
 
-      function HSVtoRGB(h: number, s: number, v: number): RGB {
+      function _HSVtoRGB(h: number, s: number, v: number): RGB {
         let r: number;
         let g: number;
         let b: number;
