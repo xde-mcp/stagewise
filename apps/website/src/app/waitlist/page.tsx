@@ -9,7 +9,7 @@ export default function WaitlistPage() {
       <AnimatedBackground />
 
       {/* Hero Section */}
-      <section className="container relative z-10 mx-auto flex min-h-screen items-center justify-center px-4 md:p-16">
+      <section className="container relative z-10 mx-auto flex min-h-screen items-center justify-center p-16 px-4 md:p-16">
         <div className="mx-auto max-w-7xl">
           <div className="grid items-center gap-12 md:grid-cols-2">
             {/* Left Column - Video Preview */}
@@ -25,7 +25,7 @@ export default function WaitlistPage() {
                   </span>
                 </h1>
                 {/* Video Preview Placeholder */}
-                <div className="aspect-video w-full overflow-hidden rounded-lg">
+                <div className="hidden aspect-video w-full overflow-hidden rounded-lg md:block">
                   <CustomVideoPlayer
                     videoSrc="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
                     thumbnailSrc="https://i.ytimg.com/vi/WzDmoTydaEk/maxresdefault.jpg"
@@ -50,6 +50,23 @@ export default function WaitlistPage() {
                 <div className="relative z-10">
                   <WaitlistForm />
                 </div>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal>
+              <div className="aspect-video w-full overflow-hidden rounded-lg md:hidden">
+                <CustomVideoPlayer
+                  videoSrc="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
+                  thumbnailSrc="https://i.ytimg.com/vi/WzDmoTydaEk/maxresdefault.jpg"
+                  alt="stagewise demo video"
+                  width={1200}
+                  height={675}
+                  controls
+                  autoPlay={false}
+                  muted={false}
+                  loop={false}
+                  preload="none"
+                  playsInline
+                />
               </div>
             </ScrollReveal>
           </div>

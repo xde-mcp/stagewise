@@ -36,6 +36,11 @@ export const baseOptions: BaseLayoutProps = {
       active: 'nested-url',
     },
     {
+      text: 'Waitlist',
+      url: '/waitlist',
+      active: 'nested-url',
+    },
+    {
       type: 'icon',
       label: 'Discord', // `aria-label`
       icon: <SiDiscord className="m-1 size-4" />,
