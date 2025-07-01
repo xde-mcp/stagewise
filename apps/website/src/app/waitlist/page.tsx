@@ -25,10 +25,10 @@ export default function WaitlistPage() {
                   </span>
                 </h1>
                 {/* Video Preview Placeholder */}
-                <div className="hidden aspect-video w-full overflow-hidden rounded-lg md:block">
+                <div className="hidden aspect-video w-full overflow-hidden rounded-xl border border-indigo-900/20 shadow-[0_0_40px_rgba(128,90,213,0.25)] md:block">
                   <CustomVideoPlayer
                     videoSrc="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
-                    thumbnailSrc="https://i.ytimg.com/vi/WzDmoTydaEk/maxresdefault.jpg"
+                    thumbnailSrc="/agent-thubmnail.png"
                     alt="stagewise demo video"
                     width={1200}
                     height={675}
@@ -45,7 +45,7 @@ export default function WaitlistPage() {
 
             {/* Right Column - Sign Up Form */}
             <ScrollReveal delay={200}>
-              <div className="group relative overflow-hidden rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-50 to-purple-50 p-8 shadow-[0_0_50px_rgba(128,90,213,0.15)] backdrop-blur-sm dark:from-indigo-950/30 dark:to-purple-950/30">
+              <div className="group relative overflow-hidden rounded-xl border border-indigo-900/20 bg-gradient-to-br from-indigo-50 to-purple-50 p-8 shadow-[0_0_40px_rgba(128,90,213,0.25)] backdrop-blur-sm dark:from-indigo-950/30 dark:to-purple-950/30">
                 <div className="-translate-x-full absolute inset-0 z-0 animate-shine bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform group-hover:animate-shine-fast" />
                 <div className="relative z-10">
                   <WaitlistForm />
@@ -53,10 +53,10 @@ export default function WaitlistPage() {
               </div>
             </ScrollReveal>
             <ScrollReveal>
-              <div className="aspect-video w-full overflow-hidden rounded-lg md:hidden">
+              <div className="aspect-video w-full overflow-hidden rounded-xl border border-indigo-900/20 shadow-[0_0_40px_rgba(128,90,213,0.25)] md:hidden">
                 <CustomVideoPlayer
                   videoSrc="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
-                  thumbnailSrc="https://i.ytimg.com/vi/WzDmoTydaEk/maxresdefault.jpg"
+                  thumbnailSrc="/agent-thubmnail.png"
                   alt="stagewise demo video"
                   width={1200}
                   height={675}
