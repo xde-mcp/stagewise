@@ -29,7 +29,7 @@ const fakeDiagCollection =
 // Create output channel for stagewise
 const outputChannel = vscode.window.createOutputChannel('stagewise');
 
-// Dummy handler for the setupToolbar command
+// Handler for the setupToolbar command
 async function setupToolbarHandler() {
   await setupToolbar();
   await vscode.window.showInformationMessage(
