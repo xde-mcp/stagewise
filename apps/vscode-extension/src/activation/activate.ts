@@ -29,7 +29,7 @@ const fakeDiagCollection =
 // Create output channel for stagewise
 const outputChannel = vscode.window.createOutputChannel('stagewise');
 
-// Dummy handler for the setupToolbar command
+// Handler for the setupToolbar command
 async function setupToolbarHandler() {
   await setupToolbar();
   await vscode.window.showInformationMessage(
@@ -129,7 +129,7 @@ export async function activate(context: vscode.ExtensionContext) {
       });
 
       bridge.register({
-        getSessionInfo: async (request, sendUpdate) => {
+        getSessionInfo: async (_request, _sendUpdate) => {
           return getCurrentWindowInfo(port);
         },
         triggerAgentPrompt: async (request, sendUpdate) => {

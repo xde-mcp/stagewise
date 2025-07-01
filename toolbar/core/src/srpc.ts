@@ -62,14 +62,14 @@ export async function discoverVSCodeWindows(
           windows.push(sessionInfo);
 
           await bridge.close();
-        } catch (error) {
-          console.warn(`Failed to get session info from port ${port}:`, error);
+        } catch (_error) {
+          console.warn(`Failed to get session info from port ${port}:`, _error);
         }
       } else {
         // Port is available but it's another service running on it, so we continue searching
         continue;
       }
-    } catch (error) {
+    } catch (_error) {
       consecutiveErrors++;
 
       // Stop searching after 2 consecutive connection errors

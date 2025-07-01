@@ -33,7 +33,7 @@ export async function injectPromptDiagnosticWithCallback(params: {
       // Open the first file found
       const document = await vscode.workspace.openTextDocument(files[0]);
       editor = await vscode.window.showTextDocument(document);
-    } catch (error) {
+    } catch (_error) {
       vscode.window.showErrorMessage(
         'Failed to open existing file for prompt injection.',
       );

@@ -18,7 +18,7 @@ export const SettingsButton = ({
   </ToolbarSection>
 );
 
-export const SettingsPanel = ({ onClose }: { onClose?: () => void }) => {
+export const SettingsPanel = () => {
   return (
     <Panel>
       <Panel.Header title="Settings" />

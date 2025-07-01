@@ -108,7 +108,7 @@ function generateElementContext(element: HTMLElement, index: number): string {
       context += `    <${key}>${value}</${key}>\n`;
     }
     context += `  </styles>\n`;
-  } catch (e) {
+  } catch (_e) {
     context += `  <styles>Could not retrieve computed styles</styles>\n`;
   }
 

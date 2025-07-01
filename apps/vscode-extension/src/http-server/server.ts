@@ -10,7 +10,7 @@ import {
   PING_RESPONSE,
 } from '@stagewise/extension-toolbar-srpc-contract';
 
-const createServer = (port: number) => {
+const createServer = (_port: number) => {
   const app = express();
 
   // Middleware
@@ -40,7 +40,7 @@ const createServer = (port: number) => {
     (
       _req: express.Request,
       _res: express.Response,
-      next: express.NextFunction,
+      _next: express.NextFunction,
     ) => {
       _res.status(404).json({ error: 'Not found' });
     },

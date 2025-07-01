@@ -114,8 +114,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
 
   const { minimized } = useAppState();
 
-  const { selectedSession, setShouldPromptWindowSelection, windows } =
-    useVSCode();
+  const { selectedSession, setShouldPromptWindowSelection } = useVSCode();
 
   useEffect(() => {
     if (minimized) {
@@ -357,7 +356,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
                 prompt,
                 sessionId: selectedSession?.sessionId,
               },
-              { onUpdate: (update) => {} },
+              { onUpdate: (_update) => {} },
             );
 
             // Handle response based on success/error
@@ -392,7 +391,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
                 );
               }, 300);
             }
-          } catch (error) {
+          } catch (_error) {
             // On exception, go to error state
             setPromptState('error');
             // TODO: show the error message

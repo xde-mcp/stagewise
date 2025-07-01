@@ -34,7 +34,7 @@ import WindsurfLogo from './_components/ide_logos/windsurf.png';
 import GitHubCopilotLogo from './_components/ide_logos/github_copilot.png';
 import ClineLogo from './_components/ide_logos/cline.png';
 import RooCodeLogo from './_components/ide_logos/roo_code.png';
-
+import TraeLogo from './_components/ide_logos/trae.png';
 import ReactFrameworkLogo from './_components/framework_logos/react.png';
 import VueFrameworkLogo from './_components/framework_logos/vue.png';
 import AngularFrameworkLogo from './_components/framework_logos/angular.png';
@@ -73,8 +73,11 @@ export default function Home() {
     <div className="relative min-h-screen overflow-hidden bg-white text-slate-900 dark:bg-black dark:text-white">
       <AnimatedBackground />
 
+      {/* Early Access Banner */}
+      {/* <WaitlistBanner copy={copyA} /> */}
+
       {/* Hero Section */}
-      <section className="container relative z-10 mx-auto px-4 py-24 md:py-32">
+      <section className="container relative z-10 mx-auto px-4 pt-28 pb-24 sm:pt-32 md:pb-32">
         <div className="mx-auto max-w-4xl">
           <ScrollReveal>
             <div className="mb-12 text-center">
@@ -577,7 +580,7 @@ export default function Home() {
                     <p className="font-medium text-zinc-700 dark:text-zinc-300">
                       🪄 Auto-Install the toolbar (AI-guided):
                     </p>
-                    <ol className="mt-2 list-decimal pl-5 text-zinc-600 dark:text-zinc-400">
+                    <ol className="mt-2 list-decimal pl-5 text-start text-zinc-600 dark:text-zinc-400">
                       <li>
                         In Cursor, Press{' '}
                         <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">
@@ -670,13 +673,17 @@ export default function Home() {
               name: 'Roo Code',
               logo: RooCodeLogo,
             },
+            {
+              name: 'Trae',
+              logo: TraeLogo,
+            },
           ].map((framework, i) => (
             <ScrollReveal key={framework.name} delay={i * 100} direction="up">
               <div className="group flex items-center gap-2 rounded-full border border-zinc-500/30 bg-zinc-50 px-6 py-2 shadow-[0_0_20px_rgba(128,90,213,0.15)] transition-all duration-300 dark:border-indigo-800 dark:bg-zinc-900">
                 <Image
                   src={framework.logo}
                   alt={framework.name}
-                  className="h-6 w-6"
+                  className="h-6 w-6 dark:invert"
                 />
                 <span className="font-medium">{framework.name}</span>
               </div>

@@ -105,7 +105,7 @@ export class ToolbarIntegrationNotificator implements vscode.Disposable {
 
   private async showIntegrationNotification(
     storageKey: string,
-    workspaceId: string,
+    _workspaceId: string,
   ): Promise<void> {
     if (this.isGettingStartedPanelOpen()) {
       console.log(

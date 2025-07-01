@@ -7,7 +7,7 @@ export default {
     autoprefixer: {},
     'postcss-prefix-selector': {
       prefix: 'stagewise-companion-anchor',
-      transform: (prefix, selector, prefixedSelector, filePath, rule) => {
+      transform: (prefix, selector, prefixedSelector, _filePath, _rule) => {
         if (prefixWhereOverrideList.includes(selector)) {
           return `:where(${prefix})`;
         } else if (

@@ -35,6 +35,12 @@ export const baseOptions: BaseLayoutProps = {
       url: '/docs',
       active: 'nested-url',
     },
+    // TODO: Uncomment this when we officially launch the waitlist
+    // {
+    //   text: 'Waitlist',
+    //   url: '/waitlist',
+    //   active: 'nested-url',
+    // },
     {
       type: 'icon',
       label: 'Discord', // `aria-label`

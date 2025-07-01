@@ -109,7 +109,7 @@
             "functions": ["cn", "clsx", "cva", "tw", "tw.*"]
           }
         },
-        "useUniqueElementIds": "warn",
+        "useUniqueElementIds": "off",
         "noNestedComponentDefinitions": "warn"
       }
     }
