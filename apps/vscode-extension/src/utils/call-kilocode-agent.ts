@@ -11,5 +11,7 @@ export async function callKilocodeAgent(request: PromptRequest): Promise<void> {
   // mode: request.mode, not supported yet
   // `${request.mode ? `\n\n use the following mode: ${request.mode}` : ''}`;
 
-  await vscode.commands.executeCommand('kilo-code.newTask', { prompt }) as Promise<any>;
+  (await vscode.commands.executeCommand('kilo-code.newTask', {
+    prompt,
+  })) as Promise<any>;
 }

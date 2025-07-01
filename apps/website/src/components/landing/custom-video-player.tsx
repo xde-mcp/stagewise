@@ -25,7 +25,6 @@ export function CustomVideoPlayer({
   className = '',
   width = 1200,
   height = 675,
-  autoPlay = true,
   muted = true,
   loop = true,
   controls = false,
@@ -101,6 +100,7 @@ export function CustomVideoPlayer({
 
       {/* Thumbnail overlay - shown by default, hidden after play */}
       {showThumbnail && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: The video is not static
         <div
           className="absolute inset-0 cursor-pointer"
           onClick={handlePlayClick}

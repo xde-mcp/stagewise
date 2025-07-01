@@ -66,7 +66,6 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
   return (
     <div className="-translate-x-1/2 fixed top-14 left-1/2 z-50 mt-4 w-[95%] max-w-[1400px] lg:w-auto">
       <div className="relative">
-        {/* biome-ignore lint/nursery/useUniqueElementIds: Required for mouse tracking functionality */}
         <motion.div
           ref={bannerRef}
           className="group relative flex h-auto min-h-[3rem] items-center justify-center overflow-hidden rounded-2xl border border-white/30 bg-gradient-to-r from-indigo-600/40 to-purple-600/40 p-2 shadow-indigo-500/20 shadow-lg backdrop-blur-xl backdrop-saturate-150 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-r before:from-white/10 before:to-transparent sm:h-12 sm:p-4 dark:from-indigo-900/40 dark:to-purple-900/40 dark:shadow-purple-500/20"
