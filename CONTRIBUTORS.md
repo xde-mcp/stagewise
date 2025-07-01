@@ -18,6 +18,7 @@ Without these guys, stagewise wouldn't be here. Huge props to:
 - [muhi111](https://github.com/muhi111)
 - [alexander-litvinovich](https://github.com/alexander-litvinovich)
 - [fatdoge](https://github.com/fatdoge)
+- [hassoncs](https://github.com/hassoncs)
 
 ## I would like to join this list. How can I help the project?
 
