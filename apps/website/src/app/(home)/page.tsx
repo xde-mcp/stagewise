@@ -73,8 +73,11 @@ export default function Home() {
     <div className="relative min-h-screen overflow-hidden bg-white text-slate-900 dark:bg-black dark:text-white">
       <AnimatedBackground />
 
+      {/* Early Access Banner */}
+      {/* <WaitlistBanner copy={copyA} /> */}
+
       {/* Hero Section */}
-      <section className="container relative z-10 mx-auto px-4 py-24 md:py-32">
+      <section className="container relative z-10 mx-auto px-4 pt-28 pb-24 sm:pt-32 md:pb-32">
         <div className="mx-auto max-w-4xl">
           <ScrollReveal>
             <div className="mb-12 text-center">
