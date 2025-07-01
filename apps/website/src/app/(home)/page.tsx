@@ -28,7 +28,6 @@ import ZendeskLogo from './_components/company_logos/zendesk.png';
 import ReactLogo from './_components/plugin_logos/react.svg';
 import VueLogo from './_components/plugin_logos/vue.svg';
 import AngularLogo from './_components/plugin_logos/angular.svg';
-import { WaitlistBanner, copyA } from './_components/waitlist-banner';
 
 import CursorLogo from './_components/ide_logos/cursor.png';
 import WindsurfLogo from './_components/ide_logos/windsurf.png';
