@@ -292,6 +292,19 @@ For use cases that fall outside the scope permitted by the AGPLv3 license, feel 
 
 We're just getting started and love contributions! Check out our [CONTRIBUTING.md](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. For bugs and fresh ideas, please [Open an issue!](https://github.com/stagewise-io/stagewise/issues) 
 
+## 💻 Test stagewise locally
+
+1. `git clone https://github.com/stagewise-io/stagewise && cd stagewise` 
+2. `pnpm i && pnpm dev`
+3. Open the `stagewise` project in your IDE
+4. Uninstall/ Disable the official `stagewise` extension
+5. Press F5 (a new IDE window with the local extension-version installed will open up)
+6. Visit `http://localhost:3002` 
+> You will see a next.js example application with the `stagewise`-toolbar already set up.
+> It will be connected to the local vscode-extension in `apps/vscode-extension` and reflect all the extension-changes you apply locally.
+
+
+
 ## 💬 Community & Support 
 
 * 👾 [Join our Discord](https://discord.gg/gkdGsDYaKA)
@@ -303,5 +316,3 @@ We're just getting started and love contributions! Check out our [CONTRIBUTING.m
 Got questions or want to license stagewise for commercial or enterprise use?
 
 📧 **[sales@stagewise.io](mailto:sales@stagewise.io)**
-
-
