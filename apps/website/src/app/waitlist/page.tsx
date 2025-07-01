@@ -34,7 +34,6 @@ export default function WaitlistPage() {
                     width={1200}
                     height={675}
                     controls
-                    autoPlay={false}
                     muted={false}
                     loop={false}
                     preload="none"
@@ -64,7 +63,6 @@ export default function WaitlistPage() {
                   width={1200}
                   height={675}
                   controls
-                  autoPlay={false}
                   muted={false}
                   loop={false}
                   preload="none"
