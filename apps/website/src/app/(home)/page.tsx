@@ -75,7 +75,7 @@ export default function Home() {
       <AnimatedBackground />
 
       {/* Early Access Banner */}
-      <WaitlistBanner copy={copyA} />
+      {/* <WaitlistBanner copy={copyA} /> */}
 
       {/* Hero Section */}
       <section className="container relative z-10 mx-auto px-4 pt-26 pb-24 sm:pt-32 md:pb-32">

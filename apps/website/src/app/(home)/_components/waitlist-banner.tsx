@@ -40,7 +40,7 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
     mass: 0.1,
   });
 
-  const rotateX = useTransform(springMouseY, [-300, 300], [4, -4]);
+  const rotateX = useTransform(springMouseY, [-300, 300], [8, -8]);
   const rotateY = useTransform(springMouseX, [-300, 300], [-2, 2]);
 
   useEffect(() => {
