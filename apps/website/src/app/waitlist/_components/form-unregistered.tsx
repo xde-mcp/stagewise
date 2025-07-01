@@ -9,6 +9,7 @@ import {
   type Subscriber,
   getSubscriber,
 } from '../api/waitlister-api-utils';
+import { getMedal, getMedalColor } from '../_utils/leaderboard-helpers';
 
 // Define the validation schema
 const waitlistSchema = z.object({
@@ -199,32 +200,6 @@ export function FormUnregistered({
           </h3>
           <div className="space-y-1">
             {subscribers.slice(0, 3).map((subscriber, _index) => {
-              const getMedal = (position: number) => {
-                switch (position) {
-                  case 1:
-                    return '🥇';
-                  case 2:
-                    return '🥈';
-                  case 3:
-                    return '🥉';
-                  default:
-                    return '';
-                }
-              };
-
-              const getMedalColor = (position: number) => {
-                switch (position) {
-                  case 1:
-                    return 'text-amber-500';
-                  case 2:
-                    return 'text-zinc-400';
-                  case 3:
-                    return 'text-orange-600';
-                  default:
-                    return 'text-zinc-600 dark:text-zinc-400';
-                }
-              };
-
               return (
                 <div
                   key={subscriber.id}

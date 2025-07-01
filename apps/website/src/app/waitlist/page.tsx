@@ -29,7 +29,7 @@ export default function WaitlistPage() {
                 <div className="hidden aspect-video w-full overflow-hidden rounded-xl border border-indigo-900/20 shadow-[0_0_40px_rgba(128,90,213,0.25)] md:block">
                   <CustomVideoPlayer
                     videoSrc="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
-                    thumbnailSrc="/agent-thubmnail.png"
+                    thumbnailSrc="/agent-thumbnail.png"
                     alt="stagewise demo video"
                     width={1200}
                     height={675}
@@ -59,7 +59,7 @@ export default function WaitlistPage() {
               <div className="aspect-video w-full overflow-hidden rounded-xl border border-indigo-900/20 shadow-[0_0_40px_rgba(128,90,213,0.25)] md:hidden">
                 <CustomVideoPlayer
                   videoSrc="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-3-0-plugin-release/standard-demo.mp4"
-                  thumbnailSrc="/agent-thubmnail.png"
+                  thumbnailSrc="/agent-thumbnail.png"
                   alt="stagewise demo video"
                   width={1200}
                   height={675}

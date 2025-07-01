@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { type Subscriber, getSubscriber } from '../api/waitlister-api-utils';
+import { getMedal, getMedalColor } from '../_utils/leaderboard-helpers';
 
 interface FormRegisteredProps {
   email: string;
@@ -42,32 +43,6 @@ export function FormRegistered({
 
   // Calculate batch number based on position (assuming 50 people per batch)
   const getBatchNumber = (position: number) => Math.ceil(position / 50);
-
-  const getMedal = (position: number) => {
-    switch (position) {
-      case 1:
-        return '🥇';
-      case 2:
-        return '🥈';
-      case 3:
-        return '🥉';
-      default:
-        return '';
-    }
-  };
-
-  const getMedalColor = (position: number) => {
-    switch (position) {
-      case 1:
-        return 'text-amber-500';
-      case 2:
-        return 'text-zinc-400';
-      case 3:
-        return 'text-orange-600';
-      default:
-        return 'text-zinc-600 dark:text-zinc-400';
-    }
-  };
 
   const shareOnTwitter = () => {
     if (!data?.referral_code) return;

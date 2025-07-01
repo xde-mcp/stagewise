@@ -77,7 +77,7 @@ export default function Home() {
       {/* <WaitlistBanner copy={copyA} /> */}
 
       {/* Hero Section */}
-      <section className="container relative z-10 mx-auto px-4 pt-26 pb-24 sm:pt-32 md:pb-32">
+      <section className="container relative z-10 mx-auto px-4 pt-28 pb-24 sm:pt-32 md:pb-32">
         <div className="mx-auto max-w-4xl">
           <ScrollReveal>
             <div className="mb-12 text-center">

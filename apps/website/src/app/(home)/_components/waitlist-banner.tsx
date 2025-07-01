@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export const copyA = {
   title: 'A 10x Faster Frontend Agent is Coming. The stagewise agent.',
@@ -27,6 +27,7 @@ export const copyD = {
 export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   // Add spring physics to the mouse tracking for smoother animation
   const springMouseX = useSpring(mouseX, {
@@ -45,9 +46,7 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = document
-        .querySelector('#waitlist-banner')
-        ?.getBoundingClientRect();
+      const rect = bannerRef.current?.getBoundingClientRect();
       if (!rect) return;
 
       const centerX = rect.left + rect.width / 2;
@@ -69,7 +68,7 @@ export function WaitlistBanner({ copy }: { copy: typeof copyA }) {
       <div className="relative">
         {/* biome-ignore lint/nursery/useUniqueElementIds: Required for mouse tracking functionality */}
         <motion.div
-          id="waitlist-banner"
+          ref={bannerRef}
           className="group relative flex h-auto min-h-[3rem] items-center justify-center overflow-hidden rounded-2xl border border-white/30 bg-gradient-to-r from-indigo-600/40 to-purple-600/40 p-2 shadow-indigo-500/20 shadow-lg backdrop-blur-xl backdrop-saturate-150 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-r before:from-white/10 before:to-transparent sm:h-12 sm:p-4 dark:from-indigo-900/40 dark:to-purple-900/40 dark:shadow-purple-500/20"
           style={{
             rotateX: rotateX,
