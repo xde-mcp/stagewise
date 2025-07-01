@@ -60,9 +60,7 @@ export function FormUnregistered({
       });
       if (subscribers.success) {
         setSubscribers(subscribers.data?.subscribers || []);
-        setTotalSubscribers(
-          (subscribers.data?.limit || 0) * (subscribers.data?.pages || 0),
-        );
+        setTotalSubscribers(subscribers.data?.total || 0);
       }
     };
     fetchSubscribers();
