@@ -2,6 +2,7 @@ import { AnimatedBackground } from '@/components/landing/animated-background';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { CustomVideoPlayer } from '@/components/landing/custom-video-player';
 import { WaitlistForm } from './_components/waitlist-form';
+import { Suspense } from 'react';
 
 export default function WaitlistPage() {
   return (
@@ -48,7 +49,9 @@ export default function WaitlistPage() {
               <div className="group relative overflow-hidden rounded-xl border border-indigo-900/20 bg-gradient-to-br from-indigo-50 to-purple-50 p-8 shadow-[0_0_40px_rgba(128,90,213,0.25)] backdrop-blur-sm dark:from-indigo-950/30 dark:to-purple-950/30">
                 <div className="-translate-x-full absolute inset-0 z-0 animate-shine bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform group-hover:animate-shine-fast" />
                 <div className="relative z-10">
-                  <WaitlistForm />
+                  <Suspense fallback={<div>Loading form...</div>}>
+                    <WaitlistForm />
+                  </Suspense>
                 </div>
               </div>
             </ScrollReveal>
