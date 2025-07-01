@@ -9,10 +9,13 @@ import { callClineAgent } from './call-cline-agent';
 import * as vscode from 'vscode';
 import type { PromptRequest } from '@stagewise/extension-toolbar-srpc-contract';
 import { isClineInstalled } from './is-cline-installed';
+import { callTraeAgent } from './call-trae-agent';
 
 export async function dispatchAgentCall(request: PromptRequest) {
   const ide = getCurrentIDE();
   switch (ide) {
+    case 'TRAE':  
+      return await callTraeAgent(request);
     case 'CURSOR':
       return await callCursorAgent(request);
     case 'WINDSURF':
