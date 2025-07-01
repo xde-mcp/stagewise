@@ -16,6 +16,8 @@ Without these guys, stagewise wouldn't be here. Huge props to:
 - [denwaya34](https://github.com/denwaya34)
 - [hwanyoungChoi](https://github.com/hwanyoungChoi)
 - [muhi111](https://github.com/muhi111)
+- [alexander-litvinovich](https://github.com/alexander-litvinovich)
+- [fatdoge](https://github.com/fatdoge)
 
 ## I would like to join this list. How can I help the project?
 
