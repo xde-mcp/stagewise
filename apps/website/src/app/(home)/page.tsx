@@ -34,7 +34,7 @@ import WindsurfLogo from './_components/ide_logos/windsurf.png';
 import GitHubCopilotLogo from './_components/ide_logos/github_copilot.png';
 import ClineLogo from './_components/ide_logos/cline.png';
 import RooCodeLogo from './_components/ide_logos/roo_code.png';
-
+import TraeLogo from './_components/ide_logos/trae.png';
 import ReactFrameworkLogo from './_components/framework_logos/react.png';
 import VueFrameworkLogo from './_components/framework_logos/vue.png';
 import AngularFrameworkLogo from './_components/framework_logos/angular.png';
@@ -669,6 +669,10 @@ export default function Home() {
             {
               name: 'Roo Code',
               logo: RooCodeLogo,
+            },
+            {
+              name: 'Trae',
+              logo: TraeLogo,
             },
           ].map((framework, i) => (
             <ScrollReveal key={framework.name} delay={i * 100} direction="up">
