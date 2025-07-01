@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.7.0
+
+### Minor Changes
+
+- 470d0e9: Add support for the Kilo Code AI Agent VS Code extension
+
 ## 0.6.1
 
 ### Patch Changes
