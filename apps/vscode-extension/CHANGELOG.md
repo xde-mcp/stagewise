@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.6.1
+
+### Patch Changes
+
+- 6e80d88: Noop-change: Triggering the release of trae-support.
+
 ## 0.6.0
 
 ### Minor Changes
