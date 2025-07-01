@@ -7,6 +7,20 @@ import { DayPicker } from 'react-day-picker';
 import { cn } from '@stagewise/ui/lib/utils';
 import { buttonVariants } from '@stagewise/ui/components/button';
 
+const IconLeft = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof ChevronLeft>) => (
+  <ChevronLeft className={cn('size-4', className)} {...props} />
+);
+
+const IconRight = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof ChevronRight>) => (
+  <ChevronRight className={cn('size-4', className)} {...props} />
+);
+
 function Calendar({
   className,
   classNames,
@@ -60,12 +74,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn('size-4', className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn('size-4', className)} {...props} />
-        ),
+        IconLeft,
+        IconRight,
       }}
       {...props}
     />

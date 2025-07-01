@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
 import { defineBuildConfig } from 'unbuild';
-import { execSync } from 'node:child_process';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
@@ -17,15 +16,6 @@ function copyRecursiveSync(src: string, dest: string) {
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
-  }
-}
-
-function getLatestVersion(pkg: string) {
-  try {
-    return execSync(`npm view ${pkg} version`).toString().trim();
-  } catch (e) {
-    console.error(`Could not fetch latest version for ${pkg}`);
-    return null;
   }
 }
 

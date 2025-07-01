@@ -10,7 +10,7 @@ export function getInstalledDependencies(
   // Bun lock file: packages is an object where each key is the package name,
   // and the value is an array: [fullNameWithVersion, ...]
   if (data.packages) {
-    for (const [pkgName, pkgDetails] of Object.entries<any>(data.packages)) {
+    for (const [_pkgName, pkgDetails] of Object.entries<any>(data.packages)) {
       // pkgDetails[0] is like '@package-name@version'
       const fullNameWithVersion = pkgDetails[0];
       const atIndex = fullNameWithVersion.lastIndexOf('@');

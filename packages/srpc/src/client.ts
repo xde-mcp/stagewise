@@ -30,7 +30,7 @@ class ClientBridge extends WebSocketRpcBridge {
     this.reconnectTimer = setTimeout(async () => {
       try {
         await this.connect();
-      } catch (error) {
+      } catch (_error) {
         this.reconnect(); // Try again
       }
     }, this.options.reconnectDelay);

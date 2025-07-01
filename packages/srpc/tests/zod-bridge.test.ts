@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { createServer } from 'node:http';
 import { createBridgeContract } from '../src/zod-contract';
@@ -135,11 +135,9 @@ describe('Zod Bridge Integration', () => {
     });
 
     it('should reject invalid update data', async () => {
-      const updateError = vi.fn();
-
       serverBridge.register({
         echo: async (request) => ({ message: request.message }), // Stub implementation
-        countdown: async (request, { sendUpdate }) => {
+        countdown: async (_request, { sendUpdate }) => {
           // @ts-expect-error - Intentionally testing runtime validation
           sendUpdate({ current: 'not a number' });
           return { done: true };

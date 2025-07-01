@@ -54,7 +54,7 @@ function getAngularComponentHierarchy(
           }
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // Element might not be an Angular component host, or other error
     }
     // Move to the parent element to check for parent components

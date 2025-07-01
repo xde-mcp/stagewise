@@ -3,6 +3,7 @@ import { ref } from 'vue';
 
 defineProps<{ msg: string }>();
 
+// biome-ignore lint/correctness/noUnusedVariables: Biome doesn't understand vue?
 const count = ref(0);
 </script>
 

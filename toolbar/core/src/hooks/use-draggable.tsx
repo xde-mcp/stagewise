@@ -590,7 +590,7 @@ export function useDraggable(config: DraggableConfig) {
 
   // This will be listened to globally if the mouse was pressed down on the draggable element
   const mouseUpHandler = useCallback(
-    (e: MouseEvent) => {
+    (_e: MouseEvent) => {
       if (isDraggingRef.current) {
         if (onDragEnd) onDragEnd();
         if (latestProviderDataRef.current?.emitDragEnd) {
