@@ -14,7 +14,7 @@ import { callTraeAgent } from './call-trae-agent';
 export async function dispatchAgentCall(request: PromptRequest) {
   const ide = getCurrentIDE();
   switch (ide) {
-    case 'TRAE':  
+    case 'TRAE':
       return await callTraeAgent(request);
     case 'CURSOR':
       return await callCursorAgent(request);

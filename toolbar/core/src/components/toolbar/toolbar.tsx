@@ -176,9 +176,7 @@ export function ToolbarDraggableBox() {
           {shouldShowWindowSelection && <WindowSelectionPanel />}
           {isConnectedState &&
             openPanel === 'settings' &&
-            !shouldShowWindowSelection && (
-              <SettingsPanel onClose={() => setOpenPanel(null)} />
-            )}
+            !shouldShowWindowSelection && <SettingsPanel />}
           {isConnectedState &&
             !shouldShowWindowSelection &&
             pluginBox?.component}

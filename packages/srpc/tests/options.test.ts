@@ -56,14 +56,6 @@ describe('WebSocketBridgeOptions', () => {
 
       await shortTimeoutClient.connect();
 
-      // Mock the server ping method to delay longer than the timeout
-      const originalHandler = vi.fn().mockImplementation(async () => {
-        return { pong: true as const };
-      });
-
-      // Store original handler
-      const originalImplementation = server.register;
-
       // Create modified implementation
       const delayedHandler = async () => {
         await new Promise((resolve) => setTimeout(resolve, 100)); // 100ms delay

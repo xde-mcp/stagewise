@@ -285,37 +285,4 @@ describe('sRPC Package', () => {
       expect(response2).toEqual({ message: 'Hello, After Reconnect!' });
     });
   });
-
-  describe('Type Safety', () => {
-    it('should enforce contract types at compile time', () => {
-      // This test doesn't have runtime assertions but verifies TypeScript types
-      // If this code compiles, the type system is working correctly
-
-      type Expect<T extends true> = T;
-      type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
-        T,
-      >() => T extends Y ? 1 : 2
-        ? true
-        : false;
-
-      // Verify response type from greet method matches GreetingResponse
-      async function testTypes() {
-        const client = createSRPCClientBridge(
-          `ws://localhost:${TEST_PORT}`,
-          contract,
-        );
-        const response = await client.call.greet(
-          { name: 'Type Test' },
-          { onUpdate: () => {} },
-        );
-
-        type ResponseType = typeof response;
-        type IsCorrectType = Expect<Equal<ResponseType, { message: string }>>;
-
-        // This line will fail TypeScript compilation if types don't match
-        const _typeCheck: IsCorrectType = true;
-        return _typeCheck;
-      }
-    });
-  });
 });

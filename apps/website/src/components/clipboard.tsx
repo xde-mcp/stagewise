@@ -21,7 +21,7 @@ export function Clipboard({
       setCopied(true);
       posthog?.capture('quickstart_toolbar_copy_click');
       setTimeout(() => setCopied(false), 1500);
-    } catch (e) {
+    } catch (_e) {
       // Optionally handle error
     }
   };

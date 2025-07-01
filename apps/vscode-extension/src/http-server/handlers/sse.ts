@@ -3,7 +3,7 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { mcpServer } from '../../mcp/server';
 import { addTransport, removeTransport, getTransport } from '../transport';
 
-export const handleSse: RequestHandler = async (req, res) => {
+export const handleSse: RequestHandler = async (_req, res) => {
   const transport = new SSEServerTransport('/sse-messages', res);
   addTransport('sse', transport.sessionId, transport);
 

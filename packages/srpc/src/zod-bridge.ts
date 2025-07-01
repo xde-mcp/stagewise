@@ -31,7 +31,7 @@ export class ZodTypedBridge<
 
     // Create a proxy for method calling with validation
     this.call = new Proxy({} as ZodMethodCalls<Consumes>, {
-      get: (target, prop) => {
+      get: (_target, prop) => {
         return (request: any, options?: any) => {
           return this.callMethod(prop as keyof Consumes, request, options);
         };
