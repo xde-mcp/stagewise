@@ -1,5 +1,5 @@
 ---
-"stagewise-vscode-extension": major
+"stagewise-vscode-extension": minor
 ---
 
 Support Trae IDE
