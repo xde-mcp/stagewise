@@ -59,6 +59,7 @@ export function createGettingStartedPanel(
             {
               type: message.data.type,
               text: message.data.text,
+              email: message.data.email,
             },
           );
           break;

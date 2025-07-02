@@ -19,7 +19,7 @@ We collect the following types of telemetry data:
 - Getting started panel events (`getting_started_panel_shown`, `getting_started_panel_manual_show`, `interacted_with_getting_started_panel`, `dismissed_getting_started_panel`, `clicked_setup_toolbar_in_getting_started_panel`, `clicked_open_docs_in_getting_started_panel`)
   - When the getting started panel is shown automatically to new users or manually opened
 - User feedback (`post_setup_feedback`)
-  - Feedback provided by users after toolbar setup (includes feedback type and text)
+  - Feedback provided by users after toolbar setup (includes feedback type, text, and optional email for follow-up)
 - Toolbar update recommendation events (`show_toolbar_update_notification`, `toolbar_update_notification_auto_update`, `toolbar_update_notification_ignored`, `toolbar_update_notification_dismissed`)
   - When users get recommended updating the stagewise toolbar on loading of workspaces
 - Toolbar integration recommendation events (`show_toolbar_integration_notification`, `toolbar_integration_notification_ignore`, `toolbar_integration_notification_dismissed`)
@@ -49,7 +49,7 @@ We collect the following types of telemetry data:
 - `getting_started_panel_manual_show`: Triggered when a user manually opens the getting started panel via command
   - No additional properties collected
 - `post_setup_feedback`: Triggered when a user provides feedback after toolbar setup
-  - Includes: feedback type and feedback text
+  - Includes: feedback type, feedback text, and optional email address for follow-up
 - `show_toolbar_update_notification`: Triggered when a auto-update reocmmendation for the toolbar pops up
   - No additional properties collected
 - `toolbar_update_notification_auto_update`: Triggered when the user decides to proceed with the auto-update

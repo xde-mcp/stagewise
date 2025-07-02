@@ -120,6 +120,11 @@
           "classification": "EndUserPseudonymizedInformation",
           "purpose": "FeatureInsight",
           "comment": "The feedback text provided by the user"
+        },
+        "email": {
+          "classification": "EndUserPseudonymizedInformation",
+          "purpose": "FeatureInsight",
+          "comment": "The email address provided by the user for follow-up (optional)"
         }
       }
     },
