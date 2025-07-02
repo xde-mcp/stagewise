@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.7.1
+
+### Patch Changes
+
+- abd370c: Including email after capturing feedback.
+
 ## 0.7.0
 
 ### Minor Changes
