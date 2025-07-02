@@ -91,9 +91,9 @@ We use pseudonymization to protect user privacy while maintaining data quality:
 ## What We Don't Collect
 
 We do NOT collect:
-- Personal identifiable information (PII)
+- Personal identifiable information (PII) except for optionally provided email addresses during feedback
 - File contents or file names
-- User names or email addresses
+- User names
 - Project-specific information
 - Workspace paths or repository names
 - Any sensitive data
