@@ -1,11 +1,5 @@
 # @stagewise/toolbar-react
 
-## 0.5.0
-
-### Minor Changes
-
-- 470d0e9: Add support for the Kilo Code AI Agent VS Code extension
-
 ## 0.4.9
 
 ### Patch Changes
