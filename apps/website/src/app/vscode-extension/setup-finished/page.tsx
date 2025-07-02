@@ -17,6 +17,7 @@ export default function SetupFinishedPage() {
     'positive' | 'negative' | null
   >(null);
   const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackEmail, setFeedbackEmail] = useState('');
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false);
 
   const handleShowRepo = useCallback(() => {
@@ -36,16 +37,18 @@ export default function SetupFinishedPage() {
           data: {
             type: feedbackType,
             text: feedbackText,
+            email: feedbackEmail,
           },
         },
         '*',
       );
       setShowFeedbackDialog(false);
       setFeedbackText('');
+      setFeedbackEmail('');
       setFeedbackType(null);
       setHasSubmittedFeedback(true);
     }
-  }, [feedbackType, feedbackText]);
+  }, [feedbackType, feedbackText, feedbackEmail]);
 
   const handleDismissPanel = useCallback(() => {
     window.parent.postMessage({ command: 'dismissPanel' }, '*');
@@ -126,15 +129,22 @@ export default function SetupFinishedPage() {
           <DialogHeader>
             <DialogTitle className="text-white">
               {feedbackType === 'positive'
-                ? 'What went well?'
-                : 'What could be improved?'}
+                ? 'What do you want to tell us?'
+                : 'What could we improve?'}
             </DialogTitle>
           </DialogHeader>
           <textarea
             className="h-32 w-full resize-none rounded-lg bg-neutral-700 p-4 text-white"
-            placeholder="Share your thoughts (optional)"
+            placeholder="I wish there was a way to... (optional)"
             value={feedbackText}
             onChange={(e) => setFeedbackText(e.target.value)}
+          />
+          <input
+            type="email"
+            className="w-full rounded-lg bg-neutral-700 p-4 text-white"
+            placeholder="Your email (optional)"
+            value={feedbackEmail}
+            onChange={(e) => setFeedbackEmail(e.target.value)}
           />
           <DialogFooter>
             <button
