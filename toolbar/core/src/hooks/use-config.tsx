@@ -1,9 +1,9 @@
-import { type ComponentChildren, createContext } from 'preact';
-import { useContext, useMemo } from 'preact/hooks';
-import type { ToolbarConfig } from '@/config';
+import { createContext, type ReactNode } from 'react';
+import { useContext, useMemo } from 'react';
+import type { InternalToolbarConfig } from '@/config';
 
 export interface ConfigContextType {
-  config: ToolbarConfig | undefined;
+  config: InternalToolbarConfig | undefined;
 }
 
 const ConfigContext = createContext<ConfigContextType>({
@@ -21,8 +21,8 @@ export function ConfigProvider({
   children,
   config,
 }: {
-  children: ComponentChildren;
-  config?: ToolbarConfig;
+  children?: ReactNode;
+  config?: InternalToolbarConfig;
 }) {
   const value = useMemo(() => {
     return {

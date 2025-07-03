@@ -1,7 +1,7 @@
 import { useWindowSize } from '@/hooks/use-window-size';
 import { useCyclicUpdate } from '@/hooks/use-cyclic-update';
-import { useCallback, useRef } from 'preact/hooks';
-import type { HTMLAttributes } from 'preact/compat';
+import { useCallback, useRef } from 'react';
+import type { HTMLAttributes } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useChatState } from '@/hooks/use-chat-state';
 import type { ContextElementContext } from '@/plugin';
@@ -15,7 +15,11 @@ export interface ContextItemProps extends HTMLAttributes<HTMLDivElement> {
   }[];
 }
 
-export function ContextItem({ refElement, ...props }: ContextItemProps) {
+export function ContextItem({
+  refElement,
+  pluginContext,
+  ...props
+}: ContextItemProps) {
   const boxRef = useRef<HTMLDivElement>(null);
 
   const windowSize = useWindowSize();
@@ -65,7 +69,7 @@ export function ContextItem({ refElement, ...props }: ContextItemProps) {
         <div className="flex flex-row items-center justify-center gap-0.5 overflow-hidden rounded-md bg-zinc-700/80 px-1 py-0 font-medium text-white text-xs">
           <span className="truncate">{refElement.tagName.toLowerCase()}</span>
         </div>
-        {props.pluginContext
+        {pluginContext
           .filter((plugin) => plugin.context.annotation)
           .map((plugin) => (
             <div className="flex flex-row items-center justify-center gap-0.5 overflow-hidden rounded-md bg-zinc-700/80 px-1 py-0 font-medium text-white text-xs">

@@ -7,7 +7,7 @@ interface AngularComponentInfo {
 let angularWarningShown = false;
 
 function checkAngularAndWarnOnce() {
-  if (!(window as any).ng && !angularWarningShown) {
+  if (!(window as any).parent.ng && !angularWarningShown) {
     console.warn(
       'Angular plugin: No Angular instance (window.ng) detected or Angular is not in development mode. Component detection features will not be available.',
     );
@@ -30,9 +30,8 @@ function checkAngularAndWarnOnce() {
 function getAngularComponentHierarchy(
   element: HTMLElement | null,
 ): AngularComponentInfo[] {
-  if (!(window as any).ng || !(window as any).ng.getComponent) {
+  if (!(window as any).parent.ng || !(window as any).parent.ng.getComponent)
     return [];
-  }
 
   const components: AngularComponentInfo[] = [];
   let currentElement: HTMLElement | null = element;
@@ -40,7 +39,9 @@ function getAngularComponentHierarchy(
 
   while (currentElement && components.length < maxComponents) {
     try {
-      const componentInstance = (window as any).ng.getComponent(currentElement);
+      const componentInstance = (window as any).parent.ng.getComponent(
+        currentElement,
+      );
       if (componentInstance) {
         let componentName = componentInstance.constructor.name;
         if (componentName.startsWith('_')) {

@@ -31,8 +31,8 @@
       "default": "./dist/index.es.js"
     }
   },
-  "main": "dist/index.umd.cjs",
-  "module": "dist/index.js",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
@@ -40,17 +40,17 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "clean": "rm -rf .turbo node_modules",
-    "dev": "tsc -b && vite build --mode development",
-    "build": "tsc -b && vite build --mode production"
+    "dev": "tsc -b && tsx build.config.ts development",
+    "build": "tsc -b && tsx build.config.ts production"
   },
   "dependencies": {},
   "devDependencies": {
     "@stagewise/toolbar": "workspace:*",
+    "@stagewise/plugin-builder": "workspace:*",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "vite-plugin-dts": "^4.5.3",
-    "@vitejs/plugin-react-swc": "^3.7.0",
-    "rollup-preserve-directives": "^1.0.0"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@types/react": "^19.1.8"
   },
   "peerDependencies": {
     "@stagewise/toolbar": "workspace:*"
