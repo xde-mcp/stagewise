@@ -5,6 +5,7 @@
 "@stagewise-plugins/react": minor
 "@stagewise/toolbar": minor
 "@stagewise-plugins/vue": minor
+"@stagewise/plugin-builder": patch
 ---
 
 Revamp toolbar loading mechanism to use iframes
