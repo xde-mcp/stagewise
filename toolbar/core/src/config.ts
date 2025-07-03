@@ -1,6 +1,6 @@
 import type { ToolbarPlugin } from './plugin.ts';
 
-export interface ToolbarConfig {
+export interface InternalToolbarConfig {
   plugins: ToolbarPlugin[];
   experimental?: {
     /**
@@ -12,4 +12,13 @@ export interface ToolbarConfig {
      */
     enableToolCalls: boolean;
   };
+}
+
+export interface ToolbarPluginLoader {
+  loader: true; // Used to identify new plugins that are loaded into the toolbar via loader mechanism
+  mainPlugin: string; // The main plugin code that will be loaded into the toolbar
+}
+
+export interface ToolbarConfig extends Omit<InternalToolbarConfig, 'plugins'> {
+  plugins: ToolbarPluginLoader[];
 }

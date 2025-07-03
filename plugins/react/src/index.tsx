@@ -6,7 +6,7 @@ import {
   getSelectedElementsPrompt,
 } from './utils';
 
-export const ReactPlugin: ToolbarPlugin = {
+const ReactPlugin: ToolbarPlugin = {
   displayName: 'React',
   description:
     'This toolbar adds additional information and metadata for apps using React as a UI framework',
@@ -31,3 +31,5 @@ export const ReactPlugin: ToolbarPlugin = {
     };
   },
 };
+
+export default ReactPlugin;

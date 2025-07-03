@@ -1,6 +1,6 @@
-import { createContext } from 'preact';
-import { useContext, useState, useEffect } from 'preact/hooks';
-import type { ComponentChildren } from 'preact';
+import { createContext } from 'react';
+import { useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import {
   discoverVSCodeWindows,
   type VSCodeContext as SRPCVSCodeContext,
@@ -8,8 +8,8 @@ import {
 
 // Utility function to get current port from browser location
 const getCurrentPort = (): string => {
-  if (typeof window !== 'undefined' && window.location) {
-    return window.location.port || '80'; // Default to 80 if no port specified
+  if (typeof window !== 'undefined' && window.parent.location) {
+    return window.parent.location.port || '80'; // Default to 80 if no port specified
   }
   return '80'; // Fallback for SSR or testing
 };
@@ -118,7 +118,7 @@ const VSCodeContext = createContext<VSCodeContextType>({
  * }
  * ```
  */
-export function VSCodeProvider({ children }: { children: ComponentChildren }) {
+export function VSCodeProvider({ children }: { children?: ReactNode }) {
   const [windows, setWindows] = useState<SRPCVSCodeContext[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);

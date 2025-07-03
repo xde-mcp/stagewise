@@ -1,5 +1,5 @@
-import { type ComponentChildren, createContext } from 'preact';
-import { useContext, useState, useCallback, useEffect } from 'preact/hooks';
+import { type ReactNode, createContext } from 'react';
+import { useContext, useState, useCallback, useEffect } from 'react';
 import { useSRPCBridge } from './use-srpc-bridge';
 import { createPrompt, type PluginContextSnippets } from '@/prompts';
 import { useAppState } from './use-app-state';
@@ -85,7 +85,7 @@ const ChatContext = createContext<ChatContext>({
 });
 
 interface ChatStateProviderProps {
-  children: ComponentChildren;
+  children: ReactNode;
 }
 
 export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
@@ -336,7 +336,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       const prompt = createPrompt(
         chat?.domContextElements.map((e) => e.element),
         content,
-        window.location.href,
+        window.parent.location.href,
         pluginContextSnippets,
       );
 

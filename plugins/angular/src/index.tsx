@@ -5,7 +5,7 @@ import {
   getSelectedElementAnnotation,
 } from './utils';
 
-export const AngularPlugin: ToolbarPlugin = {
+const AngularPlugin: ToolbarPlugin = {
   displayName: 'Angular',
   description:
     'This toolbar adds additional information and metadata for apps using Angular as a UI framework',
@@ -30,3 +30,5 @@ export const AngularPlugin: ToolbarPlugin = {
     };
   },
 };
+
+export default AngularPlugin;

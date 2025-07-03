@@ -5,7 +5,7 @@ import {
   getSelectedElementsPrompt,
 } from './utils';
 
-export const VuePlugin: ToolbarPlugin = {
+const VuePlugin: ToolbarPlugin = {
   displayName: 'Vue',
   description:
     'This toolbar adds additional information and metadata for apps using Vue as an UI framework',
@@ -30,3 +30,5 @@ export const VuePlugin: ToolbarPlugin = {
     };
   },
 };
+
+export default VuePlugin;
