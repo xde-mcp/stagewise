@@ -35,9 +35,7 @@
       "require": "./dist/index.cjs.js"
     },
     "./plugin-ui": {
-      "types": "./dist/plugin-ui/index.d.ts",
-      "import": "./dist/plugin-ui/index.es.js",
-      "require": "./dist/plugin-ui/index.cjs.js"
+      "types": "./dist/plugin-ui/index.d.ts"
     }
   },
   "files": [

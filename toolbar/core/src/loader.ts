@@ -1,12 +1,11 @@
-import type { ToolbarConfig as InternalToolbarConfig } from '@/config';
+import type {
+  ToolbarConfig as InternalToolbarConfig,
+  ToolbarPluginLoader,
+} from '@/config';
 export type * from '@/plugin';
 
-interface ToolbarPlugin {
-  loader: true; // Used to identify new plugins that are loaded into the toolbar via loader mechanism
-  mainPlugin: string; // The main plugin code that will be loaded into the toolbar
-}
 export interface ToolbarConfig extends Omit<InternalToolbarConfig, 'plugins'> {
-  plugins: ToolbarPlugin[];
+  plugins: ToolbarPluginLoader[];
 }
 
 declare global {

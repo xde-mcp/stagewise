@@ -1,5 +1,6 @@
 import buildToolbarMain from './buildsteps/1-toolbar-main.js';
-import buildToolbarLoader from './buildsteps/2-toolbar-loader.js';
+import buildPluginUi from './buildsteps/2-plugin-ui.js';
+import buildToolbarLoader from './buildsteps/3-toolbar-loader.js';
 import { cp, mkdir, rm, readdir, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -28,6 +29,8 @@ async function copyJsAndDtsFiles(srcDir: string, destDir: string) {
 await rm(path.join(__dirname, './dist'), { recursive: true, force: true });
 
 await buildToolbarMain();
+
+await buildPluginUi();
 
 await buildToolbarLoader();
 

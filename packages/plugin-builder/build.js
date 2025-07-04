@@ -29,6 +29,7 @@ const buildConfig = {
     'vite-plugin-dts',
     'rollup-preserve-directives',
     'node:*',
+    'typescript',
   ],
   minify: false,
   sourcemap: false,
