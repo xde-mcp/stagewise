@@ -1,7 +1,7 @@
 {
   "name": "@stagewise/plugin-builder",
   "description": "Build stagewise plugins with ease.",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "private": false,
   "type": "module",
   "keywords": [

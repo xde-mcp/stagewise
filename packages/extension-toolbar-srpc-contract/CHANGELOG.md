@@ -1,5 +1,15 @@
 # @stagewise/extension-toolbar-srpc-contract
 
+## 0.2.0
+
+### Minor Changes
+
+- e4a0864: Revamp toolbar loading mechanism to use iframes
+
+  - Plugins must now be default exported
+  - Plugins must use the @stagewise/plugin-builder package to build their plugin
+  - Deployed plugins are now default exports. Make sure to update your project accordingly.
+
 ## 0.1.3
 
 ### Patch Changes

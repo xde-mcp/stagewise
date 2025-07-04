@@ -1,5 +1,12 @@
 # stagewise-vscode-extension
 
+## 0.7.2
+
+### Patch Changes
+
+- Updated dependencies [e4a0864]
+  - @stagewise/extension-toolbar-srpc-contract@0.2.0
+
 ## 0.7.1
 
 ### Patch Changes
