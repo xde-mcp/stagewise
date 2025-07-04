@@ -15,6 +15,7 @@ export class StorageService {
   private storageUri!: vscode.Uri;
   private textEncoder = new TextEncoder(); // For converting string to Uint8Array (UTF-8)
   private textDecoder = new TextDecoder(); // For converting Uint8Array to string (UTF-8)
+  private initializePromise: Promise<void> | null = null;
 
   private constructor() {}
 
@@ -25,7 +26,17 @@ export class StorageService {
     return StorageService.instance;
   }
 
-  public initialize() {
+  public async initialize(): Promise<void> {
+    // Ensure initialize is only called once and subsequent calls wait for completion
+    if (this.initializePromise) {
+      return this.initializePromise;
+    }
+
+    this.initializePromise = this.doInitialize();
+    return this.initializePromise;
+  }
+
+  private async doInitialize(): Promise<void> {
     if (!this.context.isInitialized()) {
       throw new Error(
         'VScodeContext has not been initialized. Call VScodeContext.getInstance().initialize(context) first.',
@@ -33,7 +44,19 @@ export class StorageService {
     }
     this.storageUri = this.context.getContext()!.globalStorageUri;
     // ensure storage directory exists
-    vscode.workspace.fs.createDirectory(this.storageUri);
+    await vscode.workspace.fs.createDirectory(this.storageUri);
+  }
+
+  /**
+   * Ensures the storage is initialized before any operation.
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initializePromise) {
+      throw new Error(
+        'StorageService has not been initialized. Call initialize() first.',
+      );
+    }
+    await this.initializePromise;
   }
 
   /**
@@ -43,6 +66,7 @@ export class StorageService {
    * @returns The stored value, the default value, or undefined.
    */
   public async get<T>(key: string, defaultValue?: T): Promise<T | undefined> {
+    await this.ensureInitialized();
     const fileUri = this.getUriForKey(key);
 
     try {
@@ -71,12 +95,13 @@ export class StorageService {
    * @param value The value to store. Must be JSON-serializable.
    */
   public async set<T>(key: string, value: T): Promise<void> {
+    await this.ensureInitialized();
     const fileUri = this.getUriForKey(key);
     // Serialize the value to a JSON string, then encode it as UTF-8 bytes.
     const fileContents = this.textEncoder.encode(JSON.stringify(value));
 
     try {
-      // Ensure the storage directory exists
+      // Ensure the storage directory exists (defensive programming)
       await vscode.workspace.fs.createDirectory(this.storageUri);
       // Write the data to the file.
       await vscode.workspace.fs.writeFile(fileUri, fileContents);
@@ -92,6 +117,7 @@ export class StorageService {
    * @param key The key to delete.
    */
   public async delete(key: string): Promise<void> {
+    await this.ensureInitialized();
     const fileUri = this.getUriForKey(key);
     try {
       // Delete the file.
@@ -110,13 +136,25 @@ export class StorageService {
   }
 
   /**
+   * Sanitizes a key to ensure it's a valid filename.
+   * @param key The original key.
+   * @returns A sanitized key safe for use as a filename.
+   */
+  private sanitizeKey(key: string): string {
+    // Replace invalid filename characters with underscores
+    // Invalid characters: / \ : * ? " < > |
+    return key.replace(/[/\\:*?"<>|]/g, '_');
+  }
+
+  /**
    * Helper method to get the full URI for a given storage key.
    * @param key The storage key.
    * @returns A vscode.Uri object pointing to the file for the key.
    */
   private getUriForKey(key: string): vscode.Uri {
-    // We use the key as the filename.
+    // Sanitize the key to ensure it's a valid filename
+    const sanitizedKey = this.sanitizeKey(key);
     // Uri.joinPath handles path separators correctly across OSes.
-    return vscode.Uri.joinPath(this.storageUri, key);
+    return vscode.Uri.joinPath(this.storageUri, sanitizedKey);
   }
 }

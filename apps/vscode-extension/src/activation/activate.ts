@@ -43,14 +43,14 @@ export async function activate(context: vscode.ExtensionContext) {
   try {
     // initialize all services in the correct order
     VScodeContext.getInstance().initialize(context);
-    StorageService.getInstance().initialize();
+    await StorageService.getInstance().initialize();
 
     const analyticsService = AnalyticsService.getInstance();
     analyticsService.initialize();
 
     WorkspaceService.getInstance();
     RegistryService.getInstance();
-    EnvironmentInfo.getInstance().initialize();
+    await EnvironmentInfo.getInstance().initialize();
 
     const integrationNotificator = ToolbarIntegrationNotificator.getInstance();
     integrationNotificator.initialize();
