@@ -44,7 +44,7 @@ export const DropdownMenuContent = forwardRef(
 const DropdownMenuItemStyles =
   'w-full flex flex-row select-none items-center justify-start gap-2 p-2 pr-6 truncate overflow-hidden rounded-md hover:bg-zinc-950/10 focus:text-zinc-900 cursor-pointer transition-color duration-150 text-sm font-normal text-foreground';
 
-export const DropdownMenuButttonItem = forwardRef(
+export const DropdownMenuButtonItem = forwardRef(
   (
     props: MenuItemProps & ButtonProps & { className?: string },
     ref: Ref<HTMLButtonElement | HTMLElement>,
