@@ -10,7 +10,7 @@ const toolbarConfig: ToolbarConfig = {
 </script>
 
 <template>
-  <StagewiseToolbar :config="toolbarConfig" />
+  <StagewiseToolbar :config="_toolbarConfig" />
   <MainLayout />
 </template>
 
