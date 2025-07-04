@@ -1,7 +1,7 @@
 import { Ellipsis, Minimize2 } from 'lucide-react';
 import {
   DropdownMenuButton,
-  DropdownMenuButttonItem,
+  DropdownMenuButtonItem,
   DropdownMenuContent,
 } from '../ui/dropdown-menu';
 import { DropdownMenu } from '../ui/dropdown-menu';
@@ -21,10 +21,10 @@ export function ToolbarMoreActionsButton() {
           </ToolbarButton>
         </DropdownMenuButton>
         <DropdownMenuContent>
-          <DropdownMenuButttonItem onClick={() => minimize()}>
+          <DropdownMenuButtonItem onClick={() => minimize()}>
             <Minimize2 className="size-4" />
             Minimize companion
-          </DropdownMenuButttonItem>
+          </DropdownMenuButtonItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </ToolbarSection>

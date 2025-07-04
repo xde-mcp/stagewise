@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 import { build } from 'vite';
 
-const mode = process.argv[2];
+const mode = process.argv[2] || 'production';
 
 export default async function buildToolbarMain() {
   await build({

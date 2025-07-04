@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import appStyle from './app.css?inline';
 import { App } from './app.tsx';
 
-// @ts-ignore
+// @ts-ignore - This module is generated at init time and added to the importmap of the hosting iframe
 import config from '@stagewise/toolbar/config';
 
 // Load styling into the document

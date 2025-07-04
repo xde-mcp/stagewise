@@ -6,7 +6,7 @@ import preserveDirectives from 'rollup-preserve-directives';
 import { resolve } from 'node:path';
 import fs from 'node:fs';
 
-const mode = process.argv[2];
+const mode = process.argv[2] || 'production';
 
 export default async function buildPlugin(
   projectDir: string,

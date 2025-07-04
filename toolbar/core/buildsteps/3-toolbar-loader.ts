@@ -4,7 +4,7 @@ import { generateDeclarationFile } from './utils.js';
 import { Extractor, ExtractorConfig } from '@microsoft/api-extractor';
 import fs from 'node:fs';
 
-const mode = process.argv[2];
+const mode = process.argv[2] || 'production';
 
 export default async function buildToolbarLoader() {
   // load the manifest.json from the toolbar-main build.

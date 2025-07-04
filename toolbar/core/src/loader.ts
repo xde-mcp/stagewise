@@ -15,8 +15,17 @@ declare global {
 }
 
 export function initToolbar(config: ToolbarConfig) {
-  // If the toolbar is already loaded, don't load another instance
+  // We check if we're in a non-browser environment and prevent the execution if that is the case
+  const isBrowser = typeof window !== 'undefined';
+  if (!isBrowser) {
+    console.warn(
+      'Stagewise Toolbar is not supported in non-browser environments.',
+    );
+    return;
+  }
+
   if (document.querySelector('stagewise-toolbar')) {
+    // If the toolbar is already loaded, don't load another instance
     console.warn('Stagewise Toolbar is already loaded - aborting init.');
     return;
   }
@@ -96,7 +105,6 @@ export function initToolbar(config: ToolbarConfig) {
     );
 
     // We create a new importmap module for every plugin that was passed into the config.
-    // TODO
     for (const [index, plugin] of config.plugins.entries()) {
       const plugin_module = URL.createObjectURL(
         new Blob([plugin.mainPlugin], { type: 'text/javascript' }),
