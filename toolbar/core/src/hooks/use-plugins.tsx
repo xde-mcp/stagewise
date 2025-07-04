@@ -64,6 +64,7 @@ export function PluginProvider({ children }: { children?: ReactNode }) {
   useEffect(() => {
     if (pluginsLoadedRef.current) return;
     pluginsLoadedRef.current = true;
+    console.log('plugins', plugins);
     plugins.forEach((plugin) => {
       plugin.onLoad?.(toolbarContext);
     });

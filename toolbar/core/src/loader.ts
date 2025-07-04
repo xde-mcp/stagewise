@@ -5,7 +5,7 @@ import type {
 export type * from '@/plugin';
 
 export interface ToolbarConfig extends Omit<InternalToolbarConfig, 'plugins'> {
-  plugins: ToolbarPluginLoader[];
+  plugins?: ToolbarPluginLoader[];
 }
 
 declare global {
@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-export function initToolbar(config: ToolbarConfig) {
+export function initToolbar(config: ToolbarConfig = {}) {
   // We check if we're in a non-browser environment and prevent the execution if that is the case
   const isBrowser = typeof window !== 'undefined';
   if (!isBrowser) {
@@ -104,12 +104,14 @@ export function initToolbar(config: ToolbarConfig) {
       new Blob(["export * from 'plugin-ui.js'"], { type: 'text/javascript' }),
     );
 
-    // We create a new importmap module for every plugin that was passed into the config.
-    for (const [index, plugin] of config.plugins.entries()) {
-      const plugin_module = URL.createObjectURL(
-        new Blob([plugin.mainPlugin], { type: 'text/javascript' }),
-      );
-      main_modules[`plugin-entry-${index}`] = plugin_module;
+    if (config.plugins) {
+      // We create a new importmap module for every plugin that was passed into the config.
+      for (const [index, plugin] of config.plugins.entries()) {
+        const plugin_module = URL.createObjectURL(
+          new Blob([plugin.mainPlugin], { type: 'text/javascript' }),
+        );
+        main_modules[`plugin-entry-${index}`] = plugin_module;
+      }
     }
 
     // We create one config module on the fly which represents the actual internal config of the toolbar.
@@ -145,14 +147,13 @@ export function initToolbar(config: ToolbarConfig) {
 }
 
 function getConfigModuleContent(config: ToolbarConfig) {
-  const pluginImports = config.plugins
-    .map((_, index) => {
-      return `import plugin${index} from 'plugin-entry-${index}';`;
-    })
-    .join('\n');
+  const pluginImports =
+    config.plugins
+      ?.map((_, index) => `import plugin${index} from 'plugin-entry-${index}'`)
+      .join('\n') ?? '';
 
   // We make an array out of the imported plugins.
-  const convertedPluginArray = `[${config.plugins.map((_, index) => `plugin${index}`).join(',')}]`;
+  const convertedPluginArray = `[${config.plugins?.map((_, index) => `plugin${index}`).join(',') ?? ''}]`;
 
   const convertedConfig = {
     ...config,
