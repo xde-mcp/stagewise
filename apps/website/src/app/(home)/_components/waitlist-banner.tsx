@@ -80,11 +80,11 @@ export function WaitlistBanner() {
     if (typeof variant === 'string') {
       switch (variant) {
         case 'control':
-        case 'variant-a':
+        case 'test_a':
           return copyA;
-        case 'variant-b':
+        case 'test_b':
           return copyB;
-        case 'variant-c':
+        case 'test_c':
           return copyC;
         default:
           return copyA;
