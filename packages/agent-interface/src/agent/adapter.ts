@@ -372,7 +372,7 @@ export class AgentTransportAdapter implements TransportInterface {
             (req) => req.call,
           );
         },
-        requestToolCall: (toolName, parameters) => {
+        requestToolCall: (toolName, _parameters) => {
           if (!self._toolCallingSupported) {
             return Promise.reject(
               new Error('Tool calling is not supported by this agent.'),

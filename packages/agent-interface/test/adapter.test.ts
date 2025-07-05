@@ -14,10 +14,7 @@ import type {
   Tool,
   ToolCallResult,
 } from '../src/router/capabilities/tool-calling/types';
-import type {
-  UserMessage,
-  AgentMessageContentItemPart,
-} from '../src/router/capabilities/messaging/types';
+import type { UserMessage } from '../src/router/capabilities/messaging/types';
 
 // --- Helper Functions ---
 
