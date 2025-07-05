@@ -20,7 +20,7 @@ export default function SetupFinishedPage() {
   const [feedbackEmail, setFeedbackEmail] = useState('');
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false);
 
-  const handleShowRepo = useCallback(() => {
+  const _handleShowRepo = useCallback(() => {
     window.parent.postMessage({ command: 'showRepo' }, '*');
   }, []);
 
@@ -66,31 +66,19 @@ export default function SetupFinishedPage() {
           Congratulations! Your stagewise toolbar has been successfully set up.
           You can now start using it to enhance your development workflow.
         </p>
-        <div className="mx-auto max-w-2xl rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
-          <p className="text-blue-300 text-sm">
-            To start using stagewise, launch your application in development
-            mode. The toolbar will automatically appear in your browser.
-          </p>
-        </div>
       </div>
 
       <div className="w-full max-w-2xl">
         <div className="flex flex-col gap-6 rounded-lg border border-neutral-700 bg-neutral-800/50 p-8">
           <div className="text-center">
-            <h2 className="mb-2 font-bold text-2xl text-white">Support Us</h2>
+            <h2 className="mb-2 font-bold text-2xl text-white">
+              Share your feedback
+            </h2>
             <p className="text-zinc-400">
-              If you find stagewise helpful, consider giving us a star on GitHub
-              or sharing your feedback to help us improve.
+              If you find stagewise helpful, consider sharing your feedback to
+              help us improve.
             </p>
           </div>
-
-          <button
-            type="button"
-            className="relative cursor-pointer rounded-lg bg-zinc-700 px-6 py-3 font-medium text-white transition-colors hover:bg-zinc-600"
-            onClick={handleShowRepo}
-          >
-            ⭐ Star on GitHub
-          </button>
 
           {hasSubmittedFeedback ? (
             <div className="py-4 text-center">
@@ -100,9 +88,6 @@ export default function SetupFinishedPage() {
             </div>
           ) : (
             <div className="text-center">
-              <h3 className="mb-4 font-medium text-lg text-white">
-                How was your setup experience?
-              </h3>
               <div className="flex gap-4">
                 <button
                   type="button"
@@ -119,6 +104,17 @@ export default function SetupFinishedPage() {
                   👎 Needs Improvement
                 </button>
               </div>
+              <p className="p-4 text-zinc-400">
+                <span className="p-2 font-medium">Didn&apos;t work?</span>
+                <a
+                  href="https://discord.gg/gkdGsDYaKA"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-block text-blue-300 transition-colors hover:text-blue-200 hover:underline"
+                >
+                  💬 Get help on Discord
+                </a>
+              </p>
             </div>
           )}
         </div>
