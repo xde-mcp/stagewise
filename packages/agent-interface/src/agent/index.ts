@@ -17,8 +17,14 @@ import { AgentTransportAdapter } from './adapter';
 
 export type AgentServer = Awaited<ReturnType<typeof createAgentServer>>;
 export type { StagewiseInfo } from '../info';
-export type * from '../router/capabilities/availability/types';
-export type * from '../router/capabilities/state/types';
+export {
+  AgentAvailabilityError,
+  type AgentAvailability,
+} from '../router/capabilities/availability/types';
+export {
+  AgentStateType,
+  type AgentState,
+} from '../router/capabilities/state/types';
 export type * from '../router/capabilities/messaging/types';
 export type * from '../router/capabilities/tool-calling/types';
 
