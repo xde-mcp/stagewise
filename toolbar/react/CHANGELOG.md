@@ -1,6 +1,6 @@
 # @stagewise/toolbar-react
 
-## 0.4.10
+## 0.5.0
 
 ### Patch Changes
 
