@@ -10,6 +10,10 @@ import {
   type SelectedElement,
 } from '@stagewise/agent-interface/agent';
 
+// Timeout constants for agent state transitions
+const AGENT_COMPLETION_DELAY_MS = 1000;
+const AGENT_IDLE_DELAY_MS = 5000;
+
 export class AgentService {
   private static instance: AgentService;
   private analyticsService: AnalyticsService = AnalyticsService.getInstance();
@@ -43,18 +47,24 @@ export class AgentService {
         clearTimeout(timeoutHandler);
       }
 
-      timeoutHandler = setTimeout(() => {
-        this.server?.interface.state.set(
-          AgentStateType.COMPLETED,
-          'Prompt was added to the agents chatbox!',
-        );
-        setTimeout(() => {
-          this.server?.interface.state.set(AgentStateType.IDLE);
-          clearTimeout(timeoutHandler!);
-          timeoutHandler = null;
-        }, 5000);
-      }, 1000);
+      timeoutHandler = this.scheduleStateTransitions();
     });
+  }
+
+  private scheduleStateTransitions(): NodeJS.Timeout {
+    return setTimeout(() => {
+      this.server?.interface.state.set(
+        AgentStateType.COMPLETED,
+        'Prompt was added to the agents chatbox!',
+      );
+      this.scheduleIdleTransition();
+    }, AGENT_COMPLETION_DELAY_MS);
+  }
+
+  private scheduleIdleTransition(): void {
+    setTimeout(() => {
+      this.server?.interface.state.set(AgentStateType.IDLE);
+    }, AGENT_IDLE_DELAY_MS);
   }
 
   private async triggerAgentPrompt(userMessage: UserMessage) {

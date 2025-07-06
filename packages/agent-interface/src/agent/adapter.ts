@@ -167,6 +167,8 @@ export class AgentTransportAdapter implements TransportInterface {
   private _availableTools: Tool[] = [];
   private _toolListUpdateListeners: Set<(tools: Tool[]) => void> = new Set();
   private _pendingToolCalls: Map<string, PendingToolCallRequest> = new Map();
+  private _toolCallSubscribers: Set<(call: PendingToolCall) => void> =
+    new Set();
 
   constructor(options?: AdapterOptions) {
     // 1. Set default options
@@ -427,7 +429,10 @@ export class AgentTransportAdapter implements TransportInterface {
             };
             self._pendingToolCalls.set(id, request);
 
-            // Notify consumer
+            // Notify all subscribers directly
+            self._toolCallSubscribers.forEach((subscriber) => subscriber(call));
+
+            // Also push to controller for any other subscribers
             self._pendingToolCallsController.push(call);
           });
         },
@@ -436,6 +441,7 @@ export class AgentTransportAdapter implements TransportInterface {
         clearAllListeners: () => {
           self._userMessageListeners.clear();
           self._toolListUpdateListeners.clear();
+          self._toolCallSubscribers.clear();
         },
       },
     };
@@ -559,22 +565,20 @@ export class AgentTransportAdapter implements TransportInterface {
               }
             };
 
-            // Snapshot existing tool calls before adding listener to avoid duplicates
+            // Snapshot existing tool calls before setting up listener
             const existingCallsSnapshot = Array.from(
               self._pendingToolCalls.values(),
             ).map((req) => req.call);
 
-            // Create a simple listener that gets notified of new tool calls
-            const toolCallListener = (call: PendingToolCall) => {
+            // Create subscriber function for new tool calls
+            const toolCallSubscriber = (call: PendingToolCall) => {
               if (!done) {
                 pushValue(call);
               }
             };
 
-            // Listen directly to the PushController's subscribers
-            (self._pendingToolCallsController as any).subscribers.add(
-              toolCallListener,
-            );
+            // Add subscriber to our custom subscriber set
+            self._toolCallSubscribers.add(toolCallSubscriber);
 
             return {
               next: (): Promise<IteratorResult<PendingToolCall>> => {
@@ -598,9 +602,8 @@ export class AgentTransportAdapter implements TransportInterface {
               },
               return: async (): Promise<IteratorResult<PendingToolCall>> => {
                 done = true;
-                (self._pendingToolCallsController as any).subscribers.delete(
-                  toolCallListener,
-                );
+                // Clean up the subscription using our custom subscriber management
+                self._toolCallSubscribers.delete(toolCallSubscriber);
                 pullQueue.forEach((resolve) =>
                   resolve({ value: undefined, done: true }),
                 );

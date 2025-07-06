@@ -19,29 +19,9 @@ async function getNext<T>(iterator: AsyncIterator<T>): Promise<T | undefined> {
   return result.value;
 }
 
-/**
- * Helper to collect multiple values from an async iterator.
- * @param iterator The async iterator.
- * @param count Number of values to collect.
- * @returns A promise that resolves with an array of values.
- */
-async function _collectNext<T>(
-  iterator: AsyncIterator<T>,
-  count: number,
-): Promise<T[]> {
-  const values: T[] = [];
-  for (let i = 0; i < count; i++) {
-    const value = await getNext(iterator);
-    if (value !== undefined) {
-      values.push(value as T);
-    }
-  }
-  return values;
-}
-
 // --- Test Suite ---
 
-describe('AgentTransportAdapter', () => {
+describe('AgentTransportAdapterToolCalling', () => {
   let adapter: AgentTransportAdapter;
   let agentInterface: AgentInterface;
 
@@ -124,17 +104,25 @@ describe('AgentTransportAdapter', () => {
 
       it('should ignore results for unknown or timed-out calls', () => {
         // This test verifies that results for unknown call IDs are ignored
-        // No setup needed - just call onToolCallResult with an unknown ID
+        // Capture initial state of pending calls
+        const initialPendingCalls =
+          agentInterface.toolCalling.getPendingToolCalls();
+        const initialPendingCount = initialPendingCalls.length;
 
         // This should not throw an error or cause any issues
-        adapter.toolCalling!.onToolCallResult({
-          id: 'unknown-id',
-          toolName: 'foo',
-          result: 'bar',
-        });
+        expect(() => {
+          adapter.toolCalling!.onToolCallResult({
+            id: 'unknown-id',
+            toolName: 'foo',
+            result: 'bar',
+          });
+        }).not.toThrow();
 
-        // If we get here without throwing, the test passes
-        expect(true).toBe(true);
+        // Verify that pending calls state remains unchanged
+        const finalPendingCalls =
+          agentInterface.toolCalling.getPendingToolCalls();
+        expect(finalPendingCalls).toHaveLength(initialPendingCount);
+        expect(finalPendingCalls).toEqual(initialPendingCalls);
       });
 
       it('should handle multiple concurrent tool calls', async () => {
