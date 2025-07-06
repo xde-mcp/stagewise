@@ -16,9 +16,14 @@ import { WebsiteDemo } from '@/components/landing/website-demo';
 import { AnimatedBackground } from '@/components/landing/animated-background';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { GradientButton } from '@/components/landing/gradient-button';
-import { Clipboard } from '../../components/clipboard';
 import { usePostHog } from 'posthog-js/react';
 import Image from 'next/image';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@stagewise/ui/components/accordion';
 import AdobeLogo from './_components/company_logos/adobe.png';
 import AirBnBLogo from './_components/company_logos/airbnb.png';
 import AmazonLogo from './_components/company_logos/amazon.png';
@@ -69,6 +74,33 @@ function StarIcon({ className = '' }: { className?: string }) {
 
 export default function Home() {
   const posthog = usePostHog();
+
+  const ideOptions = [
+    {
+      id: 'cursor',
+      name: 'Cursor',
+      logo: CursorLogo,
+      url: 'cursor:extension/stagewise.stagewise-vscode-extension',
+    },
+    {
+      id: 'vscode',
+      name: 'VS Code',
+      logo: GitHubCopilotLogo, // Using this as placeholder for VS Code logo
+      url: 'vscode:extension/stagewise.stagewise-vscode-extension',
+    },
+    {
+      id: 'trae',
+      name: 'Trae',
+      logo: TraeLogo,
+      url: 'trae:extension/stagewise.stagewise-vscode-extension',
+    },
+    {
+      id: 'windsurf',
+      name: 'Windsurf',
+      logo: WindsurfLogo,
+      url: 'windsurf:extension/stagewise.stagewise-vscode-extension',
+    },
+  ];
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-white text-slate-900 dark:bg-black dark:text-white">
@@ -548,23 +580,63 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="mb-4 font-semibold text-2xl">
-                    Install the code editor extension
+                    Install the extension
                   </h3>
-                  <p className="mb-4 text-zinc-600 dark:text-zinc-400">
-                    Install the extension from the extension store of your
-                    favorite code editor.
+                  <p className="mb-6 text-zinc-600 dark:text-zinc-400">
+                    Install the extension from the extension store of your code
+                    editor.
                   </p>
-                  <Link
-                    href="https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension"
-                    onClick={() =>
-                      posthog?.capture('quickstart_get_extension_click')
-                    }
-                  >
-                    <GradientButton>
-                      Get from VS Code Marketplace
-                      <ArrowRight className="ml-2 size-4" />
-                    </GradientButton>
-                  </Link>
+                  <div className="w-full">
+                    <Accordion
+                      type="single"
+                      collapsible
+                      className="-space-y-px w-full"
+                      defaultValue="cursor"
+                    >
+                      {ideOptions.map((option) => (
+                        <AccordionItem
+                          key={option.id}
+                          value={option.id}
+                          className="overflow-hidden border border-zinc-500/30 bg-white shadow-sm first:rounded-t-lg last:rounded-b-lg dark:border-indigo-800 dark:bg-zinc-900"
+                        >
+                          <AccordionTrigger className="px-4 py-3 text-left hover:bg-zinc-50 hover:no-underline dark:hover:bg-zinc-800">
+                            <div className="flex items-center gap-3">
+                              <Image
+                                src={option.logo}
+                                alt={option.name}
+                                className="h-6 w-6 dark:invert"
+                              />
+                              <span className="font-medium text-lg">
+                                {option.name}
+                              </span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 py-4">
+                            <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                              Get the stagewise extension for {option.name} to
+                              begin.
+                            </p>
+                            <Link
+                              href={option.url}
+                              onClick={() =>
+                                posthog?.capture(
+                                  'quickstart_get_extension_click',
+                                  {
+                                    ide: option.name,
+                                  },
+                                )
+                              }
+                            >
+                              <GradientButton>
+                                Get from {option.name} Marketplace
+                                <ArrowRight className="ml-2 size-4" />
+                              </GradientButton>
+                            </Link>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </div>
                 </div>
               </div>
 
@@ -575,12 +647,13 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="mb-4 font-semibold text-2xl">
-                    Install and inject the toolbar
+                    Install and inject the toolbar (the extension will guide
+                    you)
                   </h3>
-                  <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-100 p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                    <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                      🪄 Auto-Install the toolbar (AI-guided):
-                    </p>
+                  <div className="mb-4 rounded-lg border border-zinc-500/30 bg-white p-4 shadow-[0_0_20px_rgba(128,90,213,0.15)] dark:border-indigo-800 dark:bg-zinc-900">
+                    <h4 className="font-medium text-zinc-700 dark:text-zinc-300">
+                      🪄 AI-Assisted Setup (recommended):
+                    </h4>
                     <ol className="mt-2 list-decimal pl-5 text-start text-zinc-600 dark:text-zinc-400">
                       <li>
                         In Cursor, Press{' '}
@@ -601,21 +674,21 @@ export default function Home() {
                     </ol>
                   </div>
                   <p className="mb-4 text-center text-zinc-600 dark:text-zinc-400">
-                    Or follow the manual way:
+                    Or
                   </p>
-                  <Clipboard
-                    className="mx-auto"
-                    text="pnpm i -D @stagewise/toolbar"
-                  />
+                  <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-100 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <h4 className="pb-2 font-medium text-zinc-700 dark:text-zinc-300">
+                      Manual Setup:
+                    </h4>
+                    <Link
+                      href="/docs/quickstart"
+                      className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      Follow the manual setup guide
+                    </Link>
+                  </div>
                   ⚡️ The toolbar will <strong>automatically connect</strong> to
                   the extension!
-                  <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    Check out the{' '}
-                    <Link href="/docs/quickstart" className="underline">
-                      Quickstart Guide
-                    </Link>{' '}
-                    for the React, Next.js, Vue and Nuxt SDKs.
-                  </p>
                 </div>
               </div>
 
@@ -626,11 +699,18 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="mb-4 font-semibold text-2xl">
-                    Start your visual vibe coding journey! 🎉
+                    Start dev mode and begin coding! 🎉
                   </h3>
                   <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    Click on the chat icon in the bottom right corner of your
-                    app to get started.
+                    The toolbar should appear in the bottom right corner of your
+                    web app. If not, please reach out via{' '}
+                    <Link
+                      href="https://discord.gg/gkdGsDYaKA"
+                      className="underline"
+                    >
+                      Discord
+                    </Link>
+                    .
                   </p>
                 </div>
               </div>

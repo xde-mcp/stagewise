@@ -131,7 +131,14 @@ export async function setupToolbar() {
   3. Does not lead to any linting errors
   4. Is loaded once on initial opening in the browser
   5. Is only executed in the browser and not any SSR or server environment
-</expected_outcome>`;
+</expected_outcome>
+
+<next_steps_for_the_user>
+1. The user should start dev mode in his web app.
+2. The user should see the toolbar in the bottom right corner of the web app.
+3. If the toolbar does not appear, the user should reach out to the stagewise team via Discord (https://discord.gg/gkdGsDYaKA).
+</next_steps_for_the_user>
+`;
 
   await dispatchAgentCall({
     prompt,

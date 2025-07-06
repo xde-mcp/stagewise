@@ -31,19 +31,24 @@ The stagewise Toolbar makes it incredibly easy to edit your frontend code with A
 
 ## 📖 Quickstart 
 
-### 1. 🧩 **Install the code editor extension (Cursor, Windsurf, VS Code)**
+### 1. 🧩 **Install the extension**
 
-Install the extension here: https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension
+Install the extension from the extension store of your code editor:
 
-### 2. 👨🏽‍💻 **Install and inject the toolbar**
+- **Cursor**: [cursor:extension/stagewise.stagewise-vscode-extension](cursor:extension/stagewise.stagewise-vscode-extension)
+- **VS Code**: [vscode:extension/stagewise.stagewise-vscode-extension](vscode:extension/stagewise.stagewise-vscode-extension)
+- **Trae**: [trae:extension/stagewise.stagewise-vscode-extension](trae:extension/stagewise.stagewise-vscode-extension)
+- **Windsurf**: [windsurf:extension/stagewise.stagewise-vscode-extension](windsurf:extension/stagewise.stagewise-vscode-extension)
+
+### 2. 👨🏽‍💻 **Install and inject the toolbar (the extension will guide you)**
 
 > [!TIP]
-> 🪄 **Auto-Install the toolbar (AI-guided):** 
+> 🪄 **AI-Assisted Setup (recommended):** 
 > 1. In Cursor, Press `CMD + Shift + P`
 > 2. Enter `setupToolbar`
 > 3. Execute the command and the toolbar will init automatically 🦄
 
-Or follow the manual way:
+Or follow the Manual Setup:
 
 Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
 ```bash
@@ -75,13 +80,9 @@ setupStagewise();
 ```
 > ⚡️ The toolbar will **automatically connect** to the extension!
 
-> [!IMPORTANT]
-> 🚫 **If nothing happens when a prompt is sent:**
-> 
-> If you have multiple Cursor windows open, the toolbar may send prompts to the wrong window, making it appear as if "no prompt is being sent". To ensure reliable operation:
-> - Keep only one Cursor window open when using stagewise
->
-> A fix for this is on the way!
+### 3. 🎉 **Start dev mode and begin coding!**
+
+The toolbar should appear in the bottom right corner of your web app. If not, please reach out via [Discord](https://discord.gg/gkdGsDYaKA).
 
 ### Framework-specific integration examples
 
