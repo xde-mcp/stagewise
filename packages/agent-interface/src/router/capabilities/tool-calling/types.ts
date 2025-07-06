@@ -3,12 +3,17 @@ import { z } from 'zod';
 // 1. DEFINE ALL TYPES AND SCHEMAS
 export const pendingToolCallSchema = z.object({
   toolName: z.string(),
+  id: z.string(),
+  parameters: z.record(z.unknown()),
 });
 
 export type PendingToolCall = z.infer<typeof pendingToolCallSchema>;
 
 export const toolCallResultSchema = z.object({
   toolName: z.string(),
+  id: z.string(),
+  error: z.string().optional(),
+  result: z.any(),
 });
 
 export type ToolCallResult = z.infer<typeof toolCallResultSchema>;
