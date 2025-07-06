@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.1.1
+
+### Patch Changes
+
+- a83ce44: Feat: Exporting user-message-metadata.
+
 ## 0.1.0
 
 ### Minor Changes
