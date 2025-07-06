@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const pendingToolCallSchema = z.object({
   toolName: z.string(),
   id: z.string(),
+  parameters: z.record(z.unknown()),
 });
 
 export type PendingToolCall = z.infer<typeof pendingToolCallSchema>;

@@ -25,11 +25,20 @@ export type AgentInterface = {
     /** Get current availability status */
     get: () => AgentAvailability;
 
-    /** Set agent availability */
-    set: (
-      available: boolean,
-      error?: AgentAvailabilityError,
-      errorMessage?: string,
+    /**
+     * Set agent availability.
+     *
+     * When setting available to false, an error type is required to indicate
+     * the reason for unavailability. The errorMessage parameter is optional
+     * and provides additional context about the error.
+     *
+     * When setting available to true, error parameters are ignored.
+     */
+    set: <T extends boolean>(
+      available: T,
+      ...args: T extends false
+        ? [error: AgentAvailabilityError, errorMessage?: string]
+        : []
     ) => void;
   };
 
@@ -76,6 +85,14 @@ export type AgentInterface = {
 
     /** Add a listener for user messages */
     addUserMessageListener: (listener: (message: UserMessage) => void) => void;
+
+    /** Remove a specific user message listener */
+    removeUserMessageListener: (
+      listener: (message: UserMessage) => void,
+    ) => void;
+
+    /** Clear all user message listeners */
+    clearUserMessageListeners: () => void;
   };
 
   /**
@@ -97,6 +114,12 @@ export type AgentInterface = {
     /** Add a listener that get's triggered whenever the list of available tools changes */
     onToolListUpdate: (listener: (tools: Tool[]) => void) => void;
 
+    /** Remove a specific tool list update listener */
+    removeToolListUpdateListener: (listener: (tools: Tool[]) => void) => void;
+
+    /** Clear all tool list update listeners */
+    clearToolListUpdateListeners: () => void;
+
     /** Make a tool call and wait for the result */
     requestToolCall: (
       toolName: string,
@@ -105,5 +128,14 @@ export type AgentInterface = {
 
     /** Get all pending tool calls */
     getPendingToolCalls: () => PendingToolCall[];
+  };
+
+  /**
+   * CLEANUP MANAGEMENT
+   * Methods to properly clean up resources and prevent memory leaks
+   */
+  cleanup: {
+    /** Clear all listeners and cleanup resources */
+    clearAllListeners: () => void;
   };
 };

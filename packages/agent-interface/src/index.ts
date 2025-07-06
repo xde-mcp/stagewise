@@ -5,4 +5,4 @@ export type * from './router/capabilities/messaging/types';
 export type * from './router/capabilities/tool-calling/types';
 
 export { createAgentServer as createOriginalAgentServer } from './agent/index';
-export { AgentInterface } from './agent/interface';
+export type { AgentInterface } from './agent/interface';

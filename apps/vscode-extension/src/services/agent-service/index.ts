@@ -19,7 +19,9 @@ export class AgentService {
     // Private constructor to enforce singleton pattern
   }
 
-  public shutdown() {}
+  public shutdown() {
+    this.server?.server.close();
+  }
 
   public static getInstance(): AgentService {
     if (!AgentService.instance) {

@@ -213,6 +213,25 @@ export class AgentTransportAdapter implements TransportInterface {
     return this._agentInterface;
   }
 
+  // --- Private Helper Methods ---
+
+  /**
+   * Private method to clear the current message and generate a new ID.
+   * This logic is shared between the public clear() method and addPart().
+   */
+  private _clearMessage(): void {
+    this._currentMessageId = this._options.idGenerator();
+    this._messageContent = [];
+
+    const update: AgentMessageUpdate = {
+      messageId: this._currentMessageId,
+      updateParts: [],
+      createdAt: new Date(),
+      resync: true, // Signal to consumer to clear previous content
+    };
+    this._messageController.push(update);
+  }
+
   // --- Interface Implementation Factories ---
 
   private createAgentInterface(): AgentInterface {
@@ -221,11 +240,12 @@ export class AgentTransportAdapter implements TransportInterface {
     return {
       availability: {
         get: () => JSON.parse(JSON.stringify(self._availability)),
-        set: (available, error, errorMessage) => {
+        set: (available, ...args) => {
           let newAvailability: AgentAvailability;
           if (available) {
             newAvailability = { isAvailable: true };
           } else {
+            const [error, errorMessage] = args;
             if (!error) {
               throw new Error(
                 "An 'error' type is required when setting availability to false.",
@@ -250,22 +270,18 @@ export class AgentTransportAdapter implements TransportInterface {
         addUserMessageListener: (listener) => {
           self._userMessageListeners.add(listener);
         },
+        removeUserMessageListener: (listener) => {
+          self._userMessageListeners.delete(listener);
+        },
+        clearUserMessageListeners: () => {
+          self._userMessageListeners.clear();
+        },
         clear: () => {
-          self._currentMessageId = self._options.idGenerator();
-          self._messageContent = [];
-
-          const update: AgentMessageUpdate = {
-            messageId: self._currentMessageId,
-            updateParts: [],
-            createdAt: new Date(),
-            resync: true, // Signal to consumer to clear previous content
-          };
-          self._messageController.push(update);
+          this._clearMessage();
         },
         set: (content) => {
-          if (!self._currentMessageId) {
-            self._currentMessageId = self._options.idGenerator();
-          }
+          // Always create a new message ID when setting a new message
+          self._currentMessageId = self._options.idGenerator();
           self._messageContent = JSON.parse(JSON.stringify(content));
 
           const update: AgentMessageUpdate = {
@@ -281,8 +297,8 @@ export class AgentTransportAdapter implements TransportInterface {
         },
         addPart: (content) => {
           if (!self._currentMessageId) {
-            // This implicitly calls the clear() logic, including generating a new ID
-            this.getAgent().messaging.clear();
+            // Call the private clear method directly to avoid circular dependency
+            self._clearMessage();
           }
 
           const partsToAdd = Array.isArray(content) ? content : [content];
@@ -351,6 +367,7 @@ export class AgentTransportAdapter implements TransportInterface {
               );
             });
             self._pendingToolCalls.clear();
+            self._toolListUpdateListeners.clear();
           }
         },
         getAvailableTools: () => {
@@ -365,6 +382,16 @@ export class AgentTransportAdapter implements TransportInterface {
           // Immediately provide the current list
           listener(JSON.parse(JSON.stringify(self._availableTools)));
         },
+        removeToolListUpdateListener: (listener: (tools: Tool[]) => void) => {
+          if (!self._toolCallingSupported)
+            throw new Error('Tool calling is not supported by this agent.');
+          self._toolListUpdateListeners.delete(listener);
+        },
+        clearToolListUpdateListeners: () => {
+          if (!self._toolCallingSupported)
+            throw new Error('Tool calling is not supported by this agent.');
+          self._toolListUpdateListeners.clear();
+        },
         getPendingToolCalls: () => {
           if (!self._toolCallingSupported)
             throw new Error('Tool calling is not supported by this agent.');
@@ -372,7 +399,7 @@ export class AgentTransportAdapter implements TransportInterface {
             (req) => req.call,
           );
         },
-        requestToolCall: (toolName, _parameters) => {
+        requestToolCall: (toolName, parameters) => {
           if (!self._toolCallingSupported) {
             return Promise.reject(
               new Error('Tool calling is not supported by this agent.'),
@@ -380,7 +407,7 @@ export class AgentTransportAdapter implements TransportInterface {
           }
 
           const id = self._options.idGenerator();
-          const call: PendingToolCall = { id, toolName };
+          const call: PendingToolCall = { id, toolName, parameters };
 
           return new Promise<ToolCallResult>((resolve, reject) => {
             const timeoutTimer = setTimeout(() => {
@@ -403,6 +430,12 @@ export class AgentTransportAdapter implements TransportInterface {
             // Notify consumer
             self._pendingToolCallsController.push(call);
           });
+        },
+      },
+      cleanup: {
+        clearAllListeners: () => {
+          self._userMessageListeners.clear();
+          self._toolListUpdateListeners.clear();
         },
       },
     };
@@ -438,41 +471,43 @@ export class AgentTransportAdapter implements TransportInterface {
         const originalIterator = sub[Symbol.asyncIterator]();
 
         return {
-          [Symbol.asyncIterator]: () => ({
-            next: async () => {
-              // On the very first call to next(), perform a resync
-              if (!this.nextCallResynced) {
-                this.nextCallResynced = true;
-                const resyncUpdate: AgentMessageUpdate = {
-                  messageId:
-                    self._currentMessageId ?? self._options.idGenerator(),
-                  updateParts: self._messageContent.map((part, i) => ({
-                    contentIndex: i,
-                    part: part,
-                  })),
-                  createdAt: new Date(),
-                  resync: true,
-                };
-                // If there's no messageId, create one but don't persist it yet
-                if (!self._currentMessageId) {
-                  self._currentMessageId = resyncUpdate.messageId;
+          [Symbol.asyncIterator]: () => {
+            let nextCallResynced = false; // Per-iterator state
+
+            return {
+              next: async () => {
+                // On the very first call to next(), perform a resync
+                if (!nextCallResynced) {
+                  nextCallResynced = true;
+                  const resyncUpdate: AgentMessageUpdate = {
+                    messageId:
+                      self._currentMessageId ?? self._options.idGenerator(),
+                    updateParts: self._messageContent.map((part, i) => ({
+                      contentIndex: i,
+                      part: part,
+                    })),
+                    createdAt: new Date(),
+                    resync: true,
+                  };
+                  // If there's no messageId, create one but don't persist it yet
+                  if (!self._currentMessageId) {
+                    self._currentMessageId = resyncUpdate.messageId;
+                  }
+                  return { value: resyncUpdate, done: false };
                 }
-                return { value: resyncUpdate, done: false };
-              }
-              return originalIterator.next();
-            },
-            return: () => {
-              this.nextCallResynced = false; // Reset for next subscriber
-              return originalIterator.return
-                ? originalIterator.return()
-                : Promise.resolve({ value: undefined, done: true });
-            },
-          }),
+                return originalIterator.next();
+              },
+              return: () => {
+                return originalIterator.return
+                  ? originalIterator.return()
+                  : Promise.resolve({ value: undefined, done: true });
+              },
+            };
+          },
         };
       },
     };
   }
-  private nextCallResynced = false; // State for the custom getMessage iterator
 
   private createToolCallingImplementation(): ToolCallingImplementation {
     const self = this;
@@ -507,34 +542,74 @@ export class AgentTransportAdapter implements TransportInterface {
         }
       },
       getPendingToolCalls: () => {
-        // Custom subscription logic to handle resync
-        const sub = self._pendingToolCallsController.subscribe();
-        const originalIterator = sub[Symbol.asyncIterator]();
-        let isFirstNext = true;
-
         return {
-          [Symbol.asyncIterator]: () => ({
-            next: async () => {
-              if (isFirstNext) {
-                isFirstNext = false;
-                // On first call, dump all existing pending calls
-                for (const request of self._pendingToolCalls.values()) {
-                  // This part is tricky. We need to yield existing items
-                  // without interfering with the live stream.
-                  // A better PushController would handle this.
-                  // For now, we'll just log and rely on the live push.
-                  // A proper implementation would require a more complex iterator.
-                  self._pendingToolCallsController.push(request.call);
-                }
+          [Symbol.asyncIterator]: () => {
+            const pendingQueue: PendingToolCall[] = [];
+            let pullQueue: ((
+              value: IteratorResult<PendingToolCall>,
+            ) => void)[] = [];
+            let done = false;
+            let hasInitialized = false;
+
+            const pushValue = (value: PendingToolCall) => {
+              if (pullQueue.length > 0) {
+                pullQueue.shift()!({ value, done: false });
+              } else {
+                pendingQueue.push(value);
               }
-              return originalIterator.next();
-            },
-            return: () => {
-              return originalIterator.return
-                ? originalIterator.return()
-                : Promise.resolve({ value: undefined, done: true });
-            },
-          }),
+            };
+
+            // Snapshot existing tool calls before adding listener to avoid duplicates
+            const existingCallsSnapshot = Array.from(
+              self._pendingToolCalls.values(),
+            ).map((req) => req.call);
+
+            // Create a simple listener that gets notified of new tool calls
+            const toolCallListener = (call: PendingToolCall) => {
+              if (!done) {
+                pushValue(call);
+              }
+            };
+
+            // Listen directly to the PushController's subscribers
+            (self._pendingToolCallsController as any).subscribers.add(
+              toolCallListener,
+            );
+
+            return {
+              next: (): Promise<IteratorResult<PendingToolCall>> => {
+                return new Promise((resolve) => {
+                  // On first call, initialize with existing pending calls from snapshot
+                  if (!hasInitialized) {
+                    hasInitialized = true;
+                    existingCallsSnapshot.forEach((call) =>
+                      pendingQueue.push(call),
+                    );
+                  }
+
+                  if (pendingQueue.length > 0) {
+                    resolve({ value: pendingQueue.shift()!, done: false });
+                  } else if (done) {
+                    resolve({ value: undefined, done: true });
+                  } else {
+                    pullQueue.push(resolve);
+                  }
+                });
+              },
+              return: async (): Promise<IteratorResult<PendingToolCall>> => {
+                done = true;
+                (self._pendingToolCallsController as any).subscribers.delete(
+                  toolCallListener,
+                );
+                pullQueue.forEach((resolve) =>
+                  resolve({ value: undefined, done: true }),
+                );
+                pullQueue = [];
+                pendingQueue.length = 0;
+                return { value: undefined, done: true };
+              },
+            };
+          },
         };
       },
     };
