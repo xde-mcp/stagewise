@@ -17,6 +17,7 @@ export {
   userMessageSchema,
   type UserMessageContentItem,
   type UserMessageMetadata,
+  userMessageMetadataSchema,
   type SelectedElement,
   type AgentMessageContentItemPart,
   type AgentMessageUpdate,
