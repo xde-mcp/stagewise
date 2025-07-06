@@ -1,5 +1,20 @@
 # @stagewise-plugins/react
 
+## 0.5.0
+
+### Minor Changes
+
+- e4a0864: Revamp toolbar loading mechanism to use iframes
+
+  - Plugins must now be default exported
+  - Plugins must use the @stagewise/plugin-builder package to build their plugin
+  - Deployed plugins are now default exports. Make sure to update your project accordingly.
+
+### Patch Changes
+
+- Updated dependencies [e4a0864]
+  - @stagewise/toolbar@0.5.0
+
 ## 0.4.9
 
 ### Patch Changes
