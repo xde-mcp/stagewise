@@ -89,32 +89,22 @@ ${Object.entries(element.ownProperties)
   .join('\n')}
 </properties>`.trim();
 
-  const boundingClientRect = `
-  <bounding_client_rect>
+  const boundingClientRect = `<bounding_client_rect>
   <width>${element.boundingClientRect.width}</width>
   <height>${element.boundingClientRect.height}</height>
   <top>${element.boundingClientRect.top}</top>
   <left>${element.boundingClientRect.left}</left>
-  </bounding_client_rect>
-  `;
+  </bounding_client_rect>`;
 
-  const textContent = `
-  <text_content>
+  const textContent = `<text_content>
   ${element.textContent}
-  </text_content>
-  `;
+  </text_content>`;
 
-  const pluginInfo = `
-  <plugin_info>
+  const pluginInfo = `<plugin_info>
   ${element.pluginInfo.map((plugin) => `<${plugin.pluginName}>${plugin.content}</${plugin.pluginName}>`).join('\n')}
-  </plugin_info>
-  `;
+  </plugin_info>`;
 
-  const xpath = `
-    <xpath>
-    ${element.xpath}
-    </xpath>
-  `;
+  const xpath = `<xpath>${element.xpath}</xpath>`;
 
   const parent = element.parent
     ? `<parent>${generateElementContext(element.parent)}</parent>`
