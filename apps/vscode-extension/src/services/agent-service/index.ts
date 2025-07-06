@@ -9,6 +9,7 @@ import {
   type UserMessageContentItem,
   type SelectedElement,
 } from '@stagewise/agent-interface/agent';
+import * as vscode from 'vscode';
 
 // Timeout constants for agent state transitions
 const AGENT_COMPLETION_DELAY_MS = 1000;
@@ -36,6 +37,11 @@ export class AgentService {
 
   public async initialize() {
     this.server = await createAgentServer();
+
+    this.server.setAgentName(vscode.env.appName);
+    this.server.setAgentDescription(
+      vscode.workspace.name ?? 'No open workspace',
+    );
 
     let timeoutHandler: NodeJS.Timeout | null = null;
     this.server.interface.messaging.addUserMessageListener((message) => {
