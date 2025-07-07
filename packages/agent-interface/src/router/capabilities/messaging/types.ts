@@ -27,11 +27,26 @@ export const baseSelectedElementSchema = z.object({
     }),
     // Custom attributes could also help massively
     z
-      .record(z.string().transform((val) => val.slice(0, 256)))
+      .record(
+        z.string().transform((val) => {
+          if (val.length > 256) {
+            return `${val.slice(0, 256)}...[truncated]`;
+          }
+          return val;
+        }),
+      )
       .transform((obj) => {
         // Truncate to first 100 entries
-        const entries = Object.entries(obj).slice(0, 100);
-        return Object.fromEntries(entries);
+        const entries = Object.entries(obj);
+        const truncatedEntries = entries.slice(0, 100);
+        const result = Object.fromEntries(truncatedEntries);
+
+        // Add truncation indicator if we truncated entries
+        if (entries.length > 100) {
+          result.__truncated__ = `...[${entries.length - 100} more entries truncated]`;
+        }
+
+        return result;
       })
       .describe(
         'A list of attributes of the element. Will be truncated after 100 entries.',
@@ -39,7 +54,12 @@ export const baseSelectedElementSchema = z.object({
   ),
   textContent: z
     .string()
-    .transform((val) => val.slice(0, 2048))
+    .transform((val) => {
+      if (val.length > 2048) {
+        return `${val.slice(0, 2048)}...[truncated]`;
+      }
+      return val;
+    })
     .describe(
       'Text content of the element. Will be truncated after 2048 characters.',
     ),
@@ -47,8 +67,16 @@ export const baseSelectedElementSchema = z.object({
     .record(z.any())
     .transform((obj) => {
       // Truncate to first 500 entries
-      const entries = Object.entries(obj).slice(0, 500);
-      return Object.fromEntries(entries);
+      const entries = Object.entries(obj);
+      const truncatedEntries = entries.slice(0, 500);
+      const result = Object.fromEntries(truncatedEntries);
+
+      // Add truncation indicator if we truncated entries
+      if (entries.length > 500) {
+        result.__truncated__ = `...[${entries.length - 500} more entries truncated]`;
+      }
+
+      return result;
     })
     .describe(
       'Custom properties that the underlying object may have. Will be truncated after 500 entries. Object are only copied up to 3 levels deep, all children and levels will be truncated equally. Only elements that are serializable will be sent over',
