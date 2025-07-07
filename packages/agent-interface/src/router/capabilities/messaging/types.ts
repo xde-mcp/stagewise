@@ -27,27 +27,29 @@ export const baseSelectedElementSchema = z.object({
     }),
     // Custom attributes could also help massively
     z
-      .record(z.string().max(256))
-      .refine((value) => Object.keys(value).length <= 100, {
-        message: 'Attributes must be less than 100 entries.',
+      .record(z.string().transform((val) => val.slice(0, 256)))
+      .transform((obj) => {
+        // Truncate to first 100 entries
+        const entries = Object.entries(obj).slice(0, 100);
+        return Object.fromEntries(entries);
       })
-      // TODO: Add proper truncation logic
       .describe(
         'A list of attributes of the element. Will be truncated after 100 entries.',
       ),
   ),
   textContent: z
     .string()
-    .max(512)
+    .transform((val) => val.slice(0, 2048))
     .describe(
-      'Text content of the element. Will be truncated after 512 characters.',
+      'Text content of the element. Will be truncated after 2048 characters.',
     ),
   ownProperties: z
     .record(z.any())
-    .refine((value) => Object.keys(value).length <= 500, {
-      message: 'Own properties must be less than 500 entries.',
+    .transform((obj) => {
+      // Truncate to first 500 entries
+      const entries = Object.entries(obj).slice(0, 500);
+      return Object.fromEntries(entries);
     })
-    // TODO: Add proper truncation logic
     .describe(
       'Custom properties that the underlying object may have. Will be truncated after 500 entries. Object are only copied up to 3 levels deep, all children and levels will be truncated equally. Only elements that are serializable will be sent over',
     ),
