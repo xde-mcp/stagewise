@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.1.2
+
+### Patch Changes
+
+- 787e8e1: Loosen type validation in selectedElements in agent-interface
+
 ## 0.1.1
 
 ### Patch Changes
