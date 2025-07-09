@@ -643,6 +643,112 @@ describe('AgentTransportAdapterMessaging', () => {
         expect(secondClearUpdate.messageId).not.toBe(firstClearId);
       });
 
+      it('should allow updatePart to add a new part at the highest index + 1', async () => {
+        const messageIterator = adapter.messaging
+          .getMessage()
+          [Symbol.asyncIterator]();
+        await getNext(messageIterator); // consume initial resync
+
+        // Add initial parts
+        agentInterface.messaging.addPart({ type: 'text', text: 'Part 0' });
+        agentInterface.messaging.addPart({ type: 'text', text: 'Part 1' });
+        await collectNext(messageIterator, 2); // consume the updates
+
+        // Use updatePart to add a new part at index 2 (highest + 1)
+        agentInterface.messaging.updatePart(
+          { type: 'text', text: 'Part 2 via updatePart' },
+          2,
+          'replace',
+        );
+
+        const update = (await getNext(messageIterator)) as AgentMessageUpdate;
+        expect(update.resync).toBe(false);
+        expect(update.updateParts).toHaveLength(1);
+        expect(update.updateParts[0].contentIndex).toBe(2);
+        expect(update.updateParts[0].part).toEqual({
+          type: 'text',
+          text: 'Part 2 via updatePart',
+        });
+
+        // Verify the message now has 3 parts
+        const currentMessage = agentInterface.messaging.get();
+        expect(currentMessage).toHaveLength(3);
+        expect(currentMessage[2]).toEqual({
+          type: 'text',
+          text: 'Part 2 via updatePart',
+        });
+      });
+
+      it('should not allow updatePart to add a part at index > highest + 1', async () => {
+        agentInterface.messaging.addPart({ type: 'text', text: 'Part 0' });
+        agentInterface.messaging.addPart({ type: 'text', text: 'Part 1' });
+
+        // Try to add at index 3 (should fail, as highest is 1)
+        expect(() => {
+          agentInterface.messaging.updatePart(
+            { type: 'text', text: 'Invalid' },
+            3,
+            'replace',
+          );
+        }).toThrow('Invalid index 3 for message content update.');
+      });
+
+      it('should handle updatePart adding to empty message', async () => {
+        const messageIterator = adapter.messaging
+          .getMessage()
+          [Symbol.asyncIterator]();
+        await getNext(messageIterator); // consume initial resync
+
+        // Use updatePart to add first part to empty message
+        agentInterface.messaging.updatePart(
+          { type: 'text', text: 'First part via updatePart' },
+          0,
+          'replace',
+        );
+
+        const update = (await getNext(messageIterator)) as AgentMessageUpdate;
+        expect(update.resync).toBe(false);
+        expect(update.updateParts).toHaveLength(1);
+        expect(update.updateParts[0].contentIndex).toBe(0);
+        expect(update.updateParts[0].part).toEqual({
+          type: 'text',
+          text: 'First part via updatePart',
+        });
+
+        // Verify message ID was created
+        expect(agentInterface.messaging.getCurrentId()).not.toBeNull();
+      });
+
+      it('should return current message state by value with getCurrentMessage', () => {
+        agentInterface.messaging.set([
+          { type: 'text', text: 'Part 1' },
+          { type: 'text', text: 'Part 2' },
+        ]);
+
+        const messageId = agentInterface.messaging.getCurrentId();
+        const currentMessage = agentInterface.messaging.getCurrentMessage();
+
+        expect(currentMessage.id).toBe(messageId);
+        expect(currentMessage.parts).toHaveLength(2);
+        expect(currentMessage.parts[0]).toEqual({ type: 'text', text: 'Part 1' });
+        expect(currentMessage.parts[1]).toEqual({ type: 'text', text: 'Part 2' });
+
+        // Verify it returns by value (modifications don't affect internal state)
+        currentMessage.parts[0].text = 'Modified';
+        currentMessage.id = 'modified-id';
+
+        const newMessage = agentInterface.messaging.getCurrentMessage();
+        expect(newMessage.id).toBe(messageId);
+        expect(newMessage.parts[0].text).toBe('Part 1');
+      });
+
+      it('should return empty message state with getCurrentMessage when no message', () => {
+        const currentMessage = agentInterface.messaging.getCurrentMessage();
+        
+        expect(currentMessage.id).toBeNull();
+        expect(currentMessage.parts).toEqual([]);
+      });
+
       it('should send all parts to late subscribers in one resync chunk', async () => {
         // Build up a complex message with multiple operations
         agentInterface.messaging.set([

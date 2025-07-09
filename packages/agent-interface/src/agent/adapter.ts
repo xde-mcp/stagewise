@@ -269,6 +269,13 @@ export class AgentTransportAdapter implements TransportInterface {
       messaging: {
         get: () => JSON.parse(JSON.stringify(self._messageContent)),
         getCurrentId: () => self._currentMessageId,
+        getCurrentMessage: () => {
+          // Return by value using deep copy
+          return {
+            id: self._currentMessageId,
+            parts: JSON.parse(JSON.stringify(self._messageContent)),
+          };
+        },
         addUserMessageListener: (listener) => {
           self._userMessageListeners.add(listener);
         },
@@ -318,6 +325,34 @@ export class AgentTransportAdapter implements TransportInterface {
           }
         },
         updatePart: (content, index, type) => {
+          // Allow adding a new part if index is exactly highest + 1
+          if (index === self._messageContent.length) {
+            // If no message ID exists yet, create one
+            if (!self._currentMessageId) {
+              self._clearMessage();
+            }
+            
+            // Handle union type - if content is an array, only take the first element
+            const contentPart = Array.isArray(content) ? content[0] : content;
+            if (!contentPart) {
+              throw new Error('Content cannot be empty');
+            }
+            
+            // Add the new part
+            self._messageContent.push(contentPart);
+            
+            const update: AgentMessageUpdate = {
+              messageId: self._currentMessageId!,
+              updateParts: [
+                { contentIndex: index, part: contentPart },
+              ],
+              createdAt: new Date(),
+              resync: false,
+            };
+            self._messageController.push(update);
+            return;
+          }
+          
           if (index < 0 || index >= self._messageContent.length) {
             throw new Error(
               `Invalid index ${index} for message content update.`,
