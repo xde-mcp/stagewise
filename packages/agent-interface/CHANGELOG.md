@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.2.0
+
+### Minor Changes
+
+- 6d3e1c7: Adapt agent-interface implementation to allow updateParts without existing part.
+
 ## 0.1.3
 
 ### Patch Changes
