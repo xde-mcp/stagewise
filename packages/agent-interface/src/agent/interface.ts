@@ -70,7 +70,14 @@ export type AgentInterface = {
       content: AgentMessageContentItemPart | AgentMessageContentItemPart[],
     ) => void;
 
-    /** Update a part of the current message */
+    /**
+     * Update a part of the current message.
+     *
+     * @param content - The content to update with
+     * @param index - The index of the part to update. If index equals the current
+     *                message length (highest index + 1), a new part will be added.
+     * @param type - 'replace' to replace the part, 'append' to append text (text parts only)
+     */
     updatePart: (
       content: AgentMessageContentItemPart | AgentMessageContentItemPart[],
       index: number,
@@ -82,6 +89,12 @@ export type AgentInterface = {
 
     /** Get current message ID */
     getCurrentId: () => string | null;
+
+    /** Get current message state as an object (returns by value, not reference) */
+    getCurrentMessage: () => {
+      id: string | null;
+      parts: AgentMessageContentItemPart[];
+    };
 
     /** Add a listener for user messages */
     addUserMessageListener: (listener: (message: UserMessage) => void) => void;
