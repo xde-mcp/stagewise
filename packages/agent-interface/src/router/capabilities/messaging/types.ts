@@ -4,54 +4,75 @@ import { z } from 'zod';
 export const baseSelectedElementSchema = z.object({
   nodeType: z.string().min(1).max(96).describe('The node type of the element.'),
   xpath: z.string().min(1).max(1024).describe('The XPath of the element.'),
-  attributes: z.intersection(
-    // We only send the most important attributes
-    z.object({
-      class: z.string().max(4096).optional(),
-      id: z.string().max(4096).optional(),
-      style: z.string().max(4096).optional(),
-      name: z.string().max(4096).optional(),
-      role: z.string().max(4096).optional(),
-      href: z.string().max(4096).optional(),
-      for: z.string().max(4096).optional(),
-      placeholder: z.string().max(4096).optional(),
-      alt: z.string().max(4096).optional(),
-      title: z.string().max(4096).optional(),
-      ariaLabel: z.string().max(4096).optional(),
-      ariaRole: z.string().max(4096).optional(),
-      ariaDescription: z.string().max(4096).optional(),
-      ariaHidden: z.boolean().optional(),
-      ariaDisabled: z.boolean().optional(),
-      ariaExpanded: z.boolean().optional(),
-      ariaSelected: z.boolean().optional(),
-    }),
-    // Custom attributes could also help massively
-    z
-      .record(
-        z.string().transform((val) => {
-          if (val.length > 256) {
-            return `${val.slice(0, 256)}...[truncated]`;
-          }
-          return val;
-        }),
-      )
-      .transform((obj) => {
-        // Truncate to first 100 entries
-        const entries = Object.entries(obj);
-        const truncatedEntries = entries.slice(0, 100);
-        const result = Object.fromEntries(truncatedEntries);
+  attributes: z
+    .record(z.union([z.string(), z.boolean(), z.number()]))
+    .transform((obj) => {
+      // Define the important attributes that should never be truncated
+      const importantAttributes = new Set([
+        'class',
+        'id',
+        'style',
+        'name',
+        'role',
+        'href',
+        'for',
+        'placeholder',
+        'alt',
+        'title',
+        'ariaLabel',
+        'ariaRole',
+        'ariaDescription',
+        'ariaHidden',
+        'ariaDisabled',
+        'ariaExpanded',
+        'ariaSelected',
+      ]);
 
-        // Add truncation indicator if we truncated entries
-        if (entries.length > 100) {
-          result.__truncated__ = `...[${entries.length - 100} more entries truncated]`;
+      const entries = Object.entries(obj);
+      const importantEntries: [string, string][] = [];
+      const otherEntries: [string, string][] = [];
+
+      // Separate important from other attributes
+      for (const [key, value] of entries) {
+        const stringValue = typeof value === 'string' ? value : String(value);
+        const truncatedValue =
+          stringValue.length > 4096
+            ? `${stringValue.slice(0, 4096)}...[truncated]`
+            : stringValue;
+
+        if (importantAttributes.has(key)) {
+          importantEntries.push([key, truncatedValue]);
+        } else {
+          const processedValue =
+            stringValue.length > 256
+              ? `${stringValue.slice(0, 256)}...[truncated]`
+              : stringValue;
+          otherEntries.push([key, processedValue]);
         }
+      }
 
-        return result;
-      })
-      .describe(
-        'A list of attributes of the element. Will be truncated after 100 entries.',
-      ),
-  ),
+      // Always keep all important attributes, truncate others if needed
+      const maxOtherAttributes = 100 - importantEntries.length;
+      const truncatedOtherEntries = otherEntries.slice(
+        0,
+        Math.max(0, maxOtherAttributes),
+      );
+
+      const result = Object.fromEntries([
+        ...importantEntries,
+        ...truncatedOtherEntries,
+      ]);
+
+      // Add truncation indicator if we truncated other entries
+      if (otherEntries.length > maxOtherAttributes && maxOtherAttributes > 0) {
+        result.__truncated__ = `...[${otherEntries.length - maxOtherAttributes} more entries truncated]`;
+      }
+
+      return result;
+    })
+    .describe(
+      'A record of attributes of the element. Important attributes (class, id, style, etc.) are never truncated away. Other attributes may be truncated if there are too many total attributes.',
+    ),
   textContent: z
     .string()
     .transform((val) => {
