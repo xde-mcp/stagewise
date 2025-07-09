@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.1.3
+
+### Patch Changes
+
+- b328294: Fixing zod validation intersection issue.
+
 ## 0.1.2
 
 ### Patch Changes
