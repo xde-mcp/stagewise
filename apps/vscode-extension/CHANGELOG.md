@@ -1,5 +1,12 @@
 # stagewise-vscode-extension
 
+## 0.8.3
+
+### Patch Changes
+
+- Updated dependencies [b328294]
+  - @stagewise/agent-interface@0.1.3
+
 ## 0.8.2
 
 ### Patch Changes
