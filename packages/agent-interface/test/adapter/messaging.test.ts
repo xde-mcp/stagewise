@@ -730,8 +730,14 @@ describe('AgentTransportAdapterMessaging', () => {
 
         expect(currentMessage.id).toBe(messageId);
         expect(currentMessage.parts).toHaveLength(2);
-        expect(currentMessage.parts[0]).toEqual({ type: 'text', text: 'Part 1' });
-        expect(currentMessage.parts[1]).toEqual({ type: 'text', text: 'Part 2' });
+        expect(currentMessage.parts[0]).toEqual({
+          type: 'text',
+          text: 'Part 1',
+        });
+        expect(currentMessage.parts[1]).toEqual({
+          type: 'text',
+          text: 'Part 2',
+        });
 
         // Verify it returns by value (modifications don't affect internal state)
         currentMessage.parts[0].text = 'Modified';
@@ -744,7 +750,7 @@ describe('AgentTransportAdapterMessaging', () => {
 
       it('should return empty message state with getCurrentMessage when no message', () => {
         const currentMessage = agentInterface.messaging.getCurrentMessage();
-        
+
         expect(currentMessage.id).toBeNull();
         expect(currentMessage.parts).toEqual([]);
       });

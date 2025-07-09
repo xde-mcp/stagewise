@@ -70,9 +70,9 @@ export type AgentInterface = {
       content: AgentMessageContentItemPart | AgentMessageContentItemPart[],
     ) => void;
 
-    /** 
+    /**
      * Update a part of the current message.
-     * 
+     *
      * @param content - The content to update with
      * @param index - The index of the part to update. If index equals the current
      *                message length (highest index + 1), a new part will be added.

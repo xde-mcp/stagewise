@@ -331,28 +331,26 @@ export class AgentTransportAdapter implements TransportInterface {
             if (!self._currentMessageId) {
               self._clearMessage();
             }
-            
+
             // Handle union type - if content is an array, only take the first element
             const contentPart = Array.isArray(content) ? content[0] : content;
             if (!contentPart) {
               throw new Error('Content cannot be empty');
             }
-            
+
             // Add the new part
             self._messageContent.push(contentPart);
-            
+
             const update: AgentMessageUpdate = {
               messageId: self._currentMessageId!,
-              updateParts: [
-                { contentIndex: index, part: contentPart },
-              ],
+              updateParts: [{ contentIndex: index, part: contentPart }],
               createdAt: new Date(),
               resync: false,
             };
             self._messageController.push(update);
             return;
           }
-          
+
           if (index < 0 || index >= self._messageContent.length) {
             throw new Error(
               `Invalid index ${index} for message content update.`,
