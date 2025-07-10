@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.2.1
+
+### Patch Changes
+
+- 7a10613: Updated dependencies.
+
 ## 0.2.0
 
 ### Minor Changes

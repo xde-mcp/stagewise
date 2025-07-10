@@ -1,5 +1,14 @@
 # stagewise-vscode-extension
 
+## 0.8.5
+
+### Patch Changes
+
+- 7a10613: Updated dependencies.
+- Updated dependencies [7a10613]
+  - @stagewise/extension-toolbar-srpc-contract@0.2.1
+  - @stagewise/agent-interface@0.2.1
+
 ## 0.8.4
 
 ### Patch Changes
