@@ -41,7 +41,7 @@ export default async function buildPlugin(
 
   // These parts of the config are forced by the plugin builder.
   const forcedConfig: UserConfig = {
-    plugins: [react(), preserveDirectives()],
+    plugins: [react(), preserveDirectives() as any], // Cast to workaround Rollup version compatibility
     resolve: {
       mainFields: ['module', 'main'],
     },
