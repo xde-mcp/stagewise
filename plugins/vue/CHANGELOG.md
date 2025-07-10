@@ -1,5 +1,12 @@
 # @stagewise-plugins/vue
 
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [7a10613]
+  - @stagewise/toolbar@0.5.1
+
 ## 0.5.0
 
 ### Minor Changes

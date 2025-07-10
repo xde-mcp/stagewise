@@ -1,5 +1,11 @@
 # @stagewise/srpc
 
+## 0.2.2
+
+### Patch Changes
+
+- 7a10613: Updated dependencies.
+
 ## 0.2.1
 
 ### Patch Changes

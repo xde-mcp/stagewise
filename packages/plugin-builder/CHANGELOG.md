@@ -1,5 +1,13 @@
 # @stagewise/plugin-builder
 
+## 0.5.1
+
+### Patch Changes
+
+- 7a10613: Updated dependencies.
+- Updated dependencies [7a10613]
+  - @stagewise/toolbar@0.5.1
+
 ## 0.5.0
 
 ### Patch Changes
