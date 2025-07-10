@@ -2,7 +2,7 @@
 // People can extend or adapt the build process of the main plugin by simply passing in a vite config as a paremter
 import { build, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
-import preserveDirectives from 'rollup-plugin-preserve-directives';
+import preserveDirectives from 'rollup-preserve-directives';
 import { resolve } from 'node:path';
 import fs from 'node:fs';
 
