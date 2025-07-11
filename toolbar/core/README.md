@@ -7,7 +7,7 @@
 
 ![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
 
-> [!WARNING]
+> [!IMPORTANT]
 > ## 🚀 A 10x Faster Frontend Agent is Coming. The stagewise agent.
 > 
 > We're building a native frontend agent that integrates seamlessly with stagewise - delivering 10x faster UI development with unprecedented accuracy. 
