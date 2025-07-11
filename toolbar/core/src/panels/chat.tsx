@@ -138,7 +138,6 @@ export function ChatPanel() {
   return (
     <Panel
       className={cn(
-        'overflow-hidden',
         anyMessageInChat
           ? 'h-[35vh] max-h-[50vh] min-h-[20vh]'
           : '!h-[calc-size(auto,size)] h-auto min-h-0',
@@ -222,6 +221,9 @@ export function ChatPanel() {
           !enableInputField && 'pointer-events-none opacity-80 brightness-75',
           chatState.isPromptCreationActive && 'bg-blue-400/10',
           anyMessageInChat ? 'h-24' : 'h-36',
+          !anyMessageInChat &&
+            agentState.state === AgentStateType.IDLE &&
+            'rounded-t-[inherit] border-transparent border-t-none pt-3 pl-3',
         )}
       >
         <ContextElementsChips />
