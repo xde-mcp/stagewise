@@ -1,5 +1,13 @@
 # stagewise-vscode-extension
 
+## 0.8.6
+
+### Patch Changes
+
+- 47c3827: Make sure that the toolbar recognizes the retro agent service as available
+- Updated dependencies [69d29b2]
+  - @stagewise/agent-interface@0.2.2
+
 ## 0.8.5
 
 ### Patch Changes
