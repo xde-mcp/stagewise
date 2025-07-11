@@ -285,7 +285,7 @@ Check out our [project roadmap](./.github/ROADMAP.md) for upcoming features, bug
 
 ## 📜 License
 
-stagewise is developed by tiq UG (haftungsbeschränkt) and offerend under the AGPLv3 license.
+stagewise is developed by tiq UG (haftungsbeschränkt) and offered under the AGPLv3 license.
 
 For more information on the license model, visit the [FAQ about the GNU Licenses](https://www.gnu.org/licenses/gpl-faq.html).
 

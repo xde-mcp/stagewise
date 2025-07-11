@@ -38,15 +38,9 @@ Stagewise is organized as a **monorepo** using [pnpm workspaces](https://pnpm.io
 
   * Shared React component library.
   * Houses reusable UI elements (buttons, dialogs, forms, charts, etc.) used across apps and packages.
-* **srpc/**
+* **agent-interface/**
 
-  * Handles typed RPC (remote procedure call) communication between the toolbar, extension, and other services.
-* **websocket-client-sdk/**
-
-  * SDK for WebSocket client communication, used for real-time features.
-* **extension-toolbar-srpc-contract/** & **extension-websocket-contract/**
-
-  * Define contracts and interfaces for communication between the extension, toolbar, and WebSocket services.
+  * Contains the definitions and libraries needed to build an agent integration for the stagewise toolbar
 * **typescript-config/**
 
   * Shared TypeScript configuration files for consistent type-checking and build settings across the monorepo.
@@ -77,10 +71,10 @@ Stagewise is organized as a **monorepo** using [pnpm workspaces](https://pnpm.io
 ## How the Parts Interact
 
 * The framework-specific **toolbar packages** (e.g., `@toolbar/next`, `@toolbar/react`, `@toolbar/vue`) are injected into frontend apps. They leverage `@toolbar/core` to provide the UI for selecting DOM elements and sending prompts.
-* The **VSCode extension** receives data from the active toolbar instance and communicates with your local AI agent (e.g., Cursor IDE).
-* **Contracts** in `packages/extension-toolbar-srpc-contract` and `packages/extension-websocket-contract` ensure type-safe communication between the extension, the toolbar components, and any backend services.
-* The **UI library** is shared across the website, `@toolbar/core`, and potentially other packages for a consistent look and feel.
-* **Examples** and **playgrounds** help demonstrate and test integrations in various environments using the appropriate framework-specific toolbar package.
+* The **Agent Interface** interconnects the toolbar with any given agent. Our **Code Editor Extension** hosts one or more agents depending on the setup.
+* The **Code Editor Extension** receives data from the active toolbar instance and communicates with your local AI agent (e.g., Cursor IDE).
+* The **UI Library** is shared across the website, `@toolbar/core`, and potentially other packages for a consistent look and feel.
+* **Examples** help demonstrate and test integrations in various environments using the appropriate framework-specific toolbar package.
 
 This structure is designed for modularity, reusability, and ease of contribution. Each package and app is self-contained, with clear responsibilities and minimal coupling.
 

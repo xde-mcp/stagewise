@@ -26,8 +26,7 @@ The workspace structure is defined in `[pnpm-workspace.yaml](mdc:pnpm-workspace.
     *   When making changes here, the commit scope should be the app's directory name (e.g., `feat(vscode-extension): ...`).
 
 *   **`packages/`**: Contains shared libraries or utilities used by different `apps` or other `packages`. For example:
-    *   `packages/extension-toolbar-srpc-contract`: Defines sRPC contracts.
-    *   `packages/srpc`: sRPC implementation.
+    *   `packages/agent-interface`: Library that enables devs to build an agent integration with the stagewise toolbar.
     *   `packages/typescript-config`: Shared TypeScript configurations.
     *   `packages/ui`: Shared UI components or styles.
     *   When making changes here, the commit scope should be the package's directory name (e.g., `fix(ui): ...`).
