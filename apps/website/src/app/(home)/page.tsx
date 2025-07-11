@@ -17,6 +17,7 @@ import { AnimatedBackground } from '@/components/landing/animated-background';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { GradientButton } from '@/components/landing/gradient-button';
 import { usePostHog } from 'posthog-js/react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Accordion,
@@ -74,6 +75,36 @@ function StarIcon({ className = '' }: { className?: string }) {
 
 export default function Home() {
   const posthog = usePostHog();
+  const [starCount, setStarCount] = useState<number | null>(null);
+
+  // Fetch GitHub star count
+  useEffect(() => {
+    const fetchStarCount = async () => {
+      try {
+        const response = await fetch(
+          'https://api.github.com/repos/stagewise-io/stagewise',
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setStarCount(data.stargazers_count);
+        }
+      } catch {
+        // Fallback to a default value if API fails
+        setStarCount(4300);
+      }
+    };
+
+    fetchStarCount();
+  }, []);
+
+  // Format star count for display
+  const formatStarCount = (count: number | null) => {
+    if (count === null) return '3K+'; // Loading state
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K+`;
+    }
+    return count.toString();
+  };
 
   const ideOptions = [
     {
@@ -143,7 +174,7 @@ export default function Home() {
                     <StarIcon className="mr-2 h-4 w-4 text-yellow-500" />
                     Star on GitHub
                     <div className="ml-1 rounded-full bg-zinc-500/10 px-1.5 py-0.5 font-medium text-xs text-zinc-500">
-                      3K+
+                      {formatStarCount(starCount)}
                     </div>
                   </GradientButton>
                 </Link>
