@@ -1,9 +1,9 @@
 ---
-title: Plugins
+title: How to create plugins
 ---
 
 export const metadata = {
-  title: "Plugins",
+  title: "How to create plugins",
   description: "Learn how to create and use stagewise plugins.",
 };
 
@@ -32,8 +32,8 @@ my-plugin/
   src/
     index.tsx        # Main plugin entry point
     component.tsx    # Example UI component
+  build.config.ts
   package.json
-  vite.config.ts
   tsconfig.json
   ...
 ```
@@ -47,13 +47,16 @@ A stagewise plugin is an object that implements the `ToolbarPlugin` interface fr
 import type { ToolbarPlugin } from '@stagewise/toolbar';
 import { ExampleComponent } from './component';
 
-export const ExamplePlugin: ToolbarPlugin = {
+const ExamplePlugin: ToolbarPlugin = {
   displayName: 'Example',
   description: 'Example Plugin',
   iconSvg: null, // You can provide a VNode for a custom SVG icon
   pluginName: 'example',
   onActionClick: () => <ExampleComponent />,
 };
+
+// It's super important to make a default export here!
+default export ExamplePlugin;
 ```
 
 ### Key Fields
@@ -96,7 +99,7 @@ export const ExampleComponent = () => {
 ```
 
 ### The `useToolbar` Hook
-This hook gives you access to the toolbar context, including the `sendPrompt` method to send messages to your AI agent.
+This hook gives you access to the toolbar context, including the `sendPrompt` method to send messages to your AI agent or the window object of the main web app.
 
 ## 4. Advanced Plugin Features
 
