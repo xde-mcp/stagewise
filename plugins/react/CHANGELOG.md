@@ -1,5 +1,12 @@
 # @stagewise-plugins/react
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [17f1c51]
+  - @stagewise/toolbar@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes

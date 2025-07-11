@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.5.2
+
+### Patch Changes
+
+- 17f1c51: Add old style export statement to package definitions
+
 ## 0.5.1
 
 ### Patch Changes
