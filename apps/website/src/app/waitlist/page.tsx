@@ -28,7 +28,7 @@ export default function WaitlistPage() {
                 {/* Video Preview Placeholder */}
                 <div className="hidden aspect-video w-full rounded-xl border border-indigo-900/20 shadow-[0_0_40px_rgba(128,90,213,0.25)] md:block">
                   <CustomVideoPlayer
-                    videoSrc="https://github.com/stagewise-io/assets/raw/24f1bbf1f75eb41be8076b40e2c1ada8676a97c7/edited/0-5-0-custom-agent/stagewise-custom-agent-demo.mp4"
+                    videoSrc="https://github.com/stagewise-io/assets/raw/24f1bbf1f75eb41be8076b40e2c1ada8676a97c7/edited/0-5-0-custom-agent/github-projects-demo.mp4"
                     thumbnailSrc="/agent-thumbnail.png"
                     alt="stagewise demo video"
                     width={1200}
