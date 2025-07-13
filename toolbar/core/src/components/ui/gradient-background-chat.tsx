@@ -71,12 +71,21 @@ const SHAPE_DEFAULTS: GradientBackgroundShape[] = [
 /**
  * Generates a random number within a given range.
  */
-const random = (min, max) => Math.random() * (max - min) + min;
+const random = (min: number, max: number): number =>
+  Math.random() * (max - min) + min;
 
 /**
  * Renders a single group of shapes with a specific animation speed.
  */
-const ShapeGroup = ({ shapes, speed, speedClass }) => {
+const ShapeGroup = ({
+  shapes,
+  speed,
+  speedClass,
+}: {
+  shapes: GradientBackgroundShape[];
+  speed: number;
+  speedClass: string;
+}) => {
   const animationMultipliers = useMemo(() => {
     return shapes.map((_, i) => ({
       duration: random(0.8, 1.2),
@@ -157,28 +166,31 @@ export const GradientBackgroundChat = ({
 
   useEffect(() => {
     const activeVariant = variants[currentVariant];
-    if (activeVariant) {
-      // Check if we should be transparent (either via prop or 'transparent' variant)
-      const shouldBeTransparent =
-        transparent || currentVariant === 'transparent';
-
-      setStyle({
-        '--chat-grad-bg-bg-color': activeVariant.backgroundColor,
-        backgroundColor: 'var(--chat-grad-bg-bg-color)',
-        '--chat-grad-bg-c1': activeVariant.colors[0],
-        '--chat-grad-bg-c2': activeVariant.colors[1],
-        '--chat-grad-bg-c3': activeVariant.colors[2],
-        '--chat-grad-bg-c4': activeVariant.colors[3],
-        '--chat-grad-bg-opacity-slow':
-          activeVariant.activeSpeed === 'slow' ? 1 : 0,
-        '--chat-grad-bg-opacity-medium':
-          activeVariant.activeSpeed === 'medium' ? 1 : 0,
-        '--chat-grad-bg-opacity-fast':
-          activeVariant.activeSpeed === 'fast' ? 1 : 0,
-        '--chat-grad-bg-overall-opacity': shouldBeTransparent ? 0 : 1,
-        opacity: 'var(--chat-grad-bg-overall-opacity)',
-      });
+    if (!activeVariant) {
+      console.warn(
+        `Variant "${currentVariant}" not found, falling back to default`,
+      );
+      return;
     }
+    // Check if we should be transparent (either via prop or 'transparent' variant)
+    const shouldBeTransparent = transparent || currentVariant === 'transparent';
+
+    setStyle({
+      '--chat-grad-bg-bg-color': activeVariant.backgroundColor,
+      backgroundColor: 'var(--chat-grad-bg-bg-color)',
+      '--chat-grad-bg-c1': activeVariant.colors[0],
+      '--chat-grad-bg-c2': activeVariant.colors[1],
+      '--chat-grad-bg-c3': activeVariant.colors[2],
+      '--chat-grad-bg-c4': activeVariant.colors[3],
+      '--chat-grad-bg-opacity-slow':
+        activeVariant.activeSpeed === 'slow' ? 1 : 0,
+      '--chat-grad-bg-opacity-medium':
+        activeVariant.activeSpeed === 'medium' ? 1 : 0,
+      '--chat-grad-bg-opacity-fast':
+        activeVariant.activeSpeed === 'fast' ? 1 : 0,
+      '--chat-grad-bg-overall-opacity': shouldBeTransparent ? 0 : 1,
+      opacity: 'var(--chat-grad-bg-overall-opacity)',
+    });
   }, [currentVariant, variants, transparent]);
 
   return (
@@ -189,6 +201,8 @@ export const GradientBackgroundChat = ({
       <svg
         className="-inset-[25%] absolute h-[150%] w-[150%]"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        role="presentation"
       >
         <defs>
           <filter id="blur-filter">

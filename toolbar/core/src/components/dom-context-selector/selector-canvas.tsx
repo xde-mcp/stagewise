@@ -6,14 +6,10 @@ import { useContextChipHover } from '@/hooks/use-context-chip-hover';
 import { ChipHoveredItem } from './chip-hovered-item';
 
 export function DOMContextSelector() {
-  const {
-    domContextElements,
-    addChatDomContext,
-    isPromptCreationActive,
-    promptState,
-  } = useChatState();
+  const { domContextElements, addChatDomContext, isPromptCreationActive } =
+    useChatState();
 
-  const shouldShow = isPromptCreationActive && promptState !== 'loading';
+  const shouldShow = isPromptCreationActive;
 
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(
     null,

@@ -432,7 +432,7 @@ export const getSelectedElementInfo = (
       element.parentElement && (callDepth ?? 0) < 10
         ? getSelectedElementInfo(element.parentElement, (callDepth ?? 0) + 1)
         : null,
-    pluginInfo: truncatePluginInfo([]), // TODO: Implement plugin info with proper truncation
+    pluginInfo: truncatePluginInfo([]),
   };
 };
 

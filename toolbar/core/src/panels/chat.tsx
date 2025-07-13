@@ -13,10 +13,10 @@ import { AgentStateType } from '@stagewise/agent-interface/toolbar';
 import {
   Loader2Icon,
   MessageCircleQuestionIcon,
-  SendIcon,
   XCircleIcon,
   CheckIcon,
   CogIcon,
+  ArrowUpIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ContextElementsChips } from '@/components/context-elements-chips';
@@ -122,6 +122,7 @@ export function ChatPanel() {
       inputRef.current?.focus();
       // We only force re-focus if the prompt creation is active.
       inputRef.current?.addEventListener('blur', blurHandler);
+      isIntentionallyStoppingRef.current = false;
     } else {
       // When stopping prompt creation, set the flag to prevent refocus
       if (inputRef.current === document.activeElement) {
@@ -236,14 +237,13 @@ export function ChatPanel() {
                 chatState.setChatInput(e.target.value);
               }}
               onFocus={() => {
-                if (enableInputField && !chatState.isPromptCreationActive) {
-                  chatState.startPromptCreation();
-                }
+                chatState.startPromptCreation();
               }}
               onKeyDown={handleKeyDown}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
-              className="my-1 ml-1 h-full w-full resize-none focus:outline-none"
+              disabled={!enableInputField}
+              className="my-1 h-full w-full resize-none focus:outline-none"
             />
             <div className="pointer-events-none absolute inset-0 z-10 p-1">
               <TextSlideshow
@@ -261,11 +261,12 @@ export function ChatPanel() {
           </div>
           <Button
             disabled={!canSendMessage}
+            onClick={handleSubmit}
             glassy
             variant="primary"
-            className="size-10 cursor-pointer rounded-full p-1"
+            className="size-8 cursor-pointer rounded-full p-1"
           >
-            <SendIcon className="size-4" />
+            <ArrowUpIcon className="size-4" />
           </Button>
         </div>
       </PanelFooter>

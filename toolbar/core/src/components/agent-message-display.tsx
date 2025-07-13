@@ -74,12 +74,6 @@ export function AgentMessageDisplay() {
     return null;
   }
 
-  const hasContent = messaging.agentMessage?.contentItems?.length > 0;
-
-  if (!hasContent) {
-    return null;
-  }
-
   return (
     <div
       ref={scrollContainerRef}

@@ -36,10 +36,6 @@ export function PluginProvider({ children }: { children?: ReactNode }) {
   const toolbarContext = useMemo(() => {
     return {
       sendPrompt: async (prompt: PluginUserMessage) => {
-        // TODO: add metadata to the prompt
-        // TODO: add id to the prompt
-        // TODO: add createdAt to the prompt
-        // TODO: add sentByPlugin to the prompt
         const userMessage: UserMessage = {
           ...prompt,
           id: generateId(),

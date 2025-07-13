@@ -20,11 +20,10 @@ interface ContextSnippet {
   promptContextName: string;
   content: (() => string | Promise<string>) | string;
 }
-interface PluginContextSnippets {
+export type PluginContextSnippets = {
   pluginName: string;
   contextSnippets: ContextSnippet[];
-}
-[];
+};
 
 interface ChatContext {
   // Chat content operations
@@ -46,9 +45,6 @@ interface ChatContext {
   startPromptCreation: () => void;
   stopPromptCreation: () => void;
   isSending: boolean;
-
-  // Prompt state
-  promptState: 'idle' | 'loading' | 'error' | 'success';
 }
 
 const ChatContext = createContext<ChatContext>({
@@ -62,7 +58,6 @@ const ChatContext = createContext<ChatContext>({
   startPromptCreation: () => {},
   stopPromptCreation: () => {},
   isSending: false,
-  promptState: 'idle',
 });
 
 interface ChatStateProviderProps {
@@ -266,7 +261,6 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     startPromptCreation,
     stopPromptCreation,
     isSending,
-    promptState: 'idle',
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
