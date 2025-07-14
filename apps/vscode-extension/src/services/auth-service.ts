@@ -3,7 +3,6 @@ import axios from 'axios';
 import { StorageService } from './storage-service';
 import { VScodeContext } from './vscode-context';
 import { STAGEWISE_CONSOLE_URL } from '../constants';
-import { getCurrentIDE } from '../utils/get-current-ide';
 
 interface AuthCode {
   authCode: string;
@@ -47,6 +46,7 @@ export class AuthService {
   protected readonly AUTH_STATE_KEY = 'stagewise.authState';
   protected readonly TOKEN_EXPIRY_MINUTES = 5;
   private refreshPromise: Promise<void> | null = null;
+  private cachedAccessToken: string | null = null;
 
   protected constructor() {}
 
@@ -55,27 +55,6 @@ export class AuthService {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
-  }
-
-  /**
-   * Get the extension ID for the current IDE
-   */
-  private getExtensionId(): string {
-    const ide = getCurrentIDE();
-
-    switch (ide) {
-      case 'CURSOR':
-        return 'cursor';
-      case 'VSCODE':
-        return 'vscode';
-      case 'TRAE':
-        return 'trae';
-      case 'WINDSURF':
-        return 'windsurf';
-      default:
-        // Fallback to app name if unknown
-        return vscode.env.appName.toLowerCase().replace(/\s+/g, '-');
-    }
   }
 
   /**
@@ -95,6 +74,41 @@ export class AuthService {
       // Validate auth code format (basic validation for non-empty string)
       if (!authCode.trim() || authCode.length < 10) {
         throw new Error(`Invalid auth code format: ${authCode}`);
+      }
+
+      // Check if user is already authenticated and clear old tokens
+      const existingAuthState = await this.getAuthState();
+      if (existingAuthState?.isAuthenticated) {
+        // Revoke old tokens on server
+        try {
+          const body: { refreshToken?: string; token?: string } = {};
+          if (existingAuthState.refreshToken) {
+            body.refreshToken = existingAuthState.refreshToken;
+          } else if (existingAuthState.accessToken) {
+            body.token = existingAuthState.accessToken;
+          }
+
+          if (body.refreshToken || body.token) {
+            await axios.post(
+              `${STAGEWISE_CONSOLE_URL}/auth/extension/revoke`,
+              body,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                timeout: 10000,
+              },
+            );
+          }
+        } catch (error) {
+          console.warn('Failed to revoke old tokens:', error);
+        }
+
+        // Clear cached access token
+        this.cachedAccessToken = null;
+
+        // Clear stored authentication state
+        await this.storageService.delete(this.AUTH_STATE_KEY);
       }
 
       // Store auth code temporarily
@@ -158,6 +172,9 @@ export class AuthService {
         };
 
         await this.storageService.set(this.AUTH_STATE_KEY, authState);
+
+        // Update cached access token
+        this.cachedAccessToken = tokenPair.accessToken;
 
         // Clear the temporary auth code from secrets
         const secrets = this.context.getContext()?.secrets;
@@ -236,6 +253,9 @@ export class AuthService {
         };
 
         await this.storageService.set(this.AUTH_STATE_KEY, updatedAuthState);
+
+        // Update cached access token
+        this.cachedAccessToken = tokenPair.accessToken;
       } else {
         throw new Error(response.data.error || 'Token refresh failed');
       }
@@ -351,6 +371,9 @@ export class AuthService {
     // Clear stored authentication
     await this.storageService.delete(this.AUTH_STATE_KEY);
 
+    // Clear cached access token
+    this.cachedAccessToken = null;
+
     const secrets = this.context.getContext()?.secrets;
     if (secrets) {
       await secrets.delete(this.AUTH_TOKEN_KEY);
@@ -456,6 +479,25 @@ export class AuthService {
   public async getAuthState(): Promise<AuthState | null> {
     const state = await this.storageService.get<AuthState>(this.AUTH_STATE_KEY);
     return state || null;
+  }
+
+  /**
+   * Get the currently saved access token immediately (without refresh)
+   */
+  public async getAccessToken(): Promise<string | null> {
+    // Return cached token if available
+    if (this.cachedAccessToken) {
+      return this.cachedAccessToken;
+    }
+
+    // Load from storage for the first time and cache it
+    const authState = await this.getAuthState();
+    if (authState?.accessToken) {
+      this.cachedAccessToken = authState.accessToken;
+      return this.cachedAccessToken;
+    }
+
+    return null;
   }
 
   /**

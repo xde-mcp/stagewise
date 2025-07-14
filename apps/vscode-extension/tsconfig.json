@@ -13,6 +13,11 @@
     "types": ["node"],
     "baseUrl": "."
   },
+  "watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "synchronousWatchDirectory": true
+  },
   "include": ["src", "scripts"],
   "exclude": ["node_modules", ".vscode-test", "out"]
 }
