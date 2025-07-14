@@ -412,7 +412,7 @@ export class AuthService {
           }
 
           await vscode.window.showInformationMessage(
-            `Authenticated as: ${updatedAuthState.userEmail}`,
+            `Authenticated as: ${updatedAuthState.userEmail} - Early Agent Access: ${updatedAuthState.hasEarlyAgentAccess}`,
           );
 
           return updatedAuthState;

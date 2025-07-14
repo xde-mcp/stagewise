@@ -2,6 +2,9 @@ const path = require('node:path');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const webpack = require('webpack');
 
+// Load environment variables from the root .env file
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+
 /** @type {import('webpack').Configuration} */
 const config = {
   target: 'node', // VS Code extensions run in a Node.js-context -> https://webpack.js.org/configuration/node/
@@ -20,6 +23,10 @@ const config = {
         process.env.POSTHOG_API_KEY,
       ),
       'process.env.POSTHOG_HOST': JSON.stringify(process.env.POSTHOG_HOST),
+      'process.env.STAGEWISE_CONSOLE_URL': JSON.stringify(
+        process.env.STAGEWISE_CONSOLE_URL,
+      ),
+      'process.env.API_URL': JSON.stringify(process.env.API_URL),
     }),
   ],
   externals: {
