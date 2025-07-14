@@ -38,6 +38,14 @@ interface SessionValidationResponse {
   hasEarlyAgentAccess: boolean;
 }
 
+/**
+ * Callback function type for authentication state changes
+ * @param authState The new authentication state
+ */
+export type AuthStateChangeCallback = (
+  authState: AuthState,
+) => void | Promise<void>;
+
 export class AuthService {
   private static instance: AuthService;
   protected storageService = StorageService.getInstance();
@@ -47,6 +55,7 @@ export class AuthService {
   protected readonly TOKEN_EXPIRY_MINUTES = 5;
   private refreshPromise: Promise<void> | null = null;
   private cachedAccessToken: string | null = null;
+  private authStateChangeCallbacks: AuthStateChangeCallback[] = [];
 
   protected constructor() {}
 
@@ -159,35 +168,57 @@ export class AuthService {
         },
       );
 
-      if (response.status === 200) {
-        const tokenPair: TokenPair = response.data;
-
-        // Store authentication state
-        const authState: AuthState = {
-          isAuthenticated: true,
-          accessToken: tokenPair.accessToken,
-          refreshToken: tokenPair.refreshToken,
-          expiresAt: tokenPair.expiresAt,
-          refreshExpiresAt: tokenPair.refreshExpiresAt,
-        };
-
-        await this.storageService.set(this.AUTH_STATE_KEY, authState);
-
-        // Update cached access token
-        this.cachedAccessToken = tokenPair.accessToken;
-
-        // Clear the temporary auth code from secrets
-        const secrets = this.context.getContext()?.secrets;
-        if (secrets) {
-          await secrets.delete(this.AUTH_TOKEN_KEY);
-        }
-
-        await vscode.window.showInformationMessage(
-          'Successfully authenticated with stagewise!',
-        );
-      } else {
+      if (response.status !== 200) {
         throw new Error(response.data.error || 'Failed to exchange auth code');
       }
+
+      const sessionResponse = await axios.get(
+        `${STAGEWISE_CONSOLE_URL}/auth/extension/session`,
+        {
+          headers: {
+            Authorization: `Bearer ${response.data.accessToken}`,
+          },
+          timeout: 30000,
+        },
+      );
+
+      if (sessionResponse.status !== 200) {
+        throw new Error(sessionResponse.data.error || 'Failed to get session');
+      }
+
+      const sessionData: SessionValidationResponse = sessionResponse.data;
+
+      const tokenPair: TokenPair = response.data;
+
+      // Store authentication state
+      const authState: AuthState = {
+        isAuthenticated: true,
+        accessToken: tokenPair.accessToken,
+        refreshToken: tokenPair.refreshToken,
+        expiresAt: tokenPair.expiresAt,
+        refreshExpiresAt: tokenPair.refreshExpiresAt,
+        userId: sessionData.userId,
+        userEmail: sessionData.userEmail,
+        hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
+      };
+
+      await this.storageService.set(this.AUTH_STATE_KEY, authState);
+
+      // Update cached access token
+      this.cachedAccessToken = tokenPair.accessToken;
+
+      // Clear the temporary auth code from secrets
+      const secrets = this.context.getContext()?.secrets;
+      if (secrets) {
+        await secrets.delete(this.AUTH_TOKEN_KEY);
+      }
+
+      // Notify callbacks of authentication state change
+      await this.notifyAuthStateChange(authState);
+
+      await vscode.window.showInformationMessage(
+        'Successfully authenticated with stagewise!',
+      );
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 400) {
@@ -240,25 +271,47 @@ export class AuthService {
         },
       );
 
-      if (response.status === 200) {
-        const tokenPair: TokenPair = response.data;
-
-        // Update auth state with new tokens
-        const updatedAuthState: AuthState = {
-          ...authState,
-          accessToken: tokenPair.accessToken,
-          refreshToken: tokenPair.refreshToken,
-          expiresAt: tokenPair.expiresAt,
-          refreshExpiresAt: tokenPair.refreshExpiresAt,
-        };
-
-        await this.storageService.set(this.AUTH_STATE_KEY, updatedAuthState);
-
-        // Update cached access token
-        this.cachedAccessToken = tokenPair.accessToken;
-      } else {
-        throw new Error(response.data.error || 'Token refresh failed');
+      if (response.status !== 200) {
+        throw new Error(response.data.error || 'Failed to refresh tokens');
       }
+
+      const sessionResponse = await axios.get(
+        `${STAGEWISE_CONSOLE_URL}/auth/extension/session`,
+        {
+          headers: {
+            Authorization: `Bearer ${response.data.accessToken}`,
+          },
+          timeout: 30000,
+        },
+      );
+
+      if (sessionResponse.status !== 200) {
+        throw new Error(sessionResponse.data.error || 'Failed to get session');
+      }
+
+      const sessionData: SessionValidationResponse = sessionResponse.data;
+
+      const tokenPair: TokenPair = response.data;
+
+      // Update auth state with new tokens
+      const updatedAuthState: AuthState = {
+        ...authState,
+        accessToken: tokenPair.accessToken,
+        refreshToken: tokenPair.refreshToken,
+        expiresAt: tokenPair.expiresAt,
+        refreshExpiresAt: tokenPair.refreshExpiresAt,
+        userId: sessionData.userId,
+        userEmail: sessionData.userEmail,
+        hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
+      };
+
+      await this.storageService.set(this.AUTH_STATE_KEY, updatedAuthState);
+
+      // Update cached access token
+      this.cachedAccessToken = tokenPair.accessToken;
+
+      // Notify callbacks of authentication state change
+      await this.notifyAuthStateChange(updatedAuthState);
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 400) {
@@ -379,6 +432,9 @@ export class AuthService {
       await secrets.delete(this.AUTH_TOKEN_KEY);
     }
 
+    // Notify callbacks of authentication state change (logged out)
+    await this.notifyAuthStateChange({ isAuthenticated: false });
+
     await vscode.window.showInformationMessage(
       'Successfully logged out from stagewise',
     );
@@ -432,6 +488,9 @@ export class AuthService {
               this.AUTH_STATE_KEY,
               updatedAuthState,
             );
+
+            // Notify callbacks of authentication state change
+            await this.notifyAuthStateChange(updatedAuthState);
           }
 
           await vscode.window.showInformationMessage(
@@ -616,5 +675,53 @@ export class AuthService {
       },
       timeout: 10000,
     });
+  }
+
+  /**
+   * Register a callback to be notified when authentication state changes.
+   * This will be called whenever the user logs in, logs out, tokens are refreshed,
+   * or user information is updated.
+   *
+   * @param callback Function to call when auth state changes
+   * @returns Unsubscribe function to remove the callback
+   *
+   * @example
+   * ```typescript
+   * const authService = AuthService.getInstance();
+   * const unsubscribe = authService.onAuthStateChanged((authState) => {
+   *   if (authState.isAuthenticated) {
+   *     console.log('User logged in:', authState.userEmail);
+   *   } else {
+   *     console.log('User logged out');
+   *   }
+   * });
+   *
+   * // Later, when you want to stop listening:
+   * unsubscribe();
+   * ```
+   */
+  public onAuthStateChanged(callback: AuthStateChangeCallback): () => void {
+    this.authStateChangeCallbacks.push(callback);
+
+    // Return unsubscribe function
+    return () => {
+      const index = this.authStateChangeCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.authStateChangeCallbacks.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Notify all registered callbacks of authentication state changes
+   */
+  private async notifyAuthStateChange(authState: AuthState): Promise<void> {
+    for (const callback of this.authStateChangeCallbacks) {
+      try {
+        await callback(authState);
+      } catch (error) {
+        console.error('Error in auth state change callback:', error);
+      }
+    }
   }
 }
