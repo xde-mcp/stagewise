@@ -3,7 +3,14 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const webpack = require('webpack');
 
 // Load environment variables from the root .env file
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+const envPath = path.resolve(__dirname, '../../.env');
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
+} else {
+  console.warn(
+    `[webpack] .env file not found at ${envPath}; Relying on shell environment variables`,
+  );
+}
 
 /** @type {import('webpack').Configuration} */
 const config = {

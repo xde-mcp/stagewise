@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import { StorageService } from './storage-service';
 import { VScodeContext } from './vscode-context';
 import { STAGEWISE_CONSOLE_URL } from '../constants';
@@ -82,7 +82,7 @@ export class AuthService {
 
       // Validate auth code format (basic validation for non-empty string)
       if (!authCode.trim() || authCode.length < 10) {
-        throw new Error(`Invalid auth code format: ${authCode}`);
+        throw new Error('Invalid auth code format');
       }
 
       // Check if user is already authenticated and clear old tokens
@@ -584,7 +584,9 @@ export class AuthService {
    * @param config Axios request configuration
    * @returns Axios response
    */
-  public async makeAuthenticatedRequest<T = any>(config: any): Promise<T> {
+  public async makeAuthenticatedRequest<T = any>(
+    config: AxiosRequestConfig,
+  ): Promise<T> {
     try {
       const authHeaders = await this.getAuthHeaders();
 
