@@ -818,13 +818,6 @@ export function useDraggable(config: DraggableConfig) {
         }
         document.body.style.userSelect = '';
         document.body.style.cursor = '';
-        // Clean up global listeners
-        window.removeEventListener('mousemove', mouseMoveHandler, {
-          capture: true,
-        });
-        window.removeEventListener('mouseup', mouseUpHandler, {
-          capture: true,
-        });
       }
     };
   }, [
