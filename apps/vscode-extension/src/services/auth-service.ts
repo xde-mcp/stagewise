@@ -52,7 +52,6 @@ export class AuthService {
   protected context = VScodeContext.getInstance();
   protected readonly AUTH_TOKEN_KEY = 'stagewise.authToken';
   protected readonly AUTH_STATE_KEY = 'stagewise.authState';
-  protected readonly TOKEN_EXPIRY_MINUTES = 5;
   private refreshPromise: Promise<void> | null = null;
   private cachedAccessToken: string | null = null;
   private authStateChangeCallbacks: AuthStateChangeCallback[] = [];
@@ -254,7 +253,8 @@ export class AuthService {
     ) {
       // Refresh token is expired, user needs to re-authenticate
       await this.logout();
-      throw new Error('Refresh token expired. Please authenticate again.');
+      await this.authenticate();
+      return;
     }
 
     try {
@@ -300,9 +300,6 @@ export class AuthService {
         refreshToken: tokenPair.refreshToken,
         expiresAt: tokenPair.expiresAt,
         refreshExpiresAt: tokenPair.refreshExpiresAt,
-        userId: sessionData.userId,
-        userEmail: sessionData.userEmail,
-        hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
       };
 
       await this.storageService.set(this.AUTH_STATE_KEY, updatedAuthState);
@@ -568,15 +565,6 @@ export class AuthService {
     return {
       Authorization: `Bearer ${accessToken}`,
     };
-  }
-
-  /**
-   * Check if token is expired (for temporary tokens)
-   */
-  private isTokenExpired(timestamp: number): boolean {
-    const now = Date.now();
-    const expiryTime = timestamp + this.TOKEN_EXPIRY_MINUTES * 60 * 1000;
-    return now > expiryTime;
   }
 
   /**

@@ -1,4 +1,5 @@
 const path = require('node:path');
+const fs = require('node:fs');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const webpack = require('webpack');
 
