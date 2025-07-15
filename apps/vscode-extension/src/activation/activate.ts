@@ -34,7 +34,6 @@ async function setupToolbarHandler() {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log('Activating stagewise extension');
   try {
     // initialize all services in the correct order
     VScodeContext.getInstance().initialize(context);
@@ -98,7 +97,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register URI handler for authentication
     const uriHandler = vscode.window.registerUriHandler({
       handleUri: async (uri: vscode.Uri) => {
-        console.log('URI Handler triggered:', uri.toString());
         if (uri.path === '/authenticate') {
           await authService.handleAuthenticationUri(uri);
         }
