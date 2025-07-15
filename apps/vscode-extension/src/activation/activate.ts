@@ -15,6 +15,7 @@ import { WorkspaceService } from 'src/services/workspace-service';
 import { RegistryService } from 'src/services/registry-service';
 import { RetroAgentService } from 'src/services/agent-service/retro';
 import { AgentService } from 'src/services/agent-service';
+import { AuthService } from 'src/services/auth-service';
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -33,7 +34,6 @@ async function setupToolbarHandler() {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log('Activating stagewise extension');
   try {
     // initialize all services in the correct order
     VScodeContext.getInstance().initialize(context);
@@ -90,6 +90,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const agentService = AgentService.getInstance();
     await agentService.initialize();
+
+    // Initialize AuthService
+    const authService = AuthService.getInstance();
+
+    // Register URI handler for authentication
+    const uriHandler = vscode.window.registerUriHandler({
+      handleUri: async (uri: vscode.Uri) => {
+        if (uri.path === '/authenticate') {
+          await authService.handleAuthenticationUri(uri);
+        }
+      },
+    });
+    context.subscriptions.push(uriHandler);
 
     // Function to show getting started panel if needed
     const showGettingStartedIfNeeded = async () => {
@@ -150,6 +163,66 @@ export async function activate(context: vscode.ExtensionContext) {
       },
     );
     context.subscriptions.push(showGettingStartedCommand);
+
+    // Register authentication commands
+    const authenticateCommand = vscode.commands.registerCommand(
+      'stagewise.authenticate',
+      async () => {
+        try {
+          analyticsService.trackEvent(EventName.AUTHENTICATE_COMMAND_TRIGGERED);
+          await authService.authenticate();
+        } catch (error) {
+          console.error(
+            'Error during authentication:',
+            error instanceof Error ? error.message : String(error),
+          );
+          vscode.window.showErrorMessage(
+            `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+          );
+        }
+      },
+    );
+    context.subscriptions.push(authenticateCommand);
+
+    const logoutCommand = vscode.commands.registerCommand(
+      'stagewise.logout',
+      async () => {
+        try {
+          analyticsService.trackEvent(EventName.LOGOUT_COMMAND_TRIGGERED);
+          await authService.logout();
+        } catch (error) {
+          console.error(
+            'Error during logout:',
+            error instanceof Error ? error.message : String(error),
+          );
+          vscode.window.showErrorMessage(
+            `Logout failed: ${error instanceof Error ? error.message : 'Please try again.'}`,
+          );
+        }
+      },
+    );
+    context.subscriptions.push(logoutCommand);
+
+    const checkAuthStatusCommand = vscode.commands.registerCommand(
+      'stagewise.checkAuthStatus',
+      async () => {
+        try {
+          analyticsService.trackEvent(
+            EventName.CHECK_AUTH_STATUS_COMMAND_TRIGGERED,
+          );
+          await authService.checkAuthStatus();
+        } catch (error) {
+          console.error(
+            'Error checking auth status:',
+            error instanceof Error ? error.message : String(error),
+          );
+          vscode.window.showErrorMessage(
+            `Failed to check authentication status: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      },
+    );
+    context.subscriptions.push(checkAuthStatusCommand);
   } catch (error) {
     console.error('Error during extension activation:', error);
   }

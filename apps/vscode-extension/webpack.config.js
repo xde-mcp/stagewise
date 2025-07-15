@@ -1,6 +1,17 @@
 const path = require('node:path');
+const fs = require('node:fs');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const webpack = require('webpack');
+
+// Load environment variables from the root .env file
+const envPath = path.resolve(__dirname, '../../.env');
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
+} else {
+  console.warn(
+    `[webpack] .env file not found at ${envPath}; Relying on shell environment variables`,
+  );
+}
 
 /** @type {import('webpack').Configuration} */
 const config = {
@@ -20,6 +31,10 @@ const config = {
         process.env.POSTHOG_API_KEY,
       ),
       'process.env.POSTHOG_HOST': JSON.stringify(process.env.POSTHOG_HOST),
+      'process.env.STAGEWISE_CONSOLE_URL': JSON.stringify(
+        process.env.STAGEWISE_CONSOLE_URL,
+      ),
+      'process.env.API_URL': JSON.stringify(process.env.API_URL),
     }),
   ],
   externals: {

@@ -17,7 +17,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onUri"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -30,6 +31,21 @@
       {
         "command": "stagewise.showGettingStarted",
         "title": "Show Getting Started Guide",
+        "category": "stagewise"
+      },
+      {
+        "command": "stagewise.authenticate",
+        "title": "Authenticate with Stagewise",
+        "category": "stagewise"
+      },
+      {
+        "command": "stagewise.logout",
+        "title": "Logout from Stagewise",
+        "category": "stagewise"
+      },
+      {
+        "command": "stagewise.checkAuthStatus",
+        "title": "Check Authentication Status",
         "category": "stagewise"
       }
     ],
@@ -82,6 +98,7 @@
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.3.2",
     "@yarnpkg/lockfile": "^1.1.0",
+    "dotenv": "^17.2.0",
     "ovsx": "^0.10.5",
     "ts-loader": "^9.5.2",
     "tsconfig-paths-webpack-plugin": "^4.2.0",
