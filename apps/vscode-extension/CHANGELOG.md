@@ -1,5 +1,12 @@
 # stagewise-vscode-extension
 
+## 0.8.7
+
+### Patch Changes
+
+- a2a9518: Adding authentication to the vscode extension.
+- f71e818: Fixing vscode types version (reverting to 1.85.0)
+
 ## 0.8.6
 
 ### Patch Changes
