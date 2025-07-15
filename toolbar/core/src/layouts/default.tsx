@@ -108,7 +108,7 @@ function ToolbarAndPanelArea() {
   }, []);
 
   const draggable = useDraggable({
-    startThreshold: 10,
+    startThreshold: 5,
     initialSnapArea,
     onDragEnd: onNewSnapArea,
   });
