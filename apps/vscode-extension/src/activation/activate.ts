@@ -257,7 +257,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export async function deactivate(context: vscode.ExtensionContext) {
+export async function deactivate(_context: vscode.ExtensionContext) {
   try {
     AnalyticsService.getInstance().shutdown();
 
