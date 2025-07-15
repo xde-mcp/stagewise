@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { Agent } from '@stagewise-agent/client-sdk';
 import { setupToolbar } from '../auto-prompts/setup-toolbar';
 import { getCurrentIDE } from 'src/utils/get-current-ide';
 import { AnalyticsService, EventName } from 'src/services/analytics-service';
@@ -13,9 +14,12 @@ import { ToolbarUpdateNotificator } from 'src/services/toolbar-update-notificato
 import { ToolbarIntegrationNotificator } from 'src/services/toolbar-integration-notificator';
 import { WorkspaceService } from 'src/services/workspace-service';
 import { RegistryService } from 'src/services/registry-service';
-import { RetroAgentService } from 'src/services/agent-service/retro';
-import { AgentService } from 'src/services/agent-service';
 import { AuthService } from 'src/services/auth-service';
+import { AgentService } from 'src/services/agent-service';
+import { RetroAgentService } from 'src/services/agent-service/retro';
+import { ClientRuntimeVSCode } from '@stagewise-agent/implementation-client-runtime-vscode';
+
+let customAgentInitialized = false;
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -35,7 +39,7 @@ async function setupToolbarHandler() {
 
 export async function activate(context: vscode.ExtensionContext) {
   try {
-    // initialize all services in the correct order
+    // Initialize all services in the correct order
     VScodeContext.getInstance().initialize(context);
     await StorageService.getInstance().initialize();
 
@@ -53,6 +57,51 @@ export async function activate(context: vscode.ExtensionContext) {
     const updateNotificator = ToolbarUpdateNotificator.getInstance();
     updateNotificator.initialize();
     context.subscriptions.push(updateNotificator);
+
+    // Initialize AuthService
+    const authService = AuthService.getInstance();
+
+    const agent = Agent.getInstance({
+      clientRuntime: new ClientRuntimeVSCode(),
+      accessToken: (await authService.getAccessToken()) ?? undefined,
+    });
+
+    authService.onAuthStateChanged(async (authState) => {
+      if (authState.accessToken) {
+        agent.reauthenticateTRPCClient(authState.accessToken);
+      }
+      if (
+        authState.isAuthenticated &&
+        authState.hasEarlyAgentAccess &&
+        !customAgentInitialized
+      ) {
+        customAgentInitialized = true;
+        agent.initialize();
+      }
+    });
+
+    if (
+      (await authService.isAuthenticated()) &&
+      (await authService.getAuthState())?.accessToken &&
+      (await authService.getAuthState())?.hasEarlyAgentAccess
+    ) {
+      customAgentInitialized = true;
+      agent.initialize();
+    }
+
+    const uriHandler = vscode.window.registerUriHandler({
+      handleUri: async (uri: vscode.Uri) => {
+        if (uri.path === '/authenticate') {
+          await authService.handleAuthenticationUri(uri);
+        }
+      },
+    });
+    context.subscriptions.push(uriHandler);
+
+    const retroAgentService = RetroAgentService.getInstance();
+    await retroAgentService.initialize();
+    const agentService = AgentService.getInstance();
+    await agentService.initialize();
 
     const ide = getCurrentIDE();
     if (ide === 'UNKNOWN') {
@@ -83,26 +132,6 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(configChangeListener);
-
-    // Start agent services
-    const retroAgentService = RetroAgentService.getInstance();
-    await retroAgentService.initialize();
-
-    const agentService = AgentService.getInstance();
-    await agentService.initialize();
-
-    // Initialize AuthService
-    const authService = AuthService.getInstance();
-
-    // Register URI handler for authentication
-    const uriHandler = vscode.window.registerUriHandler({
-      handleUri: async (uri: vscode.Uri) => {
-        if (uri.path === '/authenticate') {
-          await authService.handleAuthenticationUri(uri);
-        }
-      },
-    });
-    context.subscriptions.push(uriHandler);
 
     // Function to show getting started panel if needed
     const showGettingStartedIfNeeded = async () => {
@@ -228,14 +257,21 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export async function deactivate() {
+export async function deactivate(context: vscode.ExtensionContext) {
   try {
-    // Track extension deactivation before shutting down analytics
+    AnalyticsService.getInstance().shutdown();
+
+    if (customAgentInitialized) {
+      const agent = Agent.getInstance({
+        clientRuntime: new ClientRuntimeVSCode(),
+      });
+      agent.shutdown();
+    }
+
     const retroAgentService = RetroAgentService.getInstance();
     await retroAgentService.shutdown();
     const agentService = AgentService.getInstance();
     await agentService.shutdown();
-    AnalyticsService.getInstance().shutdown();
   } catch (error) {
     // Log error but don't throw during deactivation
     console.error(
