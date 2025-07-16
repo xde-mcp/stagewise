@@ -113,6 +113,7 @@ export async function activate(context: vscode.ExtensionContext) {
     stagewiseAgentServiceInstance = StagewiseAgentService.getInstance({
       clientRuntime: new ClientRuntimeVSCode(),
       accessToken: (await authService.getAccessToken()) ?? undefined,
+      agentDescription: vscode.workspace.name,
       // New events to track in analytics
       onEvent: (event) => {
         switch (event.type) {
