@@ -76,17 +76,33 @@ export async function activate(context: vscode.ExtensionContext) {
         !customAgentInitialized
       ) {
         customAgentInitialized = true;
-        agent.initialize();
+        try {
+          await agent.initialize();
+        } catch (error) {
+          console.error(
+            'Failed to initialize agent on auth state change:',
+            error,
+          );
+          customAgentInitialized = false; // Reset flag to allow retry
+        }
       }
     });
 
+    const authState = await authService.getAuthState();
     if (
       (await authService.isAuthenticated()) &&
-      (await authService.getAuthState())?.accessToken &&
-      (await authService.getAuthState())?.hasEarlyAgentAccess
+      authState?.accessToken &&
+      authState?.hasEarlyAgentAccess
     ) {
       customAgentInitialized = true;
-      agent.initialize();
+      try {
+        agent.initialize();
+      } catch (error) {
+        console.error(
+          'Failed to initialize custom agent:',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     }
 
     const uriHandler = vscode.window.registerUriHandler({
@@ -263,6 +279,7 @@ export async function deactivate(_context: vscode.ExtensionContext) {
 
     if (customAgentInitialized) {
       const agent = Agent.getInstance({
+        // clientRuntime will be ignored because in instance already exists
         clientRuntime: new ClientRuntimeVSCode(),
       });
       agent.shutdown();
