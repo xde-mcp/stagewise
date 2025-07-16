@@ -113,6 +113,39 @@ export async function activate(context: vscode.ExtensionContext) {
     stagewiseAgentServiceInstance = StagewiseAgentService.getInstance({
       clientRuntime: new ClientRuntimeVSCode(),
       accessToken: (await authService.getAccessToken()) ?? undefined,
+      // New events to track in analytics
+      onEvent: (event) => {
+        switch (event.type) {
+          case 'agent_prompt_triggered': {
+            analyticsService.trackEvent(
+              EventName.STAGEWISE_AGENT_PROMPT_TRIGGERED,
+              {
+                agentType: 'stagewise',
+                hasUserMessage: event.data.hasUserMessage,
+                messageId: event.data.messageId,
+                currentUrl: event.data.currentUrl,
+                selectedElementsCount: event.data.selectedElementsCount,
+                promptSnippetsCount: event.data.promptSnippetsCount,
+              },
+            );
+            break;
+          }
+          case 'tool_call_requested': {
+            analyticsService.trackEvent(
+              EventName.STAGEWISE_AGENT_TOOL_CALL_REQUESTED,
+              {
+                agentType: 'stagewise',
+                toolName: event.data.toolName,
+                isClientSide: event.data.isClientSide,
+                isBrowserRuntime: event.data.isBrowserRuntime,
+              },
+            );
+            break;
+          }
+          default:
+            break;
+        }
+      },
     });
 
     // Set up auth state change handler

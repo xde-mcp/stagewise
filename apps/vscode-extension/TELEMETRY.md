@@ -42,6 +42,10 @@ We collect the following types of telemetry data:
 #### Feature Usage Events
 - `agent_prompt_triggered`: Triggered when the AI agent is invoked
   - No additional properties collected
+- `stagewise_agent_prompt_triggered`: Triggered when the Stagewise Agent (early access feature) is invoked
+  - Includes: agent type ('stagewise'), whether user included a message, message ID, current URL, number of selected elements, number of prompt snippets
+- `stagewise_agent_tool_call_requested`: Triggered when the Stagewise Agent requests a tool execution
+  - Includes: agent type ('stagewise'), tool name, whether it's a client-side tool, whether it's a browser runtime tool
 - `toolbar_auto_setup_started`: Triggered when the automatic toolbar setup process is initiated
   - No additional properties collected
 - `toolbar_setup_completed`: Triggered when the toolbar setup is completed successfully
