@@ -22,6 +22,8 @@ import { ClientRuntimeVSCode } from '@stagewise-agent/implementation-client-runt
 let stagewiseAgentInitialized = false;
 let ideAgentInitialized = false;
 
+let stagewiseAgentServiceInstance: StagewiseAgentService | null = null;
+
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
   vscode.languages.createDiagnosticCollection('stagewise');
@@ -58,7 +60,7 @@ async function shutdownIDEAgent() {
 }
 
 async function initializeStagewiseAgent(
-  stagewiseAgentService: typeof StagewiseAgentService.prototype,
+  stagewiseAgentService: StagewiseAgentService,
 ) {
   if (stagewiseAgentInitialized) {
     return; // Already initialized
@@ -80,16 +82,12 @@ async function shutdownStagewiseAgent() {
   if (!stagewiseAgentInitialized) {
     return; // Not initialized
   }
-  const stagewiseAgentService = StagewiseAgentService.getInstance({
-    // clientRuntime will be ignored because instance already exists
-    clientRuntime: new ClientRuntimeVSCode(),
-  });
-  stagewiseAgentService.shutdown();
+  stagewiseAgentServiceInstance?.shutdown();
   stagewiseAgentInitialized = false;
 }
 
 async function switchToStagewiseAgent(
-  stagewiseAgentService: typeof StagewiseAgentService.prototype,
+  stagewiseAgentService: StagewiseAgentService,
 ) {
   // First shutdown IDE agent if it's running
   await shutdownIDEAgent();
@@ -136,7 +134,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize AuthService
     const authService = AuthService.getInstance();
 
-    const stagewiseAgentService = StagewiseAgentService.getInstance({
+    stagewiseAgentServiceInstance = StagewiseAgentService.getInstance({
       clientRuntime: new ClientRuntimeVSCode(),
       accessToken: (await authService.getAccessToken()) ?? undefined,
     });
@@ -145,13 +143,17 @@ export async function activate(context: vscode.ExtensionContext) {
     authService.onAuthStateChanged(async (authState) => {
       // Update access token for Stagewise agent if available
       if (authState.accessToken) {
-        stagewiseAgentService.reauthenticateTRPCClient(authState.accessToken);
+        stagewiseAgentServiceInstance?.reauthenticateTRPCClient(
+          authState.accessToken,
+        );
       }
 
       // Handle agent switching based on auth state
       if (authState.isAuthenticated && authState.hasEarlyAgentAccess) {
         // User has auth and early access - use Stagewise agent
-        await switchToStagewiseAgent(stagewiseAgentService);
+        if (stagewiseAgentServiceInstance) {
+          await switchToStagewiseAgent(stagewiseAgentServiceInstance);
+        }
       } else {
         // User is not authenticated or doesn't have early access - use IDE agent
         await switchToIDEAgent();
@@ -161,13 +163,13 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initial agent setup based on current auth state
     const authState = await authService.getAuthState();
     if (
-      (await authService.isAuthenticated()) &&
+      authState?.isAuthenticated &&
       authState?.accessToken &&
       authState?.hasEarlyAgentAccess
     ) {
       // User has auth and early access - initialize Stagewise agent only
       try {
-        await initializeStagewiseAgent(stagewiseAgentService);
+        await initializeStagewiseAgent(stagewiseAgentServiceInstance);
       } catch (_error) {
         // Fall back to IDE agent if Stagewise agent fails
         console.error(
