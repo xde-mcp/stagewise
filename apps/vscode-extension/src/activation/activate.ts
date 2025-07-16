@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Agent } from '@stagewise-agent/client-sdk';
+import { Agent as StagewiseAgentService } from '@stagewise-agent/client-sdk';
 import { setupToolbar } from '../auto-prompts/setup-toolbar';
 import { getCurrentIDE } from 'src/utils/get-current-ide';
 import { AnalyticsService, EventName } from 'src/services/analytics-service';
@@ -15,11 +15,14 @@ import { ToolbarIntegrationNotificator } from 'src/services/toolbar-integration-
 import { WorkspaceService } from 'src/services/workspace-service';
 import { RegistryService } from 'src/services/registry-service';
 import { AuthService } from 'src/services/auth-service';
-import { AgentService } from 'src/services/agent-service';
+import { AgentService as IDEAgentService } from 'src/services/agent-service';
 import { RetroAgentService } from 'src/services/agent-service/retro';
 import { ClientRuntimeVSCode } from '@stagewise-agent/implementation-client-runtime-vscode';
 
-let customAgentInitialized = false;
+let stagewiseAgentInitialized = false;
+let ideAgentInitialized = false;
+
+let stagewiseAgentServiceInstance: StagewiseAgentService | null = null;
 
 // Diagnostic collection specifically for our fake prompt
 const fakeDiagCollection =
@@ -35,6 +38,76 @@ async function setupToolbarHandler() {
     "The agent has been started to integrate stagewise into this project. Please follow the agent's instructions in the chat panel.",
     'OK',
   );
+}
+
+// Helper functions for agent management
+async function initializeIDEAgent() {
+  if (ideAgentInitialized) {
+    return; // Already initialized
+  }
+  const ideAgentService = IDEAgentService.getInstance();
+  await ideAgentService.initialize();
+  ideAgentInitialized = true;
+}
+
+async function shutdownIDEAgent() {
+  if (!ideAgentInitialized) {
+    return; // Not initialized
+  }
+  const ideAgentService = IDEAgentService.getInstance();
+  await ideAgentService.shutdown();
+  ideAgentInitialized = false;
+}
+
+async function initializeStagewiseAgent(
+  stagewiseAgentService: StagewiseAgentService,
+) {
+  if (stagewiseAgentInitialized) {
+    return; // Already initialized
+  }
+  try {
+    await stagewiseAgentService.initialize();
+    stagewiseAgentInitialized = true;
+  } catch (error) {
+    console.error(
+      'Failed to initialize Stagewise agent:',
+      error instanceof Error ? error.message : String(error),
+    );
+    stagewiseAgentInitialized = false;
+    throw error; // Re-throw to handle fallback
+  }
+}
+
+async function shutdownStagewiseAgent() {
+  if (!stagewiseAgentInitialized) {
+    return; // Not initialized
+  }
+  stagewiseAgentServiceInstance?.shutdown();
+  stagewiseAgentInitialized = false;
+}
+
+async function switchToStagewiseAgent(
+  stagewiseAgentService: StagewiseAgentService,
+) {
+  // First shutdown IDE agent if it's running
+  await shutdownIDEAgent();
+  // Then initialize Stagewise agent
+  try {
+    await initializeStagewiseAgent(stagewiseAgentService);
+  } catch (_error) {
+    // If Stagewise agent fails, fall back to IDE agent
+    console.error(
+      'Falling back to IDE agent due to Stagewise agent initialization failure',
+    );
+    await initializeIDEAgent();
+  }
+}
+
+async function switchToIDEAgent() {
+  // First shutdown Stagewise agent if it's running
+  await shutdownStagewiseAgent();
+  // Then initialize IDE agent
+  await initializeIDEAgent();
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -61,48 +134,52 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize AuthService
     const authService = AuthService.getInstance();
 
-    const agent = Agent.getInstance({
+    stagewiseAgentServiceInstance = StagewiseAgentService.getInstance({
       clientRuntime: new ClientRuntimeVSCode(),
       accessToken: (await authService.getAccessToken()) ?? undefined,
     });
 
+    // Set up auth state change handler
     authService.onAuthStateChanged(async (authState) => {
+      // Update access token for Stagewise agent if available
       if (authState.accessToken) {
-        agent.reauthenticateTRPCClient(authState.accessToken);
+        stagewiseAgentServiceInstance?.reauthenticateTRPCClient(
+          authState.accessToken,
+        );
       }
-      if (
-        authState.isAuthenticated &&
-        authState.hasEarlyAgentAccess &&
-        !customAgentInitialized
-      ) {
-        customAgentInitialized = true;
-        try {
-          await agent.initialize();
-        } catch (error) {
-          console.error(
-            'Failed to initialize agent on auth state change:',
-            error,
-          );
-          customAgentInitialized = false; // Reset flag to allow retry
+
+      // Handle agent switching based on auth state
+      if (authState.isAuthenticated && authState.hasEarlyAgentAccess) {
+        // User has auth and early access - use Stagewise agent
+        if (stagewiseAgentServiceInstance) {
+          await switchToStagewiseAgent(stagewiseAgentServiceInstance);
         }
+      } else {
+        // User is not authenticated or doesn't have early access - use IDE agent
+        await switchToIDEAgent();
       }
     });
 
+    // Initial agent setup based on current auth state
     const authState = await authService.getAuthState();
     if (
-      (await authService.isAuthenticated()) &&
+      authState?.isAuthenticated &&
       authState?.accessToken &&
       authState?.hasEarlyAgentAccess
     ) {
-      customAgentInitialized = true;
+      // User has auth and early access - initialize Stagewise agent only
       try {
-        agent.initialize();
-      } catch (error) {
+        await initializeStagewiseAgent(stagewiseAgentServiceInstance);
+      } catch (_error) {
+        // Fall back to IDE agent if Stagewise agent fails
         console.error(
-          'Failed to initialize custom agent:',
-          error instanceof Error ? error.message : String(error),
+          'Initial Stagewise agent initialization failed, falling back to IDE agent',
         );
+        await initializeIDEAgent();
       }
+    } else {
+      // User doesn't have auth or early access - initialize IDE agent only
+      await initializeIDEAgent();
     }
 
     const uriHandler = vscode.window.registerUriHandler({
@@ -114,10 +191,9 @@ export async function activate(context: vscode.ExtensionContext) {
     });
     context.subscriptions.push(uriHandler);
 
+    // Always initialize RetroAgent
     const retroAgentService = RetroAgentService.getInstance();
     await retroAgentService.initialize();
-    const agentService = AgentService.getInstance();
-    await agentService.initialize();
 
     const ide = getCurrentIDE();
     if (ide === 'UNKNOWN') {
@@ -277,18 +353,19 @@ export async function deactivate(_context: vscode.ExtensionContext) {
   try {
     AnalyticsService.getInstance().shutdown();
 
-    if (customAgentInitialized) {
-      const agent = Agent.getInstance({
-        // clientRuntime will be ignored because in instance already exists
-        clientRuntime: new ClientRuntimeVSCode(),
-      });
-      agent.shutdown();
+    // Shutdown Stagewise agent if initialized
+    if (stagewiseAgentInitialized) {
+      await shutdownStagewiseAgent();
     }
 
+    // Shutdown IDE agent if initialized
+    if (ideAgentInitialized) {
+      await shutdownIDEAgent();
+    }
+
+    // Always shutdown RetroAgent
     const retroAgentService = RetroAgentService.getInstance();
     await retroAgentService.shutdown();
-    const agentService = AgentService.getInstance();
-    await agentService.shutdown();
   } catch (error) {
     // Log error but don't throw during deactivation
     console.error(
