@@ -70,7 +70,7 @@ async function initializeStagewiseAgent(
     stagewiseAgentInitialized = true;
   } catch (error) {
     console.error(
-      'Failed to initialize Stagewise agent:',
+      'Failed to initialize stagewise agent:',
       error instanceof Error ? error.message : String(error),
     );
     stagewiseAgentInitialized = false;
@@ -86,29 +86,6 @@ async function shutdownStagewiseAgent() {
   stagewiseAgentInitialized = false;
 }
 
-async function switchToStagewiseAgent(
-  stagewiseAgentService: StagewiseAgentService,
-) {
-  // First shutdown IDE agent if it's running
-  await shutdownIDEAgent();
-  // Then initialize Stagewise agent
-  try {
-    await initializeStagewiseAgent(stagewiseAgentService);
-  } catch (_error) {
-    // If Stagewise agent fails, fall back to IDE agent
-    console.error(
-      'Falling back to IDE agent due to Stagewise agent initialization failure',
-    );
-    await initializeIDEAgent();
-  }
-}
-
-async function switchToIDEAgent() {
-  // First shutdown Stagewise agent if it's running
-  await shutdownStagewiseAgent();
-  // Then initialize IDE agent
-  await initializeIDEAgent();
-}
 
 export async function activate(context: vscode.ExtensionContext) {
   try {
@@ -141,45 +118,54 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Set up auth state change handler
     authService.onAuthStateChanged(async (authState) => {
-      // Update access token for Stagewise agent if available
+      // Update access token for stagewise agent if available
       if (authState.accessToken) {
         stagewiseAgentServiceInstance?.reauthenticateTRPCClient(
           authState.accessToken,
         );
       }
 
-      // Handle agent switching based on auth state
+      // Handle stagewise agent based on auth state (IDE agent always runs)
       if (authState.isAuthenticated && authState.hasEarlyAgentAccess) {
-        // User has auth and early access - use Stagewise agent
-        if (stagewiseAgentServiceInstance) {
-          await switchToStagewiseAgent(stagewiseAgentServiceInstance);
+        // User has auth and early access - initialize stagewise agent
+        if (stagewiseAgentServiceInstance && !stagewiseAgentInitialized) {
+          try {
+            await initializeStagewiseAgent(stagewiseAgentServiceInstance);
+          } catch (error) {
+            console.error(
+              'Failed to initialize stagewise agent on auth state change:',
+              error instanceof Error ? error.message : String(error),
+            );
+          }
         }
       } else {
-        // User is not authenticated or doesn't have early access - use IDE agent
-        await switchToIDEAgent();
+        // User is not authenticated or doesn't have early access - shutdown stagewise agent if running
+        if (stagewiseAgentInitialized) {
+          await shutdownStagewiseAgent();
+        }
       }
     });
 
-    // Initial agent setup based on current auth state
+    // Initial agent setup - IDE agent always runs
+    await initializeIDEAgent();
+
+    // Additionally initialize stagewise agent if authenticated with early access
     const authState = await authService.getAuthState();
     if (
       authState?.isAuthenticated &&
       authState?.accessToken &&
       authState?.hasEarlyAgentAccess
     ) {
-      // User has auth and early access - initialize Stagewise agent only
+      // User has auth and early access - initialize stagewise agent in addition to IDE agent
       try {
         await initializeStagewiseAgent(stagewiseAgentServiceInstance);
-      } catch (_error) {
-        // Fall back to IDE agent if Stagewise agent fails
+      } catch (error) {
+        // Log error but continue with IDE agent only
         console.error(
-          'Initial Stagewise agent initialization failed, falling back to IDE agent',
+          'Initial stagewise agent initialization failed:',
+          error instanceof Error ? error.message : String(error),
         );
-        await initializeIDEAgent();
       }
-    } else {
-      // User doesn't have auth or early access - initialize IDE agent only
-      await initializeIDEAgent();
     }
 
     const uriHandler = vscode.window.registerUriHandler({
@@ -353,7 +339,7 @@ export async function deactivate(_context: vscode.ExtensionContext) {
   try {
     AnalyticsService.getInstance().shutdown();
 
-    // Shutdown Stagewise agent if initialized
+    // Shutdown stagewise agent if initialized
     if (stagewiseAgentInitialized) {
       await shutdownStagewiseAgent();
     }
