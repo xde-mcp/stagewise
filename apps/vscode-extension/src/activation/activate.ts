@@ -86,7 +86,6 @@ async function shutdownStagewiseAgent() {
   stagewiseAgentInitialized = false;
 }
 
-
 export async function activate(context: vscode.ExtensionContext) {
   try {
     // Initialize all services in the correct order
