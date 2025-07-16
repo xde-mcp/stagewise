@@ -182,6 +182,70 @@
       "classification": "SystemMetaData",
       "purpose": "FeatureInsight",
       "comment": "Tracks when a user checks their authentication status"
+    },
+    "stagewise_agent_prompt_triggered": {
+      "classification": "EndUserPseudonymizedInformation",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when the Stagewise Agent (early access feature) is invoked",
+      "properties": {
+        "agentType": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The type of agent (always 'stagewise' for this event)"
+        },
+        "hasUserMessage": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "Whether the user included a message with the prompt"
+        },
+        "messageId": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The ID of the message if present"
+        },
+        "currentUrl": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The current URL where the agent was triggered (may be null)"
+        },
+        "selectedElementsCount": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The number of elements selected when the agent was triggered"
+        },
+        "promptSnippetsCount": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The number of prompt snippets included"
+        }
+      }
+    },
+    "stagewise_agent_tool_call_requested": {
+      "classification": "EndUserPseudonymizedInformation",
+      "purpose": "FeatureInsight",
+      "comment": "Tracks when the Stagewise Agent requests a tool execution",
+      "properties": {
+        "agentType": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The type of agent (always 'stagewise' for this event)"
+        },
+        "toolName": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "The name of the tool being requested"
+        },
+        "isClientSide": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "Whether the tool runs on the client side"
+        },
+        "isBrowserRuntime": {
+          "classification": "SystemMetaData",
+          "purpose": "FeatureInsight",
+          "comment": "Whether the tool runs in the browser runtime"
+        }
+      }
     }
   }
 }

@@ -42,6 +42,9 @@ export enum EventName {
   AUTHENTICATE_COMMAND_TRIGGERED = 'authenticate_command_triggered',
   LOGOUT_COMMAND_TRIGGERED = 'logout_command_triggered',
   CHECK_AUTH_STATUS_COMMAND_TRIGGERED = 'check_auth_status_command_triggered',
+
+  STAGEWISE_AGENT_PROMPT_TRIGGERED = 'stagewise_agent_prompt_triggered',
+  STAGEWISE_AGENT_TOOL_CALL_REQUESTED = 'stagewise_agent_tool_call_requested',
 }
 
 export class AnalyticsService {
