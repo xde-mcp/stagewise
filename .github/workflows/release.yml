@@ -9,8 +9,8 @@ on:
 env:
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
-  STAGEWISE_CONSOLE_URL: https://console.stagewise.io
-  API_URL: https://api.stagewise.io
+  STAGEWISE_CONSOLE_URL: ${{ vars.STAGEWISE_CONSOLE_URL }}
+  API_URL: ${{ vars.API_URL }}
 
 jobs:
   release:
