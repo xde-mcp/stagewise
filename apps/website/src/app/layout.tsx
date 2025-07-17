@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/logo.png',
+        url: '/agent-thumbnail.png',
         width: 1200,
         height: 630,
         alt: 'stagewise - Visually prompt your dev agent',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: 'stagewise | Visually prompt your dev agent - right on localhost.',
     description:
       'Our toolbar connects your app frontend to your favorite code agent and lets you edit your web app UI with prompts.',
-    images: ['/logo.png'],
+    images: ['/agent-thumbnail.png'],
   },
 };
 
