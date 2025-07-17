@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.8.10
+
+### Patch Changes
+
+- 3e1b802: Updating agent-client-sdk dependency.
+
 ## 0.8.9
 
 ### Patch Changes
