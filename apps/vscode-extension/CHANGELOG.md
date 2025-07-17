@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.8.11
+
+### Patch Changes
+
+- aff8a76: Improve API connectivity (changed env vars for build)
+
 ## 0.8.10
 
 ### Patch Changes
