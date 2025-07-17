@@ -35,12 +35,12 @@
       },
       {
         "command": "stagewise.authenticate",
-        "title": "Authenticate with Stagewise",
+        "title": "Authenticate with stagewise",
         "category": "stagewise"
       },
       {
         "command": "stagewise.logout",
-        "title": "Logout from Stagewise",
+        "title": "Logout from stagewise",
         "category": "stagewise"
       },
       {
