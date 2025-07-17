@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.8.9
+
+### Patch Changes
+
+- 4d872c9: Fix spelling of stagewise.
+
 ## 0.8.8
 
 ### Patch Changes
