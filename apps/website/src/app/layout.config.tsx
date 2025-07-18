@@ -46,7 +46,7 @@ export const baseOptions: BaseLayoutProps = {
       label: 'Discord', // `aria-label`
       icon: <SiDiscord className="m-1 size-4" />,
       text: 'Discord',
-      url: 'https://discord.gg/9dy3YSE8',
+      url: 'https://discord.gg/gkdGsDYaKA',
     },
     {
       type: 'icon',
