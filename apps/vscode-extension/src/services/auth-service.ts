@@ -343,7 +343,7 @@ export class AuthService {
   /**
    * Ensure we have a valid access token, refreshing if necessary
    */
-  private async ensureValidAccessToken(): Promise<string> {
+  public async ensureValidAccessToken(): Promise<string> {
     // If there's already a refresh in progress, wait for it
     if (this.refreshPromise) {
       await this.refreshPromise;

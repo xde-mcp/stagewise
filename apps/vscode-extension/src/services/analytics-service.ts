@@ -45,6 +45,7 @@ export enum EventName {
 
   STAGEWISE_AGENT_PROMPT_TRIGGERED = 'stagewise_agent_prompt_triggered',
   STAGEWISE_AGENT_TOOL_CALL_REQUESTED = 'stagewise_agent_tool_call_requested',
+  STAGEWISE_AGENT_AUTH_REFRESH_FAILED = 'stagewise_agent_auth_refresh_failed',
 }
 
 export class AnalyticsService {

@@ -246,6 +246,28 @@
           "comment": "Whether the tool runs in the browser runtime"
         }
       }
+    },
+    "stagewise_agent_auth_refresh_failed": {
+      "classification": "CallstackOrException",
+      "purpose": "PerformanceAndHealth",
+      "comment": "Tracks when automatic token refresh fails in the Stagewise Agent",
+      "properties": {
+        "reason": {
+          "classification": "SystemMetaData",
+          "purpose": "PerformanceAndHealth",
+          "comment": "The reason for the auth failure (expired, invalid, or missing)"
+        },
+        "retryAttempt": {
+          "classification": "SystemMetaData",
+          "purpose": "PerformanceAndHealth",
+          "comment": "The number of the retry attempt when the failure occurred"
+        },
+        "error": {
+          "classification": "CallstackOrException",
+          "purpose": "PerformanceAndHealth",
+          "comment": "The error message (scrubbed of PII)"
+        }
+      }
     }
   }
 }
