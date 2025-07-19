@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.8.13
+
+### Patch Changes
+
+- c9a7535: Updating agent-client-sdk with agent-state description validation fix
+
 ## 0.8.12
 
 ### Patch Changes
