@@ -52,8 +52,8 @@ importers:
         specifier: 1.12.1
         version: 1.12.1
       '@stagewise-agent/client-sdk':
-        specifier: 0.0.6
-        version: 0.0.6(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)
+        specifier: 0.0.7
+        version: 0.0.7(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)
       '@stagewise-agent/implementation-client-runtime-vscode':
         specifier: 0.0.2
         version: 0.0.2
@@ -5198,8 +5198,8 @@ packages:
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
 
-  '@stagewise-agent/client-sdk@0.0.6':
-    resolution: {integrity: sha512-ytXudVqRkUaErgSc+KPhOU3hyJdih0Vsy9unFqc55Zi+2LtF3XgT2hx4e67MyugZcSzwi0aov2LRhI1vkvP00Q==}
+  '@stagewise-agent/client-sdk@0.0.7':
+    resolution: {integrity: sha512-/6H+ZXOE25ugRGi1Jm1gQ83klR1TO6tskLnV74diMAZRVdI/sr44IpEfUZoT+2IHOnBciqZlsUzoROFUo6QwMw==}
     engines: {vscode: ^1.85.0}
     peerDependencies:
       '@stagewise/agent-interface': 0.2.2
@@ -6301,8 +6301,8 @@ packages:
     resolution: {integrity: sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA==}
     engines: {node: '>=8'}
 
-  ai@4.3.17:
-    resolution: {integrity: sha512-uWqIQ94Nb1GTYtYElGHegJMOzv3r2mCKNFlKrqkft9xrfvIahTI5OdcnD5U9612RFGuUNGmSDTO1/YRNFXobaQ==}
+  ai@4.3.19:
+    resolution: {integrity: sha512-dIE2bfNpqHN3r6IINp9znguYdhIOheKW2LDigAMrgt/upT3B8eBGPSCblENvaZGoq+hxaN9fSMzjWpbqloP+7Q==}
     engines: {node: '>=18'}
     peerDependencies:
       react: ^18 || ^19 || ^19.0.0-rc
@@ -18343,10 +18343,10 @@ snapshots:
 
   '@speed-highlight/core@1.2.7': {}
 
-  '@stagewise-agent/client-sdk@0.0.6(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)':
+  '@stagewise-agent/client-sdk@0.0.7(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)':
     dependencies:
       '@stagewise/agent-interface': link:packages/agent-interface
-      ai: 4.3.17(react@19.1.0)(zod@3.25.76)
+      ai: 4.3.19(react@19.1.0)(zod@3.25.76)
       node-fetch: 3.3.2
       zod: 3.25.76
       zod-to-json-schema: 3.24.5(zod@3.25.76)
@@ -19779,7 +19779,7 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
-  ai@4.3.17(react@19.1.0)(zod@3.25.76):
+  ai@4.3.19(react@19.1.0)(zod@3.25.76):
     dependencies:
       '@ai-sdk/provider': 1.1.3
       '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
