@@ -143,6 +143,50 @@ export async function activate(context: vscode.ExtensionContext) {
             );
             break;
           }
+          case 'auth_token_refresh_required': {
+            // Handle auth token refresh request
+            console.log(
+              '[stagewise] Auth token refresh requested:',
+              event.data,
+            );
+
+            // Handle async operation
+            (async () => {
+              try {
+                // Get fresh access token
+                const accessToken = await authService.ensureValidAccessToken();
+
+                if (accessToken) {
+                  // Update the agent with new token
+                  stagewiseAgentServiceInstance?.reauthenticateTRPCClient(
+                    accessToken,
+                  );
+                  console.log(
+                    '[stagewise] Successfully refreshed auth token for agent',
+                  );
+                } else {
+                  console.error('[stagewise] Failed to get valid access token');
+                }
+              } catch (error) {
+                console.error(
+                  '[stagewise] Error refreshing auth token:',
+                  error,
+                );
+
+                // Track the error
+                analyticsService.trackEvent(
+                  EventName.STAGEWISE_AGENT_AUTH_REFRESH_FAILED,
+                  {
+                    reason: event.data.reason,
+                    retryAttempt: event.data.retryAttempt,
+                    error:
+                      error instanceof Error ? error.message : String(error),
+                  },
+                );
+              }
+            })();
+            break;
+          }
           default:
             break;
         }

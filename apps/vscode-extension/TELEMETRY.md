@@ -93,6 +93,8 @@ We collect the following types of telemetry data:
   - Includes: Error message (scrubbed of PII)
 - `toolbar_setup_failed`: Triggered when the toolbar setup process fails
   - Includes: Error message (scrubbed of PII)
+- `stagewise_agent_auth_refresh_failed`: Triggered when automatic token refresh fails in the Stagewise Agent
+  - Includes: reason (expired/invalid/missing), retry attempt number, error message (scrubbed of PII)
 
 ### Data Collection Method
 
