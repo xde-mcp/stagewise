@@ -289,7 +289,7 @@ export class AuthService {
         throw new Error(sessionResponse.data.error || 'Failed to get session');
       }
 
-      const sessionData: SessionValidationResponse = sessionResponse.data;
+      const _sessionData: SessionValidationResponse = sessionResponse.data;
 
       const tokenPair: TokenPair = response.data;
 
