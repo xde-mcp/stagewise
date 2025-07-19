@@ -1,5 +1,12 @@
 # stagewise-vscode-extension
 
+## 0.8.12
+
+### Patch Changes
+
+- cb9c248: Improving token-refresh robustness
+- b5d75e7: Adding enhanced error logging to the custom agent.
+
 ## 0.8.11
 
 ### Patch Changes
