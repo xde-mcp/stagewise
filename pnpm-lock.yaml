@@ -52,8 +52,8 @@ importers:
         specifier: 1.12.1
         version: 1.12.1
       '@stagewise-agent/client-sdk':
-        specifier: 0.0.5
-        version: 0.0.5(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)
+        specifier: 0.0.6
+        version: 0.0.6(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)
       '@stagewise-agent/implementation-client-runtime-vscode':
         specifier: 0.0.2
         version: 0.0.2
@@ -5198,8 +5198,8 @@ packages:
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
 
-  '@stagewise-agent/client-sdk@0.0.5':
-    resolution: {integrity: sha512-SL8M7MP3k7Grjs2iJIB4gK8mG1DB1IvegKN7FicDqFTsxl0wjrbxDoARYBTRxu7qM0g9vsW5G/HlNeXIMtM5Sw==}
+  '@stagewise-agent/client-sdk@0.0.6':
+    resolution: {integrity: sha512-ytXudVqRkUaErgSc+KPhOU3hyJdih0Vsy9unFqc55Zi+2LtF3XgT2hx4e67MyugZcSzwi0aov2LRhI1vkvP00Q==}
     engines: {vscode: ^1.85.0}
     peerDependencies:
       '@stagewise/agent-interface': 0.2.2
@@ -18343,7 +18343,7 @@ snapshots:
 
   '@speed-highlight/core@1.2.7': {}
 
-  '@stagewise-agent/client-sdk@0.0.5(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)':
+  '@stagewise-agent/client-sdk@0.0.6(@stagewise/agent-interface@packages+agent-interface)(react@19.1.0)':
     dependencies:
       '@stagewise/agent-interface': link:packages/agent-interface
       ai: 4.3.17(react@19.1.0)(zod@3.25.76)
