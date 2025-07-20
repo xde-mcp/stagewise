@@ -1,5 +1,12 @@
 # @stagewise/toolbar
 
+## 0.6.2
+
+### Patch Changes
+
+- 41d9a9b: Fix scroll capturing and content overflowing in message box
+- 29c2d1e: Updating dependencies.
+
 ## 0.6.1
 
 ### Patch Changes
