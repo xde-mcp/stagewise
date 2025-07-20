@@ -203,7 +203,7 @@ export function ChatPanel() {
       />
       <PanelContent
         className={cn(
-          'flex flex-col gap-0 px-1 py-0',
+          'flex basis-[initial] flex-col gap-0 px-1 py-0',
           anyMessageInChat ? '!h-[calc-size(auto,size)] h-auto flex-1' : 'h-0',
           agentState.state === AgentStateType.IDLE
             ? 'rounded-t-[inherit]'
@@ -242,7 +242,7 @@ export function ChatPanel() {
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
               disabled={!enableInputField}
-              className="my-1 h-full w-full resize-none focus:outline-none"
+              className="m-1 h-full w-full resize-none focus:outline-none"
             />
             <div className="pointer-events-none absolute inset-0 z-10 p-1">
               <TextSlideshow
@@ -265,7 +265,7 @@ export function ChatPanel() {
             variant="primary"
             className="size-8 cursor-pointer rounded-full p-1"
           >
-            <ArrowUpIcon className="size-4" />
+            <ArrowUpIcon className="size-4 stroke-3" />
           </Button>
         </div>
       </PanelFooter>
