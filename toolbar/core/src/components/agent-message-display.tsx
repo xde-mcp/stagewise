@@ -74,11 +74,18 @@ export function AgentMessageDisplay() {
     return null;
   }
 
+  /* We're adding a bg color on hover because there's a brower bug
+     that prevents auto scroll-capturing if we don't do this.
+     The onMouseEnter methods is also in place to help with another heuristic to get the browser to capture scroll in this element on hover. */
+
   return (
     <div
       ref={scrollContainerRef}
-      className="scrollbar-thin h-full space-y-2 overflow-y-auto overflow-x-hidden p-4 text-foreground text-sm"
+      className="scrollbar-thin pointer-events-auto space-y-2 overflow-y-scroll overscroll-contain px-3 py-4 text-foreground text-sm focus-within:outline-none hover:bg-white/0 focus:outline-none"
       onScroll={handleScroll}
+      onMouseEnter={() => {
+        scrollContainerRef.current?.focus();
+      }}
     >
       {messaging.agentMessage?.contentItems?.map((item, index) => {
         if (item.type === 'text') {
