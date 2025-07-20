@@ -35,17 +35,17 @@
       },
       {
         "command": "stagewise.authenticate",
-        "title": "Authenticate with stagewise",
+        "title": "(early access only) Login to stagewise",
         "category": "stagewise"
       },
       {
         "command": "stagewise.logout",
-        "title": "Logout from stagewise",
+        "title": "(early access only) Logout from stagewise",
         "category": "stagewise"
       },
       {
         "command": "stagewise.checkAuthStatus",
-        "title": "Check Authentication Status",
+        "title": "(early access only) Check login status",
         "category": "stagewise"
       }
     ],
