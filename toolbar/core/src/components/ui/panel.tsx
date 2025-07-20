@@ -59,15 +59,15 @@ function PanelHeader({
   );
 }
 
-function PanelContent({
-  children,
-  className,
-}: {
+export interface PanelContentProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
-  className?: string;
-}) {
+}
+
+function PanelContent({ children, className, ...props }: PanelContentProps) {
   return (
     <div
+      {...props}
       className={cn(
         'flex flex-1 flex-col gap-2 overflow-y-auto px-4 py-4 text-foreground',
         className,

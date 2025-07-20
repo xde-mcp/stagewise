@@ -203,18 +203,17 @@ export function ChatPanel() {
       />
       <PanelContent
         className={cn(
-          'flex flex-col gap-0 p-0',
+          'flex flex-col gap-0 px-1 py-0',
           anyMessageInChat ? '!h-[calc-size(auto,size)] h-auto flex-1' : 'h-0',
+          agentState.state === AgentStateType.IDLE
+            ? 'rounded-t-[inherit]'
+            : 'rounded-t-none',
+          'mask-alpha mask-[linear-gradient(to_bottom,transparent_0%,black_5%,black_95%,transparent_100%)]',
+          'overflow-hidden',
         )}
       >
         {/* This are renders the output of the agent as markdown and makes it scrollable if necessary. */}
-        <div
-          className={cn(
-            'mask-alpha mask-[linear-gradient(to_bottom,transparent_0%,black_5%,black_95%,transparent_100%)] absolute inset-0 size-full overflow-hidden',
-          )}
-        >
-          <AgentMessageDisplay />
-        </div>
+        <AgentMessageDisplay />
       </PanelContent>
       <PanelFooter
         className={cn(
