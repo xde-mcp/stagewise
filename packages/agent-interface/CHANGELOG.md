@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.2.3
+
+### Patch Changes
+
+- 29c2d1e: Updating dependencies.
+
 ## 0.2.2
 
 ### Patch Changes

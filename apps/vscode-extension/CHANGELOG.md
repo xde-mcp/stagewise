@@ -1,5 +1,14 @@
 # stagewise-vscode-extension
 
+## 0.8.14
+
+### Patch Changes
+
+- 29c2d1e: Updating dependencies.
+- 5cb6c8f: Updating client-sdk to log request errors
+- Updated dependencies [29c2d1e]
+  - @stagewise/agent-interface@0.2.3
+
 ## 0.8.13
 
 ### Patch Changes
