@@ -401,7 +401,7 @@ export default function Home() {
             <ScrollReveal key={framework.name} delay={i * 100} direction="up">
               <Link
                 href={framework.href}
-                className="group hover:-translate-y-0.5 flex cursor-pointer items-center gap-2 rounded-full border border-zinc-500/30 bg-zinc-50 px-6 py-2 shadow-[0_0_20px_rgba(128,90,213,0.15)] transition-all duration-300 ease-out hover:bg-white dark:border-indigo-800 dark:bg-zinc-900"
+                className="group hover:-translate-y-0.5 flex cursor-pointer items-center gap-2 rounded-full border border-zinc-500/30 bg-zinc-50 px-6 py-2 shadow-[0_0_20px_rgba(128,90,213,0.15)] transition-all duration-300 ease-out hover:bg-white hover:text-zinc-900 dark:border-indigo-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-white"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() =>
@@ -413,7 +413,7 @@ export default function Home() {
                 <Image
                   src={framework.logo}
                   alt={framework.name}
-                  className="size-6"
+                  className={`size-6 ${framework.name === 'Next.js' ? 'dark:invert' : ''}`}
                 />
                 <span className="font-medium">{framework.name}</span>
               </Link>
@@ -713,7 +713,7 @@ export default function Home() {
                     </h4>
                     <Link
                       href="/docs/quickstart"
-                      className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      className="text-indigo-600 underline hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
                       Follow the manual setup guide
                     </Link>
