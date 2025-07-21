@@ -80,8 +80,7 @@
     "extension",
     "ai",
     "code",
-    "agent",
-    "debugging"
+    "agent"
   ],
   "scripts": {
     "vscode:prepublish": "pnpm run build",
