@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.8.16
+
+### Patch Changes
+
+- e1d4c96: Updating the new auto-setup-prompt.
+
 ## 0.8.15
 
 ### Patch Changes
