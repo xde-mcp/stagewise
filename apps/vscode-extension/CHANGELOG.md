@@ -1,5 +1,12 @@
 # stagewise-vscode-extension
 
+## 0.8.15
+
+### Patch Changes
+
+- 14a1790: Add plain-js instructions to the setup-toolbar prompt.
+- 9986196: Clarifying early access commands.
+
 ## 0.8.14
 
 ### Patch Changes
