@@ -21,6 +21,10 @@ export const blogPosts = defineCollections({
   }),
 });
 
+export const legalTexts = defineDocs({
+  dir: 'content/legal',
+});
+
 export default defineConfig({
   mdxOptions: {
     // MDX options
