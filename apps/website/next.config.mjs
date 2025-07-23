@@ -35,6 +35,10 @@ const config = {
         source: '/ingest/decide',
         destination: 'https://eu.i.posthog.com/decide',
       },
+      {
+        source: '/imprint',
+        destination: '/legal-notice',
+      },
     ];
   },
   // This is required to support PostHog trailing slash API requests

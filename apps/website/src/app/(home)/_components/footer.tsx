@@ -79,10 +79,22 @@ export function Footer() {
         </p>
         <div className="mt-4 flex gap-4 md:mt-0">
           <Link
-            href="/imprint"
+            href="/terms"
             className="text-xs text-zinc-500 hover:underline dark:text-zinc-400"
           >
-            Impressum
+            Terms of Service
+          </Link>
+          <Link
+            href="/privacy"
+            className="text-xs text-zinc-500 hover:underline dark:text-zinc-400"
+          >
+            Privacy Policy
+          </Link>
+          <Link
+            href="/legal-notice"
+            className="text-xs text-zinc-500 hover:underline dark:text-zinc-400"
+          >
+            Legal notice
           </Link>
           <Link
             href="/docs/trademark-policy"
