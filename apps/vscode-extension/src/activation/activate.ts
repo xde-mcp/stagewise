@@ -278,6 +278,7 @@ export async function activate(context: vscode.ExtensionContext) {
       handleUri: async (uri: vscode.Uri) => {
         if (uri.path === '/authenticate') {
           await authService.handleAuthenticationUri(uri);
+          await agentSelectorService.setPreferredAgent('stagewise-agent');
         }
       },
     });
