@@ -3,6 +3,7 @@ import axios, { type AxiosRequestConfig } from 'axios';
 import { StorageService } from './storage-service';
 import { VScodeContext } from './vscode-context';
 import { STAGEWISE_CONSOLE_URL } from '../constants';
+import { getCurrentIDE } from 'src/utils/get-current-ide';
 
 interface AuthCode {
   authCode: string;
@@ -378,7 +379,7 @@ export class AuthService {
    * Manual authentication trigger
    */
   public async authenticate(): Promise<void> {
-    const authUrl = `${STAGEWISE_CONSOLE_URL}/`;
+    const authUrl = `${STAGEWISE_CONSOLE_URL}/authenticate-ide?ide=${getCurrentIDE().toLowerCase()}`;
     await vscode.env.openExternal(vscode.Uri.parse(authUrl));
     await vscode.window.showInformationMessage(
       'Please complete authentication in your browser. The extension will be authenticated automatically.',
