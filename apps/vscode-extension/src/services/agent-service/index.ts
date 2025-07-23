@@ -26,6 +26,8 @@ export class AgentService {
 
   public shutdown() {
     this.server?.server.close();
+    this.server?.wss.close();
+    this.server = null;
   }
 
   public static getInstance(): AgentService {

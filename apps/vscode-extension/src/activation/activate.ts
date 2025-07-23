@@ -15,9 +15,10 @@ import { ToolbarIntegrationNotificator } from 'src/services/toolbar-integration-
 import { WorkspaceService } from 'src/services/workspace-service';
 import { RegistryService } from 'src/services/registry-service';
 import { AuthService } from 'src/services/auth-service';
-import { AgentService as IDEAgentService } from 'src/services/agent-service';
+import { AgentService as IDEChatAgentService } from 'src/services/agent-service';
 import { RetroAgentService } from 'src/services/agent-service/retro';
 import { ClientRuntimeVSCode } from '@stagewise-agent/implementation-client-runtime-vscode';
+import { AgentSelectorService } from 'src/services/agent-selector';
 
 let stagewiseAgentInitialized = false;
 let ideAgentInitialized = false;
@@ -45,8 +46,9 @@ async function initializeIDEAgent() {
   if (ideAgentInitialized) {
     return; // Already initialized
   }
-  const ideAgentService = IDEAgentService.getInstance();
+  const ideAgentService = IDEChatAgentService.getInstance();
   await ideAgentService.initialize();
+  AgentSelectorService.getInstance().updateStatusbarText('Forward to IDE Chat');
   ideAgentInitialized = true;
 }
 
@@ -54,7 +56,7 @@ async function shutdownIDEAgent() {
   if (!ideAgentInitialized) {
     return; // Not initialized
   }
-  const ideAgentService = IDEAgentService.getInstance();
+  const ideAgentService = IDEChatAgentService.getInstance();
   await ideAgentService.shutdown();
   ideAgentInitialized = false;
 }
@@ -68,6 +70,7 @@ async function initializeStagewiseAgent(
   try {
     await stagewiseAgentService.initialize();
     stagewiseAgentInitialized = true;
+    AgentSelectorService.getInstance().updateStatusbarText('stagewise Agent');
   } catch (error) {
     console.error(
       'Failed to initialize stagewise agent:',
@@ -106,6 +109,9 @@ export async function activate(context: vscode.ExtensionContext) {
     const updateNotificator = ToolbarUpdateNotificator.getInstance();
     updateNotificator.initialize();
     context.subscriptions.push(updateNotificator);
+
+    const agentSelectorService = AgentSelectorService.getInstance();
+    await agentSelectorService.initialize();
 
     // Initialize AuthService
     const authService = AuthService.getInstance();
@@ -205,8 +211,13 @@ export async function activate(context: vscode.ExtensionContext) {
       // Handle stagewise agent based on auth state (IDE agent always runs)
       if (authState.isAuthenticated && authState.hasEarlyAgentAccess) {
         // User has auth and early access - initialize stagewise agent
-        if (stagewiseAgentServiceInstance && !stagewiseAgentInitialized) {
+        if (
+          stagewiseAgentServiceInstance &&
+          !stagewiseAgentInitialized &&
+          agentSelectorService.getPreferredAgent() === 'stagewise-agent'
+        ) {
           try {
+            await shutdownIDEAgent();
             await initializeStagewiseAgent(stagewiseAgentServiceInstance);
           } catch (error) {
             console.error(
@@ -215,23 +226,39 @@ export async function activate(context: vscode.ExtensionContext) {
             );
           }
         }
-      } else {
-        // User is not authenticated or doesn't have early access - shutdown stagewise agent if running
-        if (stagewiseAgentInitialized) {
-          await shutdownStagewiseAgent();
-        }
+      } else if (
+        stagewiseAgentInitialized &&
+        agentSelectorService.getPreferredAgent() !== 'stagewise-agent'
+      ) {
+        await shutdownStagewiseAgent();
+        await initializeIDEAgent();
       }
     });
 
     // Initial agent setup - IDE agent always runs
-    await initializeIDEAgent();
+    if (agentSelectorService.getPreferredAgent() === 'ide-chat') {
+      await initializeIDEAgent();
+    }
 
-    // Additionally initialize stagewise agent if authenticated with early access
+    agentSelectorService.onPreferredAgentChanged(async (agentName) => {
+      if (agentName === 'stagewise-agent' && stagewiseAgentServiceInstance) {
+        await shutdownIDEAgent();
+        await shutdownStagewiseAgent();
+        await initializeStagewiseAgent(stagewiseAgentServiceInstance);
+      } else {
+        await shutdownIDEAgent();
+        await shutdownStagewiseAgent();
+        await initializeIDEAgent();
+      }
+    });
+
+    // Initialize stagewise agent if authenticated with early access
     const authState = await authService.getAuthState();
     if (
       authState?.isAuthenticated &&
       authState?.accessToken &&
-      authState?.hasEarlyAgentAccess
+      authState?.hasEarlyAgentAccess &&
+      agentSelectorService.getPreferredAgent() === 'stagewise-agent'
     ) {
       // User has auth and early access - initialize stagewise agent in addition to IDE agent
       try {
@@ -243,6 +270,8 @@ export async function activate(context: vscode.ExtensionContext) {
           error instanceof Error ? error.message : String(error),
         );
       }
+    } else {
+      await initializeIDEAgent();
     }
 
     const uriHandler = vscode.window.registerUriHandler({
@@ -327,6 +356,14 @@ export async function activate(context: vscode.ExtensionContext) {
       },
     );
     context.subscriptions.push(setupToolbarCommand);
+
+    const setAgentCommand = vscode.commands.registerCommand(
+      'stagewise.setAgent',
+      async () => {
+        await agentSelectorService.showAgentPicker();
+      },
+    );
+    context.subscriptions.push(setAgentCommand);
 
     // Register the show getting started command
     const showGettingStartedCommand = vscode.commands.registerCommand(
