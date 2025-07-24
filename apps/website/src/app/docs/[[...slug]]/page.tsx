@@ -9,8 +9,39 @@ import { notFound } from 'next/navigation';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { CopyMarkdownButton } from '@/components/copy-markdown-button';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join, normalize, relative } from 'node:path';
+
+// Sanitize slug to prevent path traversal attacks
+function sanitizeSlug(slug: string[] | undefined): string {
+  if (!slug || slug.length === 0) return 'index';
+
+  // Join the slug parts and normalize
+  const slugPath = slug.join('/');
+
+  // Remove any path traversal attempts and restrict to safe characters
+  const sanitized = slugPath
+    .replace(/\.\./g, '') // Remove .. sequences
+    .replace(/[^a-zA-Z0-9\-_/]/g, '') // Only allow alphanumeric, hyphens, underscores, and forward slashes
+    .replace(/\/+/g, '/') // Collapse multiple slashes
+    .replace(/^\/|\/$/g, ''); // Remove leading/trailing slashes
+
+  return sanitized || 'index';
+}
+
+// Remove frontmatter and export statements from markdown content
+function cleanMarkdownContent(content: string): string {
+  // Remove YAML frontmatter (content between --- at the beginning)
+  let cleaned = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+
+  // Remove export statements (lines starting with export)
+  cleaned = cleaned.replace(/^export\s+.*$/gm, '');
+
+  // Remove empty lines at the beginning
+  cleaned = cleaned.replace(/^\s*\n+/, '');
+
+  return cleaned;
+}
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -24,10 +55,20 @@ export default async function Page(props: {
   // Get the raw markdown content for the copy button
   let markdownContent = '';
   try {
-    const slug = params.slug?.join('/') || 'index';
-    const filePath = join(process.cwd(), 'content/docs', `${slug}.mdx`);
-    markdownContent = readFileSync(filePath, 'utf-8');
-    // Remove frontmatter and export statements
+    const sanitizedSlug = sanitizeSlug(params.slug);
+    const docsDir = join(process.cwd(), 'content/docs');
+    const filePath = join(docsDir, `${sanitizedSlug}.mdx`);
+
+    // Ensure the resolved path is still within the docs directory
+    const normalizedPath = normalize(filePath);
+    const relativePath = relative(docsDir, normalizedPath);
+
+    if (relativePath.startsWith('..') || relativePath.includes('..')) {
+      throw new Error('Invalid file path');
+    }
+
+    const rawContent = await readFile(normalizedPath, 'utf-8');
+    markdownContent = cleanMarkdownContent(rawContent);
   } catch (_error) {
     // Fallback if file reading fails
     markdownContent = page.data.title || '';
