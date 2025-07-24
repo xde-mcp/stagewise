@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.8.18
+
+### Patch Changes
+
+- 0d26c54: Update agent-client-sdk to show better agent failed states.
+
 ## 0.8.17
 
 ### Patch Changes
