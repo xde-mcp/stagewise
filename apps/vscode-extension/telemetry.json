@@ -186,7 +186,7 @@
     "stagewise_agent_prompt_triggered": {
       "classification": "EndUserPseudonymizedInformation",
       "purpose": "FeatureInsight",
-      "comment": "Tracks when the Stagewise Agent (early access feature) is invoked",
+      "comment": "Tracks when the Stagewise Agent is invoked",
       "properties": {
         "agentType": {
           "classification": "SystemMetaData",

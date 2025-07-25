@@ -209,8 +209,8 @@ export async function activate(context: vscode.ExtensionContext) {
       }
 
       // Handle stagewise agent based on auth state (IDE agent always runs)
-      if (authState.isAuthenticated && authState.hasEarlyAgentAccess) {
-        // User has auth and early access - initialize stagewise agent
+      if (authState.isAuthenticated) {
+        // User is authenticated - initialize stagewise agent
         if (
           stagewiseAgentServiceInstance &&
           !stagewiseAgentInitialized &&
@@ -252,15 +252,14 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     });
 
-    // Initialize stagewise agent if authenticated with early access
+    // Initialize stagewise agent if authenticated
     const authState = await authService.getAuthState();
     if (
       authState?.isAuthenticated &&
       authState?.accessToken &&
-      authState?.hasEarlyAgentAccess &&
       agentSelectorService.getPreferredAgent() === 'stagewise-agent'
     ) {
-      // User has auth and early access - initialize stagewise agent in addition to IDE agent
+      // User is authenticated - initialize stagewise agent
       try {
         await initializeStagewiseAgent(stagewiseAgentServiceInstance);
       } catch (error) {

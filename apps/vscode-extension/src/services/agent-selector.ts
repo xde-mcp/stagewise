@@ -59,10 +59,7 @@ export class AgentSelectorService {
     const agentPicker = vscode.window.createQuickPick();
     const items: vscode.QuickPickItem[] = [];
 
-    if (
-      (await this.authService.isAuthenticated()) &&
-      (await this.authService.hasEarlyAgentAccess())
-    ) {
+    if (await this.authService.isAuthenticated()) {
       items.push({
         label: '$(stagewise-icon) stagewise agent',
         description:
