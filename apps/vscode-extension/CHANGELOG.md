@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.9.1
+
+### Patch Changes
+
+- c34bdc3: Remove early access checks.
+
 ## 0.9.0
 
 ### Minor Changes
