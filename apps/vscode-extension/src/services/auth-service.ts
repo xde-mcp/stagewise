@@ -26,7 +26,6 @@ interface AuthState {
   userEmail?: string;
   expiresAt?: string; // Access token expiry
   refreshExpiresAt?: string; // Refresh token expiry
-  hasEarlyAgentAccess?: boolean;
 }
 
 interface SessionValidationResponse {
@@ -36,7 +35,6 @@ interface SessionValidationResponse {
   extensionId: string;
   createdAt: string;
   isExpiringSoon: boolean;
-  hasEarlyAgentAccess: boolean;
 }
 
 /**
@@ -199,7 +197,6 @@ export class AuthService {
         refreshExpiresAt: tokenPair.refreshExpiresAt,
         userId: sessionData.userId,
         userEmail: sessionData.userEmail,
-        hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
       };
 
       await this.storageService.set(this.AUTH_STATE_KEY, authState);
@@ -478,7 +475,6 @@ export class AuthService {
             ...authState,
             userId: sessionData.userId,
             userEmail: sessionData.userEmail,
-            hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
           };
 
           if (JSON.stringify(updatedAuthState) !== JSON.stringify(authState)) {
@@ -492,7 +488,7 @@ export class AuthService {
           }
 
           await vscode.window.showInformationMessage(
-            `Authenticated as: ${updatedAuthState.userEmail} - Early Agent Access: ${updatedAuthState.hasEarlyAgentAccess}`,
+            `Authenticated as: ${updatedAuthState.userEmail}`,
           );
 
           return updatedAuthState;
@@ -636,14 +632,6 @@ export class AuthService {
     }
 
     return true;
-  }
-
-  /**
-   * Check if the authenticated user has early agent access
-   */
-  public async hasEarlyAgentAccess(): Promise<boolean> {
-    const authState = await this.getAuthState();
-    return authState?.hasEarlyAgentAccess ?? false;
   }
 
   /**

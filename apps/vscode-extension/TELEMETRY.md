@@ -42,9 +42,9 @@ We collect the following types of telemetry data:
 #### Feature Usage Events
 - `agent_prompt_triggered`: Triggered when the AI agent is invoked
   - No additional properties collected
-- `stagewise_agent_prompt_triggered`: Triggered when the Stagewise Agent (early access feature) is invoked
+- `stagewise_agent_prompt_triggered`: Triggered when the stagewise Agent is invoked
   - Includes: agent type ('stagewise'), whether user included a message, message ID, current URL, number of selected elements, number of prompt snippets
-- `stagewise_agent_tool_call_requested`: Triggered when the Stagewise Agent requests a tool execution
+- `stagewise_agent_tool_call_requested`: Triggered when the stagewise Agent requests a tool execution
   - Includes: agent type ('stagewise'), tool name, whether it's a client-side tool, whether it's a browser runtime tool
 - `toolbar_auto_setup_started`: Triggered when the automatic toolbar setup process is initiated
   - No additional properties collected
@@ -93,7 +93,7 @@ We collect the following types of telemetry data:
   - Includes: Error message (scrubbed of PII)
 - `toolbar_setup_failed`: Triggered when the toolbar setup process fails
   - Includes: Error message (scrubbed of PII)
-- `stagewise_agent_auth_refresh_failed`: Triggered when automatic token refresh fails in the Stagewise Agent
+- `stagewise_agent_auth_refresh_failed`: Triggered when automatic token refresh fails in the stagewise Agent
   - Includes: reason (expired/invalid/missing), retry attempt number, error message (scrubbed of PII)
 
 ### Data Collection Method
@@ -136,10 +136,10 @@ To disable telemetry for all extensions:
 3. Set `telemetry.telemetryLevel` to "off"
 
 ### 2. Extension-Specific Setting
-To disable telemetry just for Stagewise:
+To disable telemetry just for stagewise:
 1. Open VS Code Settings (Ctrl+,/Cmd+,)
 2. Search for "stagewise telemetry"
-3. Uncheck "Stagewise: Telemetry Enabled"
+3. Uncheck "stagewise: Telemetry Enabled"
 
 ## Data Usage
 
@@ -172,7 +172,7 @@ We are committed to GDPR compliance:
 
 - [VS Code Telemetry Documentation](https://code.visualstudio.com/docs/getstarted/telemetry)
 - [Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement)
-- [Stagewise Privacy Policy](https://stagewise.io/privacy)
+- [stagewise Privacy Policy](https://stagewise.io/privacy)
 
 ## Questions or Concerns?
 
