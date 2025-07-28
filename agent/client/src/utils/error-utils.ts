@@ -10,8 +10,8 @@ function sanitizeErrorMessage(message: string): string {
   const patterns = [
     // API keys and tokens
     /\b(api[_-]?key|token|secret|password|auth|bearer)\s*[:=]\s*['"]?[^\s'"]+/gi,
-    // URLs with credentials
-    /https?:\/\/[^:]+:[^@]+@[^\s]+/gi,
+    // URLs with credentials - more specific pattern to avoid ReDoS
+    /https?:\/\/[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+/gi,
     // Email addresses (might be sensitive)
     /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
   ];
