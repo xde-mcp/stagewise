@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Agent as StagewiseAgentService } from '@stagewise-agent/client-sdk';
+import { Agent as StagewiseAgentService } from '@stagewise/agent-client';
 import { setupToolbar } from '../auto-prompts/setup-toolbar';
 import { getCurrentIDE } from 'src/utils/get-current-ide';
 import { AnalyticsService, EventName } from 'src/services/analytics-service';
@@ -17,7 +17,7 @@ import { RegistryService } from 'src/services/registry-service';
 import { AuthService } from 'src/services/auth-service';
 import { AgentService as IDEChatAgentService } from 'src/services/agent-service';
 import { RetroAgentService } from 'src/services/agent-service/retro';
-import { ClientRuntimeVSCode } from '@stagewise-agent/implementation-client-runtime-vscode';
+import { ClientRuntimeVSCode } from '@stagewise/agent-runtime-vscode';
 import { AgentSelectorService } from 'src/services/agent-selector';
 
 let stagewiseAgentInitialized = false;
