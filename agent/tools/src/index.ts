@@ -1,7 +1,6 @@
 import type { Tools } from '@stagewise/agent-types';
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
 import { z } from 'zod';
-import { jsonSchema7Schema } from '@stagewise/agent-types';
 import {
   DESCRIPTION as OVERWRITE_FILE_DESCRIPTION,
   overwriteFileParamsSchema,
@@ -37,14 +36,6 @@ import {
   deleteFileParamsSchema,
   deleteFileTool,
 } from './delete-file-tool.js';
-
-export const toolApiSchema = z.record(
-  z.string(),
-  z.object({
-    description: z.string(),
-    parameters: jsonSchema7Schema,
-  }),
-);
 
 // Export utilities for use by other packages if needed
 export {

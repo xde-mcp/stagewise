@@ -27,8 +27,7 @@
     "dev": "node build.js --watch",
     "clean": "rimraf dist",
     "lint": "echo 'No linting for prompts package'",
-    "type-check": "tsc --noEmit",
-    "cli": "tsx src/test.index.ts"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "ai": "^4.3.16",
