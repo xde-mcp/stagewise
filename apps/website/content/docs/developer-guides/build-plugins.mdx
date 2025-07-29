@@ -66,7 +66,7 @@ export default ExamplePlugin;
 
 See the [full interface in the codebase](https://github.com/stagewise-io/stagewise/blob/main/toolbar/core/src/plugin.ts) for advanced hooks and MCP integration.
 
-## 3. Building Plugin UI with `@plugin-ui`
+## 3. Building Plugin UI with `@plugin-sdk`
 
 stagewise provides a set of UI primitives for building plugin panels:
 
@@ -78,7 +78,7 @@ stagewise provides a set of UI primitives for building plugin panels:
 #### Example Usage
 ```tsx
 // src/component.tsx
-import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/toolbar/plugin-ui';
+import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/toolbar/plugin-sdk';
 
 export const ExampleComponent = () => {
   const toolbar = useToolbar();
@@ -186,7 +186,7 @@ const ExamplePlugin: ToolbarPlugin = {
 export default ExamplePlugin;
 
 // src/component.tsx
-import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/toolbar/plugin-ui';
+import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/toolbar/plugin-sdk';
 
 export const ExampleComponent = () => {
   const toolbar = useToolbar();

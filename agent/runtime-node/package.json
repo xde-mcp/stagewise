@@ -1,0 +1,41 @@
+{
+  "name": "@stagewise/agent-runtime-node",
+  "version": "0.0.2",
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
+  ],
+  "scripts": {
+    "build": "node build.js && tsc --emitDeclarationOnly",
+    "dev": "node build.js --watch",
+    "clean": "rimraf dist",
+    "lint": "biome check .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ignore": "^7.0.5",
+    "minimatch": "^9.0.3"
+  },
+  "devDependencies": {
+    "@stagewise/agent-runtime-interface": "workspace:*",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.20.1",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0",
+    "@types/express": "^5.0.3",
+    "@types/ws": "^8.18.1"
+  }
+}

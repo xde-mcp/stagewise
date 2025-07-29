@@ -3,6 +3,7 @@
 
 import { useCyclicUpdate } from './use-cyclic-update';
 import { useCallback, useEffect, useRef } from 'react';
+import { getIFrameWindow } from '@/utils';
 
 export function useReferenceElement(referencePath: string, updateRate = 0) {
   // Fetch the reference element using the provided path and return the reference to it.
@@ -11,9 +12,15 @@ export function useReferenceElement(referencePath: string, updateRate = 0) {
 
   const updateReferenceElement = useCallback(() => {
     try {
-      const referenceNode = document.evaluate(
+      const iframeWindow = getIFrameWindow();
+      if (!iframeWindow) {
+        referenceElementRef.current = null;
+        return;
+      }
+
+      const referenceNode = iframeWindow.document.evaluate(
         referencePath,
-        document,
+        iframeWindow.document,
         (prefix) => {
           return prefix === 'svg' ? 'http://www.w3.org/2000/svg' : null;
         },

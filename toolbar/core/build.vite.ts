@@ -1,6 +1,5 @@
 import buildToolbarMain from './buildsteps/1-toolbar-main.js';
-import buildPluginUi from './buildsteps/2-plugin-ui.js';
-import buildToolbarLoader from './buildsteps/3-toolbar-loader.js';
+import buildPluginSdk from './buildsteps/2-plugin-sdk.js';
 import { cp, mkdir, rm, readdir, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -15,7 +14,7 @@ async function copyJsAndDtsFiles(srcDir: string, destDir: string) {
     const srcFilePath = path.join(srcDir, file);
     const fileStats = await stat(srcFilePath);
 
-    // Only copy files (not directories) that end with .js or .d.ts
+    // Only copy files (not directories) that end with .js, .d.ts
     if (
       fileStats.isFile() &&
       (file.endsWith('.js') || file.endsWith('.d.ts'))
@@ -30,24 +29,21 @@ await rm(path.join(__dirname, './dist'), { recursive: true, force: true });
 
 await buildToolbarMain();
 
-await buildPluginUi();
+const mainSrcDir = path.join(__dirname, './tmp/toolbar-main');
+const mainDestDir = path.join(__dirname, './dist/toolbar-main');
 
-await buildToolbarLoader();
+await mkdir(mainDestDir, { recursive: true });
 
-const loaderSrcDir = path.join(__dirname, './tmp/toolbar-loader');
-const loaderDestDir = path.join(__dirname, './dist');
+await cp(mainSrcDir, mainDestDir, { recursive: true });
 
-await mkdir(loaderDestDir, { recursive: true });
+console.log('Copied toolbar main files to dist.');
 
-await copyJsAndDtsFiles(loaderSrcDir, loaderDestDir);
+await buildPluginSdk();
 
-console.log('Copied toolbar loader files to dist.');
-
-const pluginUiSrcDir = path.join(__dirname, './tmp/plugin-ui');
-const pluginUiDestDir = path.join(__dirname, './dist/plugin-ui');
-
+const pluginUiSrcDir = path.join(__dirname, './tmp/plugin-sdk');
+const pluginUiDestDir = path.join(__dirname, './dist/plugin-sdk');
 await mkdir(pluginUiDestDir, { recursive: true });
 
 await copyJsAndDtsFiles(pluginUiSrcDir, pluginUiDestDir);
 
-console.log('Copied plugin ui files to dist.');
+console.log('Copied plugin sdk files to dist.');

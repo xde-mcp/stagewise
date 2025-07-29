@@ -42,6 +42,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
+    ],
+    "ignoredBuiltDependencies": [
+      "keytar"
     ]
   },
   "dependencies": {

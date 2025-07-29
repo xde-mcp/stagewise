@@ -1,4 +1,4 @@
-import type { ContextSnippet } from './plugin';
+import type { ContextSnippet } from './plugin-sdk/plugin';
 
 /**
  * Extracts relevant attributes from an HTMLElement.

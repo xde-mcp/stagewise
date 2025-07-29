@@ -1,4 +1,4 @@
-import type { ToolbarPlugin } from '@stagewise/toolbar';
+import type { ToolbarPlugin } from '@stagewise/plugin-sdk';
 import { AngularLogo } from './logo';
 import {
   getSelectedElementsPrompt,

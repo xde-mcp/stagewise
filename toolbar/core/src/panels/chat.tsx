@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/gradient-background-chat';
 import { TextSlideshow } from '@/components/ui/text-slideshow';
 import { useAgentMessaging } from '@/hooks/agent/use-agent-messaging';
+import { useAgents } from '@/hooks/agent/use-agent-provider';
 
 const agentStateToText: Record<AgentStateType, string> = {
   [AgentStateType.WAITING_FOR_USER_RESPONSE]: 'Waiting for user response',
@@ -61,13 +62,18 @@ export function ChatPanel() {
   const chatState = useChatState();
   const chatMessaging = useAgentMessaging();
   const [isComposing, setIsComposing] = useState(false);
+  const { connected } = useAgents();
 
   const enableInputField = useMemo(() => {
+    // Disable input if agent is not connected
+    if (!connected) {
+      return false;
+    }
     return (
       agentState.state === AgentStateType.WAITING_FOR_USER_RESPONSE ||
       agentState.state === AgentStateType.IDLE
     );
-  }, [agentState.state]);
+  }, [agentState.state, connected]);
 
   const canSendMessage = useMemo(() => {
     return (

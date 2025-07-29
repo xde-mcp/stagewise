@@ -25,12 +25,14 @@ import {
   DEFAULT_STARTING_PORT,
   transformer,
 } from '@stagewise/agent-interface/toolbar';
+import { useConfig } from '@/hooks/use-config';
 
 interface AgentInfo {
   port: number;
   name: string;
   description: string;
   info: StagewiseInfo;
+  isAppHosted?: boolean;
 }
 
 interface AgentProviderInterface {
@@ -67,6 +69,12 @@ interface AgentProviderInterface {
   isInitialLoad: boolean;
 
   /**
+   * Whether we're using an app-hosted agent (agent on same port as app).
+   * When true, agent selection UI should be hidden and refresh disabled.
+   */
+  isAppHostedAgent: boolean;
+
+  /**
    * Connect to an agent.
    */
   connectAgent: (port: number) => void;
@@ -93,6 +101,7 @@ const agentContext = createContext<AgentProviderInterface>({
   connectedUnavailable: false,
   requiresUserAttention: false,
   isInitialLoad: true,
+  isAppHostedAgent: false,
   connectAgent: () => {},
   disconnectAgent: () => {},
   refreshAgentList: () => {},
@@ -158,12 +167,17 @@ function findPersistedAgent(availableAgents: AgentInfo[]): AgentInfo | null {
  * Checks if an agent is available on the specified port by calling the /stagewise/info endpoint.
  * Returns agent information if successful, null otherwise.
  */
-async function checkAgentOnPort(port: number): Promise<AgentInfo | null> {
-  console.debug(`[AgentProvider] Checking for agent on port ${port}...`);
+async function checkAgentOnPort(
+  port: number,
+  path = '/stagewise/info',
+): Promise<AgentInfo | null> {
+  console.debug(
+    `[AgentProvider] Checking for agent on port ${port} at path ${path}...`,
+  );
   try {
-    // We use the hostname of the open page to connec tto the agent
-    const hostname = window.parent.location.hostname;
-    const response = await fetch(`http://${hostname}:${port}/stagewise/info`, {
+    // We use the hostname of the open page to connect to the agent
+    const hostname = window.location.hostname;
+    const response = await fetch(`http://${hostname}:${port}${path}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -279,21 +293,25 @@ function createWebSocketClient(
   onConnectionLost: () => void,
   onConnectionEstablished: () => void,
   onConnectionFailed: () => void,
-  connectionStabilityTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>,
+  connectionStabilityTimeoutRef: React.RefObject<NodeJS.Timeout | null>,
+  isAppHosted = false,
 ): {
   client: ReturnType<typeof createTRPCClient<InterfaceRouter>>;
   wsClient: ReturnType<typeof createWSClient>;
 } {
   console.debug(
-    `[AgentProvider] Creating WebSocket client for port ${port}...`,
+    `[AgentProvider] Creating WebSocket client for port ${port} (app-hosted: ${isAppHosted})...`,
   );
 
   let isConnectionStable = false;
   let connectionFailedCalled = false;
 
-  const hostname = window.parent.location.hostname;
+  const hostname = window.location.hostname;
+  const wsPath = isAppHosted
+    ? '/stagewise-toolbar-app/server/ws'
+    : '/stagewise/ws';
   const wsClient = createWSClient({
-    url: `ws://${hostname}:${port}/stagewise/ws`,
+    url: `ws://${hostname}:${port}${wsPath}`,
     onClose(cause) {
       console.debug(
         `[AgentProvider] WebSocket closed for port ${port}: ${cause}`,
@@ -363,6 +381,9 @@ function createWebSocketClient(
 export function AgentProvider({ children }: { children?: ReactNode }) {
   console.debug('[AgentProvider] AgentProvider component initializing...');
 
+  const { config } = useConfig();
+  const usesStagewiseAgent = config?.usesStagewiseAgent || false;
+
   // ===== STATE MANAGEMENT =====
   const [availableAgents, setAvailableAgents] = useState<AgentInfo[]>([]);
   const connected = useRef<ReturnType<
@@ -377,6 +398,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
   const [connectedUnavailable, setConnectedUnavailable] = useState(false);
   const [requiresUserAttention, setRequiresUserAttention] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isAppHostedAgent, _setIsAppHostedAgent] = useState(usesStagewiseAgent);
 
   // ===== REFS FOR CONNECTION MANAGEMENT =====
   const previouslySelectedPortRef = useRef<number | null>(null);
@@ -385,13 +407,15 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
   const isManualSelectionRef = useRef<boolean>(false);
   const delayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionStabilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isAppHostedAgentRef = useRef<boolean>(false);
 
   // ===== RETRY LOGIC FUNCTIONS =====
 
   /**
    * Starts retry attempts for the specified port every 2 seconds.
    * Only retries if the connection loss wasn't due to manual user action.
-   * Limited to a maximum of 5 retry attempts.
+   * Limited to a maximum of 5 retry attempts for regular agents.
+   * App-hosted agents retry indefinitely.
    */
   const startRetryConnection = useCallback(
     (port: number) => {
@@ -409,14 +433,19 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
 
       // Only start retry if this is not a manual selection change
       if (!isManualSelectionRef.current) {
-        // Only start retry if this is not a manual selection change
-        // Only start retry if this is not a manual selection change
+        const agentInfo = availableAgents.find((a) => a.port === port);
+        const isAppHosted =
+          agentInfo?.isAppHosted ||
+          isAppHostedAgent ||
+          isAppHostedAgentRef.current ||
+          false;
+
         console.debug(
-          `[AgentProvider] Setting up retry interval (every 2s) for port ${port} (max 5 retries)...`,
+          `[AgentProvider] Setting up retry interval (every 2s) for port ${port} ${isAppHosted ? '(app-hosted, unlimited retries)' : '(max 5 retries)'}...`,
         );
         retryIntervalRef.current = setInterval(() => {
-          // Check if we've reached the retry limit
-          if (retryCountRef.current >= 5) {
+          // Check if we've reached the retry limit (only for non-app-hosted agents)
+          if (!isAppHosted && retryCountRef.current >= 5) {
             console.debug(
               `[AgentProvider] Maximum retry attempts (5) reached for port ${port}, stopping retries`,
             );
@@ -434,9 +463,9 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
           ) {
             retryCountRef.current++;
             console.debug(
-              `[AgentProvider] Retrying connection to agent on port ${port} (attempt ${retryCountRef.current}/5)...`,
+              `[AgentProvider] Retrying connection to agent on port ${port} (attempt ${retryCountRef.current}${isAppHosted ? '' : '/5'})...`,
             );
-            connectAgentInternal(port, false); // false = not manual selection
+            connectAgentInternal(port, false, isAppHosted); // Pass isAppHosted flag
           } else {
             // Stop retrying if conditions are no longer met
             console.debug(
@@ -454,7 +483,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
         );
       }
     },
-    [connected],
+    [connected, availableAgents, isAppHostedAgent],
   );
 
   /**
@@ -475,6 +504,14 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
    * Also handles auto-connection logic for single agent scenarios.
    */
   const scanAgents = useCallback(async () => {
+    // Don't scan if we're using an app-hosted agent
+    if (isAppHostedAgent || usesStagewiseAgent) {
+      console.debug(
+        '[AgentProvider] Skipping agent scan - using app-hosted agent',
+      );
+      return;
+    }
+
     console.debug(
       `[AgentProvider] Starting agent scan... (finishedInitialScan: ${finishedInitialScan}, connected: ${!!connected.current})`,
     );
@@ -544,7 +581,13 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
       setFinishedInitialScan(true);
       console.debug(`[AgentProvider] Agent scan complete. Refreshing: false`);
     }
-  }, [connected, finishedInitialScan, availableAgents.length]);
+  }, [
+    connected,
+    finishedInitialScan,
+    availableAgents.length,
+    isAppHostedAgent,
+    usesStagewiseAgent,
+  ]);
 
   // ===== CONNECTION MANAGEMENT =====
 
@@ -553,7 +596,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
    * Sets up health monitoring and retry logic based on connection type.
    */
   const connectAgentInternal = useCallback(
-    async (port: number, isManual = false) => {
+    async (port: number, isManual = false, forceAppHosted = false) => {
       console.debug(
         `[AgentProvider] Attempting to connect to agent on port ${port} (manual: ${isManual})...`,
       );
@@ -603,6 +646,14 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
           console.debug(`[AgentProvider] WebSocket cleanup delay complete`);
         }
 
+        // Check if this is an app-hosted agent
+        const agentInfo = availableAgents.find((a) => a.port === port);
+        const isAppHosted =
+          forceAppHosted ||
+          agentInfo?.isAppHosted ||
+          isAppHostedAgentRef.current ||
+          false;
+
         const { client, wsClient } = createWebSocketClient(
           port,
           () => {
@@ -631,22 +682,32 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
             connectedWsClient.current = null;
             setConnectedPort(null);
 
-            // Refresh agent list when connection is lost to update available agents
-            console.info(
-              `[stagewise] Searching for available agents after connection loss...`,
-            );
-            scanAgents();
-
-            // Start retry attempts if this wasn't a manual disconnection
-            if (!isManualSelectionRef.current) {
+            // For app-hosted agents, don't scan for other agents, just retry
+            if (isAppHosted) {
               console.debug(
-                `[AgentProvider] Starting retry attempts for port ${port}...`,
+                `[AgentProvider] App-hosted agent disconnected, starting permanent retry...`,
               );
               startRetryConnection(port);
             } else {
-              console.debug(
-                `[AgentProvider] Not starting retry attempts (manual disconnection)`,
-              );
+              // Start retry attempts if this wasn't a manual disconnection
+              if (!isManualSelectionRef.current) {
+                console.debug(
+                  `[AgentProvider] Starting retry attempts for port ${port}...`,
+                );
+                startRetryConnection(port);
+
+                // Only scan for agents once when connection is first lost
+                console.info(
+                  `[stagewise] Searching for available agents after connection loss...`,
+                );
+                scanAgents();
+              } else {
+                console.debug(
+                  `[AgentProvider] Not starting retry attempts (manual disconnection)`,
+                );
+                // Scan for agents even on manual disconnection to update the list
+                scanAgents();
+              }
             }
           },
           () => {
@@ -673,17 +734,10 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
               }
             }
 
-            // Only refresh agent list for automatic reconnections, not manual selections
-            if (!isManual) {
-              console.debug(
-                `[AgentProvider] Refreshing agent list after automatic reconnection...`,
-              );
-              scanAgents();
-            } else {
-              console.debug(
-                `[AgentProvider] Skipping agent list refresh for manual connection`,
-              );
-            }
+            // No need to refresh agent list after successful connection
+            console.debug(
+              `[AgentProvider] Connection established successfully, no need to rescan agents`,
+            );
           },
           () => {
             console.debug(
@@ -705,6 +759,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
             }
           },
           connectionStabilityTimeoutRef,
+          isAppHosted,
         );
         connected.current = client;
         connectedWsClient.current = wsClient;
@@ -760,6 +815,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
       stopRetryConnection,
       scanAgents,
       availableAgents,
+      isAppHostedAgent,
     ],
   );
 
@@ -841,9 +897,15 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
    * Refreshes the list of available agents by rescanning ports.
    */
   const refreshAgentList = useCallback(() => {
+    // Don't allow refresh for app-hosted agents
+    if (isAppHostedAgent || usesStagewiseAgent) {
+      console.debug('[AgentProvider] Refresh blocked - using app-hosted agent');
+      return;
+    }
+
     console.debug(`[AgentProvider] Manual refresh of agent list requested...`);
     scanAgents();
-  }, [scanAgents]);
+  }, [scanAgents, isAppHostedAgent, usesStagewiseAgent]);
 
   // ===== LIFECYCLE EFFECTS =====
 
@@ -865,13 +927,60 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
     console.debug(`[AgentProvider] Refreshing state changed: ${isRefreshing}`);
   }, [isRefreshing]);
 
-  // Initial scan on mount
+  // Initial scan on mount - check config for app-hosted agent
   useEffect(() => {
-    console.debug(
-      '[AgentProvider] Component mounted, starting initial agent scan...',
-    );
-    scanAgents();
-  }, []);
+    // Only run on initial mount
+    if (!finishedInitialScan) {
+      console.debug(
+        '[AgentProvider] Component mounted, checking configuration...',
+      );
+
+      if (usesStagewiseAgent) {
+        console.debug(
+          '[AgentProvider] Config indicates Stagewise agent usage, connecting to app port...',
+        );
+
+        // Get the current port from the URL
+        const url = new URL(window.location.href);
+        const appPort = Number.parseInt(url.port);
+
+        // Create a fake agent info for the app-hosted agent
+        const appAgent: AgentInfo = {
+          port: appPort,
+          name: 'Stagewise CLI Agent',
+          description: 'Integrated with application',
+          info: {
+            name: 'Stagewise CLI Agent',
+            description: 'Integrated with application',
+            capabilities: {
+              toolCalling: true,
+              chatHistory: true,
+            },
+          },
+          isAppHosted: true,
+        };
+
+        isAppHostedAgentRef.current = true;
+        setAvailableAgents([appAgent]); // Only show the app-hosted agent
+        setFinishedInitialScan(true);
+
+        // Connect to the app-hosted agent
+        setTimeout(() => {
+          connectAgentInternal(appPort, false, true); // true = force app-hosted
+        }, 10);
+
+        // For app-hosted agents, we don't scan for other agents
+        return;
+      }
+
+      // No app-hosted agent configured, proceed with normal scanning
+      console.debug(
+        '[AgentProvider] No Stagewise agent configured, scanning for regular agents...',
+      );
+      scanAgents();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array to run only once on mount
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -965,6 +1074,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
       connectedUnavailable,
       requiresUserAttention,
       isInitialLoad,
+      isAppHostedAgent,
       connectAgent,
       disconnectAgent,
       refreshAgentList,
@@ -980,6 +1090,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
       connectedUnavailable,
       requiresUserAttention,
       isInitialLoad,
+      isAppHostedAgent,
     ],
   );
 

@@ -1,0 +1,222 @@
+import { configResolver } from './config';
+import { getServer } from './server';
+import { shutdownAgent } from './server/agent-loader';
+import { log } from './utils/logger';
+import { printBanner } from './utils/banner';
+import { oauthManager } from './auth/oauth';
+import {
+  discoverDependencies,
+  getDependencyList,
+} from './dependency-parser/index.js';
+import open from 'open';
+
+// Suppress util._extend deprecation warnings
+// Set NODE_NO_DEPRECATION to suppress all deprecation warnings, then restore other warnings
+const originalStderr = process.stderr.write;
+process.stderr.write = function (chunk: any, encoding?: any, callback?: any) {
+  const str = chunk.toString();
+  // Suppress the specific util._extend deprecation warning
+  if (str.includes('DEP0060') && str.includes('util._extend')) {
+    // Don't write this warning to stderr
+    return true;
+  }
+  // For all other output, use the original stderr.write
+  return originalStderr.call(this, chunk, encoding, callback);
+};
+
+async function main() {
+  try {
+    // Import argparse to check command and options
+    const { silent, commandExecuted, authSubcommand } = await import(
+      './config/argparse'
+    );
+
+    // Handle auth commands
+    if (commandExecuted === 'auth') {
+      switch (authSubcommand) {
+        case 'login': {
+          // Check if already logged in
+          const loginState = await oauthManager.getAuthState();
+          if (loginState?.isAuthenticated && loginState.userEmail) {
+            log.info(`Already logged in as: ${loginState.userEmail}`);
+            return; // Exit immediately
+          }
+
+          try {
+            const port = 3100;
+            const tokenData = await oauthManager.initiateOAuthFlow(port);
+            log.info(`Successfully authenticated as: ${tokenData.userEmail}`);
+            // Give the auth server time to fully shut down
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            process.exit(0); // Exit successfully
+          } catch (_error) {
+            // Authentication failed - error already logged by oauth manager
+            process.exit(1);
+          }
+          return;
+        }
+
+        case 'logout': {
+          // Check if already logged out
+          const logoutState = await oauthManager.getAuthState();
+          if (!logoutState || !logoutState.isAuthenticated) {
+            log.info('Already logged out.');
+            return; // Exit immediately
+          }
+
+          log.info('Logging out...');
+          await oauthManager.logout();
+          log.info('Successfully logged out.');
+          return; // Exit immediately
+        }
+
+        case 'status': {
+          const authState = await oauthManager.checkAuthStatus();
+          if (!authState.isAuthenticated) {
+            log.info('Not authenticated.');
+            process.exit(1);
+          }
+          log.info(`Authenticated as: ${authState.userEmail}`);
+          return; // Exit immediately
+        }
+      }
+      // If we get here, an auth command was executed, so exit
+      return;
+    }
+
+    // Print welcome banner first (unless in silent mode)
+    if (!silent) {
+      printBanner(false);
+    }
+
+    // Resolve configuration (handles all input sources)
+    const config = await configResolver.resolveConfig();
+
+    if (config.verbose) {
+      log.debug('Configuration resolved:');
+      log.debug(
+        JSON.stringify(
+          {
+            ...config,
+            token: config.token ? '[REDACTED]' : undefined,
+          },
+          null,
+          2,
+        ),
+      );
+    }
+
+    // Log bridge mode status
+    if (config.bridgeMode) {
+      log.debug('Running in bridge mode - agent server disabled');
+    }
+
+    // Discover dependencies in the workspace directory
+    try {
+      const dependencies = await discoverDependencies(config.dir);
+      const dependencyList = getDependencyList(dependencies);
+
+      if (dependencyList.length > 0) {
+        if (config.verbose) {
+          log.debug(
+            `Discovered dependencies: ${dependencyList.slice(0, 10).join(', ')}${
+              dependencyList.length > 10
+                ? ` and ${dependencyList.length - 10} more...`
+                : ''
+            }`,
+          );
+        }
+      } else {
+        log.debug('No dependencies found in current directory');
+      }
+    } catch (error) {
+      log.warn(
+        `Failed to discover dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+
+    const { server, agentWss } = await getServer();
+
+    // Start the server listening
+    server.listen(config.port);
+
+    server.on('listening', async () => {
+      const address = server.address();
+      const port =
+        typeof address === 'object' && address ? address.port : config.port;
+      const serverUrl = `http://localhost:${port}`;
+
+      log.info(`✓ Stagewise is running on ${serverUrl}`);
+      if (config.appPort) {
+        log.info(`✓ Proxying app from port ${config.appPort}`);
+      }
+      if (config.bridgeMode) {
+        log.info('✓ Running in bridge mode (agent server disabled)');
+      }
+
+      // Open browser automatically unless in test environment or auth flow was initiated
+      // (auth flow will redirect the existing browser window)
+      if (
+        process.env.NODE_ENV !== 'test' &&
+        !configResolver.wasAuthFlowInitiated()
+      ) {
+        try {
+          await open(serverUrl);
+          log.info('✓ Opening browser...');
+        } catch (_error) {
+          log.debug('Failed to open browser automatically');
+        }
+      }
+    });
+
+    // Handle graceful shutdown
+    const gracefulShutdown = () => {
+      log.info('\nShutting down...');
+
+      // Prevent multiple shutdown attempts
+      if ((global as any).isShuttingDown) {
+        console.log('Already shutting down');
+        return;
+      }
+      (global as any).isShuttingDown = true;
+
+      // Shutdown agent first
+      shutdownAgent();
+      // Force close all connections
+      server.closeAllConnections();
+
+      process.exit(0);
+    };
+
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
+
+    // Keep the process alive
+    process.on('uncaughtException', (error) => {
+      log.error(`Uncaught exception: ${error.message}`);
+      log.debug(error.stack || '');
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      log.error(`Unhandled rejection at: ${promise}, reason: ${reason}`);
+      process.exit(1);
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      // Only log once using the logger if available
+      try {
+        log.error(error.message);
+      } catch {
+        // Logger might not be initialized, fall back to console
+        console.error(error.message);
+      }
+    } else {
+      console.error('An unknown error occurred');
+    }
+    process.exit(1);
+  }
+}
+
+// Run the main function
+main();

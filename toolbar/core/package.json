@@ -1,6 +1,6 @@
 {
   "name": "@stagewise/toolbar",
-  "private": false,
+  "private": true,
   "version": "0.6.2",
   "type": "module",
   "description": "stagewise toolbar SDK for AI Agent interaction.",
@@ -36,8 +36,8 @@
       "import": "./dist/index.es.js",
       "require": "./dist/index.cjs.js"
     },
-    "./plugin-ui": {
-      "types": "./dist/plugin-ui/index.d.ts"
+    "./plugin-sdk": {
+      "types": "./dist/plugin-sdk/index.d.ts"
     }
   },
   "files": [

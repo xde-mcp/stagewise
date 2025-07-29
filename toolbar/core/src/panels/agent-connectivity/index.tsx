@@ -27,19 +27,41 @@ import { BadAgentAvailability } from './bad-agent-availability';
 import { AgentAvailabilityError } from '@stagewise/agent-interface/toolbar';
 
 export function AgentConnectivityPanel() {
-  const { availableAgents, connectedUnavailable, connected } = useAgents();
+  const { availableAgents, connectedUnavailable, connected, isAppHostedAgent } =
+    useAgents();
 
   const availabilityStatus = useAgentAvailability();
 
   const shouldRenderAsWarning = useMemo(() => {
+    // For app-hosted agents, show warning if not connected (initial connection or disconnected)
+    if (isAppHostedAgent && !connected) {
+      return true;
+    }
+
     return (
       availableAgents.length === 0 ||
       connectedUnavailable ||
       !availabilityStatus.isAvailable
     );
-  }, [availableAgents, connectedUnavailable, availabilityStatus]);
+  }, [
+    availableAgents,
+    connectedUnavailable,
+    availabilityStatus,
+    isAppHostedAgent,
+    connected,
+  ]);
 
   const title = useMemo(() => {
+    // Special handling for app-hosted agents
+    if (isAppHostedAgent) {
+      if (connectedUnavailable) {
+        return 'CLI disconnected';
+      }
+      if (!connected) {
+        return 'Connecting to CLI';
+      }
+    }
+
     if (availableAgents.length === 0) {
       return 'No agents available';
     }
@@ -53,7 +75,13 @@ export function AgentConnectivityPanel() {
     }
 
     return 'Select an agent to connect to';
-  }, [availableAgents, connectedUnavailable, availabilityStatus]);
+  }, [
+    availableAgents,
+    connectedUnavailable,
+    availabilityStatus,
+    isAppHostedAgent,
+    connected,
+  ]);
 
   const renderedIcon = useMemo(() => {
     if (!shouldRenderAsWarning) {
@@ -84,16 +112,41 @@ export function AgentConnectivityPanel() {
         actionArea={shouldRenderAsWarning && renderedIcon}
       />
       <PanelContent>
-        {availableAgents.length > 0 && !connectedUnavailable && !connected && (
-          <SelectAgent />
+        {/* Special content for app-hosted agents */}
+        {isAppHostedAgent && !connected && (
+          <div className="space-y-3">
+            <p className="text-muted-foreground text-sm">
+              {connectedUnavailable
+                ? 'The connection to the Stagewise CLI has been lost. The toolbar is attempting to reconnect automatically.'
+                : 'Establishing connection to the Stagewise CLI...'}
+            </p>
+            <p className="text-muted-foreground text-sm">Please ensure that:</p>
+            <ul className="list-inside list-disc space-y-1 text-muted-foreground text-sm">
+              <li>The CLI application is still running</li>
+              <li>The development server hasn't crashed</li>
+              <li>Your network connection is stable</li>
+            </ul>
+            <p className="text-muted-foreground text-sm">
+              If the problem persists, try restarting the CLI application.
+            </p>
+          </div>
         )}
-        {connectedUnavailable && <AgentDisconnected />}
-        {availableAgents.length === 0 && !connectedUnavailable && (
-          <NoAgentFound />
+
+        {/* Regular agent selection UI for non-app-hosted agents */}
+        {!isAppHostedAgent && (
+          <>
+            {availableAgents.length > 0 &&
+              !connectedUnavailable &&
+              !connected && <SelectAgent />}
+            {connectedUnavailable && <AgentDisconnected />}
+            {availableAgents.length === 0 && !connectedUnavailable && (
+              <NoAgentFound />
+            )}
+            {!connectedUnavailable &&
+              connected &&
+              !availabilityStatus.isAvailable && <BadAgentAvailability />}
+          </>
         )}
-        {!connectedUnavailable &&
-          connected &&
-          !availabilityStatus.isAvailable && <BadAgentAvailability />}
       </PanelContent>
       <PanelFooter>
         <DropdownMenu>
