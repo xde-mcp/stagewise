@@ -10,7 +10,7 @@ export function mapZodToolsToJsonSchemaTools(
   return Object.entries(tools).reduce(
     (acc, [key, value]) => {
       acc[key] = {
-        description: value.description!,
+        description: value.description ?? `Tool: ${key}`,
         parameters: zodToJsonSchema(value.parameters),
       };
       return acc;
