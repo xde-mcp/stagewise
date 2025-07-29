@@ -23,7 +23,7 @@
     "directory": "packages/toolbar"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "private"
   },
   "types": "./dist/index.d.ts",
   "import": "./dist/index.es.js",

@@ -2,7 +2,7 @@
   "name": "stagewise",
   "module": "src/index.ts",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "Stagewise CLI",
   "author": "stagewise GmbH",
   "license": "AGPL-3.0",
@@ -17,6 +17,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "dotenv -e ../../.env -- tsx build.ts",
     "dev": "dotenv -e ../../.env -- tsx src/index.ts",
