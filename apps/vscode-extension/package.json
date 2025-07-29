@@ -123,9 +123,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.15.1",
+    "@stagewise/agent-runtime-vscode": "workspace:*",
     "@stagewise/agent-interface": "workspace:*",
-    "@stagewise-agent/client-sdk": "0.0.9",
-    "@stagewise-agent/implementation-client-runtime-vscode": "0.0.2",
+    "@stagewise/agent-client": "workspace:*",
     "@stagewise/extension-toolbar-srpc-contract": "workspace:*",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.1",
