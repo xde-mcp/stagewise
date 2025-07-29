@@ -27,6 +27,7 @@ src/
 │   └── proxy.ts            # HTTP proxy middleware
 ├── utils/                   # Utility functions
 │   ├── banner.ts           # CLI banner display
+│   ├── config-path.ts      # Configuration path management
 │   ├── logger.ts           # Logging utilities
 │   └── user-input.ts       # User input handling
 └── index.ts                # Application entry point
@@ -72,8 +73,10 @@ src/
 ├── utils/
 │   ├── __tests__/
 │   │   ├── banner.test.ts
+│   │   ├── config-path.test.ts
 │   │   └── logger.test.ts
 │   ├── banner.ts
+│   ├── config-path.ts
 │   ├── logger.ts
 │   └── user-input.ts
 └── index.ts
@@ -96,7 +99,7 @@ src/
 
 ### 2. Authentication (`auth/`)
 - **OAuth Manager**: Handles OAuth2 flow with PKCE
-- **Token Manager**: Secure storage using system keychain
+- **Token Manager**: Secure storage using file-based credentials in platform-specific config directory
 - Supports login, logout, and status commands
 
 ### 3. Configuration (`config/`)
@@ -124,6 +127,7 @@ src/
 - **Logger**: Winston-based logging with different levels
 - **Banner**: ASCII art banner display
 - **User Input**: Terminal input handling
+- **Config Path**: Platform-specific configuration directory management using env-paths
 
 ## Key Features
 
@@ -147,6 +151,17 @@ src/
 
 ## Build and Distribution
 - Uses ESBuild for bundling
-- Bundles most dependencies except native modules
+- Bundles most dependencies including env-paths
+- Keeps problematic dependencies external (workspace packages)
 - Extracts third-party licenses
 - Copies static assets (toolbar, plugins)
+
+## Configuration Storage
+- Uses platform-specific directories via env-paths
+- Stores credentials in JSON file with restricted permissions (0600)
+- Configuration directory structure:
+  - `config/`: Application configuration files
+  - `data/`: Application data files
+  - `cache/`: Temporary cache files
+  - `log/`: Log files
+  - `temp/`: Temporary files

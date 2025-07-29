@@ -1,8 +1,11 @@
-import keytar from 'keytar';
 import { log } from '../utils/logger';
+import {
+  readConfigFile,
+  writeConfigFile,
+  deleteConfigFile,
+} from '../utils/config-path';
 
-const SERVICE_NAME = 'stagewise-cli';
-const ACCOUNT_NAME = 'default';
+const CREDENTIALS_FILE = 'credentials.json';
 
 export interface TokenData {
   accessToken: string;
@@ -17,14 +20,8 @@ export interface TokenData {
 export class TokenManager {
   async getStoredToken(): Promise<TokenData | null> {
     try {
-      const storedData = await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
-
-      if (!storedData) {
-        return null;
-      }
-
-      const parsed = JSON.parse(storedData);
-      return parsed as TokenData;
+      const tokenData = await readConfigFile<TokenData>(CREDENTIALS_FILE);
+      return tokenData;
     } catch (error) {
       log.debug(`Failed to retrieve stored token: ${error}`);
       return null;
@@ -33,8 +30,7 @@ export class TokenManager {
 
   async storeToken(tokenData: TokenData): Promise<void> {
     try {
-      const dataToStore = JSON.stringify(tokenData);
-      await keytar.setPassword(SERVICE_NAME, ACCOUNT_NAME, dataToStore);
+      await writeConfigFile(CREDENTIALS_FILE, tokenData);
       log.debug('Token stored successfully');
     } catch (error) {
       log.error(`Failed to store token: ${error}`);
@@ -44,10 +40,8 @@ export class TokenManager {
 
   async deleteStoredToken(): Promise<void> {
     try {
-      const deleted = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_NAME);
-      if (deleted) {
-        log.debug('Token deleted successfully');
-      }
+      await deleteConfigFile(CREDENTIALS_FILE);
+      log.debug('Token deleted successfully');
     } catch (error) {
       log.error(`Failed to delete token: ${error}`);
       throw error;

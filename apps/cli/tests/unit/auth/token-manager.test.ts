@@ -1,22 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { tokenManager } from '../../../src/auth/token-manager';
 
-// Mock keytar
-vi.mock('keytar', () => ({
-  default: {
-    getPassword: vi.fn(),
-    setPassword: vi.fn(),
-    deletePassword: vi.fn(),
-  },
+// Mock config-path utilities
+vi.mock('../../../src/utils/config-path', () => ({
+  readConfigFile: vi.fn(),
+  writeConfigFile: vi.fn(),
+  deleteConfigFile: vi.fn(),
 }));
 
 describe('tokenManager', () => {
-  let keytarMock: any;
+  let configPathMock: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    // Get the mocked keytar module
-    keytarMock = (await import('keytar')).default;
+    // Get the mocked config-path module
+    configPathMock = await import('../../../src/utils/config-path');
   });
 
   afterEach(() => {
@@ -24,8 +22,8 @@ describe('tokenManager', () => {
   });
 
   describe('storeToken', () => {
-    it('should save token using keytar', async () => {
-      keytarMock.setPassword.mockResolvedValue(undefined);
+    it('should save token using config file', async () => {
+      configPathMock.writeConfigFile.mockResolvedValue(undefined);
 
       const tokenData = {
         accessToken: 'test-token-123',
@@ -34,15 +32,14 @@ describe('tokenManager', () => {
 
       await tokenManager.storeToken(tokenData);
 
-      expect(keytarMock.setPassword).toHaveBeenCalledWith(
-        'stagewise-cli',
-        'default',
-        JSON.stringify(tokenData),
+      expect(configPathMock.writeConfigFile).toHaveBeenCalledWith(
+        'credentials.json',
+        tokenData,
       );
     });
 
     it('should store complete token data', async () => {
-      keytarMock.setPassword.mockResolvedValue(undefined);
+      configPathMock.writeConfigFile.mockResolvedValue(undefined);
 
       const tokenData = {
         accessToken: 'test-token-123',
@@ -53,35 +50,38 @@ describe('tokenManager', () => {
 
       await tokenManager.storeToken(tokenData);
 
-      const savedData = keytarMock.setPassword.mock.calls[0][2];
-      expect(JSON.parse(savedData)).toEqual(tokenData);
+      expect(configPathMock.writeConfigFile).toHaveBeenCalledWith(
+        'credentials.json',
+        tokenData,
+      );
     });
   });
 
   describe('getStoredToken', () => {
-    it('should retrieve and parse stored token', async () => {
+    it('should retrieve stored token', async () => {
       const tokenData = {
         accessToken: 'test-token-123',
         userEmail: 'test@example.com',
       };
 
-      keytarMock.getPassword.mockResolvedValue(JSON.stringify(tokenData));
+      configPathMock.readConfigFile.mockResolvedValue(tokenData);
 
       const result = await tokenManager.getStoredToken();
 
+      expect(configPathMock.readConfigFile).toHaveBeenCalledWith('credentials.json');
       expect(result).toEqual(tokenData);
     });
 
     it('should return null when no token exists', async () => {
-      keytarMock.getPassword.mockResolvedValue(null);
+      configPathMock.readConfigFile.mockResolvedValue(null);
 
       const result = await tokenManager.getStoredToken();
 
       expect(result).toBeNull();
     });
 
-    it('should return null when token is invalid JSON', async () => {
-      keytarMock.getPassword.mockResolvedValue('invalid-json');
+    it('should return null on read error', async () => {
+      configPathMock.readConfigFile.mockRejectedValue(new Error('Read failed'));
 
       const result = await tokenManager.getStoredToken();
 
@@ -90,14 +90,13 @@ describe('tokenManager', () => {
   });
 
   describe('deleteStoredToken', () => {
-    it('should delete token using keytar', async () => {
-      keytarMock.deletePassword.mockResolvedValue(true);
+    it('should delete token file', async () => {
+      configPathMock.deleteConfigFile.mockResolvedValue(undefined);
 
       await tokenManager.deleteStoredToken();
 
-      expect(keytarMock.deletePassword).toHaveBeenCalledWith(
-        'stagewise-cli',
-        'default',
+      expect(configPathMock.deleteConfigFile).toHaveBeenCalledWith(
+        'credentials.json',
       );
     });
   });
@@ -109,12 +108,12 @@ describe('tokenManager', () => {
         userEmail: 'stored@example.com',
       };
 
-      keytarMock.getPassword.mockResolvedValue(JSON.stringify(storedToken));
+      configPathMock.readConfigFile.mockResolvedValue(storedToken);
 
       const result = await tokenManager.resolveToken('cli-token');
 
       expect(result).toBe('cli-token');
-      expect(keytarMock.getPassword).not.toHaveBeenCalled();
+      expect(configPathMock.readConfigFile).not.toHaveBeenCalled();
     });
 
     it('should return stored token when no CLI token provided', async () => {
@@ -123,7 +122,7 @@ describe('tokenManager', () => {
         userEmail: 'stored@example.com',
       };
 
-      keytarMock.getPassword.mockResolvedValue(JSON.stringify(storedToken));
+      configPathMock.readConfigFile.mockResolvedValue(storedToken);
 
       const result = await tokenManager.resolveToken();
 
@@ -131,7 +130,7 @@ describe('tokenManager', () => {
     });
 
     it('should return null when no tokens available', async () => {
-      keytarMock.getPassword.mockResolvedValue(null);
+      configPathMock.readConfigFile.mockResolvedValue(null);
 
       const result = await tokenManager.resolveToken();
 

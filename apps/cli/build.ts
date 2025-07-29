@@ -48,10 +48,7 @@ async function buildCLI() {
     await mkdir('dist', { recursive: true });
 
     // Only keep external the packages that have issues with bundling
-    const externalPackages = [
-      // Native Node.js modules that can't be bundled
-      'keytar', // Uses native bindings
-    ];
+    const externalPackages: string[] = [];
 
     // Build the CLI bundling most dependencies
     const result = await build({
