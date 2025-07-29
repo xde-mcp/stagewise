@@ -3,7 +3,19 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { log } from './logger';
 
-const paths = envPaths('stagewise');
+// Check if running in dev mode by looking at the execution path
+const isDevMode = () => {
+  // When running with tsx (pnpm dev), the process will have tsx in the execArgv
+  // or NODE_ENV will not be 'production'
+  return (
+    process.execArgv.some((arg) => arg.includes('tsx')) ||
+    process.env.NODE_ENV !== 'production'
+  );
+};
+
+// Use 'stagewise-dev' in dev mode to keep dev and production configs separate
+const appName = isDevMode() ? 'stagewise-dev' : 'stagewise';
+const paths = envPaths(appName);
 
 export interface StagewiseConfig {
   configDir: string;

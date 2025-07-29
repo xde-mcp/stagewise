@@ -159,6 +159,12 @@ src/
 ## Configuration Storage
 - Uses platform-specific directories via env-paths
 - Stores credentials in JSON file with restricted permissions (0600)
+- **Dev Mode Detection**: Automatically uses separate config directory in development
+  - Production: Uses `stagewise` app name for env-paths
+  - Development: Uses `stagewise-dev` app name for env-paths
+  - Detection methods:
+    - Checks if `NODE_ENV !== 'production'`
+    - Checks if running with tsx (`process.execArgv` contains 'tsx')
 - Configuration directory structure:
   - `config/`: Application configuration files
   - `data/`: Application data files

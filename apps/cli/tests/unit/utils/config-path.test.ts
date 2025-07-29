@@ -12,12 +12,12 @@ import {
 } from '../../../src/utils/config-path';
 
 vi.mock('env-paths', () => ({
-  default: () => ({
-    config: '/test/config',
-    data: '/test/data',
-    cache: '/test/cache',
-    log: '/test/log',
-    temp: '/test/temp',
+  default: (appName: string) => ({
+    config: `/test/${appName}/config`,
+    data: `/test/${appName}/data`,
+    cache: `/test/${appName}/cache`,
+    log: `/test/${appName}/log`,
+    temp: `/test/${appName}/temp`,
   }),
 }));
 
@@ -39,13 +39,21 @@ describe('config-path', () => {
     vi.restoreAllMocks();
   });
 
+  describe('dev mode detection', () => {
+    it('should use stagewise-dev when NODE_ENV is not production', () => {
+      // In test environment, NODE_ENV is 'test', so it should use 'stagewise-dev'
+      expect(stagewise.configDir).toContain('stagewise-dev');
+    });
+  });
+
   describe('stagewise paths', () => {
-    it('should return correct paths', () => {
-      expect(stagewise.configDir).toBe('/test/config');
-      expect(stagewise.dataDir).toBe('/test/data');
-      expect(stagewise.cacheDir).toBe('/test/cache');
-      expect(stagewise.logDir).toBe('/test/log');
-      expect(stagewise.tempDir).toBe('/test/temp');
+    it('should return correct paths in production', () => {
+      // In test environment, NODE_ENV is 'test', so it will use 'stagewise-dev'
+      expect(stagewise.configDir).toBe('/test/stagewise-dev/config');
+      expect(stagewise.dataDir).toBe('/test/stagewise-dev/data');
+      expect(stagewise.cacheDir).toBe('/test/stagewise-dev/cache');
+      expect(stagewise.logDir).toBe('/test/stagewise-dev/log');
+      expect(stagewise.tempDir).toBe('/test/stagewise-dev/temp');
     });
   });
 
@@ -71,13 +79,13 @@ describe('config-path', () => {
 
   describe('getConfigPath', () => {
     it('should return path within config directory', () => {
-      expect(getConfigPath('test.json')).toBe('/test/config/test.json');
+      expect(getConfigPath('test.json')).toBe('/test/stagewise-dev/config/test.json');
     });
   });
 
   describe('getDataPath', () => {
     it('should return path within data directory', () => {
-      expect(getDataPath('test.db')).toBe('/test/data/test.db');
+      expect(getDataPath('test.db')).toBe('/test/stagewise-dev/data/test.db');
     });
   });
 
@@ -88,7 +96,7 @@ describe('config-path', () => {
 
       const result = await readConfigFile('test.json');
 
-      expect(fs.readFile).toHaveBeenCalledWith('/test/config/test.json', 'utf-8');
+      expect(fs.readFile).toHaveBeenCalledWith('/test/stagewise-dev/config/test.json', 'utf-8');
       expect(result).toEqual(data);
     });
 
@@ -118,12 +126,12 @@ describe('config-path', () => {
       const data = { key: 'value' };
       await writeConfigFile('test.json', data);
 
-      expect(fs.mkdir).toHaveBeenCalledWith('/test/config', {
+      expect(fs.mkdir).toHaveBeenCalledWith('/test/stagewise-dev/config', {
         recursive: true,
         mode: 0o700,
       });
       expect(fs.writeFile).toHaveBeenCalledWith(
-        '/test/config/test.json',
+        '/test/stagewise-dev/config/test.json',
         JSON.stringify(data, null, 2),
         { mode: 0o600 }
       );
@@ -144,7 +152,7 @@ describe('config-path', () => {
 
       await deleteConfigFile('test.json');
 
-      expect(fs.unlink).toHaveBeenCalledWith('/test/config/test.json');
+      expect(fs.unlink).toHaveBeenCalledWith('/test/stagewise-dev/config/test.json');
     });
 
     it('should ignore non-existent file', async () => {
