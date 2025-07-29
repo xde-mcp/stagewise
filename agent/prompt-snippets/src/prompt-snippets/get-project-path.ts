@@ -1,4 +1,4 @@
-import type { ClientRuntime } from '../../../runtime-interface/dist/index.js';
+import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
 import type { PromptSnippet } from '@stagewise/agent-types';
 
 /**
