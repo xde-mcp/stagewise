@@ -247,10 +247,6 @@ You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
 | Trae           | ✅             |
 
 
-## 🛣️ Roadmap
-
-Check out our [project roadmap](./.github/ROADMAP.md) for upcoming features, bug fixes, and progress.
-
 ## 📜 License
 
 stagewise is developed by tiq UG (haftungsbeschränkt) and offered under the AGPLv3 license.
