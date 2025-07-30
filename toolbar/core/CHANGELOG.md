@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.7.0
+
+### Minor Changes
+
+- aebe72b: Add CLI for stagewise. ByeBye, complex setups!
+
 ## 0.6.2
 
 ### Patch Changes
