@@ -165,27 +165,14 @@ export default function Home() {
                 changes.
               </p>
 
-              <p className="mx-auto mb-2 font-medium text-sm text-zinc-600 dark:text-zinc-400">
-                Run this command in the root of your dev app:
-              </p>
-              <Clipboard
-                text="npx stagewise"
-                className="mx-auto mb-6 justify-center"
-              />
-
-              <div className="flex items-center justify-center gap-2 text-sm text-zinc-600 md:flex-row md:gap-8 dark:text-zinc-400">
-                <div className="flex items-center">
-                  <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  Supports all frameworks
-                </div>
-                <div className="flex items-center">
-                  <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  Open Source
-                </div>
-                <div className="flex items-center">
-                  <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  Connects to plugins & custom agents
-                </div>
+              <div className="py-4">
+                <p className="mx-auto mb-2 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                  Run this command in the root of your dev app:
+                </p>
+                <Clipboard
+                  text="npx stagewise"
+                  className="mx-auto mb-6 justify-center"
+                />
               </div>
             </div>
           </ScrollReveal>
