@@ -169,6 +169,7 @@ export class ConfigResolver {
             const tokenData = await oauthManager.initiateOAuthFlow(
               port,
               `http://localhost:${port}`,
+              true,
             );
             token = tokenData.accessToken;
             // Give the auth server time to fully shut down
@@ -187,6 +188,7 @@ export class ConfigResolver {
             const tokenData = await oauthManager.initiateOAuthFlow(
               port,
               `http://localhost:${port}`,
+              true,
             );
             token = tokenData.accessToken;
             // Give the auth server time to fully shut down

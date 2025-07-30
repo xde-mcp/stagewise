@@ -2,6 +2,8 @@ import { readConfigFile, writeConfigFile } from './config-path';
 import { PostHog } from 'posthog-node';
 import { identifierManager } from './identifier';
 import { log } from './logger';
+import { promptConfirm } from './user-input';
+import chalk from 'chalk';
 
 export type TelemetryLevel = 'off' | 'anonymous' | 'full';
 
@@ -94,6 +96,11 @@ export class TelemetryManager {
     return this.config || { level: DEFAULT_TELEMETRY_LEVEL };
   }
 
+  async hasConfigured(): Promise<boolean> {
+    const config = await readConfigFile<TelemetryConfig>(TELEMETRY_CONFIG_FILE);
+    return config !== null;
+  }
+
   async isEnabled(): Promise<boolean> {
     const level = await this.getLevel();
     return level !== 'off';
@@ -115,7 +122,12 @@ export class TelemetryManager {
     try {
       const telemetryLevel = await this.getLevel();
 
-      if (telemetryLevel === 'off' || !this.posthogClient) {
+      // Special case: always send telemetry config events even when turning off
+      const isConfigEvent = eventName === 'cli-telemetry-config-set';
+      const isTurningOff =
+        isConfigEvent && properties?.configured_level === 'off';
+
+      if (!isTurningOff && (telemetryLevel === 'off' || !this.posthogClient)) {
         return;
       }
 
@@ -131,11 +143,13 @@ export class TelemetryManager {
         finalProperties.user_email = this.userProperties.user_email;
       }
 
-      this.posthogClient.capture({
-        distinctId: machineId,
-        event: eventName,
-        properties: finalProperties,
-      });
+      if (this.posthogClient) {
+        this.posthogClient.capture({
+          distinctId: machineId,
+          event: eventName,
+          properties: finalProperties,
+        });
+      }
     } catch (error) {
       log.debug(`[TELEMETRY] Failed to capture analytics event: ${error}`);
     }
@@ -152,10 +166,14 @@ export class TelemetryManager {
     }
   }
 
-  async telemetryConfigSet(level: TelemetryLevel): Promise<void> {
+  async telemetryConfigSet(
+    level: TelemetryLevel,
+    triggeredBy: 'cli-prompt' | 'command' = 'command',
+  ): Promise<void> {
     log.debug(`[TELEMETRY] Telemetry config set to ${level}`);
     await this.capture('cli-telemetry-config-set', {
       configured_level: level,
+      triggered_by: triggeredBy,
     });
   }
 
@@ -180,9 +198,85 @@ export class TelemetryManager {
   }
 
   async cliShutdown(): Promise<void> {
-    log.debug('[TELEMETRY]CLI shutdown');
+    log.debug('[TELEMETRY] CLI shutdown');
     await this.capture('cli-shutdown');
     await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  async cliAuthInitiated(initiatedAutomatically: boolean): Promise<void> {
+    log.debug(
+      `[TELEMETRY] CLI auth initiated - automatic: ${initiatedAutomatically}`,
+    );
+    await this.capture('cli-auth-initiated', {
+      initiated_automatically: initiatedAutomatically,
+    });
+  }
+
+  async cliAuthCompleted(initiatedAutomatically: boolean): Promise<void> {
+    log.debug(
+      `[TELEMETRY] CLI auth completed - automatic: ${initiatedAutomatically}`,
+    );
+    await this.capture('cli-auth-completed', {
+      initiated_automatically: initiatedAutomatically,
+    });
+  }
+
+  async promptForOptIn(): Promise<void> {
+    console.log(`\n${chalk.cyan('📊 Telemetry Configuration')}`);
+    console.log(
+      '\nStagewise collects telemetry data to help improve the product.',
+    );
+    console.log(
+      'This data helps us understand how the CLI is used and identify issues.\n',
+    );
+
+    const acceptFull = await promptConfirm({
+      message: 'Would you like to share usage data to help improve Stagewise?',
+      default: true,
+      hint: 'This includes your user ID and email if authenticated',
+    });
+
+    let level: TelemetryLevel;
+
+    if (acceptFull) {
+      level = 'full';
+      console.log(
+        chalk.green('\n✓ Thank you! Telemetry has been set to "full".'),
+      );
+    } else {
+      const acceptAnonymous = await promptConfirm({
+        message: 'Would you like to share anonymous usage data instead?',
+        default: true,
+        hint: 'This only includes a pseudonymized machine ID',
+      });
+
+      if (acceptAnonymous) {
+        level = 'anonymous';
+        console.log(
+          chalk.green('\n✓ Thank you! Telemetry has been set to "anonymous".'),
+        );
+      } else {
+        level = 'off';
+        console.log(chalk.yellow('\n✓ Telemetry has been disabled.'));
+      }
+    }
+
+    // Initialize PostHog if needed to send the configuration event
+    if (!this.initialized && level === 'off') {
+      await this.initialize();
+    }
+
+    // Save the configuration
+    await this.setLevel(level);
+
+    // Track the configuration event
+    await this.telemetryConfigSet(level, 'cli-prompt');
+
+    console.log(
+      chalk.gray(
+        "\nYou can update telemetry preferences by calling 'stagewise telemetry set'.\n",
+      ),
+    );
   }
 
   private async loadConfig(): Promise<void> {
@@ -216,12 +310,18 @@ export async function isFullTelemetryEnabled() {
 }
 
 export const analyticsEvents = {
-  telemetryConfigSet: (level: TelemetryLevel) =>
-    telemetryManager.telemetryConfigSet(level),
+  telemetryConfigSet: (
+    level: TelemetryLevel,
+    triggeredBy: 'cli-prompt' | 'command' = 'command',
+  ) => telemetryManager.telemetryConfigSet(level, triggeredBy),
   cliStart: (properties: CliStartProperties) =>
     telemetryManager.cliStart(properties),
   storedConfigJson: () => telemetryManager.storedConfigJson(),
   foundConfigJson: () => telemetryManager.foundConfigJson(),
   sendPrompt: () => telemetryManager.sendPrompt(),
   cliShutdown: () => telemetryManager.cliShutdown(),
+  cliAuthInitiated: (initiatedAutomatically: boolean) =>
+    telemetryManager.cliAuthInitiated(initiatedAutomatically),
+  cliAuthCompleted: (initiatedAutomatically: boolean) =>
+    telemetryManager.cliAuthCompleted(initiatedAutomatically),
 };

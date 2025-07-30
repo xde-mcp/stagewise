@@ -146,6 +146,8 @@ src/
   - `cli-telemetry-config-set`: Tracks telemetry configuration changes
   - `cli-start`: Tracks CLI startup with mode, workspace, and plugin info
   - `cli-stored-config-json`: Tracks when users save configuration
+  - `cli-auth-initiated`: Tracks when authentication flow is started (with `initiated_automatically` property)
+  - `cli-auth-completed`: Tracks when authentication is successfully completed (with `initiated_automatically` property)
   - `cli-found-config-json`: Tracks when workspace has existing config
   - `cli-shutdown`: Tracks graceful CLI shutdown
 - **Machine Identification**: Uses persistent UUID stored in `identifier.json`
@@ -262,6 +264,7 @@ Manage telemetry settings for Stagewise CLI. Telemetry tracks usage metrics and 
   - CLI startup and configuration
   - Telemetry preference changes
   - Configuration file operations
+  - Authentication flow initiation and completion
   - Graceful shutdown
 - Privacy-first approach with opt-out capability
 - API key configured via `POSTHOG_API_KEY` environment variable
