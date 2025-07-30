@@ -76,6 +76,14 @@ const import_meta_url = require('url').pathToFileURL(__filename).href;
           process.env.NODE_ENV || 'production',
         ),
         'import.meta.url': `import_meta_url`,
+        'process.env.POSTHOG_API_KEY': JSON.stringify(
+          process.env.POSTHOG_API_KEY,
+        ),
+        'process.env.POSTHOG_HOST': JSON.stringify(process.env.POSTHOG_HOST),
+        'process.env.STAGEWISE_CONSOLE_URL': JSON.stringify(
+          process.env.STAGEWISE_CONSOLE_URL,
+        ),
+        'process.env.API_URL': JSON.stringify(process.env.API_URL),
       },
       sourcemap: true,
       minify: process.env.NODE_ENV === 'production',
