@@ -1,25 +1,12 @@
 'use client';
 import Link from 'next/link';
 
-import {
-  ArrowRight,
-  Zap,
-  Settings,
-  Layers,
-  MessageSquare,
-  User,
-} from 'lucide-react';
+import { Zap, Settings, Layers, MessageSquare, User } from 'lucide-react';
+import { Clipboard } from '@/components/clipboard';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
-import { GradientButton } from '@/components/landing/gradient-button';
 import { usePostHog } from 'posthog-js/react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@stagewise/ui/components/accordion';
 import AdobeLogo from './_components/company_logos/adobe.png';
 import AirBnBLogo from './_components/company_logos/airbnb.png';
 import AmazonLogo from './_components/company_logos/amazon.png';
@@ -41,7 +28,6 @@ import AngularFrameworkLogo from './_components/framework_logos/angular.png';
 import SvelteFrameworkLogo from './_components/framework_logos/svelte.png';
 import NextFrameworkLogo from './_components/framework_logos/next.png';
 import NuxtFrameworkLogo from './_components/framework_logos/nuxt.png';
-import { buttonVariants } from '@stagewise/ui/components/button';
 
 // GradientStarIcon: Star with gradient fill using mask
 function StarIcon({ className = '' }: { className?: string }) {
@@ -100,7 +86,7 @@ export default function Home() {
     return count.toString();
   };
 
-  const ideOptions = [
+  const _ideOptions = [
     {
       id: 'cursor',
       name: 'Cursor',
@@ -133,9 +119,9 @@ export default function Home() {
       <section className="container relative z-10 mx-auto px-4 pt-40 pb-12 sm:pt-28 md:pb-16">
         <div className="mx-auto max-w-7xl">
           <ScrollReveal>
-            <div className="mb-12 text-center">
+            <div className="mb-12 px-4 text-center sm:px-0">
               {/* YC Banner */}
-              <div className="mb-6 flex justify-center">
+              <div className="mb-6 flex flex-col justify-center gap-4 sm:flex-row">
                 <a
                   href="https://www.ycombinator.com/companies/stagewise"
                   target="_blank"
@@ -152,6 +138,19 @@ export default function Home() {
                     </span>
                   </span>
                 </a>
+                <a
+                  href="https://github.com/stagewise-io/stagewise"
+                  onClick={() => posthog?.capture('hero_github_star_click')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-orange-500/5 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500"
+                >
+                  <StarIcon className="size-4 text-yellow-500" />
+                  GitHub
+                  <div className="rounded-full bg-zinc-500/10 px-1.5 py-0.5 font-medium text-xs text-zinc-500">
+                    {formatStarCount(starCount)}
+                  </div>
+                </a>
               </div>
               <h1 className="mb-6 font-bold text-3xl tracking-tight md:text-5xl">
                 <span className="bg-gradient-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
@@ -165,43 +164,15 @@ export default function Home() {
                 build app frontends simply by selecting elements and prompting
                 changes.
               </p>
-              <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row">
-                <Link
-                  href="#quickstart"
-                  onClick={() => posthog?.capture('hero_get_started_click')}
-                  className={buttonVariants({
-                    size: 'lg',
-                    variant: 'default',
-                  })}
-                >
-                  Get Started
-                  <ArrowRight className="size-4" />
-                </Link>
-                <Link
-                  href="https://github.com/stagewise-io/stagewise"
-                  onClick={() => posthog?.capture('hero_github_star_click')}
-                  className={buttonVariants({ size: 'lg', variant: 'outline' })}
-                >
-                  <StarIcon className="mr-2 h-4 w-4 text-yellow-500" />
-                  Star on GitHub
-                  <div className="ml-1 rounded-full bg-zinc-500/10 px-1.5 py-0.5 font-medium text-xs text-zinc-500">
-                    {formatStarCount(starCount)}
-                  </div>
-                </Link>
-              </div>
-              <div className="flex items-center justify-center gap-2 text-sm text-zinc-600 md:flex-row md:gap-8 dark:text-zinc-400">
-                <div className="flex items-center">
-                  <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  Supports all frameworks
-                </div>
-                <div className="flex items-center">
-                  <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  Open Source
-                </div>
-                <div className="flex items-center">
-                  <div className="mr-2 h-2 w-2 rounded-full bg-green-500" />
-                  Connects to plugins & custom agents
-                </div>
+
+              <div className="py-4">
+                <p className="mx-auto mb-2 font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                  Run this command in the root of your dev app:
+                </p>
+                <Clipboard
+                  text="npx stagewise"
+                  className="mx-auto mb-6 justify-center"
+                />
               </div>
             </div>
           </ScrollReveal>
@@ -267,112 +238,6 @@ export default function Home() {
             </div>
           </ScrollReveal>
         </div>
-      </section>
-
-      {/* Quickstart Section */}
-      <section
-        id="quickstart"
-        className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-24 md:py-32 dark:border-zinc-800"
-      >
-        <ScrollReveal>
-          <div className="mx-auto max-w-7xl">
-            <h2 className="mb-10 text-center font-bold text-3xl md:text-4xl">
-              Quickstart
-            </h2>
-            <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
-              {/* Step 1: Install VS Code Extension */}
-              <div className="flex flex-col items-center justify-center gap-4 text-center">
-                <div>
-                  <h3 className="mb-4 font-semibold text-2xl">
-                    Install the extension
-                  </h3>
-                  <p className="mb-6 text-zinc-600 dark:text-zinc-400">
-                    You need the code editor extension to use the stagewise
-                    agent.
-                  </p>
-                  <div className="w-full">
-                    <Accordion
-                      type="single"
-                      collapsible
-                      className="-space-y-px w-full"
-                      defaultValue="cursor"
-                    >
-                      {ideOptions.map((option) => (
-                        <AccordionItem
-                          key={option.id}
-                          value={option.id}
-                          className="overflow-hidden border border-zinc-500/30 bg-white shadow-sm first:rounded-t-lg last:rounded-b-lg dark:border-zinc-800 dark:bg-zinc-900"
-                        >
-                          <AccordionTrigger className="px-4 py-3 text-left hover:bg-zinc-50 hover:no-underline dark:hover:bg-zinc-800">
-                            <div className="flex items-center gap-3">
-                              <Image
-                                src={option.logo}
-                                alt={option.name}
-                                className="h-6 w-6 dark:invert"
-                              />
-                              <span className="font-medium text-lg">
-                                {option.name}
-                              </span>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="px-4 py-4">
-                            <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                              Get the stagewise extension for {option.name} to
-                              begin.
-                            </p>
-                            <Link
-                              href={option.url}
-                              onClick={() =>
-                                posthog?.capture(
-                                  'quickstart_get_extension_click',
-                                  {
-                                    ide: option.name,
-                                  },
-                                )
-                              }
-                            >
-                              <GradientButton>
-                                Get from {option.name} Marketplace
-                                <ArrowRight className="ml-2 size-4" />
-                              </GradientButton>
-                            </Link>
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  </div>
-                  <p className="mt-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                    For further toolbar instructions,{' '}
-                    <Link
-                      href="/docs"
-                      className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      check the setup guide
-                    </Link>
-                  </p>
-                </div>
-              </div>
-
-              {/* Getting Started Video */}
-              <div className="flex flex-col items-center justify-center">
-                <h3 className="mb-4 text-center font-semibold text-2xl lg:text-left">
-                  Getting Started Guide
-                </h3>
-                <p className="mb-6 text-center text-zinc-600 lg:text-left dark:text-zinc-400">
-                  Watch this to see how to set up stagewise.
-                </p>
-                <iframe
-                  className="aspect-video w-full rounded-lg shadow-md"
-                  src="https://www.youtube-nocookie.com/embed/bZGpeGD9WEk?si=pEyJV8vHhBb0HAs5"
-                  title="stagewise Quickstart Guide"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          </div>
-        </ScrollReveal>
       </section>
 
       {/* Features Section */}
