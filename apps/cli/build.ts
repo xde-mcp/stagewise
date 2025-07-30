@@ -80,12 +80,14 @@ const import_meta_url = require('url').pathToFileURL(__filename).href;
           process.env.POSTHOG_API_KEY,
         ),
         'process.env.POSTHOG_HOST': JSON.stringify(
-          process.env.POSTHOG_HOST ?? null,
+          process.env.POSTHOG_HOST ?? 'https://eu.i.posthog.com',
         ),
         'process.env.STAGEWISE_CONSOLE_URL': JSON.stringify(
-          process.env.STAGEWISE_CONSOLE_URL ?? null,
+          process.env.STAGEWISE_CONSOLE_URL ?? 'https://console.stagewise.io',
         ),
-        'process.env.API_URL': JSON.stringify(process.env.API_URL ?? null),
+        'process.env.API_URL': JSON.stringify(
+          process.env.API_URL ?? 'https://api.stagewise.io',
+        ),
       },
       sourcemap: true,
       minify: process.env.NODE_ENV === 'production',
