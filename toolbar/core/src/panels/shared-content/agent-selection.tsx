@@ -8,7 +8,6 @@ export function AgentSelection({
 }) {
   const {
     connected,
-    refreshAgentList,
     isRefreshing,
     availableAgents,
     connectAgent,

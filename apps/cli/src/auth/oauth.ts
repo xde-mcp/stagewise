@@ -9,12 +9,6 @@ import open from 'open';
 const STAGEWISE_CONSOLE_URL =
   process.env.STAGEWISE_CONSOLE_URL || 'https://console.stagewise.io';
 
-interface AuthCode {
-  authCode: string;
-  expiresAt: string;
-  timestamp: number;
-}
-
 interface TokenPair {
   accessToken: string;
   refreshToken: string;

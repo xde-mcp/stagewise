@@ -79,8 +79,9 @@ export function AgentMessageDisplay() {
      The onMouseEnter methods is also in place to help with another heuristic to get the browser to capture scroll in this element on hover. */
 
   return (
-    <div
+    <section
       ref={scrollContainerRef}
+      aria-label="Agent message display"
       className="scrollbar-thin pointer-events-auto space-y-2 overflow-y-scroll overscroll-contain px-3 py-4 text-foreground text-sm focus-within:outline-none hover:bg-white/0 focus:outline-none"
       onScroll={handleScroll}
       onMouseEnter={() => {
@@ -110,6 +111,6 @@ export function AgentMessageDisplay() {
 
         return null;
       })}
-    </div>
+    </section>
   );
 }

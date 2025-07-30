@@ -100,9 +100,11 @@ export function CustomVideoPlayer({
 
       {/* Thumbnail overlay - shown by default, hidden after play */}
       {showThumbnail && (
-        <div
-          className="absolute inset-0 cursor-pointer"
+        <button
+          type="button"
+          className="absolute inset-0 cursor-pointer border-0 bg-transparent p-0"
           onClick={handlePlayClick}
+          aria-label="Play video"
         >
           {/* Thumbnail image */}
           <Image
@@ -142,7 +144,7 @@ export function CustomVideoPlayer({
               </span>
             </div>
           </div>
-        </div>
+        </button>
       )}
     </div>
   );
