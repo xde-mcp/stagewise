@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { spawn } from 'node:child_process';
+import { spawn, ChildProcess } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,31 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.join(__dirname, '../../src/index.ts');
 const testWorkspace = path.join(__dirname, 'test-workspace-config-errors');
+
+let portOffset = 100;
+function getTestPorts() {
+  const basePort = 5100 + portOffset;
+  const appPort = 5000 + portOffset;
+  portOffset += 10;
+  return { port: basePort, appPort };
+}
+
+async function killProcess(child: ChildProcess): Promise<void> {
+  return new Promise((resolve) => {
+    if (!child.killed) {
+      child.on('exit', () => resolve());
+      child.kill('SIGTERM');
+      setTimeout(() => {
+        if (!child.killed) {
+          child.kill('SIGKILL');
+        }
+        resolve();
+      }, 1000);
+    } else {
+      resolve();
+    }
+  });
+}
 
 describe('Config Error Handling Integration Tests', () => {
   beforeEach(async () => {
@@ -62,7 +87,7 @@ describe('Config Error Handling Integration Tests', () => {
     // Create config with invalid port
     await fs.writeFile(
       path.join(testWorkspace, 'stagewise.json'),
-      JSON.stringify({ port: 99999, appPort: 3000 }, null, 2),
+      JSON.stringify({ port: 99999, appPort: getTestPorts().appPort }, null, 2),
     );
 
     const child = spawn(
@@ -103,7 +128,7 @@ describe('Config Error Handling Integration Tests', () => {
     // Create config with string port
     await fs.writeFile(
       path.join(testWorkspace, 'stagewise.json'),
-      JSON.stringify({ port: '3100', appPort: 3000 }, null, 2),
+      JSON.stringify({ port: '5100', appPort: getTestPorts().appPort }, null, 2),
     );
 
     const child = spawn(
@@ -144,8 +169,8 @@ describe('Config Error Handling Integration Tests', () => {
       path.join(testWorkspace, 'stagewise.json'),
       JSON.stringify(
         {
-          port: 3100,
-          appPort: 3000,
+          port: getTestPorts().port,
+          appPort: getTestPorts().appPort,
           plugins: [
             {
               name: 'bad-plugin',
@@ -215,7 +240,7 @@ describe('Config Error Handling Integration Tests', () => {
     // Now fix the config with a different port to avoid conflicts
     await fs.writeFile(
       path.join(testWorkspace, 'stagewise.json'),
-      JSON.stringify({ port: 3201, appPort: 3000 }, null, 2),
+      JSON.stringify({ port: getTestPorts().port, appPort: getTestPorts().appPort }, null, 2),
     );
 
     // Try again with valid config
@@ -238,6 +263,6 @@ describe('Config Error Handling Integration Tests', () => {
     // Check that server started successfully
     expect(output).toContain('Stagewise is running on');
 
-    child2.kill();
+    await killProcess(child2);
   });
 });

@@ -1,8 +1,33 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { spawn } from 'node:child_process';
+import { spawn, ChildProcess } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+
+let portOffset = 0;
+function getTestPorts() {
+  const basePort = 4100 + portOffset;
+  const appPort = 4000 + portOffset;
+  portOffset += 10;
+  return { port: basePort, appPort };
+}
+
+async function killProcess(child: ChildProcess): Promise<void> {
+  return new Promise((resolve) => {
+    if (!child.killed) {
+      child.on('exit', () => resolve());
+      child.kill('SIGTERM');
+      setTimeout(() => {
+        if (!child.killed) {
+          child.kill('SIGKILL');
+        }
+        resolve();
+      }, 1000);
+    } else {
+      resolve();
+    }
+  });
+}
 
 describe('CLI Workflow Integration Tests', () => {
   let testDir: string;
@@ -15,6 +40,8 @@ describe('CLI Workflow Integration Tests', () => {
   afterEach(async () => {
     // Clean up test directory
     await fs.rm(testDir, { recursive: true, force: true });
+    // Wait a bit to ensure ports are released
+    await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
   describe('CLI arguments', () => {
@@ -44,9 +71,9 @@ describe('CLI Workflow Integration Tests', () => {
       if (errorOutput) {
         console.error('Test stderr:', errorOutput);
       }
-      expect(output).toContain('3100');
+      expect(output).toContain('3100'); // Default port when not specified
 
-      child.kill();
+      await killProcess(child);
     });
 
     it('should fail when port and app-port are the same', async () => {
@@ -100,7 +127,7 @@ describe('CLI Workflow Integration Tests', () => {
       }
       expect(output).toContain('Running in bridge mode');
 
-      child.kill();
+      await killProcess(child);
     });
   });
 
@@ -139,14 +166,15 @@ describe('CLI Workflow Integration Tests', () => {
       // The CLI should use the config file values
       expect(output).toContain('4100');
 
-      child.kill();
+      await killProcess(child);
     });
 
     it('should validate config file and fail on invalid schema', async () => {
       // Create an invalid config file
+      const { appPort } = getTestPorts();
       const invalidConfig = {
         port: 'not a number', // Should be number
-        appPort: 3000,
+        appPort,
       };
 
       await fs.writeFile(
@@ -184,7 +212,7 @@ describe('CLI Workflow Integration Tests', () => {
         'Invalid configuration in stagewise.json',
       );
 
-      child.kill();
+      await killProcess(child);
     });
   });
 
@@ -212,7 +240,7 @@ describe('CLI Workflow Integration Tests', () => {
       // Should start without errors
       expect(errorOutput).not.toContain('app-port');
 
-      child.kill();
+      await killProcess(child);
     });
   });
 
@@ -223,7 +251,7 @@ describe('CLI Workflow Integration Tests', () => {
         [
           'src/index.ts',
           '-a',
-          '3000',
+          String(getTestPorts().appPort),
           '-w',
           testDir,
           '-v',
@@ -248,7 +276,7 @@ describe('CLI Workflow Integration Tests', () => {
       // Should contain debug prefix
       expect(output).toContain('[DEBUG]');
 
-      child.kill();
+      await killProcess(child);
     });
   });
 });
