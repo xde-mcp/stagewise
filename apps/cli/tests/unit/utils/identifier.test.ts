@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { IdentifierManager } from './identifier';
-import * as configPath from './config-path';
+import { IdentifierManager } from '../../../src/utils/identifier';
+import * as configPath from '../../../src/utils/config-path';
 
-vi.mock('./config-path', () => ({
+vi.mock('../../../src/utils/config-path', () => ({
   readDataFile: vi.fn(),
   writeDataFile: vi.fn(),
 }));
