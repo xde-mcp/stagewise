@@ -19,6 +19,9 @@ jobs:
         run: biome ci .
 
   build:
+    env:
+      POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+      POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
