@@ -46,7 +46,7 @@ export class PostHogClient {
 
     try {
       this.client = new PostHog(apiKey, {
-        host: 'https://app.posthog.com',
+        host: process.env.POSTHOG_HOST || 'https://eu.i.posthog.com',
         flushAt: 1, // Send events immediately in CLI context
         flushInterval: 0, // Don't batch events
       });
@@ -93,11 +93,9 @@ export class PostHogClient {
         event: eventName,
         properties: finalProperties,
       });
-
-      log.debug(`Analytics event captured: ${eventName}`);
     } catch (error) {
       // Silently fail - analytics should not break the app
-      log.debug(`Failed to capture analytics event: ${error}`);
+      log.debug(`[TELEMETRY] Failed to capture analytics event: ${error}`);
     }
   }
 

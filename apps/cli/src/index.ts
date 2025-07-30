@@ -3,6 +3,7 @@ import { configFileExists } from './config/config-file';
 import { posthog } from './analytics/posthog';
 import { telemetryManager } from './config/telemetry';
 import { analyticsEvents } from './analytics/events';
+import { identifierManager } from './utils/identifier';
 import { getServer } from './server';
 import { shutdownAgent } from './server/agent-loader';
 import { log } from './utils/logger';
@@ -139,6 +140,9 @@ async function main() {
 
     // Resolve configuration (handles all input sources)
     const config = await configResolver.resolveConfig();
+
+    // Initialize machine ID early to ensure it's generated on first start
+    await identifierManager.getMachineId();
 
     // Initialize analytics after config is resolved
     await posthog.initialize();

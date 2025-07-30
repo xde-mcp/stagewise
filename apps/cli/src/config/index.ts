@@ -129,8 +129,8 @@ export class ConfigResolver {
       log.info('Missing required configuration. Starting interactive setup...');
 
       appPort = await promptNumber({
-        message: 'What port is your development app running on?',
-        hint: 'This is the port where your app is currently accessible (e.g. 3000 or 8080)',
+        message: 'What port is your development app running on? (e.g. 3000)',
+        hint: '',
         placeholder: '',
       });
     } else if (!appPort) {

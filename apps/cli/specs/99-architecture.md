@@ -149,6 +149,9 @@ src/
   - `cli-found-config-json`: Tracks when workspace has existing config
   - `cli-shutdown`: Tracks graceful CLI shutdown
 - **Machine Identification**: Uses persistent UUID stored in `identifier.json`
+  - Generated on first CLI startup using `crypto.randomUUID()`
+  - Initialized early in the startup sequence to ensure it exists before any analytics events
+  - Stored in the data directory with creation timestamp
 - **Privacy Levels**: Respects telemetry settings (off/anonymous/full)
 
 ### 8. Utilities (`utils/`)
