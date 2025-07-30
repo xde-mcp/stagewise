@@ -20,9 +20,6 @@
     "url": "https://github.com/stagewise-io/stagewise.git",
     "directory": "packages/toolbar"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

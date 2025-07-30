@@ -22,9 +22,6 @@
     "url": "https://github.com/stagewise-io/stagewise.git",
     "directory": "packages/toolbar"
   },
-  "publishConfig": {
-    "access": "private"
-  },
   "types": "./dist/index.d.ts",
   "import": "./dist/index.es.js",
   "require": "./dist/index.umd.js",
