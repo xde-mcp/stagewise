@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://github.com/stagewise-io/stagewise.git"
   },
-  "private": true,
+  "private": false,
   "bin": {
     "stagewise": "dist/index.cjs"
   },
