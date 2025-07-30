@@ -79,11 +79,13 @@ const import_meta_url = require('url').pathToFileURL(__filename).href;
         'process.env.POSTHOG_API_KEY': JSON.stringify(
           process.env.POSTHOG_API_KEY,
         ),
-        'process.env.POSTHOG_HOST': JSON.stringify(process.env.POSTHOG_HOST),
-        'process.env.STAGEWISE_CONSOLE_URL': JSON.stringify(
-          process.env.STAGEWISE_CONSOLE_URL,
+        'process.env.POSTHOG_HOST': JSON.stringify(
+          process.env.POSTHOG_HOST ?? null,
         ),
-        'process.env.API_URL': JSON.stringify(process.env.API_URL),
+        'process.env.STAGEWISE_CONSOLE_URL': JSON.stringify(
+          process.env.STAGEWISE_CONSOLE_URL ?? null,
+        ),
+        'process.env.API_URL': JSON.stringify(process.env.API_URL ?? null),
       },
       sourcemap: true,
       minify: process.env.NODE_ENV === 'production',
