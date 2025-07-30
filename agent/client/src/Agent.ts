@@ -123,18 +123,12 @@ export class Agent {
 
     // If too short, return undefined
     if (trimmed.length < 3) {
-      console.warn(
-        `[Agent]: Description too short (${trimmed.length} chars): "${trimmed}"`,
-      );
       return undefined;
     }
 
     // If too long, truncate with ellipsis
     if (trimmed.length > 128) {
       const truncated = `${trimmed.substring(0, 125)}...`;
-      console.warn(
-        `[Agent]: Description truncated from ${trimmed.length} to 128 chars`,
-      );
       return truncated;
     }
 
@@ -163,9 +157,6 @@ export class Agent {
       this.timeoutManager.set(
         'current-state',
         () => {
-          console.warn(
-            `[Agent]: State stuck in ${newState}, recovering to IDLE`,
-          );
           this.setAgentState(
             AgentStateType.IDLE,
             'Automatic recovery from stuck state',
@@ -232,9 +223,6 @@ export class Agent {
           const backoffDelay = Math.min(
             2000 * Math.pow(2, this.authRetryCount - 1),
             10000,
-          );
-          console.log(
-            `[Agent]: Waiting ${backoffDelay}ms before retry attempt ${this.authRetryCount}`,
           );
           await new Promise((resolve) => setTimeout(resolve, backoffDelay));
 
@@ -414,7 +402,6 @@ export class Agent {
       if (projectPathPromptSnippet) {
         promptSnippets.push(projectPathPromptSnippet);
       }
-
       this.callAgent({
         history: this.history,
         clientRuntime: this.clientRuntime,
@@ -459,9 +446,11 @@ export class Agent {
         this.recursionDepth,
         MAX_RECURSION_DEPTH,
       );
-      console.error('[Agent]:', errorDesc);
       this.setAgentState(AgentStateType.FAILED, errorDesc);
-      throw new Error(errorDesc);
+      return {
+        response: Promise.resolve({} as Response),
+        history: [],
+      };
     }
 
     this.recursionDepth++;
@@ -518,10 +507,7 @@ export class Agent {
         (state, desc) => this.setAgentState(state, desc),
       );
 
-      // Don't wait for stream to complete before processing response
-      streamConsumptionPromise.catch((error) => {
-        console.error('[Agent]: Stream processing failed:', error);
-      });
+      streamConsumptionPromise.catch((_error) => {});
 
       // Wait for response with timeout
       const r = await withTimeout(
@@ -575,7 +561,6 @@ export class Agent {
       };
     } catch (error) {
       const errorDesc = formatErrorDescription('Agent task failed', error);
-      console.error(`[agent-client-sdk]: ${errorDesc}`, error);
       this.setAgentState(AgentStateType.FAILED, errorDesc);
 
       // Reset to idle after delay
@@ -588,7 +573,10 @@ export class Agent {
       }, STATE_RECOVERY_DELAY);
 
       this.history = [];
-      throw error;
+      return {
+        response: Promise.resolve({} as Response),
+        history: [],
+      };
     } finally {
       // Ensure recursion depth is decremented
       this.recursionDepth = Math.max(0, this.recursionDepth - 1);
