@@ -16,13 +16,21 @@ export function AgentAvailabilityProvider({
 }: {
   children?: ReactNode;
 }) {
-  const agent = useAgents().connected;
+  const { connected: agent, isAppHostedAgent } = useAgents();
   const [availability, setAvailability] = useState<AgentAvailability>({
     isAvailable: false,
     error: AgentAvailabilityError.NO_CONNECTION,
   });
 
   useEffect(() => {
+    // For app-hosted agents, always report as available
+    if (isAppHostedAgent) {
+      setAvailability({
+        isAvailable: true,
+      });
+      return;
+    }
+
     if (agent !== null) {
       const subscription = agent.agent.availability.getAvailability.subscribe(
         undefined,
@@ -57,7 +65,7 @@ export function AgentAvailabilityProvider({
         error: AgentAvailabilityError.NO_CONNECTION,
       });
     }
-  }, [agent]);
+  }, [agent, isAppHostedAgent]);
 
   return (
     <agentAvailabilityContext.Provider value={availability}>

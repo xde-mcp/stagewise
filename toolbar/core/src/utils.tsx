@@ -5,8 +5,17 @@ import type {
 
 export const companionAnchorTagName = 'stagewise-companion-anchor';
 
+const getIFrame = () => {
+  const iframe = document.getElementById('user-app-iframe');
+  return iframe as HTMLIFrameElement | null;
+};
+
+export const getIFrameWindow = () => {
+  return getIFrame()?.contentWindow;
+};
+
 export function getElementAtPoint(x: number, y: number) {
-  const elementsBelowAnnotation = window.parent.document.elementsFromPoint(
+  const elementsBelowAnnotation = getIFrameWindow()?.document.elementsFromPoint(
     x,
     y,
   );
@@ -17,7 +26,7 @@ export function getElementAtPoint(x: number, y: number) {
         !element.closest('svg') &&
         !element.closest('STAGEWISE-TOOLBAR') &&
         isElementAtPoint(element as HTMLElement, x, y),
-    ) as HTMLElement) || window.parent.document.body;
+    ) as HTMLElement) || getIFrameWindow()?.document.body;
 
   return refElement;
 }
@@ -439,17 +448,18 @@ export const getSelectedElementInfo = (
 export const collectUserMessageMetadata = (
   selectedElements: SelectedElement[],
 ): UserMessageMetadata => {
+  const iframeWindow = getIFrameWindow();
   return {
-    currentUrl: truncateString(window.parent.location.href, 1024),
-    currentTitle: truncateString(window.parent.document.title, 256),
+    currentUrl: truncateString(iframeWindow?.location.href, 1024),
+    currentTitle: truncateString(iframeWindow?.document.title, 256),
     currentZoomLevel: 0,
-    devicePixelRatio: window.parent.devicePixelRatio,
-    userAgent: truncateString(window.parent.navigator.userAgent, 1024),
-    locale: truncateString(window.parent.navigator.language, 64),
+    devicePixelRatio: iframeWindow?.devicePixelRatio,
+    userAgent: truncateString(iframeWindow?.navigator.userAgent, 1024),
+    locale: truncateString(iframeWindow?.navigator.language, 64),
     selectedElements,
     viewportResolution: {
-      width: window.parent.innerWidth,
-      height: window.parent.innerHeight,
+      width: iframeWindow?.innerWidth,
+      height: iframeWindow?.innerHeight,
     },
   };
 };

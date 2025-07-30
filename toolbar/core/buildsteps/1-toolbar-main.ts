@@ -43,7 +43,7 @@ export default async function buildToolbarMain() {
       lib: {
         entry: {
           index: resolve(process.cwd(), 'src/index.ts'),
-          'plugin-ui': resolve(process.cwd(), 'src/plugin-ui/index.tsx'),
+          'plugin-sdk': resolve(process.cwd(), 'src/plugin-sdk/index.tsx'),
         },
         name: 'StagewiseToolbar',
         formats: ['es'],
@@ -77,6 +77,7 @@ export default async function buildToolbarMain() {
         'lucide-react',
         'zod',
         '@headlessui/react',
+        'class-variance-authority',
       ],
       esbuildOptions: {
         mainFields: ['module', 'main'],

@@ -1,8 +1,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import { useCallback, useState } from 'react';
-import { useEventListener } from './use-event-listener';
+import { useCallback, useEffect, useState } from 'react';
+import { getIFrameWindow } from '@/utils';
 
 export interface WindowSize {
   width: number;
@@ -10,21 +10,35 @@ export interface WindowSize {
 }
 
 export function useWindowSize() {
+  const iframeWindow = getIFrameWindow();
+
   const [size, setSize] = useState<WindowSize>({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: iframeWindow?.innerWidth || window.innerWidth,
+    height: iframeWindow?.innerHeight || window.innerHeight,
   });
 
-  const handleResize = useCallback(
-    () =>
+  const handleResize = useCallback(() => {
+    const iframe = getIFrameWindow();
+    if (iframe) {
       setSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }),
-    [],
-  );
+        width: iframe.innerWidth,
+        height: iframe.innerHeight,
+      });
+    }
+  }, []);
 
-  useEventListener('resize', handleResize);
+  useEffect(() => {
+    const iframe = getIFrameWindow();
+    if (!iframe) return;
+
+    iframe.addEventListener('resize', handleResize);
+    // Initial update
+    handleResize();
+
+    return () => {
+      iframe.removeEventListener('resize', handleResize);
+    };
+  }, [handleResize]);
 
   return size;
 }

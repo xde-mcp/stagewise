@@ -81,7 +81,8 @@ export function Toolbar({
           position.isTopHalf
             ? 'origin-top flex-col-reverse divide-y-reverse'
             : 'origin-bottom flex-col',
-          minimized && 'pointer-events-none h-0 scale-50 opacity-0 blur-md',
+          (minimized || isInitialLoad) &&
+            'pointer-events-none h-0 scale-50 opacity-0 blur-md',
         )}
       >
         {!requiresUserAttention && isAvailable ? (

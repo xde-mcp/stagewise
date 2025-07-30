@@ -11,11 +11,12 @@ import type { Tools } from '@stagewise/agent-types';
 import {
   AgentStateType,
   createAgentServer,
+  createAgentHook,
   type UserMessage,
   type AgentServer,
 } from '@stagewise/agent-interface/agent';
 import { getProjectPath } from '@stagewise/agent-prompt-snippets';
-import { createAuthenticatedClient } from './utils/create-authenticated-client';
+import { createAuthenticatedClient } from './utils/create-authenticated-client.js';
 import type {
   AppRouter,
   TRPCClient,
@@ -24,23 +25,26 @@ import type {
 } from '@stagewise/api-client';
 
 // Import all the new utilities
-import { countToolCalls } from './utils/message-utils';
+import { countToolCalls } from './utils/message-utils.js';
 import {
   withTimeout,
   TimeoutManager,
   consumeStreamWithTimeout,
-} from './utils/stream-utils';
+} from './utils/stream-utils.js';
 import {
   processParallelToolCalls,
   shouldRecurseAfterToolCall,
-} from './utils/tool-call-utils';
+} from './utils/tool-call-utils.js';
 import {
   createEventEmitter,
   EventFactories,
   type AgentEventCallback,
-} from './utils/event-utils';
-import { mapZodToolsToJsonSchemaTools } from './utils/agent-api-utils';
-import { ErrorDescriptions, formatErrorDescription } from './utils/error-utils';
+} from './utils/event-utils.js';
+import { mapZodToolsToJsonSchemaTools } from './utils/agent-api-utils.js';
+import {
+  ErrorDescriptions,
+  formatErrorDescription,
+} from './utils/error-utils.js';
 
 type ResponseMessage = (CoreAssistantMessage | CoreToolMessage) & {
   id: string;
@@ -72,6 +76,7 @@ export class Agent {
   private agentTimeout: number = DEFAULT_AGENT_TIMEOUT;
   private authRetryCount = 0;
   private maxAuthRetries = 2;
+  private isExpressMode = false;
 
   private constructor(config: {
     clientRuntime: ClientRuntime;
@@ -97,7 +102,11 @@ export class Agent {
     this.cleanupPendingOperations('Agent shutdown');
 
     // Close the server
-    this.server?.server.close();
+    if (this.server?.standalone) {
+      this.server.server.close();
+    } else if (this.server && this.isExpressMode) {
+      this.server.wss.close();
+    }
   }
 
   /**
@@ -114,18 +123,12 @@ export class Agent {
 
     // If too short, return undefined
     if (trimmed.length < 3) {
-      console.warn(
-        `[Agent]: Description too short (${trimmed.length} chars): "${trimmed}"`,
-      );
       return undefined;
     }
 
     // If too long, truncate with ellipsis
     if (trimmed.length > 128) {
       const truncated = `${trimmed.substring(0, 125)}...`;
-      console.warn(
-        `[Agent]: Description truncated from ${trimmed.length} to 128 chars`,
-      );
       return truncated;
     }
 
@@ -154,9 +157,6 @@ export class Agent {
       this.timeoutManager.set(
         'current-state',
         () => {
-          console.warn(
-            `[Agent]: State stuck in ${newState}, recovering to IDLE`,
-          );
           this.setAgentState(
             AgentStateType.IDLE,
             'Automatic recovery from stuck state',
@@ -223,9 +223,6 @@ export class Agent {
           const backoffDelay = Math.min(
             2000 * Math.pow(2, this.authRetryCount - 1),
             10000,
-          );
-          console.log(
-            `[Agent]: Waiting ${backoffDelay}ms before retry attempt ${this.authRetryCount}`,
           );
           await new Promise((resolve) => setTimeout(resolve, backoffDelay));
 
@@ -368,6 +365,57 @@ export class Agent {
   }
 
   /**
+   * Initialize the agent by hooking into a user-provided Express server
+   * @param expressApp - The Express application to hook into
+   * @param pathPrefix - Optional path prefix for agent endpoints (default: '/agent')
+   * @param httpServer - Optional HTTP server instance for WebSocket support
+   */
+  public async initializeWithExpress(
+    expressApp: Parameters<typeof createAgentHook>[0]['app'],
+    httpServer: Parameters<typeof createAgentHook>[0]['server'],
+    pathPrefix = '/agent',
+  ): Promise<{
+    wss: Awaited<ReturnType<typeof createAgentHook>>['wss'];
+  }> {
+    this.isExpressMode = true;
+    this.server = await createAgentHook({
+      app: expressApp,
+      server: httpServer,
+      wsPath: `${pathPrefix}/ws`,
+      infoPath: `${pathPrefix}/info`,
+      startServer: false,
+    });
+    this.server.setAgentName('stagewise agent');
+    this.server.setAgentDescription(
+      this.agentDescription || 'Your frontend and design agent',
+    );
+
+    this.server.interface.availability.set(true);
+    this.setAgentState(AgentStateType.IDLE);
+
+    this.server.interface.messaging.addUserMessageListener(async (message) => {
+      this.setAgentState(AgentStateType.WORKING);
+
+      const promptSnippets: PromptSnippet[] = [];
+
+      const projectPathPromptSnippet = await getProjectPath(this.clientRuntime);
+      if (projectPathPromptSnippet) {
+        promptSnippets.push(projectPathPromptSnippet);
+      }
+      this.callAgent({
+        history: this.history,
+        clientRuntime: this.clientRuntime,
+        userMessage: message,
+        promptSnippets,
+      });
+    });
+
+    return {
+      wss: this.server.wss,
+    };
+  }
+
+  /**
    * Calls the agent API
    * @param userMessage - The user message to send to the agent
    * @param history - The history of messages so far (NOT including the current user message - past user messages are included)
@@ -398,9 +446,11 @@ export class Agent {
         this.recursionDepth,
         MAX_RECURSION_DEPTH,
       );
-      console.error('[Agent]:', errorDesc);
       this.setAgentState(AgentStateType.FAILED, errorDesc);
-      throw new Error(errorDesc);
+      return {
+        response: Promise.resolve({} as Response),
+        history: [],
+      };
     }
 
     this.recursionDepth++;
@@ -457,10 +507,7 @@ export class Agent {
         (state, desc) => this.setAgentState(state, desc),
       );
 
-      // Don't wait for stream to complete before processing response
-      streamConsumptionPromise.catch((error) => {
-        console.error('[Agent]: Stream processing failed:', error);
-      });
+      streamConsumptionPromise.catch((_error) => {});
 
       // Wait for response with timeout
       const r = await withTimeout(
@@ -514,7 +561,6 @@ export class Agent {
       };
     } catch (error) {
       const errorDesc = formatErrorDescription('Agent task failed', error);
-      console.error(`[agent-client-sdk]: ${errorDesc}`, error);
       this.setAgentState(AgentStateType.FAILED, errorDesc);
 
       // Reset to idle after delay
@@ -527,7 +573,10 @@ export class Agent {
       }, STATE_RECOVERY_DELAY);
 
       this.history = [];
-      throw error;
+      return {
+        response: Promise.resolve({} as Response),
+        history: [],
+      };
     } finally {
       // Ensure recursion depth is decremented
       this.recursionDepth = Math.max(0, this.recursionDepth - 1);

@@ -8,10 +8,10 @@ export function AgentSelection({
 }) {
   const {
     connected,
-    refreshAgentList,
     isRefreshing,
     availableAgents,
     connectAgent,
+    isAppHostedAgent,
   } = useAgents();
 
   const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -25,19 +25,10 @@ export function AgentSelection({
   const placeholderText =
     availableAgents.length > 0 ? 'Select an agent...' : 'No agents available';
 
-  // Compute help message, keeping it stable during refresh to prevent layout shifts
-  const _helpMessage = (() => {
-    if (isRefreshing) {
-      // During refresh, show scanning message but don't change if agents were previously found
-      return availableAgents.length > 0
-        ? 'Scanning for additional agents...'
-        : 'Scanning for available agents...';
-    }
-    if (availableAgents.length === 0) {
-      return 'No agents found. Make sure the stagewise extension is installed and running.';
-    }
-    return null; // No message when agents are available and not refreshing
-  })();
+  // For app-hosted agents, only show the connected agent info
+  if (isAppHostedAgent) {
+    return null;
+  }
 
   return (
     <div className="space-y-3">

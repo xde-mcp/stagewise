@@ -5,13 +5,13 @@ import type {
 } from '@stagewise/agent-interface/agent';
 import type { Tools } from '@stagewise/agent-types';
 import { AgentStateType } from '@stagewise/agent-interface/agent';
-import { handleClientsideToolCall } from './handle-clientside-tool-call';
+import { handleClientsideToolCall } from './handle-clientside-tool-call.js';
 import {
   createAssistantToolCallsMessage,
   messagesToCoreMessages,
-} from './message-utils';
-import { withTimeout, type TimeoutManager } from './stream-utils';
-import { ErrorDescriptions } from './error-utils';
+} from './message-utils.js';
+import { withTimeout, type TimeoutManager } from './stream-utils.js';
+import { ErrorDescriptions } from './error-utils.js';
 
 // Configuration constants
 const BROWSER_TOOL_TIMEOUT = 60000; // 60 seconds for browser tools

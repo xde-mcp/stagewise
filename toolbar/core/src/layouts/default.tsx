@@ -54,7 +54,9 @@ function saveToolbarPosition(
 export function DefaultLayout() {
   return (
     <ContextChipHoverProvider>
-      <div className={cn('fixed inset-0 h-screen w-screen')}>
+      <div
+        className={cn('pointer-events-none fixed inset-0 h-screen w-screen')}
+      >
         <DOMContextSelector />
         <DraggingArea />
       </div>

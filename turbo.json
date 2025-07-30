@@ -1,6 +1,12 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": [
+    "POSTHOG_API_KEY",
+    "POSTHOG_HOST",
+    "STAGEWISE_CONSOLE_URL",
+    "API_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

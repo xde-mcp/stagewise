@@ -4,8 +4,6 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { PostHogProvider } from '@/components/posthog-provider';
-import { StagewiseToolbar } from '@stagewise/toolbar-next';
-import ReactPlugin from '@stagewise-plugins/react';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://stagewise.io'),
@@ -44,7 +42,6 @@ export default function Layout({ children }: { children: ReactNode }) {
     >
       <body className="flex min-h-screen flex-col">
         <PostHogProvider>
-          <StagewiseToolbar config={{ plugins: [ReactPlugin] }} />
           <RootProvider>{children}</RootProvider>
         </PostHogProvider>
       </body>

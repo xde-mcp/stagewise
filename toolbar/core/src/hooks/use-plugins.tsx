@@ -4,11 +4,15 @@ import type {
   PluginUserMessage,
   ToolbarContext,
   ToolbarPlugin,
-} from '@/plugin';
+} from '@/plugin-sdk/plugin';
 import { useConfig } from './use-config';
 import type { UserMessage } from '@stagewise/agent-interface/toolbar';
 import { useAgentMessaging } from './agent/use-agent-messaging';
-import { collectUserMessageMetadata, generateId } from '@/utils';
+import {
+  collectUserMessageMetadata,
+  generateId,
+  getIFrameWindow,
+} from '@/utils';
 import { usePanels } from './use-panels';
 
 export interface PluginContextType {
@@ -20,7 +24,7 @@ const PluginContext = createContext<PluginContextType>({
   plugins: [],
   toolbarContext: {
     sendPrompt: () => {},
-    mainAppWindow: window.parent,
+    mainAppWindow: getIFrameWindow(),
   },
 });
 
@@ -47,7 +51,7 @@ export function PluginProvider({ children }: { children?: ReactNode }) {
         sendMessage(userMessage);
         openChat();
       },
-      mainAppWindow: window.parent,
+      mainAppWindow: getIFrameWindow(),
     };
   }, [sendMessage]);
 

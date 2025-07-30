@@ -4,7 +4,7 @@ import {
   PanelContent,
   useToolbar,
   Button,
-} from '@stagewise/toolbar/plugin-ui';
+} from '@stagewise/plugin-sdk';
 
 export const ExampleComponent = () => {
   const toolbar = useToolbar();

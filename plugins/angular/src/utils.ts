@@ -1,21 +1,20 @@
 import type {
   ContextElementContext,
   SelectedElement,
-} from '@stagewise/toolbar';
+} from '@stagewise/plugin-sdk';
 
 interface AngularComponentInfo {
   name: string;
 }
 
-let angularWarningShown = false;
-
-function checkAngularAndWarnOnce() {
-  if (!(window as any).parent.ng && !angularWarningShown) {
-    console.warn(
-      'Angular plugin: No Angular instance (window.ng) detected or Angular is not in development mode. Component detection features will not be available.',
-    );
-    angularWarningShown = true;
+function getDevAppIFrameWindow() {
+  const iframe = document.getElementById(
+    'user-app-iframe',
+  ) as HTMLIFrameElement;
+  if (!iframe) {
+    return null;
   }
+  return iframe.contentWindow;
 }
 
 function getOwnProperties(element: HTMLElement) {
@@ -55,8 +54,10 @@ function getAngularComponentHierarchy(
   _ownProperties: Record<string, any>,
   element: HTMLElement | null,
 ): AngularComponentInfo[] {
-  if (!(window as any).parent.ng || !(window as any).parent.ng.getComponent)
+  const appWindow: any = getDevAppIFrameWindow();
+  if (!appWindow || !appWindow.ng || !appWindow.ng.getComponent) {
     return [];
+  }
 
   const components: AngularComponentInfo[] = [];
   let currentElement: HTMLElement | null = element;
@@ -66,9 +67,7 @@ function getAngularComponentHierarchy(
   if (currentElement) {
     while (currentElement && components.length < maxComponents) {
       try {
-        const componentInstance = (window as any).parent.ng.getComponent(
-          currentElement,
-        );
+        const componentInstance = appWindow.ng.getComponent(currentElement);
         if (componentInstance) {
           let componentName = componentInstance.constructor.name;
           if (componentName.startsWith('_')) {
@@ -104,7 +103,6 @@ function getAngularComponentHierarchy(
 export function getSelectedElementAnnotation(
   element: HTMLElement | null,
 ): ContextElementContext {
-  checkAngularAndWarnOnce();
   if (!element) {
     return { annotation: null };
   }
@@ -118,7 +116,6 @@ export function getSelectedElementAnnotation(
 }
 
 export function getSelectedElementsPrompt(elements: SelectedElement[] | null) {
-  checkAngularAndWarnOnce();
   if (!elements || elements.length === 0) {
     return null;
   }

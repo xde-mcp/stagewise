@@ -145,6 +145,7 @@ export const PanelsProvider = ({
     connectedUnavailable,
     requiresUserAttention,
     isInitialLoad,
+    isAppHostedAgent,
   } = useAgents();
 
   const availabilityStatus = useAgentAvailability();
@@ -153,6 +154,9 @@ export const PanelsProvider = ({
     agentConnectivityManuallyDismissed,
     setAgentConnectivityManuallyDismissed,
   ] = useState(persistedState.agentConnectivityManuallyDismissed ?? false);
+
+  // Track if we should show the warning for app-hosted agents (with delay)
+  const [showAppHostedWarning, setShowAppHostedWarning] = useState(false);
 
   // Persist state changes to sessionStorage
   useEffect(() => {
@@ -176,7 +180,42 @@ export const PanelsProvider = ({
     }
   }, [connected, connectedUnavailable, availabilityStatus]);
 
+  // Handle 500ms delay for app-hosted agent warning on initial load
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (isAppHostedAgent && !connected) {
+      // If this is an app-hosted agent and not connected, wait 500ms before showing warning
+      timeoutId = setTimeout(() => {
+        setShowAppHostedWarning(true);
+      }, 500);
+    } else if (connected) {
+      // Clear the warning immediately when connected
+      setShowAppHostedWarning(false);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isAppHostedAgent, connected]);
+
   const isAgentConnectivityOpen = useMemo(() => {
+    // Special case: For app-hosted agents, use the delayed warning state
+    if (
+      isAppHostedAgent &&
+      !connected &&
+      showAppHostedWarning &&
+      !agentConnectivityManuallyDismissed &&
+      !minimized
+    ) {
+      console.debug(
+        '[PanelsProvider] Showing agent connectivity panel for app-hosted agent (after delay)',
+      );
+      return true;
+    }
+
     const result =
       (requiresUserAttention || !availabilityStatus.isAvailable) &&
       !agentConnectivityManuallyDismissed &&
@@ -188,6 +227,9 @@ export const PanelsProvider = ({
       agentConnectivityManuallyDismissed,
       minimized,
       isInitialLoad,
+      isAppHostedAgent,
+      connected,
+      showAppHostedWarning,
       result,
     });
     return result;
@@ -197,6 +239,9 @@ export const PanelsProvider = ({
     minimized,
     isInitialLoad,
     availabilityStatus,
+    isAppHostedAgent,
+    connected,
+    showAppHostedWarning,
   ]);
 
   const isSettingsOpen = useMemo(() => {

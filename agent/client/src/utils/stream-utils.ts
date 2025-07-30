@@ -1,6 +1,6 @@
 import type { AgentServer } from '@stagewise/agent-interface/agent';
 import { AgentStateType } from '@stagewise/agent-interface/agent';
-import { ErrorDescriptions, formatErrorDescription } from './error-utils';
+import { ErrorDescriptions, formatErrorDescription } from './error-utils.js';
 
 /**
  * Creates a timeout promise that rejects after the specified duration

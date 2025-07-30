@@ -42,7 +42,7 @@ describe('sRPC Package', () => {
   // Server setup
   const httpServer = http.createServer();
   const server = createSRPCServerBridge(httpServer, contract);
-  const TEST_PORT = 3001;
+  const TEST_PORT = 3005;
 
   // Original server method implementations to restore after tests
   let greetHandler: any;

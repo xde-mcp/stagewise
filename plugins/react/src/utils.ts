@@ -1,4 +1,4 @@
-import type { SelectedElement } from '@stagewise/toolbar';
+import type { SelectedElement } from '@stagewise/plugin-sdk';
 
 interface FiberNode {
   displayName?: string;

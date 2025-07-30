@@ -38,23 +38,21 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "clean": "rm -rf .turbo node_modules",
-    "dev": "tsc -b && tsx build.config.ts development",
-    "build": "tsc -b && tsx build.config.ts production"
+    "dev": "NODE_ENV=development tsc -b && vite build --mode development",
+    "build": "NODE_ENV=production tsc -b && vite build"
   },
   "peerDependencies": {
-    "@stagewise/toolbar": "workspace:*"
+    "@stagewise/plugin-sdk": "workspace:*"
   },
   "dependencies": {},
   "devDependencies": {
-    "@stagewise/toolbar": "workspace:*",
-    "@stagewise/plugin-builder": "workspace:*",
+    "@stagewise/plugin-sdk": "workspace:*",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "@vitejs/plugin-react-swc": "^3.7.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "@types/react": "^19.1.8",
-    "tsx": "^4.20.3"
+    "vite": "7.0.6",
+    "@vitejs/plugin-react-swc": "3.7.0"
   },
   "packageManager": "pnpm@10.10.0"
 }

@@ -3,7 +3,10 @@
   "bundledPackages": [
     "@stagewise/extension-toolbar-srpc-contract",
     "class-variance-authority",
-    "zod"
+    "class-variance-authority/*",
+    "zod",
+    "@stagewise/agent-interface",
+    "@stagewise/agent-interface/*"
   ],
   "apiReport": {
     "enabled": false

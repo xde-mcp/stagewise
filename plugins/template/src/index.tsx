@@ -1,5 +1,5 @@
 'use client';
-import type { ToolbarPlugin } from '@stagewise/toolbar';
+import type { ToolbarPlugin } from '@stagewise/plugin-sdk';
 import { ExampleComponent } from './component';
 
 const Plugin: ToolbarPlugin = {
