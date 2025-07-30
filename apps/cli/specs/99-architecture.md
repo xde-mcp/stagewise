@@ -14,6 +14,7 @@ src/
 │   ├── argparse.ts         # Command-line argument parsing
 │   ├── config-file.ts      # Configuration file handling
 │   ├── index.ts            # Main configuration resolver
+│   ├── telemetry.ts        # Telemetry configuration management
 │   └── types.ts            # Configuration type definitions
 ├── dependency-parser/       # Project dependency discovery
 │   ├── index.ts            # Main dependency parser
@@ -54,7 +55,9 @@ src/
 │   │   └── config-file.test.ts
 │   ├── argparse.ts
 │   ├── config-file.ts
-│   └── index.ts
+│   ├── index.ts
+│   ├── telemetry.ts
+│   └── telemetry.test.ts
 ├── dependency-parser/
 │   ├── __tests__/
 │   │   ├── index.test.ts
@@ -93,7 +96,7 @@ src/
 
 ### 1. Entry Point (`index.ts`)
 - Initializes the application
-- Handles command execution (auth commands)
+- Handles command execution (auth and telemetry commands)
 - Sets up the HTTP server
 - Manages graceful shutdown
 
@@ -102,7 +105,16 @@ src/
 - **Token Manager**: Secure storage using file-based credentials in platform-specific config directory
 - Supports login, logout, and status commands
 
-### 3. Configuration (`config/`)
+### 3. Telemetry (`config/telemetry.ts`)
+- **Telemetry Manager**: Manages telemetry configuration and levels
+- Supports three telemetry levels:
+  - `off`: Disable telemetry completely
+  - `anonymous`: Enable telemetry with pseudonymized ID (default)
+  - `full`: Enable telemetry with actual user ID
+- Stores configuration in `telemetry.json` in the config directory
+- Provides `status` and `set` subcommands for telemetry management
+
+### 4. Configuration (`config/`)
 - **Config Resolver**: Merges configuration from multiple sources
 - Sources (in priority order):
   1. Command-line arguments
@@ -111,23 +123,67 @@ src/
   4. Default values
 - Handles authentication flow initialization
 
-### 4. Server (`server/`)
+### 5. Server (`server/`)
 - **Express Server**: Main HTTP server
 - **Agent Loader**: Initializes Stagewise agent for code assistance
 - **Proxy**: Proxies requests to the user's application
 - **Plugin Loader**: Discovers and loads UI plugins
 - **WebSocket Support**: Handles WebSocket connections for agent
 
-### 5. Dependency Parser (`dependency-parser/`)
+### 6. Dependency Parser (`dependency-parser/`)
 - Discovers project dependencies from package.json files
 - Supports monorepo structures
 - Provides dependency information for plugins
 
-### 6. Utilities (`utils/`)
+### 7. Utilities (`utils/`)
 - **Logger**: Winston-based logging with different levels
 - **Banner**: ASCII art banner display
 - **User Input**: Terminal input handling
 - **Config Path**: Platform-specific configuration directory management using env-paths
+
+## CLI Commands
+
+### Main Command
+```
+stagewise [options]
+```
+
+Starts the Stagewise development proxy server.
+
+**Options:**
+- `-p, --port <port>`: The port on which the stagewise-wrapped app will run
+- `-a, --app-port <app-port>`: The port of the developed app that stagewise will wrap with the toolbar
+- `-w, --workspace <workspace>`: The path to the repository of the developed app (default: current directory)
+- `-s, --silent`: Will not request user input or guide through setup
+- `-v, --verbose`: Output debug information to the CLI
+- `-t, --token <token>`: If set, will use the given auth token instead of using or asked for a stored one
+- `-b`: Bridge mode - will not start the coding agent server
+
+### Auth Command
+```
+stagewise auth <subcommand>
+```
+
+Manage authentication for Stagewise CLI.
+
+**Subcommands:**
+- `login`: Authenticate with Stagewise
+- `logout`: Clear stored authentication tokens
+- `status`: Check authentication status
+
+### Telemetry Command
+```
+stagewise telemetry <subcommand>
+```
+
+Manage telemetry settings for Stagewise CLI. Telemetry tracks usage metrics and failure events without capturing request content.
+
+**Subcommands:**
+- `status`: Show current telemetry configuration
+- `set <level>`: Set telemetry level
+  - `off`: Disable telemetry completely
+  - `anonymous`: Enable telemetry with pseudonymized ID (default)
+  - `full`: Enable telemetry with actual user ID
 
 ## Key Features
 

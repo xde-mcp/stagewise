@@ -27,7 +27,7 @@ process.stderr.write = function (chunk: any, encoding?: any, callback?: any) {
 async function main() {
   try {
     // Import argparse to check command and options
-    const { silent, commandExecuted, authSubcommand } = await import(
+    const { silent, commandExecuted, authSubcommand, telemetrySubcommand, telemetryLevel } = await import(
       './config/argparse'
     );
 
@@ -81,6 +81,44 @@ async function main() {
         }
       }
       // If we get here, an auth command was executed, so exit
+      return;
+    }
+
+    // Handle telemetry commands
+    if (commandExecuted === 'telemetry') {
+      const { telemetryManager } = await import('./config/telemetry');
+      
+      switch (telemetrySubcommand) {
+        case 'status': {
+          const status = await telemetryManager.getStatus();
+          log.info(`Telemetry level: ${status.level}`);
+          log.info('');
+          log.info('Telemetry levels:');
+          log.info('  - off: Disable telemetry completely');
+          log.info('  - anonymous: Enable telemetry with pseudonymized ID');
+          log.info('  - full: Enable telemetry with actual user ID');
+          return;
+        }
+        
+        case 'set': {
+          if (!telemetryLevel) {
+            log.error('No telemetry level specified');
+            process.exit(1);
+          }
+          
+          const validLevels = ['off', 'anonymous', 'full'];
+          if (!validLevels.includes(telemetryLevel)) {
+            log.error(`Invalid telemetry level: ${telemetryLevel}`);
+            log.error(`Valid levels are: ${validLevels.join(', ')}`);
+            process.exit(1);
+          }
+          
+          await telemetryManager.setLevel(telemetryLevel as any);
+          log.info(`Telemetry level set to: ${telemetryLevel}`);
+          return;
+        }
+      }
+      // If we get here, a telemetry command was executed, so exit
       return;
     }
 

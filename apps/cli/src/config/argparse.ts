@@ -24,6 +24,7 @@ const program = new Command();
 // Store command info for later use
 let commandExecuted: string | undefined;
 let authSubcommand: string | undefined;
+let telemetrySubcommand: string | undefined;
 
 program
   .name('stagewise')
@@ -82,6 +83,29 @@ authCommand
     authSubcommand = 'status';
   });
 
+// Add telemetry command with subcommands
+const telemetryCommand = program
+  .command('telemetry')
+  .description('Manage telemetry settings for Stagewise CLI');
+
+telemetryCommand
+  .command('status')
+  .description('Show current telemetry configuration')
+  .action(() => {
+    commandExecuted = 'telemetry';
+    telemetrySubcommand = 'status';
+  });
+
+telemetryCommand
+  .command('set <level>')
+  .description('Set telemetry level (off, anonymous, full)')
+  .action((level) => {
+    commandExecuted = 'telemetry';
+    telemetrySubcommand = 'set';
+    // Store the level for later use
+    (program as any).telemetryLevel = level;
+  });
+
 // Default action for main program
 program.action(() => {
   commandExecuted = 'main';
@@ -117,9 +141,9 @@ let bridgeMode: boolean;
 // Get options from the main program (global options are available on program)
 const options = program.opts();
 
-// Handle auth commands separately
-if (commandExecuted === 'auth') {
-  // Set default values for auth commands
+// Handle auth and telemetry commands separately
+if (commandExecuted === 'auth' || commandExecuted === 'telemetry') {
+  // Set default values for auth and telemetry commands
   port = undefined;
   appPort = undefined;
   workspace = process.cwd();
@@ -171,4 +195,8 @@ export {
   bridgeMode,
   commandExecuted,
   authSubcommand,
+  telemetrySubcommand,
 };
+
+// Export telemetry level if set command was used
+export const telemetryLevel = (program as any).telemetryLevel as string | undefined;
