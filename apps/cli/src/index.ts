@@ -149,9 +149,12 @@ async function main() {
     // Initialize machine ID early to ensure it's generated on first start
     await identifierManager.getMachineId();
 
-    // Check if telemetry has been configured, if not prompt for opt-in
+    // Check if telemetry has been configured, if not prompt for opt-in (unless in silent mode)
     if (!(await telemetryManager.hasConfigured())) {
-      await telemetryManager.promptForOptIn();
+      if (!silent) {
+        await telemetryManager.promptForOptIn();
+      }
+      // In silent mode, telemetry will use the default level (anonymous)
     }
 
     // Initialize analytics after config is resolved and opt-in handled
