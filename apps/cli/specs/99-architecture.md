@@ -20,6 +20,9 @@ src/
 │   ├── index.ts            # Main dependency parser
 │   ├── types.ts            # Dependency type definitions
 │   └── utils.ts            # Parser utility functions
+├── analytics/               # Analytics and telemetry
+│   ├── posthog.ts          # PostHog client integration
+│   └── events.ts           # Analytics event definitions
 ├── server/                  # HTTP/WebSocket server implementation
 │   ├── agent-loader.ts     # Agent initialization and management
 │   ├── error-page.ts       # Error page generation
@@ -29,7 +32,9 @@ src/
 ├── utils/                   # Utility functions
 │   ├── banner.ts           # CLI banner display
 │   ├── config-path.ts      # Configuration path management
+│   ├── identifier.ts       # Machine identifier management
 │   ├── logger.ts           # Logging utilities
+│   ├── telemetry.ts        # Telemetry utility functions
 │   └── user-input.ts       # User input handling
 └── index.ts                # Application entry point
 ```
@@ -135,11 +140,24 @@ src/
 - Supports monorepo structures
 - Provides dependency information for plugins
 
-### 7. Utilities (`utils/`)
+### 7. Analytics (`analytics/`)
+- **PostHog Client**: Manages PostHog integration with telemetry level support
+- **Events Module**: Defines and tracks analytics events:
+  - `cli-telemetry-config-set`: Tracks telemetry configuration changes
+  - `cli-start`: Tracks CLI startup with mode, workspace, and plugin info
+  - `cli-stored-config-json`: Tracks when users save configuration
+  - `cli-found-config-json`: Tracks when workspace has existing config
+  - `cli-shutdown`: Tracks graceful CLI shutdown
+- **Machine Identification**: Uses persistent UUID stored in `identifier.json`
+- **Privacy Levels**: Respects telemetry settings (off/anonymous/full)
+
+### 8. Utilities (`utils/`)
 - **Logger**: Winston-based logging with different levels
 - **Banner**: ASCII art banner display
 - **User Input**: Terminal input handling
 - **Config Path**: Platform-specific configuration directory management using env-paths
+- **Identifier Manager**: Creates and manages persistent machine ID
+- **Telemetry Utils**: Helper functions for telemetry status checks
 
 ## CLI Commands
 
@@ -223,7 +241,24 @@ Manage telemetry settings for Stagewise CLI. Telemetry tracks usage metrics and 
     - Checks if running with tsx (`process.execArgv` contains 'tsx')
 - Configuration directory structure:
   - `config/`: Application configuration files
+    - `telemetry.json`: Telemetry level configuration
+    - `credentials.json`: Authentication tokens
   - `data/`: Application data files
+    - `identifier.json`: Machine identifier for analytics
   - `cache/`: Temporary cache files
   - `log/`: Log files
   - `temp/`: Temporary files
+
+## Analytics and Telemetry
+- Uses PostHog for analytics tracking
+- Telemetry levels control data collection:
+  - `off`: No data collection
+  - `anonymous`: Pseudonymized machine ID only (default)
+  - `full`: Includes authenticated user information
+- Events tracked:
+  - CLI startup and configuration
+  - Telemetry preference changes
+  - Configuration file operations
+  - Graceful shutdown
+- Privacy-first approach with opt-out capability
+- API key configured via `POSTHOG_API_KEY` environment variable

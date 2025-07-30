@@ -108,3 +108,38 @@ export async function deleteConfigFile(filename: string): Promise<void> {
     }
   }
 }
+
+/**
+ * Reads a JSON file from the data directory
+ */
+export async function readDataFile<T>(filename: string): Promise<T | null> {
+  const filePath = getDataPath(filename);
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(content) as T;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    log.debug(`Failed to read data file ${filename}: ${error}`);
+    throw error;
+  }
+}
+
+/**
+ * Writes a JSON file to the data directory
+ */
+export async function writeDataFile<T>(
+  filename: string,
+  data: T,
+): Promise<void> {
+  const filePath = getDataPath(filename);
+  await ensureDir(stagewise.dataDir);
+  try {
+    const content = JSON.stringify(data, null, 2);
+    await fs.writeFile(filePath, content, { mode: 0o600 });
+  } catch (error) {
+    log.debug(`Failed to write data file ${filename}: ${error}`);
+    throw error;
+  }
+}

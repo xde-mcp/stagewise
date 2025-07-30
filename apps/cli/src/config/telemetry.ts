@@ -51,7 +51,9 @@ export class TelemetryManager {
   }
 
   private isValidTelemetryLevel(level: unknown): level is TelemetryLevel {
-    return typeof level === 'string' && ['off', 'anonymous', 'full'].includes(level);
+    return (
+      typeof level === 'string' && ['off', 'anonymous', 'full'].includes(level)
+    );
   }
 }
 

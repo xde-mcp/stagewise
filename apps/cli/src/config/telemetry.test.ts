@@ -32,35 +32,37 @@ describe('TelemetryManager', () => {
   describe('getLevel', () => {
     it('should return default level when no config exists', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue(null);
-      
+
       const level = await telemetryManager.getLevel();
-      
+
       expect(level).toBe('anonymous');
       expect(configPath.readConfigFile).toHaveBeenCalledWith('telemetry.json');
     });
 
     it('should return configured level when config exists', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'full' });
-      
+
       const level = await telemetryManager.getLevel();
-      
+
       expect(level).toBe('full');
     });
 
     it('should return default level for invalid config', async () => {
-      vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'invalid' });
-      
+      vi.mocked(configPath.readConfigFile).mockResolvedValue({
+        level: 'invalid',
+      });
+
       const level = await telemetryManager.getLevel();
-      
+
       expect(level).toBe('anonymous');
     });
 
     it('should cache the config after first load', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'off' });
-      
+
       await telemetryManager.getLevel();
       await telemetryManager.getLevel();
-      
+
       expect(configPath.readConfigFile).toHaveBeenCalledTimes(1);
     });
   });
@@ -68,20 +70,22 @@ describe('TelemetryManager', () => {
   describe('setLevel', () => {
     it('should save the telemetry level', async () => {
       await telemetryManager.setLevel('off');
-      
+
       expect(configPath.writeConfigFile).toHaveBeenCalledWith(
         'telemetry.json',
-        { level: 'off' }
+        { level: 'off' },
       );
     });
 
     it('should update cached config', async () => {
-      vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'anonymous' });
-      
+      vi.mocked(configPath.readConfigFile).mockResolvedValue({
+        level: 'anonymous',
+      });
+
       await telemetryManager.getLevel();
       await telemetryManager.setLevel('full');
       const level = await telemetryManager.getLevel();
-      
+
       expect(level).toBe('full');
       expect(configPath.readConfigFile).toHaveBeenCalledTimes(1);
     });
@@ -90,17 +94,17 @@ describe('TelemetryManager', () => {
   describe('getStatus', () => {
     it('should return current config status', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'full' });
-      
+
       const status = await telemetryManager.getStatus();
-      
+
       expect(status).toEqual({ level: 'full' });
     });
 
     it('should return default config when no config exists', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue(null);
-      
+
       const status = await telemetryManager.getStatus();
-      
+
       expect(status).toEqual({ level: 'anonymous' });
     });
   });

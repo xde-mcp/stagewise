@@ -199,4 +199,6 @@ export {
 };
 
 // Export telemetry level if set command was used
-export const telemetryLevel = (program as any).telemetryLevel as string | undefined;
+export const telemetryLevel = (program as any).telemetryLevel as
+  | string
+  | undefined;

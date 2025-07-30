@@ -27,9 +27,13 @@ process.stderr.write = function (chunk: any, encoding?: any, callback?: any) {
 async function main() {
   try {
     // Import argparse to check command and options
-    const { silent, commandExecuted, authSubcommand, telemetrySubcommand, telemetryLevel } = await import(
-      './config/argparse'
-    );
+    const {
+      silent,
+      commandExecuted,
+      authSubcommand,
+      telemetrySubcommand,
+      telemetryLevel,
+    } = await import('./config/argparse');
 
     // Handle auth commands
     if (commandExecuted === 'auth') {
@@ -87,7 +91,7 @@ async function main() {
     // Handle telemetry commands
     if (commandExecuted === 'telemetry') {
       const { telemetryManager } = await import('./config/telemetry');
-      
+
       switch (telemetrySubcommand) {
         case 'status': {
           const status = await telemetryManager.getStatus();
@@ -99,22 +103,27 @@ async function main() {
           log.info('  - full: Enable telemetry with actual user ID');
           return;
         }
-        
+
         case 'set': {
           if (!telemetryLevel) {
             log.error('No telemetry level specified');
             process.exit(1);
           }
-          
+
           const validLevels = ['off', 'anonymous', 'full'];
           if (!validLevels.includes(telemetryLevel)) {
             log.error(`Invalid telemetry level: ${telemetryLevel}`);
             log.error(`Valid levels are: ${validLevels.join(', ')}`);
             process.exit(1);
           }
-          
+
           await telemetryManager.setLevel(telemetryLevel as any);
           log.info(`Telemetry level set to: ${telemetryLevel}`);
+          
+          // Track telemetry configuration change
+          const { analyticsEvents } = await import('./analytics/events');
+          await analyticsEvents.telemetryConfigSet(telemetryLevel as any);
+          
           return;
         }
       }
@@ -129,6 +138,37 @@ async function main() {
 
     // Resolve configuration (handles all input sources)
     const config = await configResolver.resolveConfig();
+    
+    // Initialize analytics after config is resolved
+    const { posthog } = await import('./analytics/posthog');
+    await posthog.initialize();
+    
+    // Set user properties if authenticated
+    const { oauthManager } = await import('./auth/oauth');
+    const authState = await oauthManager.getAuthState();
+    if (authState?.isAuthenticated) {
+      posthog.setUserProperties({
+        user_id: authState.userId,
+        user_email: authState.userEmail,
+      });
+    }
+    
+    // Track CLI start
+    const { analyticsEvents } = await import('./analytics/events');
+    const { configFileExists } = await import('./config/config-file');
+    const hasConfigFile = await configFileExists(config.dir);
+    
+    await analyticsEvents.cliStart({
+      mode: config.bridgeMode ? 'bridge' : 'regular',
+      workspace_configured_manually: !hasConfigFile,
+      auto_plugins_enabled: config.autoPlugins,
+      manual_plugins_count: config.plugins.length,
+    });
+    
+    // Track if config file was found
+    if (hasConfigFile) {
+      await analyticsEvents.foundConfigJson();
+    }
 
     if (config.verbose) {
       log.debug('Configuration resolved:');
@@ -208,7 +248,7 @@ async function main() {
     });
 
     // Handle graceful shutdown
-    const gracefulShutdown = () => {
+    const gracefulShutdown = async () => {
       log.info('\nShutting down...');
 
       // Prevent multiple shutdown attempts
@@ -217,6 +257,18 @@ async function main() {
         return;
       }
       (global as any).isShuttingDown = true;
+
+      // Track shutdown event
+      try {
+        const { analyticsEvents } = await import('./analytics/events');
+        await analyticsEvents.cliShutdown();
+        
+        // Shutdown PostHog client
+        const { posthog } = await import('./analytics/posthog');
+        await posthog.shutdown();
+      } catch (error) {
+        // Ignore analytics errors during shutdown
+      }
 
       // Shutdown agent first
       shutdownAgent();
