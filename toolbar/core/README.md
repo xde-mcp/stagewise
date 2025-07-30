@@ -7,12 +7,6 @@
 
 ![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
 
-> [!IMPORTANT]
-> ## 🚀 A 10x Faster Frontend Agent is Coming. The stagewise agent.
-> 
-> We're building a native frontend agent that integrates seamlessly with stagewise - delivering 10x faster UI development with unprecedented accuracy. 
-> 
-> **[Get Early Access to the stagewise agent →](https://stagewise.io/waitlist)**
 
 ## About the project
 
@@ -33,70 +27,29 @@ Welcome to **stagewise** —  The frontend coding agent for production codebases
 - 🧠 Use our dedicated frontend agent - or any other compatible through our open agent interface!
 
 
-## 📖 Quickstart 
+## 📖 Getting Started
 
-### 1. 🧩 **Install the extension**
+### 1. Start your web app in development mode
 
-Install the extension from the extension store of your code editor:
+The first thing you should do is to start your app in regular development mode
 
-- **Cursor**: [cursor:extension/stagewise.stagewise-vscode-extension](cursor:extension/stagewise.stagewise-vscode-extension)
-- **VS Code**: [vscode:extension/stagewise.stagewise-vscode-extension](vscode:extension/stagewise.stagewise-vscode-extension)
-- **Trae**: [trae:extension/stagewise.stagewise-vscode-extension](trae:extension/stagewise.stagewise-vscode-extension)
-- **Windsurf**: [windsurf:extension/stagewise.stagewise-vscode-extension](windsurf:extension/stagewise.stagewise-vscode-extension)
+### 2. Start stagewise
 
-### 2. 👨🏽‍💻 **Install and inject the toolbar (the extension will guide you)**
+stagewise can be integrated into your workflow without requiring you to install anything!
 
-> [!TIP]
-> 🪄 **AI-Assisted Setup (recommended):** 
-> 1. In Cursor, Press `CMD + Shift + P`
-> 2. Enter `setupToolbar`
-> 3. Execute the command and the toolbar will init automatically 🦄
+Simply open another terminal window in the root of your app under development and enter the following:
 
-Or follow the Manual Setup:
-
-Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
 ```bash
-pnpm i -D @stagewise/toolbar
+npx stagewise
 ```
 
-Inject the toolbar into your app dev-mode:
+or (if you're using pnpm):
 
-```ts
-// 1. Import the toolbar
-import { initToolbar } from '@stagewise/toolbar';
-
-// 2. Define your toolbar configuration
-const stagewiseConfig = {
-  plugins: [],
-};
-
-// 3. Initialize the toolbar when your app starts
-// Framework-agnostic approach - call this when your app initializes
-function setupStagewise() {
-  // Only initialize once and only in development mode
-  if (process.env.NODE_ENV === 'development') {
-    initToolbar(stagewiseConfig);
-  }
-}
-
-// Call the setup function when appropriate for your framework
-setupStagewise();
+```bash
+pnpm dlx stagewise
 ```
-> ⚡️ The toolbar will **automatically connect** to the extension!
 
-### 3. **Setup your stagewise account**
-
-> 🪄 **Auto-Install the toolbar (AI-guided):**
-> 1. In your IDE, Press `⌘ + Shift + P`
-> 2. Enter `Login to stagewise`
-> 3. Execute the command and follow the guide
-> 4. You're good to go!
-
-> ⚡️ The toolbar will **automatically connect** to the extension when opening up the dev mode of your app
-
-### 4. 🎉 **Start dev mode and begin coding!**
-
-The toolbar should appear in the bottom right corner of your web app. If not, please reach out via [Discord](https://discord.gg/gkdGsDYaKA).
+And simply follow the short guide of the CLI app to setup your stagewise account.
 
 ### Framework-specific integration examples
 
