@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      create-stagewise-plugin:
-        specifier: link:packages/create-stagewise-plugin
-        version: link:packages/create-stagewise-plugin
       tsx:
         specifier: ^4.20.3
         version: 4.20.3
