@@ -1,7 +1,18 @@
 import { configResolver } from './config';
+import { configFileExists } from './config/config-file';
+import { posthog } from './analytics/posthog';
+import { telemetryManager } from './config/telemetry';
+import { analyticsEvents } from './analytics/events';
 import { getServer } from './server';
 import { shutdownAgent } from './server/agent-loader';
 import { log } from './utils/logger';
+import {
+  silent,
+  commandExecuted,
+  authSubcommand,
+  telemetrySubcommand,
+  telemetryLevel,
+} from './config/argparse';
 import { printBanner } from './utils/banner';
 import { oauthManager } from './auth/oauth';
 import {
@@ -27,13 +38,6 @@ process.stderr.write = function (chunk: any, encoding?: any, callback?: any) {
 async function main() {
   try {
     // Import argparse to check command and options
-    const {
-      silent,
-      commandExecuted,
-      authSubcommand,
-      telemetrySubcommand,
-      telemetryLevel,
-    } = await import('./config/argparse');
 
     // Handle auth commands
     if (commandExecuted === 'auth') {
@@ -90,8 +94,6 @@ async function main() {
 
     // Handle telemetry commands
     if (commandExecuted === 'telemetry') {
-      const { telemetryManager } = await import('./config/telemetry');
-
       switch (telemetrySubcommand) {
         case 'status': {
           const status = await telemetryManager.getStatus();
@@ -121,7 +123,6 @@ async function main() {
           log.info(`Telemetry level set to: ${telemetryLevel}`);
 
           // Track telemetry configuration change
-          const { analyticsEvents } = await import('./analytics/events');
           await analyticsEvents.telemetryConfigSet(telemetryLevel as any);
 
           return;
@@ -140,11 +141,9 @@ async function main() {
     const config = await configResolver.resolveConfig();
 
     // Initialize analytics after config is resolved
-    const { posthog } = await import('./analytics/posthog');
     await posthog.initialize();
 
     // Set user properties if authenticated
-    const { oauthManager } = await import('./auth/oauth');
     const authState = await oauthManager.getAuthState();
     if (authState?.isAuthenticated) {
       posthog.setUserProperties({
@@ -154,8 +153,6 @@ async function main() {
     }
 
     // Track CLI start
-    const { analyticsEvents } = await import('./analytics/events');
-    const { configFileExists } = await import('./config/config-file');
     const hasConfigFile = await configFileExists(config.dir);
 
     await analyticsEvents.cliStart({
@@ -213,7 +210,7 @@ async function main() {
       );
     }
 
-    const { server, agentWss } = await getServer();
+    const { server } = await getServer();
 
     // Start the server listening
     server.listen(config.port);
@@ -260,11 +257,9 @@ async function main() {
 
       // Track shutdown event
       try {
-        const { analyticsEvents } = await import('./analytics/events');
         await analyticsEvents.cliShutdown();
 
         // Shutdown PostHog client
-        const { posthog } = await import('./analytics/posthog');
         await posthog.shutdown();
       } catch (_error) {
         // Ignore analytics errors during shutdown
