@@ -157,9 +157,6 @@ async function main() {
       // In silent mode, telemetry will use the default level (anonymous)
     }
 
-    // Initialize analytics after config is resolved and opt-in handled
-    await telemetryManager.initialize();
-
     // Set user properties if authenticated
     const authState = await oauthManager.getAuthState();
     if (authState?.isAuthenticated) {
@@ -168,6 +165,9 @@ async function main() {
         user_email: authState.userEmail,
       });
     }
+
+    // Initialize analytics after config is resolved and opt-in handled
+    await telemetryManager.initialize();
 
     // Track CLI start
     const hasConfigFile = await configFileExists(config.dir);

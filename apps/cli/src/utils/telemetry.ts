@@ -71,6 +71,27 @@ export class TelemetryManager {
       });
 
       this.initialized = true;
+
+      // Use machineId consistently as the distinctId to avoid creating multiple persons
+      const machineId = await identifierManager.getMachineId();
+
+      if (
+        this.userProperties.user_id &&
+        this.userProperties.user_email &&
+        this.config?.level === 'full'
+      ) {
+        this.posthogClient.identify({
+          distinctId: this.userProperties.user_id,
+          properties: {
+            email: this.userProperties.user_email,
+          },
+        });
+        this.posthogClient.alias({
+          distinctId: this.userProperties.user_id,
+          alias: machineId,
+        });
+      }
+
       log.debug('PostHog analytics initialized');
     } catch (error) {
       log.debug(`Failed to initialize PostHog: ${error}`);
@@ -138,14 +159,9 @@ export class TelemetryManager {
         telemetry_level: telemetryLevel,
       };
 
-      if (telemetryLevel === 'full' && this.userProperties.user_id) {
-        finalProperties.user_id = this.userProperties.user_id;
-        finalProperties.user_email = this.userProperties.user_email;
-      }
-
       if (this.posthogClient) {
         this.posthogClient.capture({
-          distinctId: machineId,
+          distinctId: machineId, // Consistently use machineId as distinctId
           event: eventName,
           properties: finalProperties,
         });
