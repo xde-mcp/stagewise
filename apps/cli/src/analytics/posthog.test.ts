@@ -1,27 +1,6 @@
-import {
-  describe,
-  expect,
-  it,
-  vi,
-  beforeEach,
-  afterEach,
-  beforeAll,
-} from 'vitest';
-import * as telemetryModule from '../config/telemetry';
-import * as identifierModule from '../utils/identifier';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock PostHog
-const mockCapture = vi.fn();
-const mockShutdown = vi.fn().mockResolvedValue(undefined);
-
-vi.mock('posthog-node', () => ({
-  PostHog: vi.fn().mockImplementation(() => ({
-    capture: mockCapture,
-    shutdown: mockShutdown,
-  })),
-}));
-
-// Mock dependencies
+// Mock dependencies first
 vi.mock('../config/telemetry');
 vi.mock('../utils/identifier');
 vi.mock('../utils/logger', () => ({
@@ -30,21 +9,43 @@ vi.mock('../utils/logger', () => ({
   },
 }));
 
-describe('PostHogClient', () => {
-  let PostHogClient: any;
-  let posthogClient: any;
-  const _mockPostHog = vi.fn();
+// Mock posthog-node - the mocks need to be inside the factory function
+vi.mock('posthog-node', () => {
+  return {
+    PostHog: vi.fn(),
+  };
+});
 
-  beforeAll(async () => {
-    // Import after mocks are set up
-    const module = await import('./posthog');
-    PostHogClient = module.PostHogClient;
-  });
+// Import after mocks
+import { PostHogClient } from './posthog';
+import * as telemetryModule from '../config/telemetry';
+import * as identifierModule from '../utils/identifier';
+import { PostHog } from 'posthog-node';
+
+// Get the mocked constructor
+const MockedPostHog = vi.mocked(PostHog);
+
+describe('PostHogClient', () => {
+  let posthogClient: PostHogClient;
+  let mockCapture: ReturnType<typeof vi.fn>;
+  let mockShutdown: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCapture.mockClear();
-    mockShutdown.mockClear();
+
+    // Create fresh mock functions for each test
+    mockCapture = vi.fn();
+    mockShutdown = vi.fn().mockResolvedValue(undefined);
+
+    // Setup PostHog mock implementation
+    MockedPostHog.mockImplementation(
+      () =>
+        ({
+          capture: mockCapture,
+          shutdown: mockShutdown,
+        }) as any,
+    );
+
     // Reset singleton
     (PostHogClient as any).instance = undefined;
     posthogClient = PostHogClient.getInstance();
@@ -63,7 +64,6 @@ describe('PostHogClient', () => {
 
   afterEach(() => {
     delete process.env.POSTHOG_API_KEY;
-    vi.restoreAllMocks();
   });
 
   describe('initialize', () => {
@@ -74,9 +74,9 @@ describe('PostHogClient', () => {
 
       await posthogClient.initialize();
 
-      // Check that PostHog was not instantiated
-      const { PostHog } = await import('posthog-node');
-      expect(PostHog).not.toHaveBeenCalled();
+      expect(MockedPostHog).not.toHaveBeenCalled();
+      expect((posthogClient as any).initialized).toBe(false);
+      expect((posthogClient as any).client).toBeNull();
     });
 
     it('should not initialize without API key', async () => {
@@ -84,26 +84,28 @@ describe('PostHogClient', () => {
 
       await posthogClient.initialize();
 
-      // Check that PostHog was not instantiated
-      const { PostHog } = await import('posthog-node');
-      expect(PostHog).not.toHaveBeenCalled();
+      expect(MockedPostHog).not.toHaveBeenCalled();
+      expect((posthogClient as any).initialized).toBe(false);
+      expect((posthogClient as any).client).toBeNull();
     });
 
     it('should initialize with valid config', async () => {
       await posthogClient.initialize();
 
-      // Check that PostHog was instantiated
-      const { PostHog } = await import('posthog-node');
-      expect(PostHog).toHaveBeenCalledWith('test-api-key', expect.any(Object));
+      expect(MockedPostHog).toHaveBeenCalledWith('test-api-key', {
+        host: 'https://app.posthog.com',
+        flushAt: 1,
+        flushInterval: 0,
+      });
+      expect((posthogClient as any).initialized).toBe(true);
+      expect((posthogClient as any).client).toBeTruthy();
     });
 
     it('should only initialize once', async () => {
       await posthogClient.initialize();
       await posthogClient.initialize();
 
-      // Check that PostHog constructor was only called once
-      const { PostHog } = await import('posthog-node');
-      expect(PostHog).toHaveBeenCalledTimes(1);
+      expect(MockedPostHog).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -174,6 +176,13 @@ describe('PostHogClient', () => {
         },
       });
     });
+
+    it('should not capture events when not initialized', async () => {
+      // Don't initialize, just try to capture
+      await posthogClient.capture('test-event', { test: true });
+
+      expect(mockCapture).not.toHaveBeenCalled();
+    });
   });
 
   describe('shutdown', () => {
@@ -186,6 +195,7 @@ describe('PostHogClient', () => {
 
     it('should handle shutdown when not initialized', async () => {
       await expect(posthogClient.shutdown()).resolves.not.toThrow();
+      expect(mockShutdown).not.toHaveBeenCalled();
     });
   });
 });
