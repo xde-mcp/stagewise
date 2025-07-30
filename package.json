@@ -48,7 +48,6 @@
     ]
   },
   "dependencies": {
-    "create-stagewise-plugin": "link:packages/create-stagewise-plugin",
     "tsx": "^4.20.3"
   }
 }
