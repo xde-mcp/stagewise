@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { readDataFile, writeDataFile } from './config-path';
 
 export interface MachineIdentifier {
@@ -36,8 +36,9 @@ export class IdentifierManager {
   }
 
   private async loadOrCreateIdentifier(): Promise<void> {
-    const existingIdentifier = await readDataFile<MachineIdentifier>(IDENTIFIER_FILE);
-    
+    const existingIdentifier =
+      await readDataFile<MachineIdentifier>(IDENTIFIER_FILE);
+
     if (existingIdentifier && this.isValidIdentifier(existingIdentifier)) {
       this.identifier = existingIdentifier;
     } else {
@@ -46,13 +47,15 @@ export class IdentifierManager {
         id: randomUUID(),
         createdAt: new Date().toISOString(),
       };
-      
+
       // Save to file
       await writeDataFile(IDENTIFIER_FILE, this.identifier);
     }
   }
 
-  private isValidIdentifier(identifier: unknown): identifier is MachineIdentifier {
+  private isValidIdentifier(
+    identifier: unknown,
+  ): identifier is MachineIdentifier {
     return (
       typeof identifier === 'object' &&
       identifier !== null &&

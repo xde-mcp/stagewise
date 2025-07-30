@@ -119,11 +119,11 @@ async function main() {
 
           await telemetryManager.setLevel(telemetryLevel as any);
           log.info(`Telemetry level set to: ${telemetryLevel}`);
-          
+
           // Track telemetry configuration change
           const { analyticsEvents } = await import('./analytics/events');
           await analyticsEvents.telemetryConfigSet(telemetryLevel as any);
-          
+
           return;
         }
       }
@@ -138,11 +138,11 @@ async function main() {
 
     // Resolve configuration (handles all input sources)
     const config = await configResolver.resolveConfig();
-    
+
     // Initialize analytics after config is resolved
     const { posthog } = await import('./analytics/posthog');
     await posthog.initialize();
-    
+
     // Set user properties if authenticated
     const { oauthManager } = await import('./auth/oauth');
     const authState = await oauthManager.getAuthState();
@@ -152,19 +152,19 @@ async function main() {
         user_email: authState.userEmail,
       });
     }
-    
+
     // Track CLI start
     const { analyticsEvents } = await import('./analytics/events');
     const { configFileExists } = await import('./config/config-file');
     const hasConfigFile = await configFileExists(config.dir);
-    
+
     await analyticsEvents.cliStart({
       mode: config.bridgeMode ? 'bridge' : 'regular',
       workspace_configured_manually: !hasConfigFile,
       auto_plugins_enabled: config.autoPlugins,
       manual_plugins_count: config.plugins.length,
     });
-    
+
     // Track if config file was found
     if (hasConfigFile) {
       await analyticsEvents.foundConfigJson();
@@ -262,11 +262,11 @@ async function main() {
       try {
         const { analyticsEvents } = await import('./analytics/events');
         await analyticsEvents.cliShutdown();
-        
+
         // Shutdown PostHog client
         const { posthog } = await import('./analytics/posthog');
         await posthog.shutdown();
-      } catch (error) {
+      } catch (_error) {
         // Ignore analytics errors during shutdown
       }
 

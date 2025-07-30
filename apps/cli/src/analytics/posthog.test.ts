@@ -1,4 +1,12 @@
-import { describe, expect, it, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import {
+  describe,
+  expect,
+  it,
+  vi,
+  beforeEach,
+  afterEach,
+  beforeAll,
+} from 'vitest';
 import * as telemetryModule from '../config/telemetry';
 import * as identifierModule from '../utils/identifier';
 
@@ -25,7 +33,7 @@ vi.mock('../utils/logger', () => ({
 describe('PostHogClient', () => {
   let PostHogClient: any;
   let posthogClient: any;
-  const mockPostHog = vi.fn();
+  const _mockPostHog = vi.fn();
 
   beforeAll(async () => {
     // Import after mocks are set up
@@ -40,11 +48,15 @@ describe('PostHogClient', () => {
     // Reset singleton
     (PostHogClient as any).instance = undefined;
     posthogClient = PostHogClient.getInstance();
-    
+
     // Setup default mocks
-    vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue('anonymous');
-    vi.mocked(identifierModule.identifierManager.getMachineId).mockResolvedValue('test-machine-id');
-    
+    vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue(
+      'anonymous',
+    );
+    vi.mocked(
+      identifierModule.identifierManager.getMachineId,
+    ).mockResolvedValue('test-machine-id');
+
     // Set up PostHog API key
     process.env.POSTHOG_API_KEY = 'test-api-key';
   });
@@ -56,10 +68,12 @@ describe('PostHogClient', () => {
 
   describe('initialize', () => {
     it('should not initialize when telemetry is off', async () => {
-      vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue('off');
-      
+      vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue(
+        'off',
+      );
+
       await posthogClient.initialize();
-      
+
       // Check that PostHog was not instantiated
       const { PostHog } = await import('posthog-node');
       expect(PostHog).not.toHaveBeenCalled();
@@ -67,9 +81,9 @@ describe('PostHogClient', () => {
 
     it('should not initialize without API key', async () => {
       delete process.env.POSTHOG_API_KEY;
-      
+
       await posthogClient.initialize();
-      
+
       // Check that PostHog was not instantiated
       const { PostHog } = await import('posthog-node');
       expect(PostHog).not.toHaveBeenCalled();
@@ -77,7 +91,7 @@ describe('PostHogClient', () => {
 
     it('should initialize with valid config', async () => {
       await posthogClient.initialize();
-      
+
       // Check that PostHog was instantiated
       const { PostHog } = await import('posthog-node');
       expect(PostHog).toHaveBeenCalledWith('test-api-key', expect.any(Object));
@@ -86,7 +100,7 @@ describe('PostHogClient', () => {
     it('should only initialize once', async () => {
       await posthogClient.initialize();
       await posthogClient.initialize();
-      
+
       // Check that PostHog constructor was only called once
       const { PostHog } = await import('posthog-node');
       expect(PostHog).toHaveBeenCalledTimes(1);
@@ -94,19 +108,20 @@ describe('PostHogClient', () => {
   });
 
   describe('capture', () => {
-
     it('should not capture events when telemetry is off', async () => {
-      vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue('off');
-      
+      vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue(
+        'off',
+      );
+
       await posthogClient.capture('test-event', { test: true });
-      
+
       expect(mockCapture).not.toHaveBeenCalled();
     });
 
     it('should capture events with anonymous telemetry', async () => {
       await posthogClient.initialize();
       await posthogClient.capture('test-event', { test: true });
-      
+
       expect(mockCapture).toHaveBeenCalledWith({
         distinctId: 'test-machine-id',
         event: 'test-event',
@@ -118,15 +133,17 @@ describe('PostHogClient', () => {
     });
 
     it('should include user properties with full telemetry', async () => {
-      vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue('full');
+      vi.mocked(telemetryModule.telemetryManager.getLevel).mockResolvedValue(
+        'full',
+      );
       await posthogClient.initialize();
       posthogClient.setUserProperties({
         user_id: 'user-123',
         user_email: 'test@example.com',
       });
-      
+
       await posthogClient.capture('test-event', { test: true });
-      
+
       expect(mockCapture).toHaveBeenCalledWith({
         distinctId: 'test-machine-id',
         event: 'test-event',
@@ -145,9 +162,9 @@ describe('PostHogClient', () => {
         user_id: 'user-123',
         user_email: 'test@example.com',
       });
-      
+
       await posthogClient.capture('test-event', { test: true });
-      
+
       expect(mockCapture).toHaveBeenCalledWith({
         distinctId: 'test-machine-id',
         event: 'test-event',
@@ -163,7 +180,7 @@ describe('PostHogClient', () => {
     it('should shutdown PostHog client when initialized', async () => {
       await posthogClient.initialize();
       await posthogClient.shutdown();
-      
+
       expect(mockShutdown).toHaveBeenCalled();
     });
 

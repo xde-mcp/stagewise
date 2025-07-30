@@ -50,7 +50,7 @@ export class PostHogClient {
         flushAt: 1, // Send events immediately in CLI context
         flushInterval: 0, // Don't batch events
       });
-      
+
       this.initialized = true;
       log.debug('PostHog analytics initialized');
     } catch (error) {
@@ -68,13 +68,13 @@ export class PostHogClient {
   ): Promise<void> {
     try {
       const telemetryLevel = await telemetryManager.getLevel();
-      
+
       if (telemetryLevel === 'off' || !this.client) {
         return;
       }
 
       const machineId = await identifierManager.getMachineId();
-      
+
       // Build final properties
       const finalProperties: EventProperties = {
         ...properties,

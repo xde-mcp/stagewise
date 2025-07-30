@@ -72,7 +72,7 @@ export class ConfigResolver {
         if (shouldSave) {
           await saveConfigFile(args.workspace, { appPort });
           log.info(`Configuration saved to ${CONFIG_FILE_NAME}`);
-          
+
           // Track config storage event
           const { analyticsEvents } = await import('../analytics/events');
           await analyticsEvents.storedConfigJson();
@@ -218,7 +218,7 @@ export class ConfigResolver {
 
         await saveConfigFile(args.workspace, configToSave);
         log.info(`Configuration saved to ${CONFIG_FILE_NAME}`);
-        
+
         // Track config storage event
         const { analyticsEvents } = await import('../analytics/events');
         await analyticsEvents.storedConfigJson();

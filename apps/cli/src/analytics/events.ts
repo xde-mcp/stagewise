@@ -1,5 +1,5 @@
 import { posthog } from './posthog';
-import { TelemetryLevel } from '../config/telemetry';
+import type { TelemetryLevel } from '../config/telemetry';
 
 export interface CliStartProperties {
   mode: 'bridge' | 'regular';
@@ -52,6 +52,6 @@ export const analyticsEvents = {
   cliShutdown: async () => {
     await posthog.capture('cli-shutdown');
     // Give PostHog time to flush the event
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   },
 };
