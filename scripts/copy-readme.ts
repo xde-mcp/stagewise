@@ -16,26 +16,7 @@ const readmeContent: string = fs.readFileSync(
 );
 
 // Define the initial list of target directories
-const targetDirs: string[] = ['apps/vscode-extension'];
-
-// Define the base path for the toolbar directories
-const toolbarBasePath: string = path.join(rootDir, 'toolbar');
-
-// Check if the toolbar directory exists
-if (fs.existsSync(toolbarBasePath)) {
-  // Read all subdirectories within the toolbar directory
-  const toolbarSubDirs: string[] = fs
-    .readdirSync(toolbarBasePath, { withFileTypes: true })
-    // Filter out files, keeping only directories
-    .filter((dirent: fs.Dirent) => dirent.isDirectory())
-    // Map directory names to their relative paths
-    .map((dirent: fs.Dirent) => path.join('toolbar', dirent.name));
-  // Add the toolbar subdirectories to the list of target directories
-  targetDirs.push(...toolbarSubDirs);
-} else {
-  // Log a warning if the toolbar directory is not found
-  console.warn(`Warning: Directory not found: ${toolbarBasePath}`);
-}
+const targetDirs: string[] = ['apps/vscode-extension', 'apps/cli'];
 
 // Iterate over each target directory
 targetDirs.forEach((relativeDir: string) => {

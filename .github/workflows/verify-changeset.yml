@@ -5,9 +5,10 @@ on:
     branches:
       - main 
     paths:
-      - 'apps/vscode-extension/**'
+      - 'apps/cli/**'
+      - 'packages/agent-interface/**'
       - 'packages/srpc/**'
-      - 'toolbar/**'
+      - 'toolbar/plugin-sdk/**'
 
 permissions:
   contents: read

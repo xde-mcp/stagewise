@@ -1,94 +1,55 @@
 # <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
 
-# Visual vibe coding. Right in your codebase.
+# The frontend coding agent for production codebases
 
 [![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/stagewise.stagewise-vscode-extension?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=stagewise.stagewise-vscode-extension) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise) [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/gkdGsDYaKA) <!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/stagewise-io/stagewise/ci.yml?branch=main)](https://github.com/stagewise-io/stagewise/actions) -->
 
 
 ![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
 
-> [!IMPORTANT]
-> ## 🚀 A 10x Faster Frontend Agent is Coming. The stagewise agent.
-> 
-> We're building a native frontend agent that integrates seamlessly with stagewise - delivering 10x faster UI development with unprecedented accuracy. 
-> 
-> **[Get Early Access to the stagewise agent →](https://stagewise.io/waitlist)**
 
 ## About the project
 
-**stagewise is a browser toolbar that connects your frontend UI to your code ai agents in your code editor.**
+Welcome to **stagewise** —  The frontend coding agent for production codebases
 
-* 🧠 Select any element(s) in your web app
-* 💬 Leave a comment on it
-* 💡 Let your AI-Agent do the magic
+- 💬 Tell the agent what you want to change
+- 🧠 Click on element(s) to let the agent know where a change should happen
+- 💡 Let stagewise do the magic!
 
-> Perfect for devs tired of pasting folder paths into prompts. stagewise gives your AI real-time, browser-powered context.
+> Perfect for devs tired of pasting element information and folder paths into prompts. stagewise uses real-time, browser-powered context.
 
+## Features
 
-## ✨ Features
-
-The stagewise Toolbar makes it incredibly easy to edit your frontend code with AI agents:
-
-* ⚡ Works out of the box
-* 🧩 Customise and extend functionality with Plugins
-* 🧠 Sends DOM elements & more metadata to your AI agent
-* 🧪 Comes with examples for React, Vue, Svelte and more
+- ⚡ Works out of the box
+- 🧩 Customize and extend functionality with Plugins
+- 📖 Open source
+- ⛓️ Compatible with all kinds of frameworks
+- 🧠 Use our dedicated frontend agent - or any other compatible through our open agent interface!
 
 
-## 📖 Quickstart 
+## 📖 Getting Started
 
-### 1. 🧩 **Install the extension**
+### 1. Start your web app in development mode
 
-Install the extension from the extension store of your code editor:
+The first thing you should do is to start your app in regular development mode
 
-- **Cursor**: [cursor:extension/stagewise.stagewise-vscode-extension](cursor:extension/stagewise.stagewise-vscode-extension)
-- **VS Code**: [vscode:extension/stagewise.stagewise-vscode-extension](vscode:extension/stagewise.stagewise-vscode-extension)
-- **Trae**: [trae:extension/stagewise.stagewise-vscode-extension](trae:extension/stagewise.stagewise-vscode-extension)
-- **Windsurf**: [windsurf:extension/stagewise.stagewise-vscode-extension](windsurf:extension/stagewise.stagewise-vscode-extension)
+### 2. Start stagewise
 
-### 2. 👨🏽‍💻 **Install and inject the toolbar (the extension will guide you)**
+stagewise can be integrated into your workflow without requiring you to install anything!
 
-> [!TIP]
-> 🪄 **AI-Assisted Setup (recommended):** 
-> 1. In Cursor, Press `CMD + Shift + P`
-> 2. Enter `setupToolbar`
-> 3. Execute the command and the toolbar will init automatically 🦄
+Simply open another terminal window in the root of your app under development and enter the following:
 
-Or follow the Manual Setup:
-
-Install [@stagewise/toolbar](https://www.npmjs.com/package/@stagewise/toolbar):
 ```bash
-pnpm i -D @stagewise/toolbar
+npx stagewise
 ```
 
-Inject the toolbar into your app dev-mode:
+or (if you're using pnpm):
 
-```ts
-// 1. Import the toolbar
-import { initToolbar } from '@stagewise/toolbar';
-
-// 2. Define your toolbar configuration
-const stagewiseConfig = {
-  plugins: [],
-};
-
-// 3. Initialize the toolbar when your app starts
-// Framework-agnostic approach - call this when your app initializes
-function setupStagewise() {
-  // Only initialize once and only in development mode
-  if (process.env.NODE_ENV === 'development') {
-    initToolbar(stagewiseConfig);
-  }
-}
-
-// Call the setup function when appropriate for your framework
-setupStagewise();
+```bash
+pnpm dlx stagewise
 ```
-> ⚡️ The toolbar will **automatically connect** to the extension!
 
-### 3. 🎉 **Start dev mode and begin coding!**
-
-The toolbar should appear in the bottom right corner of your web app. If not, please reach out via [Discord](https://discord.gg/gkdGsDYaKA).
+And simply follow the short guide of the CLI app to setup your stagewise account.
 
 ### Framework-specific integration examples
 
@@ -276,6 +237,7 @@ You would then use `StagewiseToolbarLoader` in your `src/routes/+layout.svelte`.
 
 | **Agent**      | **Supported**  |
 | -------------- | -------------- |
+| stagewise agent| ✅⭐️           |
 | Cursor         | ✅             |
 | GitHub Copilot | ✅             |
 | Windsurf       | ✅             |
