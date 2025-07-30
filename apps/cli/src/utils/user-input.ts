@@ -1,4 +1,5 @@
 import { input, confirm } from '@inquirer/prompts';
+import chalk from 'chalk';
 
 interface PromptOptions {
   message: string;
@@ -10,10 +11,11 @@ interface PromptOptions {
 export const promptNumber = async (options: PromptOptions): Promise<number> => {
   const { message, hint, default: defaultValue } = options;
 
-  let promptMessage = message;
+  let promptMessage = `${message}\n`;
   if (hint) {
-    promptMessage += ` (${hint})`;
+    promptMessage += `\n${chalk.gray(`Hint: ${hint}`)}\n`;
   }
+  promptMessage += `Answer: `;
 
   const result = await input({
     message: promptMessage,
@@ -36,7 +38,7 @@ export const promptConfirm = async (
 
   let promptMessage = message;
   if (hint) {
-    promptMessage += ` (${hint})`;
+    promptMessage += `\n${chalk.gray(`Hint: ${hint}`)}\n`;
   }
 
   return await confirm({

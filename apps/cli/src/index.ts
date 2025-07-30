@@ -1,8 +1,7 @@
 import { configResolver } from './config';
 import { configFileExists } from './config/config-file';
-import { posthog } from './analytics/posthog';
-import { telemetryManager } from './config/telemetry';
-import { analyticsEvents } from './analytics/events';
+import { telemetryManager, analyticsEvents } from './utils/telemetry';
+import { identifierManager } from './utils/identifier';
 import { getServer } from './server';
 import { shutdownAgent } from './server/agent-loader';
 import { log } from './utils/logger';
@@ -140,13 +139,16 @@ async function main() {
     // Resolve configuration (handles all input sources)
     const config = await configResolver.resolveConfig();
 
+    // Initialize machine ID early to ensure it's generated on first start
+    await identifierManager.getMachineId();
+
     // Initialize analytics after config is resolved
-    await posthog.initialize();
+    await telemetryManager.initialize();
 
     // Set user properties if authenticated
     const authState = await oauthManager.getAuthState();
     if (authState?.isAuthenticated) {
-      posthog.setUserProperties({
+      telemetryManager.setUserProperties({
         user_id: authState.userId,
         user_email: authState.userEmail,
       });
@@ -259,8 +261,8 @@ async function main() {
       try {
         await analyticsEvents.cliShutdown();
 
-        // Shutdown PostHog client
-        await posthog.shutdown();
+        // Shutdown telemetry
+        await telemetryManager.shutdown();
       } catch (_error) {
         // Ignore analytics errors during shutdown
       }

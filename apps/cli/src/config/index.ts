@@ -11,6 +11,7 @@ import { promptNumber, promptConfirm } from '../utils/user-input';
 import { log, configureLogger } from '../utils/logger';
 import { tokenManager } from '../auth/token-manager';
 import { oauthManager } from '../auth/oauth';
+import { analyticsEvents } from '../utils/telemetry';
 
 export class ConfigResolver {
   private config: Config | null = null;
@@ -74,7 +75,6 @@ export class ConfigResolver {
           log.info(`Configuration saved to ${CONFIG_FILE_NAME}`);
 
           // Track config storage event
-          const { analyticsEvents } = await import('../analytics/events');
           await analyticsEvents.storedConfigJson();
         }
       } else if (!configFile || configFile.appPort !== appPort) {
@@ -129,8 +129,8 @@ export class ConfigResolver {
       log.info('Missing required configuration. Starting interactive setup...');
 
       appPort = await promptNumber({
-        message: 'What port is your development app running on?',
-        hint: 'This is the port where your app is currently accessible (e.g. 3000 or 8080)',
+        message: 'What port is your development app running on? (e.g. 3000)',
+        hint: '',
         placeholder: '',
       });
     } else if (!appPort) {
@@ -220,7 +220,6 @@ export class ConfigResolver {
         log.info(`Configuration saved to ${CONFIG_FILE_NAME}`);
 
         // Track config storage event
-        const { analyticsEvents } = await import('../analytics/events');
         await analyticsEvents.storedConfigJson();
       }
     }
