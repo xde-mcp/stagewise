@@ -9,42 +9,62 @@ export const metadata = {
 
 Plugins enhance your experience with stagewise by giving you an easy way to add additional capabilities to your toolbar and more information for the agent.
 
-## How to integrate plugins
 
-Plugins are integrated by adding them to the config entry of your project's stagewise integration.
+## Automatically load plugins
 
-For component-based frameworks like React, an integration typically looks like this;
+By default, stagewise is configured to detect the right set of first-party plugins for you specific app without requiring you to do anything.
 
-```tsx
-// app/layout.tsx
-import type { Metadata } from 'next';
-import { StagewiseToolbar } from '@stagewise/toolbar-react';
-import ExamplePlugin from '@stagewise/plugin-example'; // <-- This is ann imported plugin
+This can be changed by setting the `autoPlugins` entry in the workspace's `stagewise.json` file.
 
+When starting the CLI, stagewise will understand the setup and used frameworks in your project to load the right plugins. In addition to this, you can still load additional plugins manually.
 
-export default function App() {
-  return (
-    <html lang="en">
-      <body>
-        <StagewiseToolbar config={{ plugins: [ExamplePlugin] }} /> // <-- Add them to the toolbar like this
-        {/* ... */}
-      </body>
-    </html>
-  );
+## Manually load additional plugins
+
+Plugins are integrated by adding them to the list of plugins in your workspace `stagewise.json` file.
+
+Plugins can be loaded through different methods:
+
+### Load from esm.sh (recommended)
+
+If you add plugin entries to your config simply by adding a string with the name of the plugin, it will automatically be loaded from esm.sh:
+
+```json
+{
+  plugins: [
+    "custom-plugin" // This will be loaded from esm.sh
+  ]
 }
 ```
 
+### Load from specific URL
 
-## Recommended plugins for your project
+If you want stagewise to load a plugin from a dedicated remote endpoint, create an object and configure name and url:
 
-We highly recommend adding a framework-dedicated plugin to your project in order to get even better results and a nicer experience.
+```json
+{
+  plugins: [
+    {
+      name: "custom-plugin",
+      url: "http://my-cdn.example.com/my-custom-plugin"
+    }
+  ]
+}
+```
 
-- We support and distribute support of the following frameworks:
-  - React & Next (`@stagewise-plugins/react`)
-  - Angular (`@stagewise-plugins/angular`)
-  - Vue & Nuxt (`@stagewise-plugins/vue`)
-- If your framework is not listed, don't worry! stagewise will work just fine.
-  - If you want to add improved support for an additional framework, feel free to create a plugin and tell us about it!
+### Load from local path
+
+For development purposes, it may be helpful to simply load the plugin from a local path:
+
+```json
+{
+  plugins: [
+    {
+      name: "custom-plugin",
+      path: "/user/account/documents/my-super-plugin/dist"
+    }
+  ]
+}
+```
 
 
 ## Community-created plugins

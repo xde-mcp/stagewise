@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev --turbo --port 3000",
+    "dev": "pnpm dlx stagewise@latest & next dev --turbo --port 3000",
     "start": "next start",
     "postinstall": "fumadocs-mdx"
   },
