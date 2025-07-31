@@ -167,7 +167,8 @@ export default function Home() {
 
               <div className="py-4">
                 <p className="mx-auto mb-2 font-medium text-sm text-zinc-600 dark:text-zinc-400">
-                  Run this command in the root of your dev app:
+                  To spawn the agent, run this command in the root of your dev
+                  app:
                 </p>
                 <Clipboard
                   text="npx stagewise"
