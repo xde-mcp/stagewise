@@ -161,7 +161,11 @@ export class TelemetryManager {
       };
 
       // Add user properties for full telemetry level
-      if (telemetryLevel === 'full' && this.userProperties.user_id && this.userProperties.user_email) {
+      if (
+        telemetryLevel === 'full' &&
+        this.userProperties.user_id &&
+        this.userProperties.user_email
+      ) {
         finalProperties.user_id = this.userProperties.user_id;
         finalProperties.user_email = this.userProperties.user_email;
       }
