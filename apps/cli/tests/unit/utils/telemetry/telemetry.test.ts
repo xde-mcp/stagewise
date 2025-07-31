@@ -180,7 +180,7 @@ describe('Unified TelemetryManager', () => {
       });
     });
 
-    it('should include user properties when telemetry level is full', async () => {
+    it('should capture events when telemetry level is full', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'full' });
       // Reset config to force reload with full level
       (telemetryManager as any).config = null;
@@ -198,8 +198,6 @@ describe('Unified TelemetryManager', () => {
         properties: {
           foo: 'bar',
           telemetry_level: 'full',
-          user_id: 'test-user',
-          user_email: 'test@example.com',
         },
       });
     });
@@ -484,7 +482,7 @@ describe('Unified TelemetryManager', () => {
       expect(userInput.promptConfirm).toHaveBeenCalledWith({
         message: 'Would you like to share usage data to help improve Stagewise?',
         default: true,
-        hint: 'This includes your user ID and email if authenticated',
+        hint: 'This includes your user ID and email if authenticated. Declining will collect pseudonymized data instead.',
       });
 
       expect(configPath.writeConfigFile).toHaveBeenCalledWith('telemetry.json', {
@@ -502,21 +500,19 @@ describe('Unified TelemetryManager', () => {
       });
     });
 
-    it('should prompt for anonymous telemetry and accept', async () => {
-      vi.mocked(userInput.promptConfirm)
-        .mockResolvedValueOnce(false) // Reject full telemetry
-        .mockResolvedValueOnce(true); // Accept anonymous telemetry
+    it('should prompt for full telemetry and decline (defaults to anonymous)', async () => {
+      vi.mocked(userInput.promptConfirm).mockResolvedValueOnce(false); // Reject full telemetry
       
       // Initialize telemetry manager to enable event capture
       await telemetryManager.initialize();
 
       await telemetryManager.promptForOptIn();
 
-      expect(userInput.promptConfirm).toHaveBeenCalledTimes(2);
-      expect(userInput.promptConfirm).toHaveBeenNthCalledWith(2, {
-        message: 'Would you like to share anonymous usage data instead?',
+      expect(userInput.promptConfirm).toHaveBeenCalledTimes(1);
+      expect(userInput.promptConfirm).toHaveBeenCalledWith({
+        message: 'Would you like to share usage data to help improve Stagewise?',
         default: true,
-        hint: 'This only includes a pseudonymized machine ID',
+        hint: 'This includes your user ID and email if authenticated. Declining will collect pseudonymized data instead.',
       });
 
       expect(configPath.writeConfigFile).toHaveBeenCalledWith('telemetry.json', {
@@ -534,39 +530,13 @@ describe('Unified TelemetryManager', () => {
       });
     });
 
-    it('should handle opt-out and send config event', async () => {
-      vi.mocked(userInput.promptConfirm)
-        .mockResolvedValueOnce(false) // Reject full telemetry
-        .mockResolvedValueOnce(false); // Reject anonymous telemetry
 
-      await telemetryManager.promptForOptIn();
-
-      expect(userInput.promptConfirm).toHaveBeenCalledTimes(2);
-
-      expect(configPath.writeConfigFile).toHaveBeenCalledWith('telemetry.json', {
-        level: 'off',
-      });
-
-      // Should send telemetry-config-set event with off level
-      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
-        distinctId: 'test-machine-id',
-        event: 'cli-telemetry-config-set',
-        properties: {
-          configured_level: 'off',
-          triggered_by: 'cli-prompt',
-          telemetry_level: 'off',
-        },
-      });
-    });
-
-    it('should initialize PostHog before sending config event if not initialized and opting out', async () => {
+    it('should initialize PostHog before sending config event if not initialized', async () => {
       // Reset initialized state
       (telemetryManager as any).initialized = false;
       (telemetryManager as any).posthogClient = null;
 
-      vi.mocked(userInput.promptConfirm)
-        .mockResolvedValueOnce(false) // Reject full telemetry
-        .mockResolvedValueOnce(false); // Reject anonymous telemetry
+      vi.mocked(userInput.promptConfirm).mockResolvedValueOnce(false); // Reject full telemetry
 
       await telemetryManager.promptForOptIn();
 
@@ -578,9 +548,9 @@ describe('Unified TelemetryManager', () => {
         distinctId: 'test-machine-id',
         event: 'cli-telemetry-config-set',
         properties: {
-          configured_level: 'off',
+          configured_level: 'anonymous',
           triggered_by: 'cli-prompt',
-          telemetry_level: 'off',
+          telemetry_level: 'anonymous',
         },
       });
     });
