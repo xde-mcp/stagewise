@@ -4,6 +4,7 @@ import { log } from '../utils/logger.js';
 import configResolver from '@/config/index.js';
 import { Agent } from '@stagewise/agent-client';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
+import { analyticsEvents } from '@/utils/telemetry.js';
 
 let agentInstance: Agent | null = null;
 
@@ -38,6 +39,15 @@ export async function loadAndInitializeAgent(
       accessToken,
       agentDescription:
         'Stagewise CLI Agent - Provides development tools and codebase interaction capabilities',
+      onEvent: (event) => {
+        switch (event.type) {
+          case 'agent_prompt_triggered':
+            analyticsEvents.sendPrompt();
+            break;
+          default:
+            break;
+        }
+      },
     });
 
     // Initialize agent with Express integration

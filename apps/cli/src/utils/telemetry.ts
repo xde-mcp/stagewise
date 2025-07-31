@@ -72,7 +72,7 @@ export class TelemetryManager {
       if (
         this.userProperties.user_id &&
         this.userProperties.user_email &&
-        this.config?.level === 'full'
+        (await this.getLevel()) === 'full'
       ) {
         this.posthogClient.identify({
           distinctId: this.userProperties.user_id,
@@ -159,16 +159,6 @@ export class TelemetryManager {
         ...properties,
         telemetry_level: telemetryLevel,
       };
-
-      // Add user properties for full telemetry level
-      if (
-        telemetryLevel === 'full' &&
-        this.userProperties.user_id &&
-        this.userProperties.user_email
-      ) {
-        finalProperties.user_id = this.userProperties.user_id;
-        finalProperties.user_email = this.userProperties.user_email;
-      }
 
       this.posthogClient.capture({
         distinctId: machineId, // Consistently use machineId as distinctId
@@ -258,7 +248,7 @@ export class TelemetryManager {
     const acceptFull = await promptConfirm({
       message: 'Would you like to share usage data to help improve Stagewise?',
       default: true,
-      hint: 'This includes your user ID and email if authenticated',
+      hint: 'This includes your user ID and email if authenticated. Declining will collect pseudonymized data instead.',
     });
 
     let level: TelemetryLevel;
@@ -269,21 +259,17 @@ export class TelemetryManager {
         chalk.green('\n✓ Thank you! Telemetry has been set to "full".'),
       );
     } else {
-      const acceptAnonymous = await promptConfirm({
-        message: 'Would you like to share anonymous usage data instead?',
-        default: true,
-        hint: 'This only includes a pseudonymized machine ID',
-      });
-
-      if (acceptAnonymous) {
-        level = 'anonymous';
-        console.log(
-          chalk.green('\n✓ Thank you! Telemetry has been set to "anonymous".'),
-        );
-      } else {
-        level = 'off';
-        console.log(chalk.yellow('\n✓ Telemetry has been disabled.'));
-      }
+      level = 'anonymous';
+      console.log(
+        chalk.green(
+          '\n✓ Telemetry has been set to "anonymous" (pseudonymized data only).',
+        ),
+      );
+      console.log(
+        chalk.gray(
+          '  To disable data collection completely, run: stagewise telemetry set off',
+        ),
+      );
     }
 
     // Initialize PostHog if needed to send the configuration event
