@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.1.2
+
+### Patch Changes
+
+- d0b5142: Ask user for preferred telemetry settings
+
 ## 0.1.1
 
 ### Patch Changes
