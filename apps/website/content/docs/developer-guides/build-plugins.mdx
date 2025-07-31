@@ -66,7 +66,7 @@ export default ExamplePlugin;
 
 See the [full interface in the codebase](https://github.com/stagewise-io/stagewise/blob/main/toolbar/core/src/plugin.ts) for advanced hooks and MCP integration.
 
-## 3. Building Plugin UI with `@plugin-sdk`
+## 3. Building Plugin UI with `@stagewise/plugin-sdk`
 
 stagewise provides a set of UI primitives for building plugin panels:
 
@@ -78,7 +78,7 @@ stagewise provides a set of UI primitives for building plugin panels:
 #### Example Usage
 ```tsx
 // src/component.tsx
-import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/toolbar/plugin-sdk';
+import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/plugin-sdk';
 
 export const ExampleComponent = () => {
   const toolbar = useToolbar();
@@ -172,7 +172,7 @@ Once your plugin is ready, you can publish it to npm or continue using it locall
 The plugin:
 ```tsx
 // src/index.tsx
-import type { ToolbarPlugin } from '@stagewise/toolbar';
+import type { ToolbarPlugin } from '@stagewise/plugin-sdk';
 import { ExampleComponent } from './component';
 
 const ExamplePlugin: ToolbarPlugin = {
@@ -186,7 +186,7 @@ const ExamplePlugin: ToolbarPlugin = {
 export default ExamplePlugin;
 
 // src/component.tsx
-import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/toolbar/plugin-sdk';
+import { Panel, PanelHeader, PanelContent, Button, useToolbar } from '@stagewise/plugin-sdk';
 
 export const ExampleComponent = () => {
   const toolbar = useToolbar();
@@ -203,35 +203,8 @@ export const ExampleComponent = () => {
 };
 ```
 
-Using the plugin in your next-app:
-
-```tsx
-// app/layout.tsx
-import type { Metadata } from 'next';
-import { StagewiseToolbar } from '@stagewise/toolbar-next';
-import ExamplePlugin from '@stagewise/plugin-example'; // <-- replace this with your plugin-name
-
-export const metadata: Metadata = {
-  title: 'My Next.js App',
-  description: 'An app using stagewise plugins',
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
-      <body>
-        <StagewiseToolbar config={{ plugins: [ExamplePlugin] }} />
-        {children}
-      </body>
-    </html>
-  );
-}
-```
+To test and integrate your plugin into stagewise, [add it as a plugin with a path-location](/docs/advanced-usage/install-plugins#load-from-local-path).
 
 ---
 
-For more advanced examples and API details, see the [stagewise repository](https://github.com/stagewise-io/stagewise) and the [ToolbarPlugin interface](https://github.com/stagewise-io/stagewise/blob/main/toolbar/core/src/plugin.ts). 
+For more advanced examples and API details, see the [stagewise repository](https://github.com/stagewise-io/stagewise) and the [ToolbarPlugin interface](https://github.com/stagewise-io/stagewise/blob/main/toolbar/core/src/plugin-sdk/plugin.ts). 

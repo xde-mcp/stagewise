@@ -28,14 +28,13 @@ The stagewise toolbar loads, you type and send a prompt, but nothing arrives in 
 **Probable Cause:**
 Your prompt was sent to a different running instance (window) of the IDE.
 
-**Workaround:**
+In some cases, the IDE might be in an incompatible state and not able to receive.
+
+**Workarounds:**
 
 * Close or deactivate any duplicate IDE sessions before sending prompts.
 
-**Next Steps:**
-
-* Tracked under issue [#151](https://github.com/stagewise-io/stagewise/issues/151).
-* A permanent fix is in progress and will be released soon.
+* Sounds stupid but: Simply retry.
 
 > ℹ️ If this workaround does not solve your problem, please open a PR including full browser console logs captured when you click **Send**.
 
@@ -48,11 +47,6 @@ stagewise toolbar fails to initialize or send prompts when connecting via SSH re
 
 **Resolution:**
 
-* *Currently under investigation.* No official workaround available.
-
-**Next Steps:**
-
-* Tracked under issue [#172](https://github.com/stagewise-io/stagewise/issues/172).
-* We are working on compatibility support for SSH‑remote workflows.
+* stagewise must run on localhost. Accessing stagewise through SSH thus doesn't work.
 
 
