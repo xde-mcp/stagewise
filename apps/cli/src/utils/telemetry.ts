@@ -51,12 +51,6 @@ export class TelemetryManager {
       return;
     }
 
-    const telemetryLevel = await this.getLevel();
-    if (telemetryLevel === 'off') {
-      log.debug('Telemetry is disabled, PostHog will not be initialized');
-      return;
-    }
-
     const apiKey = process.env.POSTHOG_API_KEY;
     if (!apiKey) {
       log.debug('POSTHOG_API_KEY not found, analytics disabled');
@@ -141,14 +135,21 @@ export class TelemetryManager {
     properties?: EventProperties,
   ): Promise<void> {
     try {
+      // Initialize PostHog if not already initialized
+      await this.initialize();
+
       const telemetryLevel = await this.getLevel();
 
       // Special case: always send telemetry config events even when turning off
       const isConfigEvent = eventName === 'cli-telemetry-config-set';
-      const isTurningOff =
-        isConfigEvent && properties?.configured_level === 'off';
 
-      if (!isTurningOff && (telemetryLevel === 'off' || !this.posthogClient)) {
+      // Skip non-config events when telemetry is off or PostHog client is not available
+      if (!isConfigEvent && (telemetryLevel === 'off' || !this.posthogClient)) {
+        return;
+      }
+
+      // If PostHog client is not available (e.g., no API key), skip all events
+      if (!this.posthogClient) {
         return;
       }
 
@@ -159,13 +160,17 @@ export class TelemetryManager {
         telemetry_level: telemetryLevel,
       };
 
-      if (this.posthogClient) {
-        this.posthogClient.capture({
-          distinctId: machineId, // Consistently use machineId as distinctId
-          event: eventName,
-          properties: finalProperties,
-        });
+      // Add user properties for full telemetry level
+      if (telemetryLevel === 'full' && this.userProperties.user_id && this.userProperties.user_email) {
+        finalProperties.user_id = this.userProperties.user_id;
+        finalProperties.user_email = this.userProperties.user_email;
       }
+
+      this.posthogClient.capture({
+        distinctId: machineId, // Consistently use machineId as distinctId
+        event: eventName,
+        properties: finalProperties,
+      });
     } catch (error) {
       log.debug(`[TELEMETRY] Failed to capture analytics event: ${error}`);
     }
@@ -278,9 +283,7 @@ export class TelemetryManager {
     }
 
     // Initialize PostHog if needed to send the configuration event
-    if (!this.initialized && level === 'off') {
-      await this.initialize();
-    }
+    await this.initialize();
 
     // Save the configuration
     await this.setLevel(level);

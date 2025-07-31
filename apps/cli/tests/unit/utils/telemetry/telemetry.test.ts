@@ -130,12 +130,16 @@ describe('Unified TelemetryManager', () => {
       });
     });
 
-    it('should not initialize PostHog when telemetry is off', async () => {
+    it('should initialize PostHog even when telemetry is off (for config events)', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'off' });
 
       await telemetryManager.initialize();
 
-      expect(PostHog).not.toHaveBeenCalled();
+      expect(PostHog).toHaveBeenCalledWith('test-api-key', {
+        host: 'https://test.posthog.com',
+        flushAt: 1,
+        flushInterval: 0,
+      });
     });
 
     it('should not initialize PostHog without API key', async () => {
@@ -208,6 +212,25 @@ describe('Unified TelemetryManager', () => {
       await telemetryManager.capture('test-event', { foo: 'bar' });
 
       expect(mockPostHogInstance.capture).not.toHaveBeenCalled();
+    });
+
+    it('should capture config events even when telemetry is off', async () => {
+      vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'off' });
+      // Reset config and initialization to force reload
+      (telemetryManager as any).config = null;
+      (telemetryManager as any).initialized = false;
+      (telemetryManager as any).posthogClient = null;
+      
+      await telemetryManager.capture('cli-telemetry-config-set', { configured_level: 'off' });
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-telemetry-config-set',
+        properties: {
+          configured_level: 'off',
+          telemetry_level: 'off',
+        },
+      });
     });
 
     it('should not include user properties when telemetry level is anonymous', async () => {
