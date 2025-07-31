@@ -3,6 +3,7 @@ import { TelemetryManager } from '../../../../src/utils/telemetry';
 import * as configPath from '../../../../src/utils/config-path';
 import { identifierManager } from '../../../../src/utils/identifier';
 import { PostHog } from 'posthog-node';
+import * as userInput from '../../../../src/utils/user-input';
 
 vi.mock('../../../../src/utils/config-path', () => ({
   readConfigFile: vi.fn(),
@@ -28,6 +29,10 @@ vi.mock('../../../../src/utils/logger', () => ({
     info: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock('../../../../src/utils/user-input', () => ({
+  promptConfirm: vi.fn(),
 }));
 
 describe('Unified TelemetryManager', () => {
@@ -125,12 +130,16 @@ describe('Unified TelemetryManager', () => {
       });
     });
 
-    it('should not initialize PostHog when telemetry is off', async () => {
+    it('should initialize PostHog even when telemetry is off (for config events)', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'off' });
 
       await telemetryManager.initialize();
 
-      expect(PostHog).not.toHaveBeenCalled();
+      expect(PostHog).toHaveBeenCalledWith('test-api-key', {
+        host: 'https://test.posthog.com',
+        flushAt: 1,
+        flushInterval: 0,
+      });
     });
 
     it('should not initialize PostHog without API key', async () => {
@@ -171,7 +180,7 @@ describe('Unified TelemetryManager', () => {
       });
     });
 
-    it('should include user properties when telemetry level is full', async () => {
+    it('should capture events when telemetry level is full', async () => {
       vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'full' });
       // Reset config to force reload with full level
       (telemetryManager as any).config = null;
@@ -189,8 +198,6 @@ describe('Unified TelemetryManager', () => {
         properties: {
           foo: 'bar',
           telemetry_level: 'full',
-          user_id: 'test-user',
-          user_email: 'test@example.com',
         },
       });
     });
@@ -203,6 +210,25 @@ describe('Unified TelemetryManager', () => {
       await telemetryManager.capture('test-event', { foo: 'bar' });
 
       expect(mockPostHogInstance.capture).not.toHaveBeenCalled();
+    });
+
+    it('should capture config events even when telemetry is off', async () => {
+      vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'off' });
+      // Reset config and initialization to force reload
+      (telemetryManager as any).config = null;
+      (telemetryManager as any).initialized = false;
+      (telemetryManager as any).posthogClient = null;
+      
+      await telemetryManager.capture('cli-telemetry-config-set', { configured_level: 'off' });
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-telemetry-config-set',
+        properties: {
+          configured_level: 'off',
+          telemetry_level: 'off',
+        },
+      });
     });
 
     it('should not include user properties when telemetry level is anonymous', async () => {
@@ -283,6 +309,21 @@ describe('Unified TelemetryManager', () => {
         event: 'cli-telemetry-config-set',
         properties: {
           configured_level: 'full',
+          triggered_by: 'command',
+          telemetry_level: 'anonymous',
+        },
+      });
+    });
+
+    it('should capture telemetry config set event with cli-prompt trigger', async () => {
+      await telemetryManager.telemetryConfigSet('anonymous', 'cli-prompt');
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-telemetry-config-set',
+        properties: {
+          configured_level: 'anonymous',
+          triggered_by: 'cli-prompt',
           telemetry_level: 'anonymous',
         },
       });
@@ -352,6 +393,163 @@ describe('Unified TelemetryManager', () => {
         distinctId: 'test-machine-id',
         event: 'cli-shutdown',
         properties: {
+          telemetry_level: 'anonymous',
+        },
+      });
+    });
+
+    it('should capture CLI auth initiated event - automatic', async () => {
+      await telemetryManager.cliAuthInitiated(true);
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-auth-initiated',
+        properties: {
+          initiated_automatically: true,
+          telemetry_level: 'anonymous',
+        },
+      });
+    });
+
+    it('should capture CLI auth initiated event - manual', async () => {
+      await telemetryManager.cliAuthInitiated(false);
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-auth-initiated',
+        properties: {
+          initiated_automatically: false,
+          telemetry_level: 'anonymous',
+        },
+      });
+    });
+
+    it('should capture CLI auth completed event - automatic', async () => {
+      await telemetryManager.cliAuthCompleted(true);
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-auth-completed',
+        properties: {
+          initiated_automatically: true,
+          telemetry_level: 'anonymous',
+        },
+      });
+    });
+
+    it('should capture CLI auth completed event - manual', async () => {
+      await telemetryManager.cliAuthCompleted(false);
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-auth-completed',
+        properties: {
+          initiated_automatically: false,
+          telemetry_level: 'anonymous',
+        },
+      });
+    });
+  });
+
+  describe('Telemetry opt-in flow', () => {
+    let consoleLogSpy: any;
+
+    beforeEach(() => {
+      consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should check if telemetry has been configured', async () => {
+      vi.mocked(configPath.readConfigFile).mockResolvedValue({ level: 'full' });
+      expect(await telemetryManager.hasConfigured()).toBe(true);
+
+      vi.mocked(configPath.readConfigFile).mockResolvedValue(null);
+      expect(await telemetryManager.hasConfigured()).toBe(false);
+    });
+
+    it('should prompt for full telemetry and accept', async () => {
+      vi.mocked(userInput.promptConfirm).mockResolvedValueOnce(true); // Accept full telemetry
+      
+      // Initialize telemetry manager to enable event capture
+      await telemetryManager.initialize();
+
+      await telemetryManager.promptForOptIn();
+
+      expect(userInput.promptConfirm).toHaveBeenCalledTimes(1);
+      expect(userInput.promptConfirm).toHaveBeenCalledWith({
+        message: 'Would you like to share usage data to help improve Stagewise?',
+        default: true,
+        hint: 'This includes your user ID and email if authenticated. Declining will collect pseudonymized data instead.',
+      });
+
+      expect(configPath.writeConfigFile).toHaveBeenCalledWith('telemetry.json', {
+        level: 'full',
+      });
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-telemetry-config-set',
+        properties: {
+          configured_level: 'full',
+          triggered_by: 'cli-prompt',
+          telemetry_level: 'full', // Level is already updated when telemetryConfigSet is called
+        },
+      });
+    });
+
+    it('should prompt for full telemetry and decline (defaults to anonymous)', async () => {
+      vi.mocked(userInput.promptConfirm).mockResolvedValueOnce(false); // Reject full telemetry
+      
+      // Initialize telemetry manager to enable event capture
+      await telemetryManager.initialize();
+
+      await telemetryManager.promptForOptIn();
+
+      expect(userInput.promptConfirm).toHaveBeenCalledTimes(1);
+      expect(userInput.promptConfirm).toHaveBeenCalledWith({
+        message: 'Would you like to share usage data to help improve Stagewise?',
+        default: true,
+        hint: 'This includes your user ID and email if authenticated. Declining will collect pseudonymized data instead.',
+      });
+
+      expect(configPath.writeConfigFile).toHaveBeenCalledWith('telemetry.json', {
+        level: 'anonymous',
+      });
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-telemetry-config-set',
+        properties: {
+          configured_level: 'anonymous',
+          triggered_by: 'cli-prompt',
+          telemetry_level: 'anonymous',
+        },
+      });
+    });
+
+
+    it('should initialize PostHog before sending config event if not initialized', async () => {
+      // Reset initialized state
+      (telemetryManager as any).initialized = false;
+      (telemetryManager as any).posthogClient = null;
+
+      vi.mocked(userInput.promptConfirm).mockResolvedValueOnce(false); // Reject full telemetry
+
+      await telemetryManager.promptForOptIn();
+
+      // Should have initialized PostHog
+      expect(PostHog).toHaveBeenCalled();
+
+      // Should have sent config event
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
+        distinctId: 'test-machine-id',
+        event: 'cli-telemetry-config-set',
+        properties: {
+          configured_level: 'anonymous',
+          triggered_by: 'cli-prompt',
           telemetry_level: 'anonymous',
         },
       });

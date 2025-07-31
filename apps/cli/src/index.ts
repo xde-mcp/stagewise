@@ -51,7 +51,11 @@ async function main() {
 
           try {
             const port = 3100;
-            const tokenData = await oauthManager.initiateOAuthFlow(port);
+            const tokenData = await oauthManager.initiateOAuthFlow(
+              port,
+              undefined,
+              false,
+            );
             log.info(`Successfully authenticated as: ${tokenData.userEmail}`);
             // Give the auth server time to fully shut down
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -60,7 +64,7 @@ async function main() {
             // Authentication failed - error already logged by oauth manager
             process.exit(1);
           }
-          return;
+          break; // Although unreachable, satisfies linter
         }
 
         case 'logout': {
@@ -122,7 +126,10 @@ async function main() {
           log.info(`Telemetry level set to: ${telemetryLevel}`);
 
           // Track telemetry configuration change
-          await analyticsEvents.telemetryConfigSet(telemetryLevel as any);
+          await analyticsEvents.telemetryConfigSet(
+            telemetryLevel as any,
+            'command',
+          );
 
           return;
         }
@@ -142,8 +149,13 @@ async function main() {
     // Initialize machine ID early to ensure it's generated on first start
     await identifierManager.getMachineId();
 
-    // Initialize analytics after config is resolved
-    await telemetryManager.initialize();
+    // Check if telemetry has been configured, if not prompt for opt-in (unless in silent mode)
+    if (!(await telemetryManager.hasConfigured())) {
+      if (!silent) {
+        await telemetryManager.promptForOptIn();
+      }
+      // In silent mode, telemetry will use the default level (anonymous)
+    }
 
     // Set user properties if authenticated
     const authState = await oauthManager.getAuthState();
@@ -153,6 +165,9 @@ async function main() {
         user_email: authState.userEmail,
       });
     }
+
+    // Initialize analytics after config is resolved and opt-in handled
+    await telemetryManager.initialize();
 
     // Track CLI start
     const hasConfigFile = await configFileExists(config.dir);

@@ -33,6 +33,13 @@ vi.mock('../../../src/auth/token-manager', () => ({
   },
 }));
 
+vi.mock('../../../src/utils/telemetry', () => ({
+  analyticsEvents: {
+    cliAuthInitiated: vi.fn(),
+    cliAuthCompleted: vi.fn(),
+  },
+}));
+
 describe('OAuthManager', () => {
   beforeEach(() => {
     vi.resetModules();

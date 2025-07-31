@@ -4,6 +4,7 @@ import { URL } from 'node:url';
 import { log } from '../utils/logger';
 import { tokenManager, type TokenData } from './token-manager';
 import open from 'open';
+import { analyticsEvents } from '../utils/telemetry';
 
 // Configuration
 const STAGEWISE_CONSOLE_URL =
@@ -42,11 +43,15 @@ export class OAuthManager {
   private connections = new Set<any>();
   private refreshPromise: Promise<void> | null = null;
   private cachedAccessToken: string | null = null;
+  private authInitiatedAutomatically = false;
 
   async initiateOAuthFlow(
     port: number,
     successRedirectUrl?: string,
+    initiatedAutomatically = false,
   ): Promise<TokenData> {
+    // Store the flag for use in the completion event
+    this.authInitiatedAutomatically = initiatedAutomatically;
     // Check if user is already authenticated and clear old tokens
     const existingToken = await tokenManager.getStoredToken();
     if (existingToken) {
@@ -71,6 +76,9 @@ export class OAuthManager {
 
     // Build redirect URI
     const redirectUri = `http://localhost:${port}/auth/callback`;
+
+    // Track auth initiated event
+    await analyticsEvents.cliAuthInitiated(initiatedAutomatically);
 
     // Start callback server first - this will throw if it fails
     const authCodePromise = this.startCallbackServer(port, successRedirectUrl);
@@ -160,6 +168,9 @@ export class OAuthManager {
 
       // Store tokens
       await tokenManager.storeToken(tokenData);
+
+      // Track auth completed event
+      await analyticsEvents.cliAuthCompleted(this.authInitiatedAutomatically);
 
       return tokenData;
     } catch (error) {
