@@ -1,5 +1,6 @@
 import type { Application } from 'express';
 import type { Server } from 'node:http';
+import { printInfoMessages } from '@/utils/print-info-messages.js';
 import { log } from '../utils/logger.js';
 import configResolver from '@/config/index.js';
 import { Agent } from '@stagewise/agent-client';
@@ -40,6 +41,7 @@ export async function loadAndInitializeAgent(
       agentDescription:
         'Stagewise CLI Agent - Provides development tools and codebase interaction capabilities',
       onEvent: (event) => {
+        printInfoMessages(event);
         switch (event.type) {
           case 'agent_prompt_triggered':
             analyticsEvents.sendPrompt();
