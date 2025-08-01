@@ -5,10 +5,13 @@ import { source } from '@/lib/source';
 
 export const metadata = {
   title: {
-    template: 'stagewise Docs | %s',
+    template: '%s | stagewise Docs',
     default: 'stagewiseDocs', // a default is required when creating a template
   },
-  description: 'Learn how to use Stagewise.',
+  description: {
+    template: '%s',
+    default: 'stagewise docs page',
+  },
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
