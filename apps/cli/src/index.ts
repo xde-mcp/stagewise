@@ -149,14 +149,6 @@ async function main() {
     // Initialize machine ID early to ensure it's generated on first start
     await identifierManager.getMachineId();
 
-    // Check if telemetry has been configured, if not prompt for opt-in (unless in silent mode)
-    if (!(await telemetryManager.hasConfigured())) {
-      if (!silent) {
-        await telemetryManager.promptForOptIn();
-      }
-      // In silent mode, telemetry will use the default level (anonymous)
-    }
-
     // Set user properties if authenticated
     const authState = await oauthManager.getAuthState();
     if (authState?.isAuthenticated) {
