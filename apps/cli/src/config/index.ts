@@ -11,7 +11,7 @@ import { promptNumber, promptConfirm } from '../utils/user-input';
 import { log, configureLogger } from '../utils/logger';
 import { tokenManager } from '../auth/token-manager';
 import { oauthManager } from '../auth/oauth';
-import { analyticsEvents } from '../utils/telemetry';
+import { analyticsEvents, telemetryManager } from '../utils/telemetry';
 
 export class ConfigResolver {
   private config: Config | null = null;
@@ -144,6 +144,38 @@ export class ConfigResolver {
       throw new Error('Stagewise port and app port cannot be the same');
     }
 
+    // Ask to save config if not exists and not silent
+    if (!args.silent && !(await configFileExists(args.workspace))) {
+      const shouldSave = await promptConfirm({
+        message: `Would you like to save this configuration to ${CONFIG_FILE_NAME}?`,
+        hint: "This will save your settings so you don't have to enter them again",
+        default: true,
+      });
+
+      if (shouldSave) {
+        const configToSave: ConfigFile = {
+          port,
+          appPort,
+          autoPlugins,
+          plugins,
+        };
+
+        await saveConfigFile(args.workspace, configToSave);
+        log.info(`Configuration saved to ${CONFIG_FILE_NAME}`);
+
+        // Track config storage event
+        await analyticsEvents.storedConfigJson();
+      }
+    }
+
+    // Check if telemetry has been configured, if not prompt for opt-in (unless in silent mode)
+    if (!(await telemetryManager.hasConfigured())) {
+      if (!args.silent) {
+        await telemetryManager.promptForOptIn();
+      }
+      // In silent mode, telemetry will use the default level (anonymous)
+    }
+
     // Resolve authentication token
     let token: string | undefined;
 
@@ -199,30 +231,6 @@ export class ConfigResolver {
             );
           }
         }
-      }
-    }
-
-    // Ask to save config if not exists and not silent
-    if (!args.silent && !(await configFileExists(args.workspace))) {
-      const shouldSave = await promptConfirm({
-        message: `Would you like to save this configuration to ${CONFIG_FILE_NAME}?`,
-        hint: "This will save your settings so you don't have to enter them again",
-        default: true,
-      });
-
-      if (shouldSave) {
-        const configToSave: ConfigFile = {
-          port,
-          appPort,
-          autoPlugins,
-          plugins,
-        };
-
-        await saveConfigFile(args.workspace, configToSave);
-        log.info(`Configuration saved to ${CONFIG_FILE_NAME}`);
-
-        // Track config storage event
-        await analyticsEvents.storedConfigJson();
       }
     }
 
