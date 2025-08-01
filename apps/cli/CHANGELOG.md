@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.1.4
+
+### Patch Changes
+
+- 66354ae: Removed issues from the setup flow and added a stagewise banner.
+
 ## 0.1.3
 
 ### Patch Changes
