@@ -1,5 +1,11 @@
 # @stagewise/tools-client
 
+## 0.0.4
+
+### Patch Changes
+
+- ba78283: Add user-friendly error messages and log credit usage.
+
 ## 0.0.3
 
 ### Patch Changes
