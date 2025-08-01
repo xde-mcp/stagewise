@@ -530,12 +530,14 @@ export class Agent {
       // Count and emit response metrics
       const { hasToolCalls, toolCallCount } = countToolCalls(r.messages);
       this.eventEmitter.emit(
-        EventFactories.agentResponseReceived(
-          r.messages.length,
+        EventFactories.agentResponseReceived({
+          messageCount: r.messages.length,
           hasToolCalls,
           toolCallCount,
           responseTime,
-        ),
+          reason: f,
+          credits: r.credits,
+        }),
       );
 
       // Process response messages

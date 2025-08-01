@@ -21,10 +21,19 @@ export function printBanner(silent: boolean): void {
     return;
   }
 
+  const version = getVersion();
+
+  /**
+   * This function logs an ASCII art representation of the logo to the console.
+   * It uses chalk to apply a blue and purple gradient, similar to the provided image,
+   * with a white-filled center.
+   */
   console.log();
+  console.log(chalk.blue.bold('     STAGEWISE') + chalk.gray(` v${version}`));
   console.log(
-    `stagewise ${chalk.gray('- the frontend coding agent for production codebases.')}`,
+    chalk.gray('     The frontend coding agent for production codebases'),
   );
+  console.log();
   console.log();
 }
 

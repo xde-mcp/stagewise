@@ -1,5 +1,6 @@
 import type { AgentStateType } from '@stagewise/agent-interface/agent';
 import type { UserMessage } from '@stagewise/agent-interface/agent';
+import type { RouterOutputs } from '@stagewise/api-client';
 
 // Event types for analytics tracking
 export type AgentEventType =
@@ -61,6 +62,9 @@ export interface AgentResponseReceivedEvent extends BaseAgentEvent {
     hasToolCalls: boolean;
     toolCallCount: number;
     responseTime: number;
+    credits: Awaited<
+      NonNullable<RouterOutputs['agent']['callAgent']['response']>
+    >['credits'];
   };
 }
 
@@ -164,12 +168,22 @@ export const EventFactories = {
     },
   }),
 
-  agentResponseReceived: (
-    messageCount: number,
-    hasToolCalls: boolean,
-    toolCallCount: number,
-    responseTime: number,
-  ): AgentResponseReceivedEvent => ({
+  agentResponseReceived: ({
+    messageCount,
+    hasToolCalls,
+    toolCallCount,
+    responseTime,
+    credits,
+  }: {
+    messageCount: number;
+    hasToolCalls: boolean;
+    toolCallCount: number;
+    responseTime: number;
+    reason: string;
+    credits: Awaited<
+      NonNullable<RouterOutputs['agent']['callAgent']['response']>
+    >['credits'];
+  }): AgentResponseReceivedEvent => ({
     type: 'agent_response_received',
     timestamp: new Date(),
     data: {
@@ -177,6 +191,7 @@ export const EventFactories = {
       hasToolCalls,
       toolCallCount,
       responseTime,
+      credits,
     },
   }),
 

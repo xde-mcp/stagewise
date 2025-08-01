@@ -1,3 +1,9 @@
+import {
+  isTRPCClientError,
+  isCustomTRPCError,
+  getCustomErrorData,
+} from '@stagewise/api-client';
+
 /**
  * Utility functions for formatting and handling errors in the agent
  */
@@ -28,6 +34,22 @@ function sanitizeErrorMessage(message: string): string {
  */
 function extractErrorMessage(error: unknown): string {
   if (!error) return 'Unknown error';
+
+  if (isTRPCClientError(error)) {
+    if (isCustomTRPCError(error)) {
+      const customErrorData = getCustomErrorData(error);
+      switch (customErrorData?.code) {
+        case 'INSUFFICIENT_CREDITS':
+          return `Insufficient credits. Visit https://console.stagewise.io to buy more credits.`;
+        case 'RATE_LIMIT_EXCEEDED':
+          return `Rate limit exceeded. Please reach out to https://discord.gg/6gjx9ESbhf to resolve this issue.`;
+        case 'LLM_PROVIDER_ERROR':
+          return `There is an issue with ${customErrorData.details.provider}. Please reach out to https://discord.gg/6gjx9ESbhf to resolve this issue.`;
+        default:
+          return error.message;
+      }
+    }
+  }
 
   if (error instanceof Error) {
     // For TRPC errors, try to get the detailed message

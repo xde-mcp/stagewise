@@ -53,11 +53,7 @@ export async function readFileTool(
     should_read_entire_file,
     start_line_one_indexed,
     end_line_one_indexed_inclusive,
-    explanation,
   } = params;
-
-  // Log the explanation for debugging/audit purposes
-  console.log(`[readFileTool] ${explanation}`);
 
   // Validate required parameters
   if (!target_file) {
@@ -132,13 +128,6 @@ export async function readFileTool(
             sizeCheck.error || `File is too large to read: ${target_file}`,
           error: 'FILE_TOO_LARGE',
         };
-      }
-
-      // Log file size if available
-      if (sizeCheck.fileSize !== undefined) {
-        console.log(
-          `[readFileTool] Reading file ${target_file} (${sizeCheck.fileSize} bytes)`,
-        );
       }
     }
 

@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@stagewise/agent-interface": "workspace:*",
-    "@stagewise/api-client": "0.0.2",
+    "@stagewise/api-client": "0.1.0",
     "@stagewise/agent-prompt-snippets": "workspace:*",
     "@stagewise/agent-runtime-interface": "workspace:*",
     "@stagewise/agent-tools": "workspace:*",
