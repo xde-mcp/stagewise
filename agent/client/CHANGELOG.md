@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.0.1
+
+### Patch Changes
+
+- ba78283: Add user-friendly error messages and log credit usage.
+
 ## 0.0.9
 
 ### Patch Changes
