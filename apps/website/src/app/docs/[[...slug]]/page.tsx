@@ -11,6 +11,7 @@ import { getMDXComponents } from '@/mdx-components';
 import { CopyMarkdownButton } from '@/components/copy-markdown-button';
 import { readFile } from 'node:fs/promises';
 import { join, normalize, relative } from 'node:path';
+import type { Metadata } from 'next';
 
 // Sanitize slug to prevent path traversal attacks
 function sanitizeSlug(slug: string[] | undefined): string {
@@ -106,8 +107,23 @@ export async function generateMetadata(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  return {
+  const metadata: Metadata = {
     title: page.data.title,
     description: page.data.description,
+    openGraph: {
+      title: page.data.title,
+      description: page.data.description,
+      locale: 'en_US',
+    },
+    twitter: {
+      title: page.data.title,
+      description: page.data.description,
+      creator: '@stagewise_io',
+    },
+    category: 'Documentation',
+    applicationName: 'stagewise',
+    publisher: 'stagewise',
   };
+
+  return metadata;
 }
