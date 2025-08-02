@@ -27,6 +27,16 @@ const WEB_APP_DEPS = [
   'htmx',
 ];
 
+export const DEPRECATED_TOOLBAR_PACKAGES = [
+  '@stagewise/toolbar',
+  '@stagewise/toolbar-react',
+  '@stagewise/toolbar-vue',
+  '@stagewise/toolbar-next',
+  '@stagewise-plugins/react',
+  '@stagewise-plugins/vue',
+  '@stagewise-plugins/angular',
+];
+
 export class WorkspaceService {
   private static instance: WorkspaceService;
 

@@ -24,31 +24,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "stagewise.setupToolbar",
-        "title": "Auto-setup the stagewise toolbar (AI-Assisted)",
-        "category": "stagewise"
-      },
-      {
-        "command": "stagewise.showGettingStarted",
-        "title": "Show Getting Started Guide",
-        "category": "stagewise"
-      },
-      {
-        "command": "stagewise.authenticate",
-        "title": "Login to stagewise",
-        "category": "stagewise"
-      },
-      {
-        "command": "stagewise.logout",
-        "title": "Logout from stagewise",
-        "category": "stagewise"
-      },
-      {
-        "command": "stagewise.checkAuthStatus",
-        "title": "Check login status",
-        "category": "stagewise"
-      },
-      {
         "command": "stagewise.setAgent",
         "title": "Set the preferred agent you want to use with stagewise",
         "category": "stagewise"

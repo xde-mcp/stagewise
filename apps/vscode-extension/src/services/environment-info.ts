@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { compareVersions as compareVersionsUtil } from 'src/utils/lock-file-parsers/version-comparator';
-import { RegistryService } from './registry-service';
 import { WorkspaceService } from './workspace-service';
 import { AnalyticsService, EventName } from './analytics-service';
 
@@ -8,13 +7,10 @@ export class EnvironmentInfo {
   private static instance: EnvironmentInfo;
   private toolbarInstalled = false;
   private toolbarInstalledVersion: string | null = null;
-  private latestToolbarVersion: string | null = null;
-  private latestExtensionVersion: string | null = null;
   private workspaceLoaded = false;
   private toolbarInstallations: Array<{ version: string; path: string }> = [];
   private webAppWorkspace = false;
   private readonly workspaceService = WorkspaceService.getInstance();
-  private readonly registryService = RegistryService.getInstance();
   private analyticsService: AnalyticsService = AnalyticsService.getInstance();
 
   private constructor() {}
@@ -48,8 +44,6 @@ export class EnvironmentInfo {
       console.log('[EnvironmentInfo] Initialized:', {
         toolbarInstalled: this.toolbarInstalled,
         toolbarInstalledVersion: this.toolbarInstalledVersion,
-        latestToolbarVersion: this.latestToolbarVersion,
-        latestExtensionVersion: this.latestExtensionVersion,
         webAppWorkspace: this.webAppWorkspace,
       });
 
@@ -73,13 +67,10 @@ export class EnvironmentInfo {
       return;
     }
 
-    const [toolbarInstallations, isWebApp, latestToolbar, latestExtension] =
-      await Promise.all([
-        this.workspaceService.getToolbarInstallations(),
-        this.workspaceService.isWebAppWorkspace(),
-        this.registryService.getLatestToolbarVersion(),
-        this.registryService.getLatestExtensionVersion(),
-      ]);
+    const [toolbarInstallations, isWebApp] = await Promise.all([
+      this.workspaceService.getToolbarInstallations(),
+      this.workspaceService.isWebAppWorkspace(),
+    ]);
 
     this.toolbarInstallations = toolbarInstallations;
     this.toolbarInstalled = this.toolbarInstallations.length > 0;
@@ -87,8 +78,6 @@ export class EnvironmentInfo {
       this.toolbarInstallations,
     );
     this.webAppWorkspace = isWebApp;
-    this.latestToolbarVersion = latestToolbar;
-    this.latestExtensionVersion = latestExtension;
   }
 
   private getOldestToolbarVersion(
@@ -139,20 +128,12 @@ export class EnvironmentInfo {
     return this.toolbarInstalledVersion;
   }
 
-  public getLatestAvailableToolbarVersion(): string | null {
-    return this.latestToolbarVersion;
-  }
-
   public getWorkspaceLoaded(): boolean {
     return this.workspaceLoaded;
   }
 
   public getToolbarInstallations(): Array<{ version: string; path: string }> {
     return [...this.toolbarInstallations];
-  }
-
-  public getLatestAvailableExtensionVersion(): string | null {
-    return this.latestExtensionVersion;
   }
 
   public get isWebAppWorkspace(): boolean {

@@ -1,15 +1,13 @@
 import * as vscode from 'vscode';
-import type { StorageService } from 'src/services/storage-service';
 import { AnalyticsService, EventName } from 'src/services/analytics-service';
 
-export function createGettingStartedPanel(
+export function createTimeToUpgradePanel(
   context: vscode.ExtensionContext,
-  storage: StorageService,
-  onSetupToolbar: () => Promise<void>,
+  onRemoveOldToolbar: () => Promise<void>,
 ): vscode.WebviewPanel {
   const panel = vscode.window.createWebviewPanel(
-    'stagewiseGettingStarted',
-    'Getting Started with stagewise',
+    'stagewiseTimeToUpgrade',
+    'Time to upgrade',
     vscode.ViewColumn.One,
     {
       enableScripts: true,
@@ -18,66 +16,25 @@ export function createGettingStartedPanel(
   );
   panel.webview.html = getWebviewContent(panel.webview, context);
 
-  // Immediately mark as seen
-  void storage.set('stagewise.hasSeenGettingStarted', true);
-
   // Handle messages from the webview
   panel.webview.onDidReceiveMessage(
     async (message) => {
       switch (message.command) {
-        case 'setupToolbar':
+        case 'removeOldToolbar':
           try {
             AnalyticsService.getInstance().trackEvent(
-              EventName.CLICKED_SETUP_TOOLBAR_IN_GETTING_STARTED_PANEL,
+              EventName.REMOVE_OLD_TOOLBAR_TRIGGERED,
             );
-            await onSetupToolbar();
+            await onRemoveOldToolbar();
           } catch (error) {
-            // Show error message in webview
-            panel.webview.postMessage({
-              command: 'setupComplete',
-              success: false,
-              error: error instanceof Error ? error.message : String(error),
-            });
-            panel.reveal();
+            console.error(error);
           }
-          break;
-        case 'openDocs':
-          AnalyticsService.getInstance().trackEvent(
-            EventName.CLICKED_OPEN_DOCS_IN_GETTING_STARTED_PANEL,
-          );
-          vscode.env.openExternal(
-            vscode.Uri.parse(
-              'https://stagewise.io/docs#2-install-and-inject-the-toolbar',
-            ),
-          );
-          panel.reveal();
-          break;
-        case 'captureFeedback':
-          // Create posthog event
-          AnalyticsService.getInstance().trackEvent(
-            EventName.POST_SETUP_FEEDBACK,
-            {
-              type: message.data.type,
-              text: message.data.text,
-              email: message.data.email,
-            },
-          );
-          break;
-        case 'showRepo':
-          vscode.env.openExternal(
-            vscode.Uri.parse('https://github.com/stagewise-io/stagewise'),
-          );
           break;
         case 'dismissPanel':
           AnalyticsService.getInstance().trackEvent(
-            EventName.DISMISSED_GETTING_STARTED_PANEL,
+            EventName.DISMISSED_TIME_TO_UPGRADE_PANEL,
           );
           panel.dispose();
-          break;
-        case 'markGettingStartAsSeen':
-          AnalyticsService.getInstance().trackEvent(
-            EventName.INTERACTED_WITH_GETTING_STARTED_PANEL,
-          );
           break;
       }
     },
@@ -94,8 +51,8 @@ function getWebviewContent(
 ): string {
   const stagewiseUrl =
     context.extensionMode === vscode.ExtensionMode.Development
-      ? 'http://localhost:3000/vscode-extension/welcome'
-      : 'https://stagewise.io/vscode-extension/welcome';
+      ? 'http://localhost:3000/vscode-extension/migrate-to-cli'
+      : 'https://stagewise.io/vscode-extension/migrate-to-cli';
 
   const cspDomain =
     context.extensionMode === vscode.ExtensionMode.Development
@@ -108,7 +65,7 @@ function getWebviewContent(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src ${webview.cspSource} ${cspDomain}; style-src ${webview.cspSource} 'unsafe-inline' ${cspDomain}; script-src ${webview.cspSource} 'unsafe-inline' ${cspDomain};">
-    <title>Getting Started with stagewise</title>
+    <title>Time to upgrade</title>
     <style>
         html, body {
             padding: 0;
@@ -156,11 +113,4 @@ function getWebviewContent(
 </script>
 </body>
 </html>`;
-}
-
-export async function shouldShowGettingStarted(
-  storage: StorageService,
-): Promise<boolean> {
-  // Show getting started panel if the user hasn't seen it before
-  return !(await storage.get('stagewise.hasSeenGettingStarted', false));
 }

@@ -13,39 +13,14 @@ export enum EventName {
 
   OPENED_WEB_APP_WORKSPACE = 'opened_web_app_workspace',
 
-  GETTING_STARTED_PANEL_SHOWN = 'getting_started_panel_shown',
-  GETTING_STARTED_PANEL_MANUAL_SHOW = 'getting_started_panel_manual_show',
-  INTERACTED_WITH_GETTING_STARTED_PANEL = 'interacted_with_getting_started_panel',
-  DISMISSED_GETTING_STARTED_PANEL = 'dismissed_getting_started_panel',
-  CLICKED_SETUP_TOOLBAR_IN_GETTING_STARTED_PANEL = 'clicked_setup_toolbar_in_getting_started_panel',
-  CLICKED_OPEN_DOCS_IN_GETTING_STARTED_PANEL = 'clicked_open_docs_in_getting_started_panel',
-
-  POST_SETUP_FEEDBACK = 'post_setup_feedback',
-
-  TOOLBAR_AUTO_SETUP_STARTED = 'toolbar_auto_setup_started',
+  TIME_TO_UPGRADE_PANEL_SHOWN = 'time_to_upgrade_panel_shown',
+  DISMISSED_TIME_TO_UPGRADE_PANEL = 'dismissed_getting_started_panel',
 
   TOOLBAR_CONNECTED = 'toolbar_connected',
 
   AGENT_PROMPT_TRIGGERED = 'agent_prompt_triggered',
 
-  SHOW_TOOLBAR_UPDATE_NOTIFICATION = 'show_toolbar_update_notification',
-  TOOLBAR_UPDATE_NOTIFICATION_AUTO_UPDATE = 'toolbar_update_notification_auto_update',
-  TOOLBAR_UPDATE_NOTIFICATION_IGNORED = 'toolbar_update_notification_ignored',
-  TOOLBAR_UPDATE_NOTIFICATION_DISMISSED = 'toolbar_update_notification_dismissed',
-
-  SHOW_TOOLBAR_INTEGRATION_NOTIFICATION = 'show_toolbar_integration_notification',
-  TOOLBAR_INTEGRATION_NOTIFICATION_IGNORE = 'toolbar_integration_notification_ignore',
-  TOOLBAR_INTEGRATION_NOTIFICATION_DISMISSED = 'toolbar_integration_notification_dismissed',
-
-  TOOLBAR_AUTO_UPDATE_PROMPT_SENT = 'toolbar_auto_update_prompt_sent',
-
-  AUTHENTICATE_COMMAND_TRIGGERED = 'authenticate_command_triggered',
-  LOGOUT_COMMAND_TRIGGERED = 'logout_command_triggered',
-  CHECK_AUTH_STATUS_COMMAND_TRIGGERED = 'check_auth_status_command_triggered',
-
-  STAGEWISE_AGENT_PROMPT_TRIGGERED = 'stagewise_agent_prompt_triggered',
-  STAGEWISE_AGENT_TOOL_CALL_REQUESTED = 'stagewise_agent_tool_call_requested',
-  STAGEWISE_AGENT_AUTH_REFRESH_FAILED = 'stagewise_agent_auth_refresh_failed',
+  REMOVE_OLD_TOOLBAR_TRIGGERED = 'remove_old_toolbar_triggered',
 }
 
 export class AnalyticsService {
