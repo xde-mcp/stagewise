@@ -13,6 +13,9 @@ export enum EventName {
 
   OPENED_WEB_APP_WORKSPACE = 'opened_web_app_workspace',
 
+  GETTING_STARTED_PANEL_SHOWN = 'getting_started_panel_shown',
+  DISMISSED_GETTING_STARTED_PANEL = 'dismissed_getting_started_panel',
+
   TIME_TO_UPGRADE_PANEL_SHOWN = 'time_to_upgrade_panel_shown',
   DISMISSED_TIME_TO_UPGRADE_PANEL = 'dismissed_getting_started_panel',
 

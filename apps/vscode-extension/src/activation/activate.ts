@@ -11,6 +11,10 @@ import { PackageJsonScanner } from 'src/services/package-json-scanner';
 import { AgentService as IDEChatAgentService } from 'src/services/agent-service';
 import { RetroAgentService } from 'src/services/agent-service/retro';
 import { AgentSelectorService } from 'src/services/agent-selector';
+import {
+  createGettingStartedPanel,
+  shouldShowGettingStarted,
+} from 'src/webviews/getting-started';
 
 let ideAgentInitialized = false;
 
@@ -88,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(fakeDiagCollection); // Dispose on deactivation
     context.subscriptions.push(outputChannel); // Dispose output channel on deactivation
 
-    const _storage = StorageService.getInstance();
+    const storage = StorageService.getInstance();
 
     // Add configuration change listener to track telemetry setting changes
     const configChangeListener = vscode.workspace.onDidChangeConfiguration(
@@ -107,6 +111,11 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(configChangeListener);
+
+    if (await shouldShowGettingStarted(storage)) {
+      analyticsService.trackEvent(EventName.GETTING_STARTED_PANEL_SHOWN);
+      createGettingStartedPanel(context, storage);
+    }
 
     // Function to show getting started panel if needed
     const showTimeToUpgradePanel = async () => {

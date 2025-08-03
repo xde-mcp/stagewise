@@ -5,6 +5,8 @@ import { AlertTriangle, CopyIcon, CheckIcon, TerminalIcon } from 'lucide-react';
 import { Button } from '@stagewise/ui/components/button';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { usePostHog } from 'posthog-js/react';
+import { Logo } from '@/components/landing/logo';
+import { AnimatedGradientBackground } from '@/components/landing/animated-gradient-background';
 
 export default function MigrateToCLI() {
   const posthog = usePostHog();
@@ -22,7 +24,14 @@ export default function MigrateToCLI() {
         <div className="mx-auto max-w-4xl">
           <ScrollReveal>
             <div className="mb-12 text-center">
-              <h1 className="mb-6 font-bold text-4xl tracking-tight md:text-6xl">
+              <div className="relative inline-block size-16 scale-95 overflow-hidden rounded-full shadow-lg ring-1 ring-black/20 ring-inset">
+                <AnimatedGradientBackground className="absolute inset-0 size-full" />
+                <Logo
+                  className="absolute top-[24%] left-[24%] z-10 size-1/2 drop-shadow-xs"
+                  color="white"
+                />
+              </div>
+              <h1 className="mb-6 font-bold text-2xl tracking-tight md:text-4xl">
                 <span className="bg-gradient-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
                   Your stagewise setup
                   <br />
@@ -158,7 +167,7 @@ export default function MigrateToCLI() {
 
       {/* Troubleshooting */}
       <section className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-16 dark:border-zinc-800">
-        <ScrollReveal>
+        <ScrollReveal delay={1}>
           <div className="mx-auto max-w-4xl text-center">
             <h2 className="mb-6 font-bold text-2xl md:text-3xl">Need Help?</h2>
             <p className="mb-8 text-lg text-zinc-600 dark:text-zinc-400">

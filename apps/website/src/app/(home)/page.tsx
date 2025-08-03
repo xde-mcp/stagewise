@@ -121,12 +121,12 @@ export default function Home() {
           <ScrollReveal>
             <div className="mb-12 px-4 text-center sm:px-0">
               {/* YC Banner */}
-              <div className="mb-6 flex flex-col justify-center gap-4 sm:flex-row">
+              <div className="mb-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <a
                   href="https://www.ycombinator.com/companies/stagewise"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-orange-500/5 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500"
+                  className="inline-flex w-fit items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-orange-500/5 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500"
                 >
                   <span>
                     Backed by{' '}
@@ -143,7 +143,7 @@ export default function Home() {
                   onClick={() => posthog?.capture('hero_github_star_click')}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-orange-500/5 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500"
+                  className="inline-flex w-fit items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-orange-500/5 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500"
                 >
                   <StarIcon className="size-4 text-yellow-500" />
                   GitHub
