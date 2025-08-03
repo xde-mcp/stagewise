@@ -51,16 +51,8 @@ export class AgentSelectorService {
   }
 
   public async showAgentPicker() {
-    // TODO Depending on the auth state, show the stagewise agent - or not.
     const agentPicker = vscode.window.createQuickPick();
     const items: vscode.QuickPickItem[] = [];
-
-    // TODO: Add authentication check when AuthService is re-implemented
-    // items.push({
-    //   label: '$(stagewise-icon) stagewise agent',
-    //   description:
-    //     '(Recommended) A coding agent built to design and implement great frontends.',
-    // });
 
     items.push({
       label: '$(chat-editor-label-icon) Forward to IDE Chat',

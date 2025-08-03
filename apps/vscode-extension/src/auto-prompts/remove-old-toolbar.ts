@@ -1,3 +1,4 @@
+import { DEPRECATED_TOOLBAR_PACKAGES } from 'src/services/workspace-service';
 import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import * as vscode from 'vscode';
 
@@ -8,13 +9,7 @@ export const removeOldToolbarPrompt = `
 
 <context>
   The following packages are no longer supported and should be removed:
-  - @stagewise/toolbar
-  - @stagewise/toolbar-react
-  - @stagewise/toolbar-vue
-  - @stagewise/toolbar-nuxt
-  - @stagewise-plugins/react
-  - @stagewise-plugins/vue
-  - @stagewise-plugins/angular
+${DEPRECATED_TOOLBAR_PACKAGES.map((pkg) => `  - ${pkg}`).join('\n')}
 
 Other stagewise packages may be used for other purposes and should thus simply be ignored.
 </context>

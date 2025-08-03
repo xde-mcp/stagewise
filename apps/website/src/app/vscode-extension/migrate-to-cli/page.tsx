@@ -106,7 +106,7 @@ export default function MigrateToCLI() {
                   <div className="space-y-3">
                     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
                       <div className="flex items-center gap-3">
-                        <span className="pfont-medium text-start text-sm text-zinc-700 dark:text-zinc-300">
+                        <span className="text-start font-medium text-sm text-zinc-700 dark:text-zinc-300">
                           Simply run{' '}
                           <code className="px-1 font-semibold">
                             npx stagewise

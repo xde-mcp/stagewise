@@ -34,7 +34,7 @@ const getImportMap = async (plugins: Plugin[]) => {
       mainAppEntries[entry.file] = `/stagewise-toolbar-app/${entry.file}`;
     }
   }
-  // TODO: Dynamically generate a importmap.json file based on the vite app entries, config and external react deps
+  // Dynamically generate a importmap.json file based on the vite app entries, config and external react deps
   const reactDepsDevSuffix =
     process.env.NODE_ENV === 'development' ? '?dev' : '';
   return {

@@ -4,7 +4,7 @@ import { removeOldToolbarPrompt } from 'src/auto-prompts/remove-old-toolbar';
 
 export function createTimeToUpgradePanel(
   context: vscode.ExtensionContext,
-  onRemoveOldToolbar: () => Promise<void>,
+  _onRemoveOldToolbar: () => Promise<void>,
 ): vscode.WebviewPanel {
   const panel = vscode.window.createWebviewPanel(
     'stagewiseTimeToUpgrade',
@@ -21,16 +21,6 @@ export function createTimeToUpgradePanel(
   panel.webview.onDidReceiveMessage(
     async (message) => {
       switch (message.command) {
-        case 'removeOldToolbar':
-          try {
-            AnalyticsService.getInstance().trackEvent(
-              EventName.REMOVE_OLD_TOOLBAR_TRIGGERED,
-            );
-            await onRemoveOldToolbar();
-          } catch (error) {
-            console.error(error);
-          }
-          break;
         case 'copyUninstallCommand':
           vscode.env.clipboard.writeText(removeOldToolbarPrompt);
           break;
