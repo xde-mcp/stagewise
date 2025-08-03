@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AnalyticsService, EventName } from 'src/services/analytics-service';
+import { removeOldToolbarPrompt } from 'src/auto-prompts/remove-old-toolbar';
 
 export function createTimeToUpgradePanel(
   context: vscode.ExtensionContext,
@@ -30,6 +31,17 @@ export function createTimeToUpgradePanel(
             console.error(error);
           }
           break;
+        case 'copyUninstallCommand':
+          vscode.env.clipboard.writeText(removeOldToolbarPrompt);
+          break;
+        case 'openTerminal': {
+          const terminal = vscode.window.createTerminal({
+            cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+          });
+          terminal.show();
+          terminal.sendText('npx stagewise', false);
+          break;
+        }
         case 'dismissPanel':
           AnalyticsService.getInstance().trackEvent(
             EventName.DISMISSED_TIME_TO_UPGRADE_PANEL,

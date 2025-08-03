@@ -1,103 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  AlertTriangle,
-  Rocket,
-  Settings,
-  Shield,
-  RefreshCw,
-  CopyIcon,
-  CheckIcon,
-} from 'lucide-react';
+import { AlertTriangle, CopyIcon, CheckIcon, TerminalIcon } from 'lucide-react';
 import { Button } from '@stagewise/ui/components/button';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
-import { Checkbox } from '@/components/ui/checkbox';
 import { usePostHog } from 'posthog-js/react';
 
 export default function MigrateToCLI() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [terminalStarted, setTerminalStarted] = useState(false);
 
   useEffect(() => {
     posthog?.capture('migration_page_viewed');
   }, [posthog]);
-
-  const _benefits = [
-    {
-      icon: <Shield className="size-6 text-green-500" />,
-      title: 'No More Dependencies',
-      description:
-        'Remove stagewise packages from your app. Zero build issues, no bundle bloat.',
-      iconBg: 'bg-green-50 dark:bg-green-950/20',
-    },
-    {
-      icon: <Rocket className="size-6 text-blue-500" />,
-      title: 'Built-in Agent',
-      description:
-        'First-class stagewise agent integration. Get started faster than ever.',
-      iconBg: 'bg-blue-50 dark:bg-blue-950/20',
-    },
-    {
-      icon: <Settings className="size-6 text-purple-500" />,
-      title: 'Auto Plugin Detection',
-      description:
-        'Automatically loads the right plugins for React, Vue, Angular and more.',
-      iconBg: 'bg-purple-50 dark:bg-purple-950/20',
-    },
-    {
-      icon: <RefreshCw className="size-6 text-orange-500" />,
-      title: 'Instant Updates',
-      description:
-        'Always get the latest features without manual updates or version conflicts.',
-      iconBg: 'bg-orange-50 dark:bg-orange-950/20',
-    },
-  ];
-
-  const _migrationSteps = [
-    {
-      step: 1,
-      title: 'Remove Old Dependencies',
-      description:
-        'Clean up your package.json by removing all stagewise toolbar and plugin packages.',
-      command: 'npm uninstall @stagewise/toolbar @stagewise/react-plugin',
-      completed: currentStep > 0,
-    },
-    {
-      step: 2,
-      title: 'Uninstall VS Code Extension',
-      description:
-        'Remove the old stagewise extension from your IDE (unless using bridge mode).',
-      completed: currentStep > 1,
-    },
-    {
-      step: 3,
-      title: 'Start the New CLI',
-      description:
-        'Run stagewise CLI in your project root - no installation needed!',
-      command: 'npx stagewise',
-      completed: currentStep > 2,
-    },
-    {
-      step: 4,
-      title: 'Configure & Launch',
-      description: "Tell the CLI your dev server port and you're ready to go!",
-      completed: currentStep > 3,
-    },
-  ];
-
-  const _handleStepComplete = (stepIndex: number) => {
-    if (stepIndex === currentStep) {
-      setCurrentStep(stepIndex + 1);
-      posthog?.capture('migration_step_completed', { step: stepIndex + 1 });
-    }
-  };
-
-  const _handleGetStarted = () => {
-    posthog?.capture('migration_get_started_clicked');
-    // This could trigger the CLI setup process or redirect
-  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-black dark:text-white">
@@ -118,14 +34,24 @@ export default function MigrateToCLI() {
                 <div className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 font-medium text-amber-800 text-sm dark:border-amber-600 dark:bg-amber-950/20 dark:text-amber-300">
                   <AlertTriangle className="size-4 flex-shrink-0" />
                   <span>
-                    The toolbar packages ('@stagewise/toolbar-*') are being
-                    deprecated. Please migrate to the new stagewise CLI for
-                    continued support and latest features.
+                    The old toolbar ('@stagewise/toolbar-*') and default plugin
+                    ('@stagewise-plugins/*') packages are being deprecated.
+                    <br />
+                    Please migrate to the new stagewise CLI for continued
+                    support and latest features.
                   </span>
                 </div>
               </div>
 
               <div className="flex flex-col items-center gap-8">
+                <iframe
+                  className="aspect-video w-96 rounded-xl"
+                  src="https://www.youtube-nocookie.com/embed/A7a78tfo8wg?si=N7hpFKus-EE2AJwx"
+                  title="YouTube video player"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
                 <p className="mb-3 text-center text-zinc-600 dark:text-zinc-400">
                   Here's what you need to do:
                 </p>
@@ -136,19 +62,25 @@ export default function MigrateToCLI() {
                   <div className="space-y-3">
                     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
                       <div className="flex items-center gap-3">
-                        <Checkbox />
-                        <span className="font-medium text-sm text-zinc-700 dark:text-zinc-300">
-                          Remove all{' '}
-                          <code className="pl-1"> @stagewise/* </code>
-                          packages from this project
+                        <span className="text-start font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                          Remove all old packages (
+                          <code className="px-1 font-semibold">
+                            @stagewise/*
+                          </code>{' '}
+                          and{' '}
+                          <code className="px-1 font-semibold">
+                            @stagewise-plugins/*
+                          </code>
+                          ) from this project
                         </span>
                         <Button
                           variant="default"
                           size="sm"
                           className="ml-3 flex-shrink-0 justify-center gap-2"
                           onClick={() => {
-                            navigator.clipboard.writeText(
-                              'npm uninstall @stagewise/toolbar @stagewise/react-plugin @stagewise/vue-plugin @stagewise/angular-plugin @stagewise/svelte-plugin',
+                            window.parent.postMessage(
+                              { command: 'copyUninstallCommand' },
+                              '*',
                             );
                             posthog?.capture('copy_uninstall_command');
                             setCopied(true);
@@ -160,49 +92,64 @@ export default function MigrateToCLI() {
                           ) : (
                             <CopyIcon className="h-4 w-4" />
                           )}
-                          Copy instructions
+                          Copy agent instructions
                         </Button>
                       </div>
                     </div>
                   </div>
                 </div>
+
                 <div className="w-full max-w-md">
                   <p className="mb-6 text-center font-semibold text-lg text-zinc-700 dark:text-zinc-300">
-                    2. Use the stagewise cli
+                    2. Use the stagewise CLI
                   </p>
                   <div className="space-y-3">
                     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
                       <div className="flex items-center gap-3">
-                        <Checkbox />
-                        <span className="font-medium text-sm text-zinc-700 dark:text-zinc-300">
-                          Remove all{' '}
-                          <code className="pl-1"> @stagewise/* </code>
-                          packages from this project
+                        <span className="pfont-medium text-start text-sm text-zinc-700 dark:text-zinc-300">
+                          Simply run{' '}
+                          <code className="px-1 font-semibold">
+                            npx stagewise
+                          </code>{' '}
+                          in the terminal in your project root.
+                          <br />
+                          (If you're using pnpm, run{' '}
+                          <code className="px-1 font-semibold">
+                            pnpm dlx stagewise
+                          </code>{' '}
+                          instead.)
                         </span>
                         <Button
                           variant="default"
                           size="sm"
                           className="ml-3 flex-shrink-0 justify-center gap-2"
                           onClick={() => {
-                            navigator.clipboard.writeText(
-                              'npm uninstall @stagewise/toolbar @stagewise/react-plugin @stagewise/vue-plugin @stagewise/angular-plugin @stagewise/svelte-plugin',
+                            setTerminalStarted(true);
+                            window.parent.postMessage(
+                              { command: 'openTerminal' },
+                              '*',
                             );
-                            posthog?.capture('copy_uninstall_command');
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 1500);
                           }}
                         >
-                          {copied ? (
+                          {terminalStarted ? (
                             <CheckIcon className="h-4 w-4 text-green-500" />
                           ) : (
-                            <CopyIcon className="h-4 w-4" />
+                            <TerminalIcon className="h-4 w-4" />
                           )}
-                          Copy instructions
+                          Open terminal
                         </Button>
                       </div>
                     </div>
                   </div>
                 </div>
+                <p className="mb-3 max-w-2xl text-center text-zinc-600 dark:text-zinc-400">
+                  By default, the CLI will automatically connect you to the new
+                  stagewise agent.
+                  <br />
+                  If you wish to continue using the agent of your IDE, simply
+                  start the CLI in bridge mode (
+                  <code className="px-1 font-semibold">npx stagewise -b</code>).
+                </p>
               </div>
             </div>
           </ScrollReveal>

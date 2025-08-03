@@ -1,8 +1,7 @@
 import { dispatchAgentCall } from 'src/utils/dispatch-agent-call';
 import * as vscode from 'vscode';
 
-export async function removeOldToolbar() {
-  const prompt = `
+export const removeOldToolbarPrompt = `
 <task>
   Remove all existing dependencies (peer, regular and dev) to any package of the old stagewise integration.
 </task>
@@ -26,8 +25,9 @@ Depending on the used framework in the project of the user, simply remove the ca
 </next_steps>
 `;
 
+export async function removeOldToolbar() {
   await dispatchAgentCall({
-    prompt,
+    prompt: removeOldToolbarPrompt,
     sessionId: vscode.env.sessionId,
   });
 }
