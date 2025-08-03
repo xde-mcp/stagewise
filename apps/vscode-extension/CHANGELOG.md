@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.10.0
+
+### Minor Changes
+
+- f0075e5: Show an upgrade information panel to the user if they use old toolbar versions
+
 ## 0.9.1
 
 ### Patch Changes
