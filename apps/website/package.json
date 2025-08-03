@@ -3,13 +3,14 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "pnpm dlx stagewise@latest & next dev --turbo --port 3000",
+    "dev": "next dev --turbo --port 3000",
     "start": "next start",
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
     "@headlessui/react": "2.2.2",
     "@radix-ui/react-accordion": "^1.2.10",
+    "@radix-ui/react-checkbox": "^1.1.3",
     "@radix-ui/react-dialog": "^1.1.13",
     "@radix-ui/react-navigation-menu": "^1.2.12",
     "@stagewise/ui": "workspace:*",

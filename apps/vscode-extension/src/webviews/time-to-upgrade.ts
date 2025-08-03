@@ -1,15 +1,14 @@
 import * as vscode from 'vscode';
-import type { StorageService } from 'src/services/storage-service';
-import { AnalyticsService } from 'src/services/analytics-service';
-import { EventName } from 'src/services/analytics-service';
+import { AnalyticsService, EventName } from 'src/services/analytics-service';
+import { removeOldToolbarPrompt } from 'src/auto-prompts/remove-old-toolbar';
 
-export function createGettingStartedPanel(
+export function createTimeToUpgradePanel(
   context: vscode.ExtensionContext,
-  storage: StorageService,
+  _onRemoveOldToolbar: () => Promise<void>,
 ): vscode.WebviewPanel {
   const panel = vscode.window.createWebviewPanel(
-    'stagewiseGettingStarted',
-    'Getting Started with stagewise',
+    'stagewiseTimeToUpgrade',
+    'Time to upgrade',
     vscode.ViewColumn.One,
     {
       enableScripts: true,
@@ -18,13 +17,13 @@ export function createGettingStartedPanel(
   );
   panel.webview.html = getWebviewContent(panel.webview, context);
 
-  // Immediately mark as seen
-  void storage.set('stagewise.hasSeenGettingStarted', true);
-
   // Handle messages from the webview
   panel.webview.onDidReceiveMessage(
     async (message) => {
       switch (message.command) {
+        case 'copyUninstallCommand':
+          vscode.env.clipboard.writeText(removeOldToolbarPrompt);
+          break;
         case 'openTerminal': {
           const terminal = vscode.window.createTerminal({
             cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
@@ -38,7 +37,7 @@ export function createGettingStartedPanel(
           break;
         case 'dismissPanel':
           AnalyticsService.getInstance().trackEvent(
-            EventName.DISMISSED_GETTING_STARTED_PANEL,
+            EventName.DISMISSED_TIME_TO_UPGRADE_PANEL,
           );
           panel.dispose();
           break;
@@ -57,8 +56,8 @@ function getWebviewContent(
 ): string {
   const stagewiseUrl =
     context.extensionMode === vscode.ExtensionMode.Development
-      ? 'http://localhost:3000/vscode-extension/welcome'
-      : 'https://stagewise.io/vscode-extension/welcome';
+      ? 'http://localhost:3000/vscode-extension/migrate-to-cli'
+      : 'https://stagewise.io/vscode-extension/migrate-to-cli';
 
   const cspDomain =
     context.extensionMode === vscode.ExtensionMode.Development
@@ -71,7 +70,7 @@ function getWebviewContent(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src ${webview.cspSource} ${cspDomain}; style-src ${webview.cspSource} 'unsafe-inline' ${cspDomain}; script-src ${webview.cspSource} 'unsafe-inline' ${cspDomain};">
-    <title>Getting Started with stagewise</title>
+    <title>Time to upgrade</title>
     <style>
         html, body {
             padding: 0;
@@ -119,11 +118,4 @@ function getWebviewContent(
 </script>
 </body>
 </html>`;
-}
-
-export async function shouldShowGettingStarted(
-  storage: StorageService,
-): Promise<boolean> {
-  // Show getting started panel if the user hasn't seen it before
-  return !(await storage.get('stagewise.hasSeenGettingStarted', false));
 }

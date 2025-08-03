@@ -1,13 +1,11 @@
 import * as vscode from 'vscode';
-import { AuthService } from './auth-service';
 import { StorageService } from './storage-service';
 
-export type PreferredAgent = 'stagewise-agent' | 'ide-chat';
+export type PreferredAgent = 'ide-chat';
 
 export class AgentSelectorService {
   private static instance: AgentSelectorService;
   private statusbar: vscode.StatusBarItem | undefined;
-  private authService: AuthService = AuthService.getInstance();
   private onAgentSelectionChanged:
     | ((agentName: PreferredAgent) => void)
     | undefined;
@@ -41,9 +39,7 @@ export class AgentSelectorService {
     this.statusbar.show();
 
     // load the preferred agent from the config
-    this.preferredAgent =
-      (await this.storageService.get(this.PREFERRED_AGENT_STORAGE_KEY)) ??
-      'stagewise-agent';
+    this.preferredAgent = 'ide-chat';
   }
 
   public updateStatusbarText(text: string) {
@@ -55,17 +51,8 @@ export class AgentSelectorService {
   }
 
   public async showAgentPicker() {
-    // TODO Depending on the auth state, show the stagewise agent - or not.
     const agentPicker = vscode.window.createQuickPick();
     const items: vscode.QuickPickItem[] = [];
-
-    if (await this.authService.isAuthenticated()) {
-      items.push({
-        label: '$(stagewise-icon) stagewise agent',
-        description:
-          '(Recommended) A coding agent built to design and implement great frontends.',
-      });
-    }
 
     items.push({
       label: '$(chat-editor-label-icon) Forward to IDE Chat',
@@ -73,13 +60,9 @@ export class AgentSelectorService {
     });
 
     agentPicker.items = items;
-    agentPicker.onDidChangeSelection((selection) => {
+    agentPicker.onDidChangeSelection(() => {
       if (this.onAgentSelectionChanged) {
-        if (selection[0].label.toLowerCase().includes('stagewise agent')) {
-          void this.setPreferredAgent('stagewise-agent');
-        } else {
-          void this.setPreferredAgent('ide-chat');
-        }
+        void this.setPreferredAgent('ide-chat');
       }
       agentPicker.hide();
     });
@@ -94,7 +77,7 @@ export class AgentSelectorService {
 
   public getPreferredAgent(): PreferredAgent {
     // TODO Return the agent that's in the config. If no agent is configured, return the stagewise agent.
-    return this.preferredAgent ?? 'stagewise-agent';
+    return 'ide-chat';
   }
 
   public async setPreferredAgent(agentName: PreferredAgent) {
