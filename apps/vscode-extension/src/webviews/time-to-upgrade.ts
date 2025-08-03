@@ -32,6 +32,9 @@ export function createTimeToUpgradePanel(
           terminal.sendText('npx stagewise', false);
           break;
         }
+        case 'openDiscord':
+          vscode.env.openExternal(vscode.Uri.parse(message.url));
+          break;
         case 'dismissPanel':
           AnalyticsService.getInstance().trackEvent(
             EventName.DISMISSED_TIME_TO_UPGRADE_PANEL,
