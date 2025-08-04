@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.1.5
+
+### Patch Changes
+
+- fd3a095: Fix loading issues with iframe-restrictive dev apps
+
 ## 0.1.4
 
 ### Patch Changes
