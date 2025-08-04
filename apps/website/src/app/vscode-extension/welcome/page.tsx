@@ -104,6 +104,9 @@ export default function MigrateToCLI() {
                 Join Discord
               </button>
             </div>
+            <p className="mt-2 text-center text-sm text-zinc-500 dark:text-zinc-500">
+              https://discord.gg/6gjx9ESbhf
+            </p>
           </div>
         </ScrollReveal>
       </section>
