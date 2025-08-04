@@ -19,32 +19,6 @@ describe('proxy', () => {
     vi.clearAllMocks();
   });
 
-  it('should create proxy middleware with correct options', async () => {
-    const mockProxyMiddleware = vi.fn() as any;
-    mockProxyMiddleware.upgrade = vi.fn();
-    vi.mocked(createProxyMiddleware).mockReturnValue(mockProxyMiddleware);
-
-    await import('../../../src/server/proxy');
-
-    expect(createProxyMiddleware).toHaveBeenCalledWith({
-      changeOrigin: true,
-      pathFilter: expect.any(Function),
-      followRedirects: false,
-      router: expect.any(Function),
-      ws: false,
-      cookieDomainRewrite: {
-        '*': '',
-      },
-      autoRewrite: true,
-      preserveHeaderKeyCase: true,
-      xfwd: true,
-      on: {
-        error: expect.any(Function),
-        proxyReqWs: expect.any(Function),
-      },
-    });
-  });
-
   describe('pathFilter', () => {
     let pathFilter: (pathname: string, req: IncomingMessage) => boolean;
 

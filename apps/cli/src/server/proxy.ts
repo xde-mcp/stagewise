@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { configResolver } from '../config';
 import { errorPage } from './error-page';
 import { log } from '../utils/logger';
+import { applyHeaderRewrites } from './proxy-utils/headers-rewrites';
 
 export const proxy = createProxyMiddleware({
   changeOrigin: true,
@@ -43,6 +44,9 @@ export const proxy = createProxyMiddleware({
       const config = configResolver.getConfig();
       res.writeHead(503, { 'Content-Type': 'text/html' });
       res.end(errorPage(config.appPort));
+    },
+    proxyRes: (proxyRes) => {
+      applyHeaderRewrites(proxyRes);
     },
     proxyReqWs: (_proxyReq, req, _socket, _options, _head) => {
       log.debug(`WebSocket proxy request: ${req.url}`);
