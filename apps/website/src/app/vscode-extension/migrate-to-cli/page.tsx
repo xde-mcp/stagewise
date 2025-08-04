@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, CopyIcon, CheckIcon, TerminalIcon } from 'lucide-react';
+import {
+  CopyIcon,
+  CheckIcon,
+  TerminalIcon,
+  ChevronDownIcon,
+} from 'lucide-react';
 import { Button } from '@stagewise/ui/components/button';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { usePostHog } from 'posthog-js/react';
@@ -12,6 +17,7 @@ export default function MigrateToCLI() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
   const [terminalStarted, setTerminalStarted] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     posthog?.capture('migration_page_viewed');
@@ -40,29 +46,54 @@ export default function MigrateToCLI() {
               </h1>
 
               <div className="mx-auto mb-8 max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 font-medium text-amber-800 text-sm dark:border-amber-600 dark:bg-amber-950/20 dark:text-amber-300">
-                  <AlertTriangle className="size-4 flex-shrink-0" />
-                  <span>
-                    The old toolbar ('@stagewise/toolbar-*') and default plugin
-                    ('@stagewise-plugins/*') packages are being deprecated.
-                    <br />
-                    Please migrate to the new stagewise CLI for continued
-                    support and latest features.
-                  </span>
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20">
+                  <button
+                    type="button"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="flex w-full items-center justify-between p-3 text-left transition-colors dark:border-yellow-700 dark:bg-yellow-900/20 dark:hover:bg-yellow-800/40"
+                  >
+                    <h3 className="font-medium text-sm text-zinc-600 dark:text-zinc-400">
+                      We are migrating to the stagewise CLI, here's why:
+                    </h3>
+                    <ChevronDownIcon
+                      className={`h-4 w-4 text-zinc-500 transition-transform dark:text-zinc-500 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {isExpanded && (
+                    <div className="border-yellow-200 border-t px-3 py-3 dark:border-yellow-700">
+                      <p className="text-left text-sm text-zinc-600 dark:text-zinc-400">
+                        Many users complained that the stagewise setup was too
+                        complex - installing an additional dependency had many
+                        drawbacks.
+                        <br />
+                        <br />
+                        To make the use of stagewise as easy as possible, we are
+                        migrating to the stagewise CLI:
+                        <ul className="mt-2 list-inside list-disc">
+                          <li>
+                            No need for dependencies in your web app anymore
+                          </li>
+                          <li>You always use the latest toolbar version</li>
+                          <li>
+                            The CLI automatically loads the right plugins for
+                            your app
+                          </li>
+                          <li>
+                            If the app crashes, the toolbar will still be
+                            present
+                          </li>
+                        </ul>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="flex flex-col items-center gap-8">
-                <iframe
-                  className="aspect-video w-96 rounded-xl"
-                  src="https://www.youtube-nocookie.com/embed/A7a78tfo8wg?si=N7hpFKus-EE2AJwx"
-                  title="YouTube video player"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                />
-                <p className="mb-3 text-center text-zinc-600 dark:text-zinc-400">
-                  Here's what you need to do:
+                <p className="mb-1 text-center font-medium text-md text-zinc-600 dark:text-zinc-400">
+                  Here's what you need to do to upgrade:
                 </p>
                 <div className="w-full max-w-md">
                   <p className="mb-6 text-center font-semibold text-lg text-zinc-700 dark:text-zinc-300">
@@ -169,7 +200,9 @@ export default function MigrateToCLI() {
       <section className="container relative z-10 mx-auto border-zinc-200 border-t px-4 py-16 dark:border-zinc-800">
         <ScrollReveal delay={1}>
           <div className="mx-auto max-w-4xl text-center">
-            <h2 className="mb-6 font-bold text-2xl md:text-3xl">Need Help?</h2>
+            <h2 className="mb-6 font-bold text-2xl md:text-3xl">
+              Got feedback?
+            </h2>
             <p className="mb-8 text-lg text-zinc-600 dark:text-zinc-400">
               If you encounter any issues during migration, we're here to help.
             </p>
