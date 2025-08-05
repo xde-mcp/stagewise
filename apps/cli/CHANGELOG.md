@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.2.0
+
+### Minor Changes
+
+- 45dae65: Add command-wrapping functionality - you can now use the stagewise cli like: 'npx stagewise -- pnpm next start' which consolidates the whole dev setup of your app into one command.
+
 ## 0.1.5
 
 ### Patch Changes
