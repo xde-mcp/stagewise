@@ -1,5 +1,11 @@
 # @stagewise/tools-client
 
+## 0.0.5
+
+### Patch Changes
+
+- 44a659c: Remove tool-call logs.
+
 ## 0.0.4
 
 ### Patch Changes

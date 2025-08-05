@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.0.2
+
+### Patch Changes
+
+- 44a659c: Remove tool-call logs.
+
 ## 0.0.1
 
 ### Patch Changes
