@@ -4,17 +4,23 @@ import type {
 } from '../router/capabilities/availability/types';
 import type {
   AgentMessageContentItemPart,
-  UserMessage,
+  UserMessage as MessagingUserMessage,
 } from '../router/capabilities/messaging/types';
 import type {
   AgentState,
   AgentStateType,
 } from '../router/capabilities/state/types';
 import type {
-  Tool,
-  ToolCallResult,
-  PendingToolCall,
-} from '../router/capabilities/tool-calling/types';
+  Chat,
+  ChatListItem,
+  ChatMessage,
+  AssistantMessage,
+  MessagePartUpdate,
+  ToolDefinition,
+  ToolApprovalResponse,
+  ChatUpdate,
+  UserMessage as ChatUserMessage,
+} from '../router/capabilities/chat/types';
 
 export type AgentInterface = {
   /**
@@ -99,11 +105,11 @@ export type AgentInterface = {
     };
 
     /** Add a listener for user messages */
-    addUserMessageListener: (listener: (message: UserMessage) => void) => void;
+    addUserMessageListener: (listener: (message: MessagingUserMessage) => void) => void;
 
     /** Remove a specific user message listener */
     removeUserMessageListener: (
-      listener: (message: UserMessage) => void,
+      listener: (message: MessagingUserMessage) => void,
     ) => void;
 
     /** Clear all user message listeners */
@@ -111,38 +117,73 @@ export type AgentInterface = {
   };
 
   /**
-   * TOOL CALLING MANAGEMENT (Optional)
-   * Simplified tool calling with automatic lifecycle management
+   * CHAT MANAGEMENT
+   * Comprehensive chat functionality with message history and tool integration
    */
-  toolCalling: {
-    /** Set tool call support.
-     * Agents have to manually set this to true if they want to support tool calling.
-     *
-     * Calling other functions in the toolCalling object will throw an error
-     * if tool calling is not supported.
-     */
-    setToolCallSupport: (supported: boolean) => void;
+  chat: {
+    /** Enable or disable chat support */
+    setChatSupport: (supported: boolean) => void;
 
-    /** Get a list of all available tools */
-    getAvailableTools: () => Tool[];
+    /** Check if chat is supported */
+    isSupported: () => boolean;
 
-    /** Add a listener that get's triggered whenever the list of available tools changes */
-    onToolListUpdate: (listener: (tools: Tool[]) => void) => void;
+    /** Get list of all chats */
+    getChats: () => ChatListItem[];
 
-    /** Remove a specific tool list update listener */
-    removeToolListUpdateListener: (listener: (tools: Tool[]) => void) => void;
+    /** Get the active chat */
+    getActiveChat: () => Chat | null;
 
-    /** Clear all tool list update listeners */
-    clearToolListUpdateListeners: () => void;
+    /** Create a new chat */
+    createChat: (title?: string) => Promise<string>;
 
-    /** Make a tool call and wait for the result */
-    requestToolCall: (
-      toolName: string,
-      parameters: Record<string, unknown>,
-    ) => Promise<ToolCallResult>;
+    /** Delete a chat */
+    deleteChat: (chatId: string) => Promise<void>;
 
-    /** Get all pending tool calls */
-    getPendingToolCalls: () => PendingToolCall[];
+    /** Switch to a different chat */
+    switchChat: (chatId: string) => Promise<void>;
+
+    /** Update the title of a chat */
+    updateChatTitle: (chatId: string, title: string) => Promise<void>;
+
+    /** Add a message to the active chat */
+    addMessage: (message: ChatMessage) => void;
+
+    /** Update an existing message */
+    updateMessage: (messageId: string, content: AssistantMessage['content']) => void;
+
+    /** Delete a message from the chat */
+    deleteMessage: (messageId: string) => void;
+
+    /** Clear all messages from the active chat */
+    clearMessages: () => void;
+
+    /** Send a message to the active chat */
+    sendMessage: (content: ChatUserMessage['content'], metadata: ChatUserMessage['metadata']) => Promise<void>;
+
+    /** Stream a message part update */
+    streamMessagePart: (messageId: string, partIndex: number, update: MessagePartUpdate) => void;
+
+    /** Handle tool approval response */
+    handleToolApproval: (response: ToolApprovalResponse) => Promise<void>;
+
+    /** Register toolbar-provided tools */
+    registerTools: (tools: ToolDefinition[]) => void;
+
+    /** Report tool execution result */
+    reportToolResult: (toolCallId: string, result: unknown, isError?: boolean) => void;
+
+    /** Add listener for chat updates */
+    addChatUpdateListener: (listener: (update: ChatUpdate) => void) => void;
+
+    /** Remove chat update listener */
+    removeChatUpdateListener: (listener: (update: ChatUpdate) => void) => void;
+
+    // Persistence placeholders
+    /** Load chat history (placeholder for future implementation) */
+    loadChatHistory: () => Promise<void>;
+
+    /** Save chat history (placeholder for future implementation) */
+    saveChatHistory: () => Promise<void>;
   };
 
   /**
