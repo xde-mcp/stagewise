@@ -1,5 +1,12 @@
 # stagewise
 
+## 0.2.1
+
+### Patch Changes
+
+- 44a659c: Remove tool-call logs.
+- 6cf121a: Add subscription banner to cli startup.
+
 ## 0.2.0
 
 ### Minor Changes
