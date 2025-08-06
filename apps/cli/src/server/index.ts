@@ -68,7 +68,7 @@ try {
   console.debug('[stagewise] Successfully loaded plugin: ${plugin.name}');
 } catch (error) {
   console.error('[stagewise] Failed to load plugin ${plugin.name}:', error.message);
-  console.error('[stagewise] Plugin path: ${plugin.path || plugin.url}');
+  console.error('[stagewise] Plugin path: ${JSON.stringify(plugin.path || plugin.url)}');
 }`);
         pluginExports.push(`plugin${index}`);
       });
