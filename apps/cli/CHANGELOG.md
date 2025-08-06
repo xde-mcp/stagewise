@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.2.2
+
+### Patch Changes
+
+- c5b3d77: Fixing "octal sequence not allowed" error in normal mode on windows.
+
 ## 0.2.1
 
 ### Patch Changes
