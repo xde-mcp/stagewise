@@ -3,7 +3,7 @@ title: Build custom Agent Integrations
 description: This guide shows you how to build an integration for custom agents into stagewise.
 ---
 
-The Stagewise Agent Interface allows you to connect any AI agent or service to the Stagewise toolbar. Your custom agent can receive user prompts, maintain conversation state, call tools, and provide rich responses back to users in their browser.
+The stagewise Agent Interface allows you to connect any AI agent or service to the stagewise toolbar. Your custom agent can receive user prompts, maintain conversation state, call tools, and provide rich responses back to users in their browser.
 
 ## 1. Getting Started
 
@@ -17,7 +17,7 @@ npm install @stagewise/agent-interface
 
 ### Basic Agent Setup
 
-Create a simple agent server that connects to the Stagewise toolbar:
+Create a simple agent server that connects to the stagewise toolbar:
 
 ```typescript
 import { createAgentServer, AgentStateType } from '@stagewise/agent-interface/agent';
@@ -284,7 +284,7 @@ async function handleToolCallingExample(agentInterface) {
       // Call the tool
       const result = await agentInterface.toolCalling?.requestToolCall(
         'web_search',
-        { query: 'Stagewise AI documentation', limit: 5 }
+        { query: 'stagewise AI documentation', limit: 5 }
       );
       
       // Use the result
@@ -333,7 +333,7 @@ async function handleToolCallingExample(agentInterface) {
 ## 8. Testing Your Agent
 
 1. **Start your agent**: Run your agent server
-2. **Add toolbar to your app**: Follow the [Quickstart guide](/docs/quickstart) to add the Stagewise toolbar
+2. **Add toolbar to your app**: Follow the [Quickstart guide](/docs) to add the stagewise toolbar
 3. **Test the connection**: The toolbar should detect your agent automatically
 4. **Send test messages**: Try various prompts and element selections
 
@@ -349,7 +349,7 @@ Note: Your agent runs independently and doesn't require any VS Code extensions t
 
 ## Next Steps
 
-- Explore the [Plugins documentation](/docs/plugins) to extend toolbar functionality
+- Explore the [Plugins documentation](/docs/developer-guides/build-plugins) to extend toolbar functionality
 - Check out example agents in the [GitHub repository](https://github.com/stagewise-io/stagewise)
 - Join our community for questions and discussions
 - Consider contributing your agent integration back to the community
