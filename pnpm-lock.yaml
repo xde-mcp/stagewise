@@ -89,6 +89,31 @@ importers:
         specifier: ^5.0.0
         version: 5.8.3
 
+  agent/project-information:
+    dependencies:
+      '@stagewise/agent-runtime-interface':
+        specifier: workspace:*
+        version: link:../runtime-interface
+    devDependencies:
+      '@stagewise/agent-runtime-mock':
+        specifier: workspace:*
+        version: link:../runtime-mock
+      '@vitest/coverage-v8':
+        specifier: ^2.0.0
+        version: 2.1.9(vitest@2.1.9)
+      rimraf:
+        specifier: ^5.0.0
+        version: 5.0.10
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@24.0.3)(@vitest/ui@2.1.9)(less@4.2.2)(lightningcss@1.30.1)(sass@1.85.0)(terser@5.43.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+
   agent/prompt-snippets:
     dependencies:
       '@stagewise/agent-runtime-interface':
@@ -119,6 +144,28 @@ importers:
       zod:
         specifier: 3.25.76
         version: 3.25.76
+
+  agent/runtime-mock:
+    dependencies:
+      memfs:
+        specifier: ^4.17.2
+        version: 4.17.2
+    devDependencies:
+      '@stagewise/agent-runtime-interface':
+        specifier: workspace:*
+        version: link:../runtime-interface
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.9
+      esbuild:
+        specifier: ^0.20.1
+        version: 0.20.2
+      rimraf:
+        specifier: ^5.0.0
+        version: 5.0.10
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
 
   agent/runtime-node:
     dependencies:
@@ -15096,7 +15143,7 @@ snapshots:
       '@babel/parser': 7.27.5
       '@babel/types': 7.27.6
       '@jridgewell/gen-mapping': 0.3.8
-      '@jridgewell/trace-mapping': 0.3.25
+      '@jridgewell/trace-mapping': 0.3.29
       jsesc: 3.1.0
 
   '@babel/helper-annotate-as-pure@7.25.9':
@@ -15105,7 +15152,7 @@ snapshots:
 
   '@babel/helper-annotate-as-pure@7.27.3':
     dependencies:
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.0
 
   '@babel/helper-compilation-targets@7.27.2':
     dependencies:
@@ -15162,13 +15209,13 @@ snapshots:
   '@babel/helper-member-expression-to-functions@7.27.1':
     dependencies:
       '@babel/traverse': 7.27.4
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.0
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-module-imports@7.18.6':
     dependencies:
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.0
 
   '@babel/helper-module-imports@7.27.1':
     dependencies:
@@ -15224,7 +15271,7 @@ snapshots:
 
   '@babel/helper-optimise-call-expression@7.27.1':
     dependencies:
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.0
 
   '@babel/helper-plugin-utils@7.27.1': {}
 
@@ -15258,7 +15305,7 @@ snapshots:
   '@babel/helper-skip-transparent-expression-wrappers@7.27.1':
     dependencies:
       '@babel/traverse': 7.27.4
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.0
     transitivePeerDependencies:
       - supports-color
 
@@ -15276,7 +15323,7 @@ snapshots:
     dependencies:
       '@babel/template': 7.27.2
       '@babel/traverse': 7.27.4
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.0
     transitivePeerDependencies:
       - supports-color
 
@@ -19718,7 +19765,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.27.4
       '@babel/generator': 7.27.5
-      '@babel/parser': 7.27.5
+      '@babel/parser': 7.28.0
       '@babel/preset-typescript': 7.27.1(@babel/core@7.27.4)
       ansis: 4.1.0
       diff: 8.0.2
@@ -21287,7 +21334,7 @@ snapshots:
       '@babel/core': 7.27.4
       '@babel/helper-module-imports': 7.18.6
       '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.27.4)
-      '@babel/types': 7.27.6
+      '@babel/types': 7.28.0
       html-entities: 2.3.3
       parse5: 7.3.0
       validate-html-nesting: 1.2.2
