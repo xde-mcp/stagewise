@@ -171,7 +171,7 @@ export default function Home() {
                   your dev app:
                 </p>
                 <Clipboard
-                  text="npx stagewise"
+                  text="npx stagewise@latest"
                   className="mx-auto mb-6 justify-center"
                 />
               </div>

@@ -54,7 +54,7 @@ export default function MigrateToCLI() {
                   aria-label="Copy to clipboard"
                 >
                   <span className="select-all pr-6 font-mono">
-                    npx stagewise
+                    npx stagewise@latest
                   </span>
                   {copied ? (
                     <CheckIcon className="h-4 w-4 text-green-500" />
@@ -65,7 +65,9 @@ export default function MigrateToCLI() {
 
                 <p className="text-center text-zinc-600 dark:text-zinc-400">
                   If you're using pnpm, run{' '}
-                  <code className="px-1 font-semibold">pnpm dlx stagewise</code>{' '}
+                  <code className="px-1 font-semibold">
+                    pnpm dlx stagewise@latest
+                  </code>{' '}
                   instead.
                 </p>
               </div>

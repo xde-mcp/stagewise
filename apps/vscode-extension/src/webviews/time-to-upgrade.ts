@@ -29,7 +29,7 @@ export function createTimeToUpgradePanel(
             cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
           });
           terminal.show();
-          terminal.sendText('npx stagewise', false);
+          terminal.sendText('npx stagewise@latest', false);
           break;
         }
         case 'openDiscord':

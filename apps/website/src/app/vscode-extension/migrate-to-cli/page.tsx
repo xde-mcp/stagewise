@@ -149,13 +149,13 @@ export default function MigrateToCLI() {
                         <span className="text-start font-medium text-sm text-zinc-700 dark:text-zinc-300">
                           Simply run{' '}
                           <code className="px-1 font-semibold">
-                            npx stagewise
+                            npx stagewise@latest
                           </code>{' '}
                           in the terminal in your project root.
                           <br />
                           (If you're using pnpm, run{' '}
                           <code className="px-1 font-semibold">
-                            pnpm dlx stagewise
+                            pnpm dlx stagewise@latest
                           </code>{' '}
                           instead.)
                         </span>
@@ -210,7 +210,10 @@ export default function MigrateToCLI() {
                   <br />
                   If you wish to continue using the agent of your IDE, simply
                   start the CLI in bridge mode (
-                  <code className="px-1 font-semibold">npx stagewise -b</code>).
+                  <code className="px-1 font-semibold">
+                    npx stagewise@latest -b
+                  </code>
+                  ).
                 </p>
               </div>
             </div>
