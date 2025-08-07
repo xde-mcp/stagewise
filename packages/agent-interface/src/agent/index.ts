@@ -30,25 +30,26 @@ export {
   type AgentState,
 } from '../router/capabilities/state/types';
 export type * from '../router/capabilities/messaging/types';
-export {
+export type {
   // Re-export chat types, excluding those that conflict with messaging
-  type TextPart,
-  type ImagePart,
-  type FilePart,
-  type ReasoningPart,
-  type ToolCallPart,
-  type ToolResultPart,
-  type AssistantMessage,
-  type ToolMessage,
-  type ChatMessage,
-  type Chat,
-  type ChatListItem,
-  type MessagePartUpdate,
-  type ChatUpdate,
-  type CreateChatRequest,
-  type SendMessageRequest,
-  type ToolApprovalResponse,
-  type ToolDefinition,
+  TextPart,
+  FilePart,
+  ReasoningPart,
+  ToolCallPart,
+  ToolResultPart,
+  ToolApprovalPart,
+  UserMessage as ChatUserMessage,
+  AssistantMessage,
+  ToolMessage,
+  ChatMessage,
+  Chat,
+  ChatListItem,
+  MessagePartUpdate,
+  ChatUpdate,
+  CreateChatRequest,
+  SendMessageRequest,
+  ToolApprovalResponse,
+  ToolDefinition,
 } from '../router/capabilities/chat/types';
 
 /**

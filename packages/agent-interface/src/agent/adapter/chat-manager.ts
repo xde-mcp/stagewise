@@ -5,7 +5,6 @@ import type {
   ChatMessage,
   ChatUpdate,
   MessagePartUpdate,
-  ToolDefinition,
   UserMessage,
   AssistantMessage,
   ToolMessage,
@@ -46,14 +45,12 @@ export class ChatManager {
   private activeChatId: string | null = null;
 
   /**
-   * Tools available to the agent for use in chats
-   */
-  private availableTools: ToolDefinition[] = [];
-
-  /**
    * Map of pending tool approvals by toolCallId
    */
-  private pendingToolApprovals: Map<string, { chatId: string; messageId: string }> = new Map();
+  private pendingToolApprovals: Map<
+    string,
+    { chatId: string; messageId: string }
+  > = new Map();
 
   /**
    * Set of listeners for chat update events
@@ -130,6 +127,17 @@ export class ChatManager {
   }
 
   /**
+   * Gets the ID of the currently active chat
+   *
+   * @returns The active chat ID or null if no chat is active
+   * @throws Error if chat is not supported
+   */
+  public getActiveChatId(): string | null {
+    this.ensureSupported();
+    return this.activeChatId;
+  }
+
+  /**
    * Gets the currently active chat with full message history
    *
    * @returns The active chat or null if no chat is active
@@ -142,17 +150,22 @@ export class ChatManager {
 
   /**
    * Creates a new chat and makes it active
-   * Can only create a new chat when the agent is idle
+   * Agents can create chats anytime, toolbar can only create when idle
    *
    * @param title - Optional title for the chat
+   * @param isFromAgent - Whether this is being called by the agent (bypasses restrictions)
    * @returns The ID of the newly created chat
-   * @throws Error if chat is not supported or agent is busy
+   * @throws Error if chat is not supported or toolbar tries to create while busy
    */
-  public async createChat(title?: string): Promise<string> {
+  public async createChat(
+    title?: string,
+    isFromAgent = false,
+  ): Promise<string> {
     this.ensureSupported();
 
-    // Prevent creating new chat while agent is working
+    // Only enforce restrictions for toolbar-initiated creates
     if (
+      !isFromAgent &&
       this.activeChatId &&
       this.stateManager.get().state !== AgentStateType.IDLE
     ) {
@@ -301,21 +314,23 @@ export class ChatManager {
   }
 
   /**
-   * Adds a message to the active chat
+   * Adds a message to a specific chat or the active chat
    * Used by agents to add assistant or tool messages
    *
    * @param message - The message to add (any role)
+   * @param chatId - Optional chat ID (defaults to active chat)
    */
-  public addMessage(message: ChatMessage): void {
+  public addMessage(message: ChatMessage, chatId?: string): void {
     this.ensureSupported();
 
-    if (!this.activeChatId) {
-      throw new Error('No active chat');
+    const targetChatId = chatId || this.activeChatId;
+    if (!targetChatId) {
+      throw new Error('No chat ID provided and no active chat');
     }
 
-    const chat = this.chats.get(this.activeChatId);
+    const chat = this.chats.get(targetChatId);
     if (!chat) {
-      throw new Error('Active chat not found');
+      throw new Error(`Chat ${targetChatId} not found`);
     }
 
     // Add message to chat history
@@ -324,20 +339,20 @@ export class ChatManager {
     // Track pending tool approvals if this is an assistant message with tool calls
     if (message.role === 'assistant') {
       const assistantMsg = message as AssistantMessage;
-      assistantMsg.content.forEach(part => {
+      assistantMsg.content.forEach((part) => {
         if (part.type === 'tool-call' && part.requiresApproval) {
           this.pendingToolApprovals.set(part.toolCallId, {
-            chatId: this.activeChatId!,
+            chatId: targetChatId,
             messageId: message.id,
           });
         }
       });
     }
 
-    // Broadcast message addition
+    // Broadcast message addition with chat ID
     const update: ChatUpdate = {
       type: 'message-added',
-      chatId: this.activeChatId,
+      chatId: targetChatId,
       message,
     };
     this.broadcastUpdate(update);
@@ -349,20 +364,23 @@ export class ChatManager {
    *
    * @param messageId - ID of the message to update
    * @param content - New content array for the message
+   * @param chatId - Optional chat ID (defaults to active chat)
    */
   public updateMessage(
     messageId: string,
     content: AssistantMessage['content'],
+    chatId?: string,
   ): void {
     this.ensureSupported();
 
-    if (!this.activeChatId) {
-      throw new Error('No active chat');
+    const targetChatId = chatId || this.activeChatId;
+    if (!targetChatId) {
+      throw new Error('No chat ID provided and no active chat');
     }
 
-    const chat = this.chats.get(this.activeChatId);
+    const chat = this.chats.get(targetChatId);
     if (!chat) {
-      throw new Error('Active chat not found');
+      throw new Error(`Chat ${targetChatId} not found`);
     }
 
     // Find and update the message
@@ -373,20 +391,22 @@ export class ChatManager {
   }
 
   /**
-   * Deletes a message from the active chat
+   * Deletes a message from a specific chat
    *
    * @param messageId - ID of the message to delete
+   * @param chatId - Optional chat ID (defaults to active chat)
    */
-  public deleteMessage(messageId: string): void {
+  public deleteMessage(messageId: string, chatId?: string): void {
     this.ensureSupported();
 
-    if (!this.activeChatId) {
-      throw new Error('No active chat');
+    const targetChatId = chatId || this.activeChatId;
+    if (!targetChatId) {
+      throw new Error('No chat ID provided and no active chat');
     }
 
-    const chat = this.chats.get(this.activeChatId);
+    const chat = this.chats.get(targetChatId);
     if (!chat) {
-      throw new Error('Active chat not found');
+      throw new Error(`Chat ${targetChatId} not found`);
     }
 
     // Remove message from chat
@@ -397,18 +417,61 @@ export class ChatManager {
   }
 
   /**
-   * Clears all messages from the active chat
+   * Deletes a message and all subsequent messages from a specific chat
+   * This is critical for maintaining consistency when users want to revise history
+   *
+   * @param messageId - ID of the message to delete from
+   * @param chatId - Optional chat ID (defaults to active chat)
    */
-  public clearMessages(): void {
+  public deleteMessageAndSubsequent(messageId: string, chatId?: string): void {
     this.ensureSupported();
 
-    if (!this.activeChatId) {
-      throw new Error('No active chat');
+    const targetChatId = chatId || this.activeChatId;
+    if (!targetChatId) {
+      throw new Error('No chat ID provided and no active chat');
     }
 
-    const chat = this.chats.get(this.activeChatId);
+    const chat = this.chats.get(targetChatId);
     if (!chat) {
-      throw new Error('Active chat not found');
+      throw new Error(`Chat ${targetChatId} not found`);
+    }
+
+    // Find the index of the message to delete from
+    const index = chat.messages.findIndex((m) => m.id === messageId);
+    if (index === -1) {
+      throw new Error(`Message ${messageId} not found in chat ${targetChatId}`);
+    }
+
+    // Delete this message and all subsequent messages
+    const deletedCount = chat.messages.length - index;
+    chat.messages.splice(index);
+
+    // Broadcast update about the deletion
+    const update: ChatUpdate = {
+      type: 'messages-deleted',
+      chatId: targetChatId,
+      fromMessageId: messageId,
+      deletedCount,
+    };
+    this.broadcastUpdate(update);
+  }
+
+  /**
+   * Clears all messages from a specific chat
+   *
+   * @param chatId - Optional chat ID (defaults to active chat)
+   */
+  public clearMessages(chatId?: string): void {
+    this.ensureSupported();
+
+    const targetChatId = chatId || this.activeChatId;
+    if (!targetChatId) {
+      throw new Error('No chat ID provided and no active chat');
+    }
+
+    const chat = this.chats.get(targetChatId);
+    if (!chat) {
+      throw new Error(`Chat ${targetChatId} not found`);
     }
 
     // Clear message history
@@ -422,6 +485,7 @@ export class ChatManager {
    * @param messageId - ID of the message being updated
    * @param partIndex - Index of the part being updated
    * @param update - The update to apply
+   * @param chatId - Optional chat ID (defaults to active chat)
    */
   public streamMessagePart(
     messageId: string,
@@ -430,17 +494,19 @@ export class ChatManager {
       content: MessagePartUpdate['content'];
       updateType: MessagePartUpdate['updateType'];
     },
+    chatId?: string,
   ): void {
     this.ensureSupported();
 
-    if (!this.activeChatId) {
-      throw new Error('No active chat');
+    const targetChatId = chatId || this.activeChatId;
+    if (!targetChatId) {
+      throw new Error('No chat ID provided and no active chat');
     }
 
-    // Broadcast streaming update
+    // Broadcast streaming update with chat ID
     const chatUpdate: ChatUpdate = {
       type: 'message-updated',
-      chatId: this.activeChatId,
+      chatId: targetChatId,
       update: {
         messageId,
         partIndex,
@@ -449,27 +515,6 @@ export class ChatManager {
       },
     };
     this.broadcastUpdate(chatUpdate);
-  }
-
-  /**
-   * Registers available tools for use in chats
-   *
-   * @param tools - Array of tool definitions
-   */
-  public registerTools(tools: ToolDefinition[]): void {
-    this.ensureSupported();
-    this.availableTools = [...tools];
-    // Could broadcast available tools update if needed in future
-  }
-
-  /**
-   * Gets the list of available tools
-   *
-   * @returns Array of registered tool definitions
-   */
-  public getAvailableTools(): ToolDefinition[] {
-    this.ensureSupported();
-    return [...this.availableTools];
   }
 
   /**
@@ -587,9 +632,11 @@ export class ChatManager {
 
       /**
        * Creates a new chat from the toolbar
+       * Enforces restrictions for toolbar-initiated creates
        */
       onCreateChat: async (request) => {
-        return self.createChat(request.title);
+        // Pass isFromAgent=false to enforce toolbar restrictions
+        return self.createChat(request.title, false);
       },
 
       /**
@@ -614,13 +661,26 @@ export class ChatManager {
       },
 
       /**
+       * Deletes a message and all subsequent messages from the toolbar
+       * Critical for maintaining consistency when users want to revise history
+       */
+      onDeleteMessageAndSubsequent: async (request) => {
+        await self.deleteMessageAndSubsequent(
+          request.messageId,
+          request.chatId,
+        );
+      },
+
+      /**
        * Handles tool approval responses from the toolbar
        */
       onToolApproval: async (response) => {
         // Find the pending tool call
         const pendingInfo = self.pendingToolApprovals.get(response.toolCallId);
         if (!pendingInfo) {
-          throw new Error(`No pending approval for tool call ${response.toolCallId}`);
+          throw new Error(
+            `No pending approval for tool call ${response.toolCallId}`,
+          );
         }
 
         const chat = self.chats.get(pendingInfo.chatId);
@@ -628,24 +688,25 @@ export class ChatManager {
           throw new Error('Chat not found for tool approval');
         }
 
-        // Create a tool message with the approval/rejection result
-        const toolMessage: ToolMessage = {
+        // Create a user message with the tool approval part
+        const userMessage: UserMessage = {
           id: self.idGenerator(),
-          role: 'tool',
-          content: [{
-            type: 'tool-result',
-            toolCallId: response.toolCallId,
-            toolName: 'approval',
-            output: response.approved 
-              ? { status: 'approved', modifiedInput: response.modifiedInput }
-              : { status: 'rejected' },
-            isError: !response.approved,
-          }],
+          role: 'user',
+          content: [
+            {
+              type: 'tool-approval',
+              toolCallId: response.toolCallId,
+              approved: response.approved,
+            },
+          ],
+          metadata: {
+            isToolApproval: true, // Metadata to identify this as a tool approval
+          },
           createdAt: new Date(),
         };
 
         // Add to chat and broadcast
-        self.addMessage(toolMessage);
+        self.addMessage(userMessage, pendingInfo.chatId);
 
         // Clean up pending approval
         self.pendingToolApprovals.delete(response.toolCallId);
@@ -653,9 +714,11 @@ export class ChatManager {
 
       /**
        * Registers tools from the toolbar
+       * Currently a no-op as tool metadata is not used
        */
-      onToolRegistration: (tools) => {
-        self.registerTools(tools);
+      onToolRegistration: (_tools) => {
+        // Tool registration is handled by the toolbar
+        // The agent doesn't need to track available tools
       },
 
       /**
@@ -680,7 +743,8 @@ export class ChatManager {
           if (msg.role === 'assistant') {
             const assistantMsg = msg as AssistantMessage;
             const toolCall = assistantMsg.content.find(
-              part => part.type === 'tool-call' && part.toolCallId === toolCallId
+              (part) =>
+                part.type === 'tool-call' && part.toolCallId === toolCallId,
             );
             if (toolCall && toolCall.type === 'tool-call') {
               toolName = toolCall.toolName;
@@ -693,13 +757,15 @@ export class ChatManager {
         const toolMessage: ToolMessage = {
           id: self.idGenerator(),
           role: 'tool',
-          content: [{
-            type: 'tool-result',
-            toolCallId,
-            toolName,
-            output: result,
-            isError,
-          }],
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId,
+              toolName,
+              output: result,
+              isError,
+            },
+          ],
           createdAt: new Date(),
         };
 
