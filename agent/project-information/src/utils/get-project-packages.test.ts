@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { ClientRuntimeMock } from '@stagewise/agent-runtime-mock';
-import { detectMonorepoInfo } from './detect-monorepo.js';
+import { getProjectPackages } from './get-project-packages.js';
 
-describe('detectMonorepoInfo', () => {
+describe('getProjectPackages', () => {
   describe('Basic monorepo detection', () => {
     it('should detect pnpm workspace monorepo with resolved packages', async () => {
       const mockRuntime = new ClientRuntimeMock({
@@ -35,7 +35,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.rootPath).toBe('/workspace/monorepo');
@@ -99,7 +99,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
 
@@ -146,7 +146,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
 
@@ -188,7 +188,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
 
@@ -236,7 +236,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
 
@@ -283,7 +283,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(3);
@@ -312,7 +312,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.tools.find((t) => t.name === 'yarn')).toBeDefined();
@@ -339,7 +339,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(1);
@@ -371,7 +371,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(3);
@@ -411,7 +411,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(3);
@@ -437,7 +437,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(false);
       expect(result.rootPath).toBe('/project/single-package');
@@ -453,7 +453,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(false);
       expect(result.rootPath).toBe(null);
@@ -475,7 +475,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true); // Still a monorepo structure
       expect(result.packages).toEqual([]); // But no actual packages
@@ -502,7 +502,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(1); // Only lib2 has package.json
@@ -531,7 +531,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(2);
@@ -560,7 +560,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true); // turbo.json is valid
 
@@ -612,7 +612,7 @@ describe('detectMonorepoInfo', () => {
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.tools).toHaveLength(2); // pnpm and lerna
@@ -665,7 +665,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(4);
@@ -702,7 +702,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(2);
@@ -737,7 +737,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
 
@@ -783,7 +783,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.tools.map((t) => t.name).sort()).toEqual([
@@ -821,7 +821,7 @@ catalog: {}`,
         initialFiles: files,
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(50);
@@ -855,7 +855,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(2);
@@ -883,7 +883,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.tools).toHaveLength(0); // No monorepo tools detected
@@ -908,7 +908,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(1); // Only finds the existing package
@@ -945,7 +945,7 @@ catalog: {}`,
         },
       });
 
-      const result = await detectMonorepoInfo(mockRuntime);
+      const result = await getProjectPackages(mockRuntime);
 
       expect(result.isMonorepo).toBe(true);
       expect(result.packages).toHaveLength(3);

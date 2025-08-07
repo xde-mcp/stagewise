@@ -10,7 +10,6 @@ export async function getProjectPath(
 ): Promise<PromptSnippet> {
   try {
     const projectPath = clientRuntime.fileSystem.getCurrentWorkingDirectory();
-
     return {
       type: 'project-path',
       description: 'Current Project Path',

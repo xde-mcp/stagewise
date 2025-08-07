@@ -116,6 +116,9 @@ importers:
 
   agent/prompt-snippets:
     dependencies:
+      '@stagewise/agent-project-information':
+        specifier: workspace:*
+        version: link:../project-information
       '@stagewise/agent-runtime-interface':
         specifier: workspace:*
         version: link:../runtime-interface

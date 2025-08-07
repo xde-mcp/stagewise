@@ -15,7 +15,10 @@ import {
   type UserMessage,
   type AgentServer,
 } from '@stagewise/agent-interface/agent';
-import { getProjectPath } from '@stagewise/agent-prompt-snippets';
+import {
+  getProjectPath,
+  getProjectInfo,
+} from '@stagewise/agent-prompt-snippets';
 import { createAuthenticatedClient } from './utils/create-authenticated-client.js';
 import type {
   AppRouter,
@@ -355,6 +358,11 @@ export class Agent {
         promptSnippets.push(projectPathPromptSnippet);
       }
 
+      const projectInfoPromptSnippet = await getProjectInfo(this.clientRuntime);
+      if (projectInfoPromptSnippet) {
+        promptSnippets.push(projectInfoPromptSnippet);
+      }
+
       this.callAgent({
         history: this.history,
         clientRuntime: this.clientRuntime,
@@ -402,6 +410,12 @@ export class Agent {
       if (projectPathPromptSnippet) {
         promptSnippets.push(projectPathPromptSnippet);
       }
+
+      const projectInfoPromptSnippet = await getProjectInfo(this.clientRuntime);
+      if (projectInfoPromptSnippet) {
+        promptSnippets.push(projectInfoPromptSnippet);
+      }
+
       this.callAgent({
         history: this.history,
         clientRuntime: this.clientRuntime,

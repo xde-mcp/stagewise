@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "@stagewise/agent-runtime-interface": "workspace:*",
-    "@stagewise/agent-types": "workspace:*"
+    "@stagewise/agent-types": "workspace:*",
+    "@stagewise/agent-project-information": "workspace:*"
   },
   "devDependencies": {
     "zod": "3.25.76",

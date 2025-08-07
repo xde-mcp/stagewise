@@ -50,7 +50,7 @@ export interface MonorepoTool {
 }
 
 /**
- * Detects monorepo structure and tools in a project.
+ * Gets project packages and monorepo structure information.
  *
  * This function performs comprehensive analysis to detect various monorepo tools and configurations
  * including pnpm workspaces, Lerna, Nx, Turborepo, Rush, Yarn workspaces, and Lage. It analyzes
@@ -63,7 +63,7 @@ export interface MonorepoTool {
  * @example
  * ```typescript
  * // In a pnpm + Turbo monorepo:
- * const info = await detectMonorepoInfo(clientRuntime);
+ * const info = await getProjectPackages(clientRuntime);
  * console.log(info);
  * // {
  * //   isMonorepo: true,
@@ -82,7 +82,7 @@ export interface MonorepoTool {
  * @example
  * ```typescript
  * // In a regular single-package project:
- * const info = await detectMonorepoInfo(clientRuntime);
+ * const info = await getProjectPackages(clientRuntime);
  * console.log(info);
  * // {
  * //   isMonorepo: false,
@@ -92,7 +92,7 @@ export interface MonorepoTool {
  * // }
  * ```
  */
-export async function detectMonorepoInfo(
+export async function getProjectPackages(
   clientRuntime: ClientRuntime,
 ): Promise<MonorepoInfo> {
   const fileSystem = clientRuntime.fileSystem;
@@ -444,3 +444,7 @@ async function extractWorkspacePatterns(
     // Ignore parsing errors for individual config files
   }
 }
+
+// Backwards compatibility export with the old name
+/** @deprecated Use getProjectPackages instead */
+export const detectMonorepoInfo = getProjectPackages;
