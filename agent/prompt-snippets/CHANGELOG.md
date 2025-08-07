@@ -1,5 +1,13 @@
 # @stagewise/client-prompt-snippets
 
+## 0.0.5
+
+### Patch Changes
+
+- 5536a04: Migrate build scripts to typescript.
+- Updated dependencies [5536a04]
+  - @stagewise/agent-project-information@0.0.2
+
 ## 0.0.4
 
 ### Patch Changes

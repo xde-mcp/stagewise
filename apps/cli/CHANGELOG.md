@@ -1,5 +1,15 @@
 # stagewise
 
+## 0.3.0
+
+### Minor Changes
+
+- 5536a04: Improve agent context - add structured project information.
+
+### Patch Changes
+
+- 1a8085e: Update npx stagewise docs to use stagewise@latest.
+
 ## 0.2.2
 
 ### Patch Changes

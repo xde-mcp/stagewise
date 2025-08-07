@@ -1,5 +1,14 @@
 # stagewise-vscode-extension
 
+## 0.10.2
+
+### Patch Changes
+
+- 1a8085e: Update npx stagewise docs to use stagewise@latest.
+- Updated dependencies [5536a04]
+  - @stagewise/agent-runtime-vscode@0.0.2
+  - @stagewise/agent-client@0.0.3
+
 ## 0.10.1
 
 ### Patch Changes
