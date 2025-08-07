@@ -16,10 +16,10 @@ If you want to use stagewise in your dev app, and you have an open terminal righ
 
 ```bash
 # If you're using npm as package manager
-npx stagewise
+npx stagewise@latest
 
 # If you're using pnpm as package manager
-pnpm dlx stagewise
+pnpm dlx stagewise@latest
 ```
 
 ### Use a different (external) agent
@@ -28,10 +28,10 @@ If you want to use stagewise [with another agent than the stagewise agent](/docs
 
 ```bash
 # If you're using npm as package manager
-npx stagewise -b
+npx stagewise@latest -b
 
 # If you're using pnpm as package manager
-pnpm dlx stagewise -b
+pnpm dlx stagewise@latest -b
 ```
 
 ### Start in another working directory
@@ -40,10 +40,10 @@ If the app you're working on is located in a different path, simply pass in a `-
 
 ```bash
 # If you're using npm as package manager
-npx stagewise -w ~/projects/my-dev-app  
+npx stagewise@latest -w ~/projects/my-dev-app  
 
 # If you're using pnpm as package manager
-pnpm dlx stagewise -w ~/projects/my-dev-app
+pnpm dlx stagewise@latest -w ~/projects/my-dev-app
 ```
 
 ### Host stagewise on a specific port
@@ -52,10 +52,10 @@ By default, stagewise exposes your app and the toolbar on port `3100`, but if yo
 
 ```bash
 # If you're using npm as package manager
-npx stagewise -p 3500 # Set the port you want to use
+npx stagewise@latest -p 3500 # Set the port you want to use
 
 # If you're using pnpm as package manager
-pnpm dlx stagewise -p 3500
+pnpm dlx stagewise@latest -p 3500
 ```
 
 > You can also configure the port in the `stagewise.json`.
@@ -67,10 +67,10 @@ When opening up a new workspace with stagewise, it will ask you on which port th
 
 ```bash
 # If you're using npm as package manager
-npx stagewise -a 3002 # Set the port on which your dev app is hosted on
+npx stagewise@latest -a 3002 # Set the port on which your dev app is hosted on
 
 # If you're using pnpm as package manager
-pnpm dlx stagewise -a 3002
+pnpm dlx stagewise@latest -a 3002
 ```
 
 ### Wrap your dev command with stagewise
@@ -79,10 +79,10 @@ Instead of running stagewise and your dev server in separate terminals, you can 
 
 ```bash
 # Wrap your dev command
-npx stagewise -- pnpm dev
+npx stagewise@latest -- pnpm dev
 
 # You can still use stagewise options before the double-dash
-npx stagewise -p 3100 -a 3000 -- pnpm dev
+npx stagewise@latest -p 3100 -a 3000 -- pnpm dev
 ```
 
 Or wrap the dev script in your package.json:
@@ -90,7 +90,7 @@ Or wrap the dev script in your package.json:
 ```json
 {
   "scripts": {
-    "dev": "npx stagewise -- next dev"
+    "dev": "npx stagewise@latest -- next dev"
   }
 }
 ```
@@ -262,7 +262,7 @@ Enable bridge mode, which disables the built-in stagewise agent server. In this 
 Use the double-dash to wrap your development command with stagewise, running both in a single terminal:
 
 ```bash
-npx stagewise [options] -- <your-dev-command>
+npx stagewise@latest [options] -- <your-dev-command>
 ```
 
 This allows you to run `npm run dev`, `pnpm dev`, or any other command while stagewise operates in the background.

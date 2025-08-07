@@ -29,7 +29,7 @@ Making the switch to the CLI is easy an consist of the following steps:
 1. Remove all stagewise toolbar and plugin dependencies from your web app (`package.json`)
 2. Uninstall the stagewise extension from your code editor ([unless you want to continue using the agent of your IDE](#continue-using-other-agents))
 3. Open a terminal window in the root of your dev app
-4. Enter `npx stagewise` (or `pnpm dlx stagewise` if you're using pnpm) to start the stagewise CLI **without even having to install it**.
+4. Enter `npx stagewise@latest` (or `pnpm dlx stagewise@latest` if you're using pnpm) to start the stagewise CLI **without even having to install it**.
 5. Tell the CLI on which port your dev app is served
 6. That's it! A browser window will pop up and you're now using the new stagewise CLI 🎉
 
@@ -46,7 +46,7 @@ In these cases, please [create a GitHub issue](https://github.com/stagewise-io/s
 
 We recommend using the built-in stagewise agent for your frontend work, but if you want to continue using the agents of your code editor, or some other extension, make sure to:
 
-  - Start the CLI in **Bridge mode** (`npx stagewise -b`)
+  - Start the CLI in **Bridge mode** (`npx stagewise@latest -b`)
   - Keep the stagewise extension in your code editor (if you want to use the agent of Cursor, Windsurf, VSCode, etc.)
 
 *While we will gradually phase out the work on our current code editor extension, we're committed to keep this open and highly integratable model of stagewise a top priority for our product.*
