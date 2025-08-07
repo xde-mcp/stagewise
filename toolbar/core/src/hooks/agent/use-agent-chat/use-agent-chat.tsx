@@ -17,10 +17,10 @@ import {
 } from 'react';
 import type {
   ChatUpdate,
-  ChatUserMessage,
   AssistantMessage,
   ToolDefinition,
-} from '@stagewise/agent-interface/toolbar';
+  SendMessageRequest,
+} from '@stagewise/agent-interface-internal/toolbar';
 import { useAgents } from '../use-agent-provider';
 import { ChatContext } from './context';
 import { createChatUpdateHandler } from './update-handler';
@@ -51,7 +51,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
     error: null,
   });
 
-  const [isSupported, setIsSupported] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
 
   const [streamingState, setStreamingState] = useState<MessageStreamingState>({
     streamingParts: new Map(),
@@ -75,6 +75,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
       setStreamingState,
       setPendingToolCalls,
       processedUpdatesRef,
+      setIsWorking,
     ),
     [],
   );
@@ -82,26 +83,21 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
   // ===== Subscription Management =====
 
   useEffect(() => {
-    if (agent?.info.capabilities?.chatHistory) {
-      setIsSupported(true);
-
+    if (agent?.getChatUpdates) {
       // Subscribe to chat updates from the agent
-      const subscription = agent.agent.chat.getChatUpdates.subscribe(
-        undefined,
-        {
-          onData: (update: ChatUpdate) => {
-            handleChatUpdate(update);
-          },
-          onError: (error: unknown) => {
-            console.error('Chat subscription error:', error);
-            setChatState((prev) => ({
-              ...prev,
-              error: 'Failed to connect to chat service',
-              isLoading: false,
-            }));
-          },
+      const subscription = agent.getChatUpdates.subscribe(undefined, {
+        onData: (update: ChatUpdate) => {
+          handleChatUpdate(update);
         },
-      );
+        onError: (error: unknown) => {
+          console.error('Chat subscription error:', error);
+          setChatState((prev) => ({
+            ...prev,
+            error: 'Failed to connect to chat service',
+            isLoading: false,
+          }));
+        },
+      });
 
       subscriptionRef.current = subscription;
 
@@ -110,15 +106,6 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
         subscription.unsubscribe();
         subscriptionRef.current = null;
       };
-    } else {
-      // Agent doesn't support chat
-      setIsSupported(false);
-      setChatState({
-        chats: [],
-        activeChat: null,
-        isLoading: false,
-        error: null,
-      });
     }
   }, [agent, handleChatUpdate]);
 
@@ -130,9 +117,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
 
       try {
         setChatState((prev) => ({ ...prev, isLoading: true, error: null }));
-        const chatId = await agent.agent.chat.createChat.mutate(
-          title ? { title } : {},
-        );
+        const chatId = await agent.createChat.mutate(title ? { title } : {});
         return chatId;
       } catch (error) {
         setChatState((prev) => ({
@@ -153,7 +138,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
 
       try {
         setChatState((prev) => ({ ...prev, isLoading: true, error: null }));
-        await agent.agent.chat.deleteChat.mutate(chatId);
+        await agent.deleteChat.mutate(chatId);
         return true;
       } catch (error) {
         setChatState((prev) => ({
@@ -174,7 +159,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
 
       try {
         setChatState((prev) => ({ ...prev, isLoading: true, error: null }));
-        await agent.agent.chat.switchChat.mutate(chatId);
+        await agent.switchChat.mutate(chatId);
         return true;
       } catch (error) {
         setChatState((prev) => ({
@@ -195,7 +180,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
 
       try {
         setChatState((prev) => ({ ...prev, error: null }));
-        await agent.agent.chat.updateChatTitle.mutate({ chatId, title });
+        await agent.updateChatTitle.mutate({ chatId, title });
         return true;
       } catch (error) {
         setChatState((prev) => ({
@@ -211,12 +196,49 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
     [agent],
   );
 
+  const deleteMessageAndSubsequent = useCallback(
+    async (messageId: string, chatId?: string): Promise<boolean> => {
+      if (!agent?.deleteMessageAndSubsequent) {
+        setChatState((prev) => ({
+          ...prev,
+          error: 'Delete message not supported',
+        }));
+        return false;
+      }
+
+      const targetChatId = chatId || chatState.activeChat?.id;
+      if (!targetChatId) {
+        setChatState((prev) => ({
+          ...prev,
+          error: 'No chat specified',
+        }));
+        return false;
+      }
+
+      try {
+        await agent.deleteMessageAndSubsequent.mutate({
+          chatId: targetChatId,
+          messageId,
+        });
+        return true;
+      } catch (error) {
+        setChatState((prev) => ({
+          ...prev,
+          error:
+            error instanceof Error ? error.message : 'Failed to delete message',
+        }));
+        return false;
+      }
+    },
+    [agent, chatState.activeChat],
+  );
+
   // ===== Messaging Functions =====
 
   const sendMessage = useCallback(
     async (
-      content: ChatUserMessage['content'],
-      metadata: ChatUserMessage['metadata'],
+      content: SendMessageRequest['content'],
+      metadata: SendMessageRequest['metadata'],
     ): Promise<void> => {
       if (!agent || !chatState.activeChat) {
         setChatState((prev) => ({
@@ -228,7 +250,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
 
       try {
         setChatState((prev) => ({ ...prev, error: null }));
-        await agent.agent.chat.sendMessage.mutate({
+        await agent.sendMessage.mutate({
           chatId: chatState.activeChat.id,
           content,
           metadata,
@@ -247,18 +269,13 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
   // ===== Tool Functions =====
 
   const approveToolCall = useCallback(
-    async (
-      toolCallId: string,
-      approved: boolean,
-      modifiedInput?: Record<string, unknown>,
-    ): Promise<void> => {
+    async (toolCallId: string, approved: boolean): Promise<void> => {
       if (!agent) return;
 
       try {
-        await agent.agent.chat.approveToolCall.mutate({
+        await agent.approveToolCall.mutate({
           toolCallId,
           approved,
-          modifiedInput,
         });
 
         // Remove from pending calls
@@ -277,7 +294,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
       if (!agent) return;
 
       try {
-        agent.agent.chat.registerTools.mutate(tools);
+        agent.registerTools.mutate(tools);
         setAvailableTools(tools);
       } catch (error) {
         console.error('Failed to register tools:', error);
@@ -291,7 +308,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
       if (!agent) return;
 
       try {
-        agent.agent.chat.reportToolResult.mutate({
+        agent.reportToolResult.mutate({
           toolCallId,
           result,
           isError,
@@ -303,6 +320,21 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
     [agent],
   );
 
+  // ===== Agent Control Functions =====
+
+  const stopAgent = useCallback(async () => {
+    if (agent?.stop) {
+      try {
+        await agent.stop.mutate();
+      } catch (error) {
+        console.error('Failed to stop agent:', error);
+        throw error;
+      }
+    }
+  }, [agent]);
+
+  const canStop = isWorking;
+
   // ===== Utility Functions =====
 
   const refreshChats = useCallback(() => {
@@ -310,16 +342,13 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
     if (subscriptionRef.current) {
       subscriptionRef.current.unsubscribe();
 
-      if (agent?.info.capabilities?.chatHistory) {
-        const subscription = agent.agent.chat.getChatUpdates.subscribe(
-          undefined,
-          {
-            onData: handleChatUpdate,
-            onError: (error: unknown) => {
-              console.error('Chat subscription error:', error);
-            },
+      if (agent) {
+        const subscription = agent.getChatUpdates.subscribe(undefined, {
+          onData: handleChatUpdate,
+          onError: (error: unknown) => {
+            console.error('Chat subscription error:', error);
           },
-        );
+        });
         subscriptionRef.current = subscription;
       }
     }
@@ -391,7 +420,11 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
     activeChat: chatState.activeChat,
     isLoading: chatState.isLoading,
     error: chatState.error,
-    isSupported,
+    isWorking,
+
+    // Agent control
+    stopAgent,
+    canStop,
 
     // Streaming state
     streamingMessages,
@@ -405,6 +438,7 @@ export const AgentChatProvider = ({ children }: { children?: ReactNode }) => {
     deleteChat,
     switchChat,
     updateChatTitle,
+    deleteMessageAndSubsequent,
 
     // Messaging
     sendMessage,

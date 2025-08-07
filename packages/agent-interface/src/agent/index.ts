@@ -21,15 +21,6 @@ import { AgentTransportAdapter } from './adapter';
 
 export type AgentServer = Awaited<ReturnType<typeof createAgentServer>>;
 export type { StagewiseInfo } from '../info';
-export {
-  AgentAvailabilityError,
-  type AgentAvailability,
-} from '../router/capabilities/availability/types';
-export {
-  AgentStateType,
-  type AgentState,
-} from '../router/capabilities/state/types';
-export type * from '../router/capabilities/messaging/types';
 export type {
   // Re-export chat types, excluding those that conflict with messaging
   TextPart,
@@ -51,6 +42,13 @@ export type {
   ToolApprovalResponse,
   ToolDefinition,
 } from '../router/capabilities/chat/types';
+
+// Export shared types for metadata
+export type {
+  UserMessageMetadata,
+  SelectedElement,
+  PluginContentItem,
+} from '../shared-types/metadata';
 
 /**
  * Configuration options for creating an agent server

@@ -9,13 +9,13 @@ import type {
   Chat,
   ChatListItem,
   ChatMessage,
-  ChatUserMessage,
+  UserMessage,
   AssistantMessage,
   ToolDefinition,
   TextPart,
   ReasoningPart,
   ToolCallPart,
-} from '@stagewise/agent-interface/toolbar';
+} from '@stagewise/agent-interface-internal/toolbar';
 
 /**
  * Core chat state interface
@@ -83,8 +83,11 @@ export interface ChatContextValue {
   /** Current error message, if any */
   error: string | null;
 
-  /** Whether the connected agent supports chat */
-  isSupported: boolean;
+  /** Whether the agent is currently working/processing */
+  isWorking: boolean;
+
+  /** Optional description of what the agent is currently doing */
+  stateDescription?: string;
 
   // ===== Streaming State =====
 
@@ -130,6 +133,17 @@ export interface ChatContextValue {
    */
   updateChatTitle: (chatId: string, title: string) => Promise<boolean>;
 
+  /**
+   * Deletes a message and all subsequent messages in a chat
+   * @param messageId - ID of the message to delete from
+   * @param chatId - Optional chat ID (defaults to active chat)
+   * @returns True if successful, false otherwise
+   */
+  deleteMessageAndSubsequent: (
+    messageId: string,
+    chatId?: string,
+  ) => Promise<boolean>;
+
   // ===== Messaging Functions =====
 
   /**
@@ -138,8 +152,8 @@ export interface ChatContextValue {
    * @param metadata - Optional metadata for the message
    */
   sendMessage: (
-    content: ChatUserMessage['content'],
-    metadata: ChatUserMessage['metadata'],
+    content: UserMessage['content'],
+    metadata: UserMessage['metadata'],
   ) => Promise<void>;
 
   // ===== Tool Handling Functions =====
@@ -207,4 +221,16 @@ export interface ChatContextValue {
    * Whether it's currently possible to create a new chat
    */
   canCreateChat: boolean;
+
+  // ===== Agent Control Functions =====
+
+  /**
+   * Stops the agent's current operation
+   */
+  stopAgent: () => Promise<void>;
+
+  /**
+   * Whether the agent can currently be stopped
+   */
+  canStop: boolean;
 }

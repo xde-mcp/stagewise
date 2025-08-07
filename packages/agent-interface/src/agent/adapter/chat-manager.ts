@@ -9,9 +9,7 @@ import type {
   AssistantMessage,
   ToolMessage,
 } from '../../router/capabilities/chat/types';
-import { AgentStateType } from '../../router/capabilities/state/types';
 import { PushController } from './push-controller';
-import type { StateManager } from './state-manager';
 
 /**
  * ChatManager - Manages chat functionality
@@ -27,11 +25,6 @@ import type { StateManager } from './state-manager';
  * as it maintains full context and supports advanced features like parallel tool calls.
  */
 export class ChatManager {
-  /**
-   * Whether chat functionality is enabled for this agent
-   */
-  private supported = false;
-
   /**
    * Map of all chats, keyed by chat ID
    * Each chat contains its own message history
@@ -53,6 +46,16 @@ export class ChatManager {
   > = new Map();
 
   /**
+   * Current agent working state
+   */
+  private isWorking = false;
+
+  /**
+   * Stop listeners
+   */
+  private stopListeners: Array<() => void> = [];
+
+  /**
    * Set of listeners for chat update events
    * Used internally by the agent to react to chat changes
    */
@@ -68,44 +71,12 @@ export class ChatManager {
    */
   private readonly idGenerator: () => string;
 
-  /**
-   * Reference to state manager for checking agent state
-   * Used to prevent chat operations during active work
-   */
-  private readonly stateManager: StateManager;
-
-  constructor(idGenerator: () => string, stateManager: StateManager) {
+  constructor(idGenerator: () => string) {
     this.idGenerator = idGenerator;
-    this.stateManager = stateManager;
 
     // Create controller without initial value
     // Initial state is sent on first subscription
     this.controller = new PushController();
-  }
-
-  /**
-   * Enables or disables chat support for the agent
-   *
-   * @param supported - Whether chat should be enabled
-   */
-  public setSupport(supported: boolean): void {
-    this.supported = supported;
-
-    if (!supported) {
-      // Clean up all chat data when disabled
-      this.chats.clear();
-      this.activeChatId = null;
-      this.chatUpdateListeners.clear();
-    }
-  }
-
-  /**
-   * Checks if chat is currently supported
-   *
-   * @returns Whether chat functionality is enabled
-   */
-  public isSupported(): boolean {
-    return this.supported;
   }
 
   /**
@@ -115,8 +86,6 @@ export class ChatManager {
    * @throws Error if chat is not supported
    */
   public getChats(): ChatListItem[] {
-    this.ensureSupported();
-
     return Array.from(this.chats.values()).map((chat) => ({
       id: chat.id,
       title: chat.title,
@@ -133,7 +102,6 @@ export class ChatManager {
    * @throws Error if chat is not supported
    */
   public getActiveChatId(): string | null {
-    this.ensureSupported();
     return this.activeChatId;
   }
 
@@ -144,7 +112,6 @@ export class ChatManager {
    * @throws Error if chat is not supported
    */
   public getActiveChat(): Chat | null {
-    this.ensureSupported();
     return this.activeChatId ? this.chats.get(this.activeChatId) || null : null;
   }
 
@@ -161,14 +128,8 @@ export class ChatManager {
     title?: string,
     isFromAgent = false,
   ): Promise<string> {
-    this.ensureSupported();
-
     // Only enforce restrictions for toolbar-initiated creates
-    if (
-      !isFromAgent &&
-      this.activeChatId &&
-      this.stateManager.get().state !== AgentStateType.IDLE
-    ) {
+    if (!isFromAgent && this.activeChatId && this.isWorking) {
       throw new Error('Cannot create new chat while current chat is active');
     }
 
@@ -212,13 +173,8 @@ export class ChatManager {
    * @throws Error if chat is not supported or trying to delete active chat while busy
    */
   public async deleteChat(chatId: string): Promise<void> {
-    this.ensureSupported();
-
     // Prevent deleting active chat while agent is working
-    if (
-      chatId === this.activeChatId &&
-      this.stateManager.get().state !== AgentStateType.IDLE
-    ) {
+    if (chatId === this.activeChatId && this.isWorking) {
       throw new Error('Cannot delete active chat while not idle');
     }
 
@@ -246,8 +202,6 @@ export class ChatManager {
    * @throws Error if chat is not supported or chat not found
    */
   public async updateChatTitle(chatId: string, title: string): Promise<void> {
-    this.ensureSupported();
-
     const chat = this.chats.get(chatId);
     if (!chat) {
       throw new Error(`Chat ${chatId} not found`);
@@ -273,10 +227,8 @@ export class ChatManager {
    * @throws Error if chat not found or agent is busy
    */
   public async switchChat(chatId: string): Promise<void> {
-    this.ensureSupported();
-
     // Prevent switching while agent is working
-    if (this.stateManager.get().state !== AgentStateType.IDLE) {
+    if (this.isWorking) {
       throw new Error('Cannot switch chats while not idle');
     }
 
@@ -321,8 +273,6 @@ export class ChatManager {
    * @param chatId - Optional chat ID (defaults to active chat)
    */
   public addMessage(message: ChatMessage, chatId?: string): void {
-    this.ensureSupported();
-
     const targetChatId = chatId || this.activeChatId;
     if (!targetChatId) {
       throw new Error('No chat ID provided and no active chat');
@@ -371,8 +321,6 @@ export class ChatManager {
     content: AssistantMessage['content'],
     chatId?: string,
   ): void {
-    this.ensureSupported();
-
     const targetChatId = chatId || this.activeChatId;
     if (!targetChatId) {
       throw new Error('No chat ID provided and no active chat');
@@ -397,8 +345,6 @@ export class ChatManager {
    * @param chatId - Optional chat ID (defaults to active chat)
    */
   public deleteMessage(messageId: string, chatId?: string): void {
-    this.ensureSupported();
-
     const targetChatId = chatId || this.activeChatId;
     if (!targetChatId) {
       throw new Error('No chat ID provided and no active chat');
@@ -424,8 +370,6 @@ export class ChatManager {
    * @param chatId - Optional chat ID (defaults to active chat)
    */
   public deleteMessageAndSubsequent(messageId: string, chatId?: string): void {
-    this.ensureSupported();
-
     const targetChatId = chatId || this.activeChatId;
     if (!targetChatId) {
       throw new Error('No chat ID provided and no active chat');
@@ -462,8 +406,6 @@ export class ChatManager {
    * @param chatId - Optional chat ID (defaults to active chat)
    */
   public clearMessages(chatId?: string): void {
-    this.ensureSupported();
-
     const targetChatId = chatId || this.activeChatId;
     if (!targetChatId) {
       throw new Error('No chat ID provided and no active chat');
@@ -496,8 +438,6 @@ export class ChatManager {
     },
     chatId?: string,
   ): void {
-    this.ensureSupported();
-
     const targetChatId = chatId || this.activeChatId;
     if (!targetChatId) {
       throw new Error('No chat ID provided and no active chat');
@@ -524,7 +464,6 @@ export class ChatManager {
    * @param listener - Function to call on chat updates
    */
   public addUpdateListener(listener: (update: ChatUpdate) => void): void {
-    this.ensureSupported();
     this.chatUpdateListeners.add(listener);
   }
 
@@ -534,7 +473,6 @@ export class ChatManager {
    * @param listener - The listener to remove
    */
   public removeUpdateListener(listener: (update: ChatUpdate) => void): void {
-    this.ensureSupported();
     this.chatUpdateListeners.delete(listener);
   }
 
@@ -700,7 +638,8 @@ export class ChatManager {
             },
           ],
           metadata: {
-            isToolApproval: true, // Metadata to identify this as a tool approval
+            sentByPlugin: false,
+            pluginContentItems: {},
           },
           createdAt: new Date(),
         };
@@ -772,7 +711,63 @@ export class ChatManager {
         // Add to chat and broadcast
         self.addMessage(toolMessage);
       },
+
+      /**
+       * Handles stop requests from the toolbar
+       */
+      onStop: async () => {
+        if (!self.isWorking) {
+          throw new Error('Agent is not currently working');
+        }
+
+        // Trigger all stop listeners
+        for (const listener of self.stopListeners) {
+          try {
+            listener();
+          } catch (error) {
+            console.error('Error in stop listener:', error);
+          }
+        }
+      },
     };
+  }
+
+  /**
+   * Sets the agent's working state and broadcasts it
+   */
+  public setWorkingState(isWorking: boolean): void {
+    this.isWorking = isWorking;
+
+    const update: ChatUpdate = {
+      type: 'agent-state',
+      isWorking,
+    };
+
+    this.broadcastUpdate(update);
+  }
+
+  /**
+   * Adds a stop listener
+   */
+  public addStopListener(listener: () => void): void {
+    this.stopListeners.push(listener);
+  }
+
+  /**
+   * Removes a stop listener
+   */
+  public removeStopListener(listener: () => void): void {
+    const index = this.stopListeners.indexOf(listener);
+    if (index !== -1) {
+      this.stopListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * Clears all stop listeners
+   */
+  public clearAllStopListeners(): void {
+    this.stopListeners = [];
   }
 
   /**
@@ -786,16 +781,5 @@ export class ChatManager {
 
     // Notify internal listeners
     this.chatUpdateListeners.forEach((listener) => listener(update));
-  }
-
-  /**
-   * Ensures chat is supported, throwing an error if not
-   *
-   * @throws Error if chat is not supported
-   */
-  private ensureSupported(): void {
-    if (!this.supported) {
-      throw new Error('Chat is not supported by this agent.');
-    }
   }
 }

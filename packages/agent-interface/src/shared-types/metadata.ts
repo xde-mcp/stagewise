@@ -126,20 +126,41 @@ export const selectedElementSchema = baseSelectedElementSchema.extend({
   parent: baseSelectedElementSchema.optional(),
 });
 
+export const pluginContentItemSchema = z.object({
+  type: z.literal('text'),
+  text: z.string(),
+});
+
+export type PluginContentItem = z.infer<typeof pluginContentItemSchema>;
+
 export const userMessageMetadataSchema = z.object({
-  currentUrl: z.string().max(1024).url().nullable(),
-  currentTitle: z.string().max(256).nullable(),
-  currentZoomLevel: z.number(),
-  viewportMinScale: z.number().optional(),
-  viewportMaxScale: z.number().optional(),
-  viewportResolution: z.object({
-    width: z.number().min(0),
-    height: z.number().min(0),
-  }),
-  devicePixelRatio: z.number(),
-  userAgent: z.string().max(1024),
-  locale: z.string().max(64),
-  selectedElements: z.array(selectedElementSchema),
+  browserData: z
+    .object({
+      currentUrl: z.string().max(1024).url(),
+      currentTitle: z.string().max(256).nullable(),
+      currentZoomLevel: z.number(),
+      viewportMinScale: z.number().optional(),
+      viewportMaxScale: z.number().optional(),
+      viewportResolution: z.object({
+        width: z.number().min(0),
+        height: z.number().min(0),
+      }),
+      devicePixelRatio: z.number(),
+      userAgent: z.string().max(1024),
+      locale: z.string().max(64),
+      selectedElements: z.array(selectedElementSchema),
+    })
+    .optional(),
+  pluginContentItems: z
+    .record(z.string(), z.record(z.string(), pluginContentItemSchema))
+    .optional()
+    .describe(
+      'Plugin content items organized by plugin name and content item name. Structure: pluginContentItems[pluginName][contentItemName] = { type: "text", text: "..." }',
+    ),
+  sentByPlugin: z
+    .boolean()
+    .optional()
+    .describe('Whether the message was sent by a plugin'),
 });
 
 export type UserMessageMetadata = z.infer<typeof userMessageMetadataSchema>;

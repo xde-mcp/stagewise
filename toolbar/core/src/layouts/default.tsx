@@ -13,9 +13,9 @@ import { Toolbar } from '@/toolbar';
 import { usePanels } from '@/hooks/use-panels';
 import { SettingsPanel } from '@/panels/settings';
 import { ChatPanel } from '@/panels/chat';
-import { ChatWithHistoryPanel } from '@/panels/chat-with-history';
 import { AgentConnectivityPanel } from '@/panels/agent-connectivity';
 import { usePlugins } from '@/hooks/use-plugins';
+import { useAgents } from '@/hooks/agent/use-agent-provider';
 
 const TOOLBAR_POSITION_KEY = 'stagewise_toolbar_toolbar_position';
 
@@ -178,6 +178,7 @@ function PanelsArea({
   } = usePanels();
 
   const plugins = usePlugins();
+  const { connected } = useAgents();
 
   const pluginPanel = useMemo(() => {
     if (!openPluginName) {
@@ -200,8 +201,6 @@ function PanelsArea({
     return null;
   }, [openPluginName, plugins]);
 
-  const showChatPanelWithHistory = true;
-
   return (
     <div
       className={cn(
@@ -214,7 +213,7 @@ function PanelsArea({
       )}
     >
       <PanelWrapper position={position} isOpen={isChatOpen}>
-        {showChatPanelWithHistory ? <ChatWithHistoryPanel /> : <ChatPanel />}
+        <ChatPanel />
       </PanelWrapper>
 
       <PanelWrapper position={position} isOpen={isSettingsOpen}>
