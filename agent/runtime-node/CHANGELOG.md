@@ -1,6 +1,6 @@
-# @stagewise/agent-runtime-mock
+# @stagewise/agent-runtime-node
 
-## 0.0.2
+## 0.0.3
 
 ### Patch Changes
 

@@ -1,5 +1,11 @@
 # @stagewise/tools-client
 
+## 0.0.6
+
+### Patch Changes
+
+- 5536a04: Migrate build scripts to typescript.
+
 ## 0.0.5
 
 ### Patch Changes
