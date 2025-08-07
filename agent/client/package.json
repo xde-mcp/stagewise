@@ -24,8 +24,8 @@
   "scripts": {
     "build": "npm run clean && npm run build:types && npm run build:bundle",
     "build:types": "tsc --emitDeclarationOnly",
-    "build:bundle": "node build.js",
-    "dev": "node build.js --watch",
+    "build:bundle": "tsx build.ts",
+    "dev": "tsx build.ts --watch",
     "clean": "rimraf dist",
     "lint": "echo 'No linting for prompts package'",
     "type-check": "tsc --noEmit"

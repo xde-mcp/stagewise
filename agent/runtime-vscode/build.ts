@@ -1,9 +1,9 @@
 import * as esbuild from 'esbuild';
+import type { BuildOptions } from 'esbuild';
 
 const isWatch = process.argv.includes('--watch');
 
-/** @type {import('esbuild').BuildOptions} */
-const buildOptions = {
+const buildOptions: BuildOptions = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   outfile: 'dist/index.js',

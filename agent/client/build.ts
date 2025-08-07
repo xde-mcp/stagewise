@@ -1,10 +1,10 @@
 import * as esbuild from 'esbuild';
 import { argv } from 'node:process';
+import type { BuildOptions } from 'esbuild';
 
 const isWatchMode = argv.includes('--watch');
 
-/** @type {import('esbuild').BuildOptions} */
-const baseOptions = {
+const baseOptions: BuildOptions = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'node',
@@ -20,15 +20,13 @@ const baseOptions = {
   legalComments: 'none', // Remove all comments
 };
 
-/** @type {import('esbuild').BuildOptions} */
-const esmBuildOptions = {
+const esmBuildOptions: BuildOptions = {
   ...baseOptions,
   format: 'esm',
   outfile: 'dist/index.js',
 };
 
-/** @type {import('esbuild').BuildOptions} */
-const cjsBuildOptions = {
+const cjsBuildOptions: BuildOptions = {
   ...baseOptions,
   format: 'cjs',
   outfile: 'dist/index.cjs',
