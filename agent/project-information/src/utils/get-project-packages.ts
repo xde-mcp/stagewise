@@ -1,4 +1,7 @@
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type {
+  BaseFileSystemProvider,
+  ClientRuntime,
+} from '@stagewise/agent-runtime-interface';
 import { join, dirname } from 'node:path';
 import { findProjectRoot } from './get-project-root.js';
 
@@ -190,7 +193,7 @@ export async function getProjectPackages(
  * Resolves workspace patterns to actual package locations
  */
 async function resolveWorkspacePackages(
-  fileSystem: any,
+  fileSystem: BaseFileSystemProvider,
   rootPath: string,
   patterns: string[],
 ): Promise<WorkspacePackage[]> {
@@ -240,7 +243,7 @@ async function resolveWorkspacePackages(
  * Find packages matching a glob pattern
  */
 async function findPackagesInPattern(
-  fileSystem: any,
+  fileSystem: BaseFileSystemProvider,
   rootPath: string,
   pattern: string,
   packages: WorkspacePackage[],
@@ -321,7 +324,7 @@ async function findPackagesInPattern(
  * Read package information from a package.json file
  */
 async function readPackageInfo(
-  fileSystem: any,
+  fileSystem: BaseFileSystemProvider,
   packageJsonPath: string,
 ): Promise<{ name: string; version?: string } | null> {
   try {
@@ -346,7 +349,7 @@ async function readPackageInfo(
  * Extract workspace patterns from configuration files based on tool type
  */
 async function extractWorkspacePatterns(
-  fileSystem: any,
+  fileSystem: BaseFileSystemProvider,
   configPath: string,
   toolName: DetectedTool['name'],
   patterns: string[],

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ClientRuntimeMock } from '@stagewise/agent-runtime-mock';
+import type { DirectoryJSON } from '@stagewise/agent-runtime-mock';
 import { getProjectPackages } from './get-project-packages.js';
 
 describe('getProjectPackages', () => {
@@ -796,7 +797,7 @@ catalog: {}`,
     });
 
     it('should handle very large monorepo structure', async () => {
-      const files: any = {
+      const files: DirectoryJSON = {
         '/workspace/large/package.json': JSON.stringify({
           name: 'large-monorepo',
           private: true,
