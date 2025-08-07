@@ -1,4 +1,4 @@
-# @stagewise/client-prompt-snippets
+# @stagewise/agent-project-information
 
 ## 0.0.3
 
