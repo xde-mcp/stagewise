@@ -2,7 +2,7 @@
 import { build } from 'esbuild';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cp, mkdir, writeFile } from 'node:fs/promises';
+import { cp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { exec } from 'node:child_process';
@@ -44,6 +44,12 @@ async function extractLicenses() {
 
 async function buildCLI() {
   try {
+    // Read package.json to get version
+    const packageJson = JSON.parse(
+      await readFile(resolve(__dirname, 'package.json'), 'utf-8'),
+    );
+    const version = packageJson.version;
+
     // Ensure dist directory exists
     await mkdir('dist', { recursive: true });
 
@@ -76,6 +82,7 @@ const import_meta_url = require('url').pathToFileURL(__filename).href;
           process.env.NODE_ENV || 'production',
         ),
         'import.meta.url': `import_meta_url`,
+        'process.env.CLI_VERSION': JSON.stringify(version),
         'process.env.POSTHOG_API_KEY': JSON.stringify(
           process.env.POSTHOG_API_KEY,
         ),

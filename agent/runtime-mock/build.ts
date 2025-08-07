@@ -1,22 +1,21 @@
 import * as esbuild from 'esbuild';
+import type { BuildOptions } from 'esbuild';
 
 const isWatch = process.argv.includes('--watch');
 
-/** @type {import('esbuild').BuildOptions} */
-const buildOptions = {
+const buildOptions: BuildOptions = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   outfile: 'dist/index.js',
   format: 'esm',
   platform: 'node',
   target: 'node16',
-  sourcemap: true,
-  minify: process.env.NODE_ENV === 'production',
-  external: [
-    // Keep workspace dependencies as external since they'll be bundled separately
-    '@stagewise/interface-client-runtime',
-    '@stagewise/types',
-  ],
+  sourcemap: false, // Disable source maps for security
+  minify: false, // Disable minify for development/testing
+  treeShaking: true,
+  // Keep names for better debugging
+  keepNames: true,
+  legalComments: 'none', // Remove all comments
 };
 
 if (isWatch) {

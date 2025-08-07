@@ -1,6 +1,6 @@
 {
-  "name": "@stagewise/agent-runtime-node",
-  "version": "0.0.2",
+  "name": "@stagewise/agent-runtime-mock",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -23,14 +23,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "ignore": "^7.0.5",
-    "minimatch": "^9.0.5"
+    "memfs": "^4.17.2"
   },
   "devDependencies": {
     "@stagewise/agent-runtime-interface": "workspace:*",
-    "@types/express": "^5.0.3",
     "@types/node": "^20.0.0",
-    "@types/ws": "^8.18.1",
     "esbuild": "^0.20.1",
     "rimraf": "^5.0.0",
     "typescript": "^5.0.0"

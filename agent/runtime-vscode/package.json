@@ -16,8 +16,8 @@
     "dist/**/*.d.ts"
   ],
   "scripts": {
-    "build": "node build.js && tsc --emitDeclarationOnly",
-    "dev": "node build.js --watch",
+    "build": "tsx build.ts && tsc --emitDeclarationOnly",
+    "dev": "tsx build.ts --watch",
     "clean": "rimraf dist",
     "lint": "biome check .",
     "type-check": "tsc --noEmit"
