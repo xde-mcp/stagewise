@@ -29,7 +29,7 @@ let telemetrySubcommand: string | undefined;
 program
   .name('stagewise')
   .description('Stagewise CLI - Development Proxy & AI Coding Assistant')
-  .version('0.0.1')
+  .version(process.env.CLI_VERSION ?? '0.0.1')
   .option<number>(
     '-p, --port [port]',
     'The port on which the stagewise-wrapped app will run',

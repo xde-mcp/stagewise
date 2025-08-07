@@ -88,7 +88,11 @@ export function printBanner(silent: boolean): void {
   // createAsciiCircle(10, 'W', chalk.blue);
   displayAsciiLogo();
   console.log();
-  console.log(chalk.cyan.bold('     STAGEWISE'));
+  console.log(
+    chalk.cyan.bold(
+      `     STAGEWISE ${process.env.CLI_VERSION ? `v${process.env.CLI_VERSION}` : ''}`,
+    ),
+  );
   console.log(
     chalk.gray('     The frontend coding agent for production codebases'),
   );
