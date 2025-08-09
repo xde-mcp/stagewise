@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.7.1
+
+### Patch Changes
+
+- f97f94b: Fix buggy dragging behavior of toolbar
+
 ## 0.7.0
 
 ### Minor Changes
