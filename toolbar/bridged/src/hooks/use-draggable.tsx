@@ -134,6 +134,7 @@ export interface DraggableConfig {
   initialSnapArea?: keyof DraggableContextType['snapAreas'];
   initialRelativeCenter?: { x: number; y: number };
   springStiffness?: number;
+  springStiffnessSnap?: number;
   springDampness?: number;
 }
 
@@ -176,12 +177,13 @@ export function useDraggable(config: DraggableConfig) {
   >(null);
 
   const {
-    startThreshold = 3,
+    startThreshold = 2,
     areaSnapThreshold = 60, // px, default threshold for snapping
     onDragStart,
     onDragEnd,
     initialSnapArea,
-    springStiffness = 0.2, // Default spring stiffness
+    springStiffness = 0.1, // Default spring stiffness for dragging
+    springStiffnessSnap = 0.02, // Default spring stiffness for snapping (higher for faster snap)
     springDampness = 0.55, // Default spring dampness
     // initialRelativeCenter is used to initialize persistedRelativeCenterRef
   } = config;
@@ -508,9 +510,15 @@ export function useDraggable(config: DraggableConfig) {
     // Calculate spring force
     const dx = targetViewportCenterX - pos.x;
     const dy = targetViewportCenterY - pos.y;
+    // Use different spring stiffness based on whether we're dragging or snapping
+    // When dragging, use the regular springStiffness for smooth following
+    // When not dragging (snapping), use springStiffnessSnap for faster, more responsive animation
+    const currentStiffness = isDraggingRef.current
+      ? springStiffness
+      : springStiffnessSnap;
     // F = -kX - bv
-    const ax = springStiffness * dx - springDampness * vel.x;
-    const ay = springStiffness * dy - springDampness * vel.y;
+    const ax = currentStiffness * dx - springDampness * vel.x;
+    const ay = currentStiffness * dy - springDampness * vel.y;
     // Integrate velocity and position
     vel.x += ax;
     vel.y += ay;
@@ -597,7 +605,7 @@ export function useDraggable(config: DraggableConfig) {
       animationInProgressRef.current = false;
       animationFrameRef.current = null;
     }
-  }, [areaSnapThreshold, springStiffness, springDampness]);
+  }, [areaSnapThreshold, springStiffness, springStiffnessSnap, springDampness]);
 
   const [wasDragged, setWasDragged] = useState(false);
 
