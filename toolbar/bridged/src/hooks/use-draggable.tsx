@@ -193,6 +193,10 @@ export function useDraggable(config: DraggableConfig) {
   const velocityRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   // Track if we've already animated once (to skip animation on first render)
   const hasAnimatedOnceRef = useRef(false);
+  // Track if animation is in progress (survives re-renders)
+  const animationInProgressRef = useRef(false);
+  // Animation frame ID to track active animations
+  const animationFrameRef = useRef<number | null>(null);
 
   // Set initial position based on initialSnapArea if provided
   useEffect(() => {
@@ -202,7 +206,8 @@ export function useDraggable(config: DraggableConfig) {
       providerData.borderLocation &&
       providerData.snapAreas &&
       providerData.snapAreas[initialSnapArea] &&
-      !isDraggingRef.current
+      !isDraggingRef.current &&
+      !animationInProgressRef.current
     ) {
       // Get snap area centers
       const { top, left, right, bottom } = providerData.borderLocation;
@@ -583,7 +588,14 @@ export function useDraggable(config: DraggableConfig) {
       Math.abs(vel.y) > threshold ||
       isDraggingRef.current
     ) {
-      requestAnimationFrame(updateDraggablePosition);
+      animationInProgressRef.current = true;
+      animationFrameRef.current = requestAnimationFrame(
+        updateDraggablePosition,
+      );
+    } else {
+      // Animation complete
+      animationInProgressRef.current = false;
+      animationFrameRef.current = null;
     }
   }, [areaSnapThreshold, springStiffness, springDampness]);
 
@@ -687,6 +699,20 @@ export function useDraggable(config: DraggableConfig) {
           }
         }
 
+        // Mark dragging as false for the animation logic
+        isDraggingRef.current = false;
+
+        // Start the animation to the snapped position immediately
+        // This needs to happen before any state changes that might cause re-renders
+        animationInProgressRef.current = true;
+        animationFrameRef.current = requestAnimationFrame(
+          updateDraggablePosition,
+        );
+
+        // Now update state and call callbacks
+        // These might cause parent re-renders, but the animation is already started
+        setIsDragging(false);
+
         // Call onDragEnd with the determined snap area
         if (onDragEnd) onDragEnd(finalSnapArea);
         if (latestProviderDataRef.current?.emitDragEnd) {
@@ -694,8 +720,6 @@ export function useDraggable(config: DraggableConfig) {
         }
       }
       mouseDownPosRef.current = null;
-      isDraggingRef.current = false;
-      setIsDragging(false);
       window.removeEventListener('mousemove', mouseMoveHandler, {
         capture: true,
       });
@@ -708,7 +732,7 @@ export function useDraggable(config: DraggableConfig) {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     },
-    [onDragEnd],
+    [onDragEnd, updateDraggablePosition],
   );
 
   // This will be listened to globally if the mouse was pressed down on the draggable element
@@ -732,7 +756,10 @@ export function useDraggable(config: DraggableConfig) {
         if (latestProviderDataRef.current?.emitDragStart) {
           latestProviderDataRef.current.emitDragStart();
         }
-        requestAnimationFrame(updateDraggablePosition);
+        animationInProgressRef.current = true;
+        animationFrameRef.current = requestAnimationFrame(
+          updateDraggablePosition,
+        );
       }
 
       currentMousePosRef.current = { x: e.clientX, y: e.clientY };
