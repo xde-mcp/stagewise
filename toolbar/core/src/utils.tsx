@@ -15,6 +15,11 @@ export const getIFrameWindow = () => {
 };
 
 export function getElementAtPoint(x: number, y: number) {
+  // Validate that x and y are finite numbers to prevent crashes
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return getIFrameWindow()?.document.body;
+  }
+
   const elementsBelowAnnotation = getIFrameWindow()?.document.elementsFromPoint(
     x,
     y,

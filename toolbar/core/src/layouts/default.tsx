@@ -70,8 +70,15 @@ export function DefaultLayout() {
 function DraggingArea() {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [isDragging, setIsDragging] = useState(false);
+
   return (
-    <div className="absolute z-50 size-full">
+    <div
+      className={cn(
+        'absolute z-50 size-full transition-all duration-150 ease-out',
+        isDragging ? 'pointer-events-auto bg-black/10 backdrop-blur-[2px]' : '',
+      )}
+    >
       <div className="absolute inset-4" ref={containerRef}>
         <DraggableProvider
           containerRef={containerRef}
@@ -83,6 +90,8 @@ function DraggingArea() {
             topCenter: false,
             bottomCenter: false,
           }}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={() => setIsDragging(false)}
         >
           <ToolbarAndPanelArea />
         </DraggableProvider>
