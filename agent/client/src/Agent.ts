@@ -27,13 +27,13 @@ import type {
 // Import all the new utilities
 import { countToolCalls } from './utils/message-utils.js';
 import {
-  withTimeout,
   TimeoutManager,
   consumeStreamWithTimeout,
 } from './utils/stream-utils.js';
 import {
   processParallelToolCalls,
   shouldRecurseAfterToolCall,
+  type ToolCallProcessingResult,
 } from './utils/tool-call-utils.js';
 import {
   createEventEmitter,
@@ -61,7 +61,7 @@ type History = {
   chatId: string;
 };
 
-type Chats = History[];
+type Chats = Record<string, History>;
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
@@ -85,7 +85,21 @@ export class Agent {
   private authRetryCount = 0;
   private maxAuthRetries = 2;
   private isExpressMode = false;
-  private abortController: AbortController = new AbortController();
+  private abortController: AbortController;
+  private lastMessageId: string | null = null;
+  // undo is only allowed for one chat at a time.
+  // if the user switches to a new chat, the undo stack is cleared
+  private undoToolCallStack: {
+    chatId: string | null;
+    stack: {
+      toolName: string;
+      toolCallId: string;
+      undoExecute: () => Promise<void>;
+    }[];
+  } = {
+    chatId: null,
+    stack: [],
+  };
 
   private constructor(config: {
     clientRuntime: ClientRuntime;
@@ -99,11 +113,13 @@ export class Agent {
     this.tools = config.tools;
     this.accessToken = config.accessToken || null;
     this.eventEmitter = createEventEmitter(config.onEvent);
-    this.chats = []; // TODO: load chats from local storage
+    this.chats = {}; // TODO: load chats from local storage
     this.client = createAuthenticatedClient(this.accessToken);
     this.agentDescription = config.agentDescription;
     this.agentTimeout = config.agentTimeout || DEFAULT_AGENT_TIMEOUT;
     this.timeoutManager = new TimeoutManager();
+    this.abortController = new AbortController();
+    this.lastMessageId = null;
   }
 
   public shutdown() {
@@ -182,6 +198,7 @@ export class Agent {
   /**
    * Reinitialize the TRPC client with fresh credentials
    * Call this after authentication changes
+   * @param accessToken - The new access token
    */
   public async reauthenticateTRPCClient(accessToken: string) {
     this.accessToken = accessToken;
@@ -192,16 +209,17 @@ export class Agent {
 
   /**
    * Calls the agent API with automatic retry on authentication failures
+   * @param request - The request to call the agent API with
+   * @returns The result of the agent API call
    */
   private async callAgentWithRetry(
-    request: RouterInputs['agent']['callAgent'],
-  ): Promise<RouterOutputs['agent']['callAgent']> {
+    request: RouterInputs['chat']['callAgent'],
+  ): Promise<RouterOutputs['chat']['callAgent']> {
     try {
       if (!this.client) {
         throw new Error('TRPC API client not initialized');
       }
-
-      const result = await this.client.agent.callAgent.mutate(request, {
+      const result = await this.client.chat.callAgent.mutate(request, {
         signal: this.abortController.signal,
       });
       // Reset auth retry count on successful call
@@ -249,6 +267,8 @@ export class Agent {
 
   /**
    * Checks if an error is an authentication error
+   * @param error - The error to check
+   * @returns True if the error is an authentication error, false otherwise
    */
   private isAuthenticationError(error: any): boolean {
     // Check for TRPC error with UNAUTHORIZED code
@@ -368,22 +388,28 @@ export class Agent {
 
     const activeChatId =
       await this.server.interface.chat.createChat('New Chat');
-    this.chats.push({
+    this.chats[activeChatId] = {
       messages: [],
       chatId: activeChatId,
-    });
+    };
     await this.server.interface.chat.switchChat(activeChatId);
+
+    this.server.interface.chat.addStopListener(() => {
+      this.setAgentWorking(false, 'Agent stopped');
+      this.abortController.abort();
+      this.abortController = new AbortController();
+    });
 
     this.server.interface.chat.addChatUpdateListener(async (update) => {
       switch (update.type) {
         case 'chat-created':
-          this.chats.push({
+          this.chats[update.chat.id] = {
             messages: [],
             chatId: update.chat.id,
-          });
+          };
           break;
         case 'message-added': {
-          const chat = this.chats.find((c) => c.chatId === update.chatId);
+          const chat = this.chats[update.chatId];
           if (!chat || update.message.role !== 'user') return;
           chat.messages.push(update.message);
           this.setAgentWorking(true);
@@ -406,7 +432,6 @@ export class Agent {
             chatId: chat.chatId,
             history: chat.messages,
             clientRuntime: this.clientRuntime,
-            userMessage: update.message,
             promptSnippets,
           });
           break;
@@ -440,18 +465,16 @@ export class Agent {
    */
   private async callAgent({
     chatId,
-    userMessage,
     history,
     clientRuntime,
     promptSnippets,
   }: {
     chatId: string;
-    userMessage?: ChatUserMessage;
     history?: (CoreMessage | ChatUserMessage)[];
     clientRuntime: ClientRuntime;
     promptSnippets?: PromptSnippet[];
   }): Promise<{
-    response: Promise<Response>;
+    response: Response;
     history: (CoreMessage | ChatUserMessage)[];
   }> {
     // Validate prerequisites
@@ -467,7 +490,7 @@ export class Agent {
       // TODO: add an error message to the chat
       this.setAgentWorking(false, errorDesc);
       return {
-        response: Promise.resolve({} as Response),
+        response: {} as Response,
         history: [],
       };
     }
@@ -475,22 +498,26 @@ export class Agent {
     this.recursionDepth++;
 
     try {
+      const lastMessage =
+        'metadata' in (history?.at(-1) || {})
+          ? {
+              isUserMessage: true as const,
+              message: history?.at(-1) as ChatUserMessage,
+            }
+          : {
+              isUserMessage: false as const,
+              message: history?.at(-1) as CoreMessage,
+            };
+
       // Prepare update to the chat title
-      if (
-        history?.filter((m) => m.role === 'user').length === 1 &&
-        userMessage?.metadata.browserData
-      ) {
+      if (lastMessage.isUserMessage) {
         this.client.chat.generateChatTitle
           .mutate({
             userMessage: {
-              id: userMessage.id,
-              contentItems: userMessage.content.filter(
-                (c) => c.type === 'text',
+              ...lastMessage.message,
+              content: lastMessage.message.content.filter(
+                (c) => c.type !== 'tool-approval',
               ),
-              metadata: userMessage.metadata.browserData,
-              createdAt: userMessage.createdAt,
-              pluginContent: {},
-              sentByPlugin: false,
             },
           })
           .then((result) => {
@@ -499,25 +526,21 @@ export class Agent {
       }
 
       // Emit prompt triggered event
-      this.eventEmitter.emit(
-        EventFactories.agentPromptTriggered(
-          userMessage,
-          promptSnippets?.length || 0,
-        ),
-      );
+
+      if (lastMessage.isUserMessage)
+        this.eventEmitter.emit(
+          EventFactories.agentPromptTriggered(
+            lastMessage.message,
+            promptSnippets?.length || 0,
+          ),
+        );
 
       // Keeping compatibility with the old agent API
       const messages = (history ?? []).map((m) => {
         if (m.role === 'user' && 'metadata' in m) {
           return {
-            id: m.id,
-            contentItems: m.content.filter((c) => c.type !== 'tool-approval'),
-            createdAt: m.createdAt,
-            metadata: {
-              ...m.metadata.browserData,
-            },
-            pluginContent: m.metadata.pluginContentItems,
-            sentByPlugin: m.metadata.sentByPlugin,
+            ...m,
+            content: m.content.filter((c) => c.type !== 'tool-approval'),
           };
         }
         return m;
@@ -529,17 +552,9 @@ export class Agent {
         messages,
         tools: mapZodToolsToJsonSchemaTools(this.tools),
         promptSnippets,
-      } as RouterInputs['agent']['callAgent'];
+      } as RouterInputs['chat']['callAgent'];
 
-      if (userMessage?.metadata.browserData) {
-        request.userMessageMetadata = {
-          ...userMessage.metadata.browserData,
-        };
-      }
-
-      const agentResponse = await this.callAgentWithRetry(
-        request as RouterInputs['agent']['callAgent'],
-      );
+      const agentResponse = await this.callAgentWithRetry(request);
 
       if (agentResponse.syntheticToolCalls) {
         await this.processParallelToolCallsContent(
@@ -553,12 +568,11 @@ export class Agent {
           chatId,
           history: history ?? [],
           clientRuntime,
-          userMessage: undefined,
           promptSnippets,
         });
       }
 
-      const { fullStream, response, finishReason } = agentResponse;
+      const { fullStream, response } = agentResponse;
 
       this.setAgentWorking(true);
 
@@ -568,24 +582,13 @@ export class Agent {
         fullStream,
         this.server,
         this.agentTimeout,
-        (state, desc) => this.setAgentWorking(state, desc),
+        (messageId) => {
+          console.log('New message with id ', messageId);
+          this.lastMessageId = messageId;
+        },
       );
 
-      // Wait for response with timeout
-      const r = await withTimeout(
-        response,
-        this.agentTimeout,
-        `Response timeout after ${this.agentTimeout}ms`,
-      );
-
-      const f = await finishReason;
-      if (f === 'error') {
-        throw new Error('Agent task failed');
-      } else if (f === 'length') {
-        throw new Error('Max tokens per request reached');
-      } else if (f === 'content-filter') {
-        throw new Error('Content needed to be filtered');
-      }
+      const r = await response; // this will throw an error if the user has aborted, will be handled in the catch below
 
       const responseTime = Date.now() - startTime;
 
@@ -597,7 +600,6 @@ export class Agent {
           hasToolCalls,
           toolCallCount,
           responseTime,
-          reason: f,
           credits: r.credits,
         }),
       );
@@ -616,24 +618,31 @@ export class Agent {
           chatId,
           history: history ?? [],
           clientRuntime,
-          userMessage: undefined,
           promptSnippets,
         });
       }
 
       // Clean up and finalize
       this.cleanupPendingOperations('Agent task completed successfully', false);
-      this.chats.forEach((c, index, array) => {
-        if (c.chatId === chatId) {
-          array[index]!.messages = history ?? [];
-        }
-      });
+      if (this.chats[chatId]) this.chats[chatId].messages = history ?? [];
 
       return {
-        response: response as Promise<Response>,
+        response: r,
         history: history ?? [],
       };
     } catch (error) {
+      // If the user has aborted the agent, delete the last message
+      if (error instanceof Error && error.name === 'AbortError') {
+        if (this.lastMessageId)
+          this.server?.interface.chat.deleteMessage(this.lastMessageId, chatId);
+        this.setAgentWorking(false, 'Agent aborted by user');
+
+        return {
+          response: {} as Response,
+          history: [],
+        };
+      }
+
       const errorDesc = formatErrorDescription('Agent task failed', error);
       this.setAgentWorking(false, errorDesc);
 
@@ -642,7 +651,7 @@ export class Agent {
         this.setAgentWorking(false);
       }, STATE_RECOVERY_DELAY);
       return {
-        response: Promise.resolve({} as Response),
+        response: {} as Response,
         history: [],
       };
     } finally {
@@ -653,6 +662,10 @@ export class Agent {
 
   /**
    * Processes response messages from the agent, handling text and tool calls
+   * @param messages - The messages to process
+   * @param history - The history of messages so far (NOT including the current assistant message - past assistant messages are included)
+   * @param chatId - The id of the chat
+   * @param messageId - The id of the message
    */
   private async processResponseMessages(
     messages: Array<ResponseMessage>,
@@ -694,10 +707,27 @@ export class Agent {
 
         // Process all tool calls together if any
         if (toolCalls.length > 0) {
-          await this.processParallelToolCallsContent(toolCalls, history, {
-            chatId,
-            messageId,
-          });
+          const results = await this.processParallelToolCallsContent(
+            toolCalls,
+            history,
+            { chatId, messageId },
+          );
+
+          for (const result of results) {
+            if (result.success) {
+              if (result.result?.undoExecute) {
+                if (this.undoToolCallStack.chatId !== chatId) {
+                  this.undoToolCallStack.stack = [];
+                  this.undoToolCallStack.chatId = chatId;
+                }
+                this.undoToolCallStack.stack.push({
+                  toolName: result.toolName,
+                  toolCallId: result.toolCallId,
+                  undoExecute: result.result.undoExecute,
+                });
+              }
+            }
+          }
         }
       } else if (typeof message.content === 'string') {
         history.push({
@@ -723,7 +753,7 @@ export class Agent {
       chatId?: string;
       messageId?: string;
     },
-  ): Promise<void> {
+  ): Promise<ToolCallProcessingResult[]> {
     const explanations = toolCalls
       .map((tc) => ('explanation' in tc.args ? tc.args.explanation : null))
       .filter((explanation) => explanation !== null);
@@ -791,10 +821,56 @@ export class Agent {
           id: crypto.randomUUID(),
           createdAt: new Date(),
           role: 'tool',
-          content: results,
+          content: results.map((r) => ({
+            type: 'tool-result',
+            toolCallId: r.toolCallId,
+            toolName: r.toolName,
+            output: r.result,
+            isError: r.error === 'error',
+          })),
         },
         options?.chatId,
       );
+    }
+
+    return results;
+  }
+
+  /**
+   * Undoes all tool calls until the user message is reached
+   * @param userMessageId - The id of the user message
+   * @param chatId - The id of the chat
+   */
+  private async undoToolCallsUntilUserMessage(
+    userMessageId: string,
+    chatId: string,
+  ): Promise<void> {
+    if (this.undoToolCallStack.chatId !== chatId) return;
+    const chat = this.chats[chatId];
+
+    const reversedHistory = [...(chat?.messages ?? [])].reverse();
+    const messagesBeforeUserMessage = reversedHistory.slice(
+      reversedHistory.findIndex(
+        (m) => m.role === 'user' && 'id' in m && m.id === userMessageId,
+      ),
+    );
+
+    const toolCallIdsBeforeUserMessage: string[] = [];
+    for (const message of messagesBeforeUserMessage) {
+      if (message.role !== 'tool') continue;
+      for (const content of message.content)
+        toolCallIdsBeforeUserMessage.push(content.toolCallId);
+    }
+
+    while (
+      this.undoToolCallStack.stack.at(-1)?.toolCallId &&
+      toolCallIdsBeforeUserMessage.includes(
+        this.undoToolCallStack.stack.at(-1)!.toolCallId,
+      )
+    ) {
+      const undo = this.undoToolCallStack.stack.pop();
+      if (!undo) break;
+      await undo.undoExecute();
     }
   }
 }
