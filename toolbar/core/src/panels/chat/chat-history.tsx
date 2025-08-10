@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { ChatBubble } from './chat-bubble';
 import { Loader2Icon, SparklesIcon } from 'lucide-react';
-import { useAgentChat } from '@/hooks/agent/use-agent-chat/index';
-import type {
-  ToolApprovalPart,
-  ToolResultPart,
-} from '@stagewise/agent-interface-internal/toolbar';
+import { useKarton } from '@/hooks/use-karton';
 
 export function ChatHistory({ ref }: { ref: React.RefObject<HTMLDivElement> }) {
   const wasAtBottomRef = useRef(true);
 
-  const { activeChat, isWorking } = useAgentChat();
+  const { activeChatId, isWorking, chats } = useKarton((s) => ({
+    activeChatId: s.state.activeChatId,
+    isWorking: s.state.isWorking,
+    chats: s.state.chats,
+  }));
+
+  const activeChat = useMemo(() => {
+    return activeChatId ? chats[activeChatId] : null;
+  }, [activeChatId, chats]);
 
   // Force scroll to the very bottom
   const scrollToBottom = () => {
@@ -76,30 +80,6 @@ export function ChatHistory({ ref }: { ref: React.RefObject<HTMLDivElement> }) {
     });
   }, [activeChat]);
 
-  const toolResultParts = useMemo(() => {
-    if (!activeChat?.messages) return [];
-    return activeChat.messages.reduce((acc, message) => {
-      for (const part of message.content) {
-        if (part.type === 'tool-result') {
-          acc.push(part);
-        }
-      }
-      return acc;
-    }, [] as ToolResultPart[]);
-  }, [activeChat]);
-
-  const toolApprovalParts = useMemo(() => {
-    if (!activeChat?.messages) return [];
-    return activeChat.messages.reduce((acc, message) => {
-      for (const part of message.content) {
-        if (part.type === 'tool-approval') {
-          acc.push(part);
-        }
-      }
-      return acc;
-    }, [] as ToolApprovalPart[]);
-  }, [activeChat]);
-
   /* We're adding a bg color on hover because there's a brower bug
      that prevents auto scroll-capturing if we don't do this.
      The onMouseEnter methods is also in place to help with another heuristic to get the browser to capture scroll in this element on hover. */
@@ -114,14 +94,9 @@ export function ChatHistory({ ref }: { ref: React.RefObject<HTMLDivElement> }) {
         ref.current?.focus();
       }}
     >
-      {renderedMessages.map((message) => {
+      {renderedMessages.map((message, index) => {
         return (
-          <ChatBubble
-            key={message.id}
-            message={message}
-            toolResultParts={toolResultParts}
-            toolApprovalParts={toolApprovalParts}
-          />
+          <ChatBubble key={`${message.role}-${index}`} message={message} />
         );
       }) ?? []}
 

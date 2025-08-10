@@ -1,21 +1,18 @@
 import { tools as clientTools } from '@stagewise/agent-tools';
-import type {
-  CoreMessage,
-  CoreAssistantMessage,
-  CoreToolMessage,
-  LanguageModelResponseMetadata,
+import type { KartonContract, History } from '@stagewise/karton-contract';
+import {
+  createKartonServer,
+  type KartonServer,
+} from '@stagewise/karton/server';
+import {
+  convertToModelMessages,
+  type AssistantModelMessage,
+  type ToolModelMessage,
+  type LanguageModelResponseMetadata,
 } from 'ai';
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
 import type { PromptSnippet } from '@stagewise/agent-types';
 import type { Tools } from '@stagewise/agent-types';
-import type {
-  ChatUserMessage,
-  AgentServer,
-} from '@stagewise/agent-interface-internal/agent';
-import {
-  getProjectPath,
-  getProjectInfo,
-} from '@stagewise/agent-prompt-snippets';
 import { createAuthenticatedClient } from './utils/create-authenticated-client.js';
 import type {
   AppRouter,
@@ -26,10 +23,7 @@ import type {
 
 // Import all the new utilities
 import { countToolCalls } from './utils/message-utils.js';
-import {
-  TimeoutManager,
-  consumeStreamWithTimeout,
-} from './utils/stream-utils.js';
+import { TimeoutManager } from './utils/stream-utils.js';
 import {
   processParallelToolCalls,
   shouldRecurseAfterToolCall,
@@ -45,9 +39,9 @@ import {
   ErrorDescriptions,
   formatErrorDescription,
 } from './utils/error-utils.js';
-import { createAgentHook } from '@stagewise/agent-interface-internal/agent';
+import type { createAgentHook } from '@stagewise/agent-interface-internal/agent';
 
-type ResponseMessage = (CoreAssistantMessage | CoreToolMessage) & {
+type ResponseMessage = (AssistantModelMessage | ToolModelMessage) & {
   id: string;
 };
 
@@ -56,13 +50,6 @@ type Response = LanguageModelResponseMetadata & {
   messages: Array<ResponseMessage>;
 };
 
-type History = {
-  messages: (CoreMessage | ChatUserMessage)[];
-  chatId: string;
-};
-
-type Chats = Record<string, History>;
-
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
 const MAX_RECURSION_DEPTH = 20;
@@ -70,23 +57,20 @@ const STATE_RECOVERY_DELAY = 5000; // 5 seconds
 
 export class Agent {
   private static instance: Agent;
-  private server: AgentServer | null = null;
+  private karton: KartonServer<KartonContract> | null = null;
   private clientRuntime: ClientRuntime;
   private tools: Tools;
-  private chats: Chats;
   private client: TRPCClient<AppRouter> | null = null;
   private accessToken: string | null = null;
   private eventEmitter: ReturnType<typeof createEventEmitter>;
   private isWorking = false;
-  private agentDescription?: string;
   private timeoutManager: TimeoutManager;
   private recursionDepth = 0;
   private agentTimeout: number = DEFAULT_AGENT_TIMEOUT;
   private authRetryCount = 0;
   private maxAuthRetries = 2;
-  private isExpressMode = false;
   private abortController: AbortController;
-  private lastMessageId: string | null = null;
+  private lastUserMessageId: string | null = null;
   // undo is only allowed for one chat at a time.
   // if the user switches to a new chat, the undo stack is cleared
   private undoToolCallStack: {
@@ -106,67 +90,30 @@ export class Agent {
     tools: Tools;
     accessToken?: string;
     onEvent?: AgentEventCallback;
-    agentDescription?: string;
     agentTimeout?: number;
   }) {
     this.clientRuntime = config.clientRuntime;
     this.tools = config.tools;
     this.accessToken = config.accessToken || null;
     this.eventEmitter = createEventEmitter(config.onEvent);
-    this.chats = {}; // TODO: load chats from local storage
     this.client = createAuthenticatedClient(this.accessToken);
-    this.agentDescription = config.agentDescription;
     this.agentTimeout = config.agentTimeout || DEFAULT_AGENT_TIMEOUT;
     this.timeoutManager = new TimeoutManager();
     this.abortController = new AbortController();
-    this.lastMessageId = null;
+    this.lastUserMessageId = null;
   }
 
   public shutdown() {
     // Clean up all pending operations
     this.cleanupPendingOperations('Agent shutdown');
-
-    // Close the server
-    if (this.server?.standalone) {
-      this.server.server.close();
-    } else if (this.server && this.isExpressMode) {
-      this.server.wss.close();
-    }
-  }
-
-  /**
-   * Validates a description to ensure it meets length constraints (3-128 characters)
-   * @param description - The description to validate
-   * @returns Valid description, truncated if needed, or undefined if invalid
-   */
-  private validateDescription(description?: string): string | undefined {
-    if (!description || description.trim().length === 0) {
-      return undefined;
-    }
-
-    const trimmed = description.trim();
-
-    // If too short, return undefined
-    if (trimmed.length < 3) {
-      return undefined;
-    }
-
-    // If too long, truncate with ellipsis
-    if (trimmed.length > 128) {
-      const truncated = `${trimmed.substring(0, 125)}...`;
-      return truncated;
-    }
-
-    return trimmed;
   }
 
   /**
    * Sets the agent state and emits a state change event
-   * @param newState - The new state to set
-   * @param description - Optional description of the state change
+   * @param isWorking - The new state to set
    */
-  private setAgentWorking(isWorking: boolean, description?: string): void {
-    if (!this.server) return;
+  private setAgentWorking(isWorking: boolean): void {
+    if (!this.karton) return;
     this.timeoutManager.clear('is-working');
     this.isWorking = isWorking;
 
@@ -175,23 +122,17 @@ export class Agent {
       this.timeoutManager.set(
         'is-working',
         () => {
-          this.setAgentWorking(false, 'Automatic recovery from stuck state');
+          this.setAgentWorking(false);
         },
         this.agentTimeout,
       );
     }
 
-    const validatedDescription = this.validateDescription(description);
-    this.server.interface.chat.setWorkingState(
-      this.isWorking,
-      validatedDescription,
-    );
+    this.karton.setState((draft) => {
+      draft.isWorking = isWorking;
+    });
     this.eventEmitter.emit(
-      EventFactories.agentStateChanged(
-        this.isWorking,
-        !this.isWorking,
-        description,
-      ),
+      EventFactories.agentStateChanged(this.isWorking, !this.isWorking),
     );
   }
 
@@ -302,7 +243,7 @@ export class Agent {
    * @param resetRecursionDepth - Whether to reset recursion depth to 0 (default: true)
    */
   private cleanupPendingOperations(
-    reason?: string,
+    _reason?: string,
     resetRecursionDepth = true,
   ): void {
     // Clear all timeouts
@@ -314,7 +255,7 @@ export class Agent {
     }
 
     // Set state to IDLE
-    this.setAgentWorking(false, reason || 'Cleanup pending operations');
+    this.setAgentWorking(false);
   }
 
   /**
@@ -331,7 +272,6 @@ export class Agent {
     tools?: Tools;
     accessToken?: string;
     onEvent?: AgentEventCallback;
-    agentDescription?: string;
     agentTimeout?: number;
   }) {
     const {
@@ -339,7 +279,6 @@ export class Agent {
       tools = clientTools(clientRuntime),
       accessToken,
       onEvent,
-      agentDescription,
       agentTimeout,
     } = config;
     if (!Agent.instance) {
@@ -348,7 +287,6 @@ export class Agent {
         tools,
         accessToken,
         onEvent,
-        agentDescription,
         agentTimeout,
       });
     }
@@ -361,98 +299,98 @@ export class Agent {
    * @param pathPrefix - Optional path prefix for agent endpoints (default: '/agent')
    * @param httpServer - Optional HTTP server instance for WebSocket support
    */
-  public async initialize(
-    expressApp: Parameters<typeof createAgentHook>[0]['app'],
-    httpServer: Parameters<typeof createAgentHook>[0]['server'],
-    pathPrefix = '/agent',
-  ): Promise<{
+  public async initialize(): Promise<{
     wss: Awaited<ReturnType<typeof createAgentHook>>['wss'];
   }> {
-    this.isExpressMode = true;
-    this.server = await createAgentHook({
-      app: expressApp,
-      server: httpServer,
-      wsPath: `${pathPrefix}/ws`,
-      infoPath: `${pathPrefix}/info`,
-      startServer: false,
+    this.karton = await createKartonServer<KartonContract>({
+      procedures: {
+        abortAgentCall: async () => {
+          this.setAgentWorking(false);
+          this.abortController.abort();
+          this.abortController = new AbortController();
+        },
+        // TODO: fix the type here
+      },
+      initialState: {
+        chats: {},
+        isWorking: false,
+        activeChatId: null,
+        toolCallApprovalRequests: [],
+      },
     });
-    if (!this.server) {
-      throw new Error('Failed to create agent server');
-    }
-    this.server.setAgentName('stagewise agent');
-    this.server.setAgentDescription(
-      this.agentDescription || 'Your frontend and design agent',
-    );
-
     this.setAgentWorking(false);
 
-    const activeChatId =
-      await this.server.interface.chat.createChat('New Chat');
-    this.chats[activeChatId] = {
-      messages: [],
-      chatId: activeChatId,
-    };
-    await this.server.interface.chat.switchChat(activeChatId);
-
-    this.server.interface.chat.addStopListener(() => {
-      this.setAgentWorking(false, 'Agent stopped');
-      this.abortController.abort();
-      this.abortController = new AbortController();
+    this.karton.setState((draft) => {
+      const chatId = crypto.randomUUID();
+      // Will look like this: "New Chat - Aug 10, 12:00 PM"
+      const title = `New Chat - ${new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })}`;
+      draft.chats[chatId] = {
+        title,
+        createdAt: new Date(),
+        messages: [],
+      };
+      draft.activeChatId = chatId;
     });
 
-    this.server.interface.chat.addChatUpdateListener(async (update) => {
-      switch (update.type) {
-        case 'chat-created':
-          this.chats[update.chat.id] = {
-            messages: [],
-            chatId: update.chat.id,
-          };
-          break;
-        case 'message-added': {
-          const chat = this.chats[update.chatId];
-          if (!chat || update.message.role !== 'user') return;
-          chat.messages.push(update.message);
-          this.setAgentWorking(true);
-          const promptSnippets: PromptSnippet[] = [];
-          const projectPathPromptSnippet = await getProjectPath(
-            this.clientRuntime,
-          );
-          if (projectPathPromptSnippet) {
-            promptSnippets.push(projectPathPromptSnippet);
-          }
+    // this.server.interface.chat.addChatUpdateListener(async (update) => {
+    //   switch (update.type) {
+    //     case 'chat-created':
+    //       this.chats[update.chat.id] = {
+    //         messages: [],
+    //         chatId: update.chat.id,
+    //       };
+    //       break;
+    //     case 'message-added': {
+    //       const chat = this.chats[update.chatId];
+    //       if (!chat || update.message.role !== 'user') return;
+    //       chat.messages.push(update.message);
+    //       this.setAgentWorking(true);
+    //       const promptSnippets: PromptSnippet[] = [];
+    //       const projectPathPromptSnippet = await getProjectPath(
+    //         this.clientRuntime,
+    //       );
+    //       if (projectPathPromptSnippet) {
+    //         promptSnippets.push(projectPathPromptSnippet);
+    //       }
 
-          const projectInfoPromptSnippet = await getProjectInfo(
-            this.clientRuntime,
-          );
-          if (projectInfoPromptSnippet) {
-            promptSnippets.push(projectInfoPromptSnippet);
-          }
+    //       const projectInfoPromptSnippet = await getProjectInfo(
+    //         this.clientRuntime,
+    //       );
+    //       if (projectInfoPromptSnippet) {
+    //         promptSnippets.push(projectInfoPromptSnippet);
+    //       }
 
-          this.callAgent({
-            chatId: chat.chatId,
-            history: chat.messages,
-            clientRuntime: this.clientRuntime,
-            promptSnippets,
-          });
-          break;
-        }
-        case 'message-updated':
-          break;
-        case 'messages-deleted':
-          break;
-        case 'chat-full-sync':
-          break;
-        case 'chat-list':
-          break;
-        case 'chat-switched':
-          break;
-        case 'chat-title-updated':
-          break;
-      }
-    });
+    //       this.callAgent({
+    //         chatId: chat.chatId,
+    //         history: chat.messages,
+    //         clientRuntime: this.clientRuntime,
+    //         promptSnippets,
+    //       });
+    //       break;
+    //     }
+    //     case 'message-updated':
+    //       break;
+    //     case 'messages-deleted':
+    //       break;
+    //     case 'chat-full-sync':
+    //       break;
+    //     case 'chat-list':
+    //       break;
+    //     case 'chat-switched':
+    //       break;
+    //     case 'chat-title-updated':
+    //       break;
+    //   }
+    // });
 
     return {
-      wss: this.server!.wss,
+      wss: this.karton.wss,
     };
   }
 
@@ -470,15 +408,13 @@ export class Agent {
     promptSnippets,
   }: {
     chatId: string;
-    history?: (CoreMessage | ChatUserMessage)[];
+    history?: History;
     clientRuntime: ClientRuntime;
     promptSnippets?: PromptSnippet[];
   }): Promise<{
-    response: Response;
-    history: (CoreMessage | ChatUserMessage)[];
+    history: History;
   }> {
     // Validate prerequisites
-    if (!this.server) throw new Error('Agent not initialized');
     if (!this.client) throw new Error('TRPC API client not initialized');
 
     // Check recursion depth
@@ -488,9 +424,14 @@ export class Agent {
         MAX_RECURSION_DEPTH,
       );
       // TODO: add an error message to the chat
-      this.setAgentWorking(false, errorDesc);
+      this.setAgentWorking(false);
+      this.karton?.setState((draft) => {
+        draft.chats[chatId]!.error = {
+          type: 'agent-error',
+          error: new Error(errorDesc),
+        };
+      });
       return {
-        response: {} as Response,
         history: [],
       };
     }
@@ -502,26 +443,39 @@ export class Agent {
         'metadata' in (history?.at(-1) || {})
           ? {
               isUserMessage: true as const,
-              message: history?.at(-1) as ChatUserMessage,
+              message: history?.at(-1),
             }
           : {
               isUserMessage: false as const,
-              message: history?.at(-1) as CoreMessage,
+              message: history?.at(-1),
             };
 
-      // Prepare update to the chat title
       if (lastMessage.isUserMessage) {
+        this.lastUserMessageId = lastMessage.message?.id ?? null;
+      }
+
+      // Prepare update to the chat title
+      if (lastMessage.isUserMessage && lastMessage.message) {
+        const content = convertToModelMessages([lastMessage.message])[0]!
+          .content;
         this.client.chat.generateChatTitle
           .mutate({
             userMessage: {
-              ...lastMessage.message,
-              content: lastMessage.message.content.filter(
-                (c) => c.type !== 'tool-approval',
-              ),
+              role: 'user',
+              content:
+                typeof content === 'string'
+                  ? content
+                  : content.map((c) =>
+                      c.type === 'text'
+                        ? { type: 'text', text: c.text }
+                        : { type: 'text', text: '' },
+                    ),
+              metadata: lastMessage.message.metadata,
             },
           })
-          .then((result) => {
-            this.server?.interface.chat.updateChatTitle(chatId, result.title);
+          .then((_result) => {
+            // TODO: update the title
+            // this.server?.interface.chat.updateChatTitle(chatId, result.title);
           });
       }
 
@@ -536,23 +490,20 @@ export class Agent {
         );
 
       // Keeping compatibility with the old agent API
-      const messages = (history ?? []).map((m) => {
-        if (m.role === 'user' && 'metadata' in m) {
-          return {
-            ...m,
-            content: m.content.filter((c) => c.type !== 'tool-approval'),
-          };
-        }
-        return m;
-      });
 
       // Call the agent API
       const startTime = Date.now();
+      // TODO: fix this
+      // const request = {
+      //   messages: history ?? [],
+      //   tools: mapZodToolsToJsonSchemaTools(this.tools),
+      //   promptSnippets,
+      // } as RouterInputs['chat']['callAgent'];
       const request = {
-        messages,
+        messages: [],
         tools: mapZodToolsToJsonSchemaTools(this.tools),
         promptSnippets,
-      } as RouterInputs['chat']['callAgent'];
+      };
 
       const agentResponse = await this.callAgentWithRetry(request);
 
@@ -577,16 +528,12 @@ export class Agent {
       this.setAgentWorking(true);
 
       // Start stream consumption with timeout protection
-      const { messageId } = await consumeStreamWithTimeout(
-        chatId,
-        fullStream,
-        this.server,
-        this.agentTimeout,
-        (messageId) => {
-          console.log('New message with id ', messageId);
-          this.lastMessageId = messageId;
-        },
-      );
+      // const { messageId } = await consumeStreamWithTimeout(
+      //   chatId,
+      //   fullStream,
+      //   this.karton!,
+      //   this.agentTimeout,
+      // );
 
       const r = await response; // this will throw an error if the user has aborted, will be handled in the catch below
 
@@ -605,12 +552,12 @@ export class Agent {
       );
 
       // Process response messages
-      await this.processResponseMessages(
-        r.messages,
-        history ?? [],
-        chatId,
-        messageId,
-      );
+      // await this.processResponseMessages(
+      //   r.messages,
+      //   history ?? [],
+      //   chatId,
+      //   messageId,
+      // );
 
       // Check if recursion is needed
       if (shouldRecurseAfterToolCall(history ?? [])) {
@@ -624,34 +571,44 @@ export class Agent {
 
       // Clean up and finalize
       this.cleanupPendingOperations('Agent task completed successfully', false);
-      if (this.chats[chatId]) this.chats[chatId].messages = history ?? [];
+      this.karton?.setState((draft) => {
+        if (draft.chats[chatId]) {
+          // TODO: fix the type issue here
+          // draft.chats[chatId]!.messages = history || [];
+        }
+      });
 
       return {
-        response: r,
+        // response: r,
         history: history ?? [],
       };
     } catch (error) {
       // If the user has aborted the agent, delete the last message
       if (error instanceof Error && error.name === 'AbortError') {
-        if (this.lastMessageId)
-          this.server?.interface.chat.deleteMessage(this.lastMessageId, chatId);
-        this.setAgentWorking(false, 'Agent aborted by user');
+        // TODO: delete everything until the last user message
+        this.setAgentWorking(false);
 
         return {
-          response: {} as Response,
+          // response: {} as Response,
           history: [],
         };
       }
 
       const errorDesc = formatErrorDescription('Agent task failed', error);
-      this.setAgentWorking(false, errorDesc);
+      this.setAgentWorking(false);
+      this.karton?.setState((draft) => {
+        draft.chats[chatId]!.error = {
+          type: 'agent-error',
+          error: new Error(errorDesc),
+        };
+      });
 
       // Reset to idle after delay
       setTimeout(() => {
         this.setAgentWorking(false);
       }, STATE_RECOVERY_DELAY);
       return {
-        response: {} as Response,
+        // response: {} as Response,
         history: [],
       };
     } finally {
@@ -669,14 +626,14 @@ export class Agent {
    */
   private async processResponseMessages(
     messages: Array<ResponseMessage>,
-    history: (CoreMessage | ChatUserMessage)[],
+    history: History,
     chatId: string,
     messageId: string,
   ): Promise<void> {
     for (const message of messages) {
-      const assistantMessage = {
+      const _assistantMessage = {
         role: 'assistant' as const,
-        content: [] as Exclude<CoreAssistantMessage['content'], string>,
+        content: [] as Exclude<AssistantModelMessage['content'], string>,
       };
       if (Array.isArray(message.content)) {
         // Collect all tool calls from this message
@@ -687,23 +644,25 @@ export class Agent {
         }> = [];
 
         // Process text content immediately, collect tool calls
-        for (const content of message.content) {
-          if (content.type === 'text') {
-            assistantMessage.content.push({
-              type: 'text',
-              text: content.text,
-            });
-          } else if (content.type === 'tool-call') {
-            toolCalls.push({
-              toolName: content.toolName,
-              toolCallId: content.toolCallId,
-              args: content.args,
-            });
-          }
-        }
+        // TODO: fix
+        // for (const content of message.content) {
+        //   if (content.type === 'text') {
+        //     assistantMessage.content.push({
+        //       type: 'text',
+        //       text: content.text,
+        //     });
+        //   } else if (content.type === 'tool-call') {
+        //     toolCalls.push({
+        //       toolName: content.toolName,
+        //       toolCallId: content.toolCallId,
+        //       args: content.args,
+        //     });
+        //   }
+        // }
 
         // Add assistant message to history
-        history.push(assistantMessage);
+        // TODO: fix
+        // history.push(assistantMessage);
 
         // Process all tool calls together if any
         if (toolCalls.length > 0) {
@@ -730,10 +689,10 @@ export class Agent {
           }
         }
       } else if (typeof message.content === 'string') {
-        history.push({
-          role: 'assistant',
-          content: [{ type: 'text', text: message.content }],
-        });
+        // history.push({
+        //   role: 'assistant',
+        //   content: [{ type: 'text', text: message.content }],
+        // });
       }
     }
   }
@@ -747,39 +706,21 @@ export class Agent {
       toolCallId: string;
       args: any;
     }>,
-    history: (CoreMessage | ChatUserMessage)[],
+    history: History,
     options?: {
       syntheticCall?: boolean;
       chatId?: string;
       messageId?: string;
     },
   ): Promise<ToolCallProcessingResult[]> {
-    const explanations = toolCalls
+    const _explanations = toolCalls
       .map((tc) => ('explanation' in tc.args ? tc.args.explanation : null))
       .filter((explanation) => explanation !== null);
 
     if (!options?.syntheticCall) {
-      if (explanations.length > 0) {
-        // Create a combined description that fits within limits
-        let combinedDescription = explanations.join(', ');
-
-        // If we have multiple explanations and the combined length might be too long,
-        // use a summary format instead
-        if (explanations.length > 1 && combinedDescription.length > 100) {
-          combinedDescription = `Running ${explanations.length} tool operations`;
-
-          // If even that's within limits, try to add the first explanation
-          const firstExplanation = explanations[0];
-          const withFirst = `${combinedDescription}: ${firstExplanation}`;
-          if (withFirst.length <= 120) {
-            combinedDescription = withFirst;
-          }
-        }
-
-        this.setAgentWorking(true, combinedDescription);
-      } else {
-        this.setAgentWorking(true);
-      }
+      this.setAgentWorking(true);
+    } else {
+      // Find a way to 'hide' synthetic tool calls
     }
 
     // Emit events for each tool call
@@ -800,9 +741,9 @@ export class Agent {
     const results = await processParallelToolCalls(
       toolCalls,
       this.tools,
-      this.server!,
+      this.karton!,
       history,
-      (state, desc) => this.setAgentWorking(state, desc),
+      (state) => this.setAgentWorking(state),
       this.timeoutManager,
       (result) => {
         this.eventEmitter.emit(
@@ -816,21 +757,38 @@ export class Agent {
       },
     );
     if (results.length > 0) {
-      this.server?.interface.chat.addMessage(
-        {
-          id: crypto.randomUUID(),
-          createdAt: new Date(),
-          role: 'tool',
-          content: results.map((r) => ({
-            type: 'tool-result',
-            toolCallId: r.toolCallId,
-            toolName: r.toolName,
-            output: r.result,
-            isError: r.error === 'error',
+      // update the chat with the tool results
+      this.karton?.setState((draft) => {
+        draft.chats[options?.chatId!]!.messages.push(
+          ...results.map((r) => ({
+            role: 'tool' as const,
+            content: [
+              {
+                type: 'tool-result' as const,
+                toolCallId: r.toolCallId,
+                toolName: r.toolName,
+                result: r.result,
+                isError: r.error === 'error',
+              },
+            ],
           })),
-        },
-        options?.chatId,
-      );
+        );
+      });
+      // this.server?.interface.chat.addMessage(
+      //   {
+      //     id: crypto.randomUUID(),
+      //     createdAt: new Date(),
+      //     role: 'tool',
+      //     content: results.map((r) => ({
+      //       type: 'tool-result',
+      //       toolCallId: r.toolCallId,
+      //       toolName: r.toolName,
+      //       output: r.result,
+      //       isError: r.error === 'error',
+      //     })),
+      //   },
+      //   options?.chatId,
+      // );
     }
 
     return results;
@@ -845,8 +803,11 @@ export class Agent {
     userMessageId: string,
     chatId: string,
   ): Promise<void> {
-    if (this.undoToolCallStack.chatId !== chatId) return;
-    const chat = this.chats[chatId];
+    if (this.undoToolCallStack.chatId !== chatId) {
+      // should never happen
+      return;
+    }
+    const chat = this.karton?.state.chats[chatId];
 
     const reversedHistory = [...(chat?.messages ?? [])].reverse();
     const messagesBeforeUserMessage = reversedHistory.slice(
