@@ -159,6 +159,7 @@ export class TelemetryManager {
       const finalProperties: EventProperties = {
         ...properties,
         telemetry_level: telemetryLevel,
+        cli_version: process.env.CLI_VERSION,
       };
 
       this.posthogClient.capture({
