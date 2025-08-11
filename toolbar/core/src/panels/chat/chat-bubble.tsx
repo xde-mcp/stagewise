@@ -27,8 +27,10 @@ import {
   DisclosureButton,
   DisclosurePanel,
 } from '@headlessui/react';
+import ReactMarkdown from 'react-markdown';
 
 export function ChatBubble({ message: msg }: { message: ChatMessage }) {
+  console.log('msg', msg);
   return (
     <div className="flex flex-col gap-1">
       <div
@@ -39,10 +41,10 @@ export function ChatBubble({ message: msg }: { message: ChatMessage }) {
       >
         <div
           className={cn(
-            'group relative flex min-h-8 items-center space-y-2 rounded-2xl bg-white/5 px-2.5 py-1 font-normal text-sm shadow-lg shadow-zinc-950/10 ring-1 ring-inset',
+            'group relative min-h-8 animate-chat-bubble-appear space-y-3 break-words rounded-2xl bg-white/5 px-2.5 py-1.5 font-normal text-sm shadow-lg shadow-zinc-950/10 ring-1 ring-inset last:mb-0.5',
             msg.role === 'assistant'
-              ? 'rounded-bl-xs bg-zinc-100/60 text-zinc-950 ring-zinc-950/5'
-              : 'rounded-br-xs bg-blue-600/90 text-white ring-white/5',
+              ? 'min-w-48 origin-bottom-left rounded-bl-xs bg-zinc-100/60 text-zinc-950 ring-zinc-950/5'
+              : 'origin-bottom-right rounded-br-xs bg-blue-600/90 text-white ring-white/5',
           )}
         >
           <div
@@ -96,27 +98,29 @@ export function ChatBubble({ message: msg }: { message: ChatMessage }) {
 }
 
 const TextPartItem = memo(({ textPart }: { textPart: TextUIPart }) => {
-  return <p className="whitespace-pre-wrap">{textPart.text}</p>;
+  return (
+    <div className="markdown">
+      <ReactMarkdown>{textPart.text}</ReactMarkdown>
+    </div>
+  );
 });
 
 const ReasoningPartItem = memo(
   ({ reasoningPart }: { reasoningPart: ReasoningUIPart }) => {
     return (
-      <div className="rounded-lg bg-black/15 p-1.5">
+      <div className="-mx-1 block min-w-32 rounded-xl border-border/20 bg-zinc-500/5 px-2 py-0.5">
         <Disclosure>
-          <DisclosureButton className="group flex flex-row items-center justify-between gap-2">
+          <DisclosureButton className="group flex w-full flex-row items-center justify-between gap-2 text-black/60 hover:text-black/90">
             <BrainIcon className="size-3" />
-            <span className="flex-1 text-xs">Thinking...</span>
+            <span className="block flex-1 text-start text-xs">Thinking...</span>
             <ChevronDownIcon
               className={
-                'size-3 stroke-black/50 transition-all duration-150 ease-out group-hover:stroke-black group-data-open:rotate-180'
+                'size-3 transition-all duration-150 ease-out group-hover:stroke-black group-data-open:rotate-180'
               }
             />
           </DisclosureButton>
-          <DisclosurePanel>
-            <p className="whitespace-pre-wrap rounded-md p-1 text-black/80 text-sm italic">
-              {reasoningPart.text}
-            </p>
+          <DisclosurePanel className="markdown pt-1.5 pb-0.5 pl-1 opacity-80">
+            <ReactMarkdown>{reasoningPart.text}</ReactMarkdown>
           </DisclosurePanel>
         </Disclosure>
       </div>
@@ -167,15 +171,20 @@ const ToolPartItem = memo(({ toolPart }: { toolPart: DynamicToolUIPart }) => {
   );
 
   return (
-    <div className="flex flex-call gap-2 rounded-xl bg-black/5 p-2 hover:bg-black/10">
-      <div className="flex w-full flex-row items-center justify-between gap-3 stroke-black/80">
+    <div className="-mx-1 flex flex-col gap-2 rounded-xl bg-zinc-500/5 px-2 py-0.5">
+      <div className="flex w-full flex-row items-center justify-between gap-2 stroke-black/60">
         {getToolIcon(toolPart.toolName)}
-        <div className="flex flex-col items-start gap-0">
-          <span className="font-medium text-xs">
+        <div className="flex flex-1 flex-col items-start gap-0">
+          <span className="text-black/80 text-xs">
             {getToolName(toolPart.toolName)}
           </span>
+          {toolPart.state === 'output-error' && (
+            <span className="text-rose-600 text-xs">{toolPart.errorText}</span>
+          )}
           {requiresApproval && (
-            <span className="text-black/60 text-xs">Waiting for approval</span>
+            <span className="text-black/50 text-xs italic">
+              Waiting for approval
+            </span>
           )}
         </div>
         {requiresApproval && (
@@ -224,17 +233,17 @@ const getToolIcon = (toolName: string) => {
   switch (toolName) {
     case 'readFileTool':
     case 'listFilesTool':
-      return <EyeIcon className="size-4" />;
+      return <EyeIcon className="size-3" />;
     case 'grepSearchTool':
     case 'globTool':
-      return <SearchIcon className="size-4" />;
+      return <SearchIcon className="size-3" />;
     case 'overwriteFileTool':
     case 'multiEditTool':
-      return <PencilIcon className="size-4" />;
+      return <PencilIcon className="size-3" />;
     case 'deleteFileTool':
-      return <TrashIcon className="size-4" />;
+      return <TrashIcon className="size-3" />;
     default:
-      return <CogIcon className="size-4" />;
+      return <CogIcon className="size-3" />;
   }
 };
 
