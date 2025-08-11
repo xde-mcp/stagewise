@@ -1,8 +1,9 @@
-import type { UserMessageMetadata } from './metadata';
+import type { UserMessageMetadata, SelectedElement } from './metadata.js';
 import type { UIMessage } from 'ai';
 import type { Tool } from '@stagewise/agent-types';
 
 export type ChatMessage = UIMessage<UserMessageMetadata>;
+export type { UserMessageMetadata, SelectedElement };
 
 export type {
   TextUIPart,
@@ -22,7 +23,7 @@ export type Chat = {
   error?: AgentError;
 };
 
-type AgentError = {
+export type AgentError = {
   type: 'agent-error';
   error: Error;
 };
@@ -44,6 +45,7 @@ export type KartonContract = {
     switchChat: (chatId: string) => Promise<void>;
     deleteChat: (chatId: string) => Promise<void>;
     sendUserMessage: (message: ChatMessage) => Promise<void>;
+    retrySendingUserMessage: () => Promise<void>;
     abortAgentCall: () => Promise<void>;
     approveToolCall: (toolCallId: string) => Promise<void>;
     rejectToolCall: (toolCallId: string) => Promise<void>;
