@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.4.1
+
+### Patch Changes
+
+- be4c721: Add cli-version to event properties.
+
 ## 0.4.0
 
 ### Minor Changes
