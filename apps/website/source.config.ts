@@ -11,12 +11,14 @@ export const docs = defineDocs({
   dir: 'content/docs',
 });
 
-export const blogPosts = defineCollections({
+export const newsPosts = defineCollections({
   type: 'doc',
-  dir: 'content/blog',
+  dir: 'content/news',
   // add required frontmatter properties
   schema: frontmatterSchema.extend({
     author: z.string(),
+    title: z.string(),
+    description: z.string(),
     date: z.string().date().or(z.date()),
   }),
 });

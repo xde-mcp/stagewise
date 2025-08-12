@@ -42,6 +42,11 @@ export const baseOptions: BaseLayoutProps = {
       url: '/team',
       active: 'nested-url',
     },
+    {
+      text: 'Newsroom',
+      url: '/news',
+      active: 'nested-url',
+    },
     // TODO: Uncomment this when we officially launch the waitlist
     // {
     //   text: 'Waitlist',
