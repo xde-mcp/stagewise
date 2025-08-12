@@ -39,7 +39,7 @@ export default function BlogPage() {
             href="https://www.ycombinator.com/companies/stagewise"
             target="_blank"
             aria-label="Y Combinator page of stagewise"
-            className="flex size-6 items-center justify-center rounded-sm bg-[#F26625] text-sm text-white hover:opacity-80"
+            className="flex size-6 items-center justify-center rounded-sm bg-[#F26625] text-sm text-white ring-1 ring-zinc-500/30 hover:opacity-80"
           >
             Y
           </Link>
@@ -47,7 +47,7 @@ export default function BlogPage() {
             href="https://www.linkedin.com/company/stagewise-io"
             target="_blank"
             aria-label="LinkedIn page of stagewise"
-            className="] flex size-6 items-center justify-center rounded-sm bg-[#0b66c2] font-bold text-sm text-white hover:opacity-80"
+            className="] flex size-6 items-center justify-center rounded-sm bg-[#0b66c2] font-bold text-sm text-white ring-1 ring-zinc-500/30 hover:opacity-80"
           >
             in
           </Link>
@@ -55,7 +55,7 @@ export default function BlogPage() {
             href="https://x.com/stagewise_io"
             target="_blank"
             aria-label="X page of stagewise"
-            className="flex size-6 items-center justify-center rounded-sm bg-black text-sm text-white hover:opacity-80"
+            className="flex size-6 items-center justify-center rounded-sm bg-black text-sm text-white ring-1 ring-zinc-500/30 hover:opacity-80"
           >
             𝕏
           </Link>
