@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 // Sanitize slug to prevent path traversal attacks
-function sanitizeSlug(slug: string[] | undefined): string {
+function _sanitizeSlug(slug: string[] | undefined): string {
   if (!slug || slug.length === 0) return 'index';
 
   // Join the slug parts and normalize
