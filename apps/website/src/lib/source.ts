@@ -1,4 +1,4 @@
-import { docs, blogPosts, legalTexts } from '@/.source';
+import { docs, newsPosts, legalTexts } from '@/.source';
 import { loader } from 'fumadocs-core/source';
 import { createMDXSource } from 'fumadocs-mdx';
 
@@ -9,9 +9,10 @@ export const source = loader({
   source: docs.toFumadocsSource(),
 });
 
-export const blog = loader({
-  baseUrl: '/blog',
-  source: createMDXSource(blogPosts),
+export const news = loader({
+  baseUrl: '/news',
+  source: createMDXSource(newsPosts),
+  slugs: (info) => [info.name.split('-').slice(1).join('-')],
 });
 
 export const legal = loader({
