@@ -9,7 +9,7 @@ const baseOptions: BuildOptions = {
   bundle: true,
   platform: 'node',
   target: 'es2020',
-  external: [],
+  external: ['@stagewise/karton'],
   sourcemap: false,
   minify: true,
   treeShaking: true,
