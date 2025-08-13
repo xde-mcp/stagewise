@@ -20,7 +20,7 @@ import type {
   RouterOutputs,
 } from '@stagewise/api-client';
 
-import { TimeoutManager } from './utils/stream-utils.js';
+import { TimeoutManager } from './utils/time-out-manager.js';
 import { processParallelToolCalls } from './utils/tool-call-utils.js';
 import {
   createEventEmitter,

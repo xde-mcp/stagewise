@@ -1,7 +1,7 @@
 import type { ToolResult } from '@stagewise/agent-types';
 import type { History } from '@stagewise/karton-contract';
 import type { Tools } from '@stagewise/agent-types';
-import type { TimeoutManager } from './stream-utils.js';
+import type { TimeoutManager } from './time-out-manager.js';
 import { ErrorDescriptions } from './error-utils.js';
 import type { TypedToolCall } from 'ai';
 
