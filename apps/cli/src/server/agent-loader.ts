@@ -49,7 +49,6 @@ export async function loadAndInitializeAgent(
     // Initialize agent with Express integration
     // This will automatically set up the Karton endpoint
     const agentServer = await agentInstance.initialize();
-    log.debug('Agent server initialized');
 
     // Return the WebSocket server instance if available
     // The agent SDK may not return the WebSocket server in current versions
