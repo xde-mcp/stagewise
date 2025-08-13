@@ -20,6 +20,7 @@ export const newsPosts = defineCollections({
     title: z.string(),
     description: z.string(),
     date: z.string().date().or(z.date()),
+    ogImage: z.string().url().optional(),
   }),
 });
 
