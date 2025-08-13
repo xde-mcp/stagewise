@@ -287,10 +287,8 @@ export class Agent {
   }
 
   /**
-   * Initialize the agent by hooking into a user-provided Express server
-   * @param expressApp - The Express application to hook into
-   * @param pathPrefix - Optional path prefix for agent endpoints (default: '/agent')
-   * @param httpServer - Optional HTTP server instance for WebSocket support
+   * Initialize the agent
+   * @returns The WebSocket server instance
    */
   public async initialize(): Promise<{
     wss: Awaited<ReturnType<typeof createKartonServer<KartonContract>>>['wss'];
