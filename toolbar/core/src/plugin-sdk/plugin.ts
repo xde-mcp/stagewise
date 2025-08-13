@@ -37,13 +37,13 @@ export interface PromptContext {
   contextSnippets: ContextSnippet[];
 }
 
+export type { SelectedElement } from '@stagewise/karton-contract';
+
 /** Additional information that a plugin can provide when the user selects a context element */
 export interface ContextElementContext {
   /** Up to ~50 characters of information (element name, whatever...) that get's rendered when selecting an element */
   annotation: string | null;
 }
-
-export type { SelectedElement } from '@stagewise/agent-interface-internal/toolbar';
 
 export interface ToolbarPlugin {
   /** The name of the plugin shown to the user. */

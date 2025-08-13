@@ -32,7 +32,6 @@ import {
   ErrorDescriptions,
   formatErrorDescription,
 } from './utils/error-utils.js';
-import type { createAgentHook } from '@stagewise/agent-interface-internal/agent';
 import { getProjectInfo } from '@stagewise/agent-prompt-snippets';
 import { getProjectPath } from '@stagewise/agent-prompt-snippets';
 import {
@@ -294,7 +293,7 @@ export class Agent {
    * @param httpServer - Optional HTTP server instance for WebSocket support
    */
   public async initialize(): Promise<{
-    wss: Awaited<ReturnType<typeof createAgentHook>>['wss'];
+    wss: Awaited<ReturnType<typeof createKartonServer<KartonContract>>>['wss'];
   }> {
     this.karton = await createKartonServer<KartonContract>({
       procedures: {

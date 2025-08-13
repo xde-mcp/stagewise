@@ -5,8 +5,7 @@
     "class-variance-authority",
     "class-variance-authority/*",
     "zod",
-    "@stagewise/agent-interface-internal",
-    "@stagewise/agent-interface-internal/*"
+    "@stagewise/karton"
   ],
   "apiReport": {
     "enabled": false

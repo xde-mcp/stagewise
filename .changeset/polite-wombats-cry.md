@@ -1,6 +1,5 @@
 ---
 "@stagewise/agent-project-information": minor
-"@stagewise/agent-interface-internal": minor
 "@stagewise/agent-runtime-interface": minor
 "@stagewise/agent-prompt-snippets": minor
 "@stagewise/agent-runtime-node": minor

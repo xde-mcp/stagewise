@@ -58,9 +58,6 @@ importers:
         specifier: ^3.24.5
         version: 3.24.5(zod@4.0.17)
     devDependencies:
-      '@stagewise/agent-interface-internal':
-        specifier: workspace:*
-        version: link:../../packages/agent-interface
       '@stagewise/agent-prompt-snippets':
         specifier: workspace:*
         version: link:../prompt-snippets
@@ -268,9 +265,6 @@ importers:
         specifier: 5.0.9
         version: 5.0.9(zod@4.0.17)
     devDependencies:
-      '@stagewise/agent-interface-internal':
-        specifier: workspace:*
-        version: link:../../packages/agent-interface
       '@stagewise/api-client':
         specifier: 1.1.0
         version: 1.1.0(typescript@5.9.2)
@@ -803,55 +797,6 @@ importers:
       vue-tsc:
         specifier: 2.2.12
         version: 2.2.12(typescript@5.9.2)
-
-  packages/agent-interface:
-    dependencies:
-      cors:
-        specifier: ^2.8.5
-        version: 2.8.5
-      express:
-        specifier: ^4.21.2
-        version: 4.21.2
-      ws:
-        specifier: ^8.18.3
-        version: 8.18.3
-    devDependencies:
-      '@trpc/server':
-        specifier: 11.4.3
-        version: 11.4.3(typescript@5.9.2)
-      '@types/cors':
-        specifier: ^2.8.17
-        version: 2.8.19
-      '@types/express':
-        specifier: ^5.0.3
-        version: 5.0.3
-      '@types/node':
-        specifier: 22.15.2
-        version: 22.15.2
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
-      esbuild:
-        specifier: ^0.25.6
-        version: 0.25.6
-      superjson:
-        specifier: 2.2.2
-        version: 2.2.2
-      tsup:
-        specifier: ^8.4.0
-        version: 8.5.0(@microsoft/api-extractor@7.52.8(@types/node@22.15.2))(@swc/core@1.12.5(@swc/helpers@0.5.17))(jiti@2.4.2)(postcss@8.5.6)(tsx@4.20.3)(typescript@5.9.2)(yaml@2.8.0)
-      tsx:
-        specifier: ^4.19.2
-        version: 4.20.3
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.2
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.15.2)(jiti@2.4.2)(jsdom@26.1.0)(less@4.2.2)(lightningcss@1.30.1)(sass@1.85.0)(terser@5.43.1)(tsx@4.20.3)(yaml@2.8.0)
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
 
   packages/agent-interface-external:
     dependencies:
@@ -1431,9 +1376,6 @@ importers:
       '@microsoft/api-extractor':
         specifier: ^7.52.8
         version: 7.52.8(@types/node@22.15.2)
-      '@stagewise/agent-interface-internal':
-        specifier: workspace:*
-        version: link:../../packages/agent-interface
       '@stagewise/extension-toolbar-srpc-contract':
         specifier: workspace:*
         version: link:../../packages/extension-toolbar-srpc-contract
