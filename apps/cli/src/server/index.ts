@@ -219,15 +219,11 @@ export const getServer = async () => {
         if (accessToken) {
           // Load and initialize agent using the loader module
           // This will register agent routes at /stagewise-toolbar-app/server/*
-          const agentResult = await loadAndInitializeAgent(
-            app,
-            server,
-            accessToken,
-          );
+          const agentResult = await loadAndInitializeAgent(accessToken);
           if (agentResult.success && agentResult.wss) {
             agentWss = agentResult.wss;
             log.debug('Received websocket server from agent loader');
-            agentWsPath = '/stagewise-toolbar-app/server/ws';
+            agentWsPath = '/stagewise-toolbar-app/karton';
             log.debug(
               `Agent WebSocket server configured for path: ${agentWsPath}`,
             );
@@ -261,16 +257,17 @@ export const getServer = async () => {
       if (!url.startsWith('/stagewise-toolbar-app')) {
         log.debug(`Proxying WebSocket request to app port ${config.appPort}`);
         proxy.upgrade?.(request, socket as any, head);
-      } else if (agentWss) {
-        // Handle agent WebSocket requests
-        log.debug('Handling agent WebSocket upgrade');
-        agentWss.handleUpgrade(request, socket, head, (ws: any) => {
-          agentWss.emit('connection', ws, request);
-        });
       } else {
-        // Unknown WebSocket path under /stagewise-toolbar-app
-        log.debug(`Unknown WebSocket path: ${url}`);
-        socket.destroy();
+        if (agentWss && url === '/stagewise-toolbar-app/karton') {
+          // Handle agent WebSocket requests
+          log.debug('Handling agent WebSocket upgrade');
+          agentWss.handleUpgrade(request, socket, head, (ws: any) => {
+            agentWss.emit('connection', ws, request);
+          });
+        } else {
+          log.debug(`Unknown WebSocket path: ${url}`);
+          socket.destroy();
+        }
       }
     });
 

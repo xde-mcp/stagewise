@@ -1,4 +1,5 @@
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ToolResult } from '@stagewise/agent-types';
 import { z } from 'zod';
 
 export const DESCRIPTION =
@@ -25,24 +26,13 @@ export const grepSearchParamsSchema = z.object({
 
 export type GrepSearchParams = z.infer<typeof grepSearchParamsSchema>;
 
-const grepMatchSchema = z.object({
+const _grepMatchSchema = z.object({
   path: z.string(),
   line: z.number(),
   column: z.number(),
   match: z.string(),
   preview: z.string(),
 });
-
-const toolResultSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-  matches: z.array(grepMatchSchema).optional(),
-  totalMatches: z.number().optional(),
-  filesSearched: z.number().optional(),
-  error: z.string().optional(),
-});
-
-type ToolResult = z.infer<typeof toolResultSchema>;
 
 /**
  * Grep search tool for fast regex searches across files
@@ -66,6 +56,7 @@ export async function grepSearchTool(
   // Validate required parameters
   if (!query) {
     return {
+      undoExecute: () => Promise.resolve(),
       success: false,
       message: 'Missing required parameter: query',
       error: 'MISSING_QUERY',
@@ -74,6 +65,7 @@ export async function grepSearchTool(
 
   if (!explanation) {
     return {
+      undoExecute: () => Promise.resolve(),
       success: false,
       message: 'Missing required parameter: explanation',
       error: 'MISSING_EXPLANATION',
@@ -102,6 +94,7 @@ export async function grepSearchTool(
 
     if (!grepResult.success) {
       return {
+        undoExecute: () => Promise.resolve(),
         success: false,
         message: `Grep search failed: ${grepResult.message}`,
         error: grepResult.error || 'GREP_ERROR',
@@ -121,14 +114,18 @@ export async function grepSearchTool(
     }
 
     return {
+      undoExecute: () => Promise.resolve(),
       success: true,
       message,
-      matches: grepResult.matches,
-      totalMatches: grepResult.totalMatches,
-      filesSearched: grepResult.filesSearched,
+      result: {
+        matches: grepResult.matches,
+        totalMatches: grepResult.totalMatches,
+        filesSearched: grepResult.filesSearched,
+      },
     };
   } catch (error) {
     return {
+      undoExecute: () => Promise.resolve(),
       success: false,
       message: `Grep search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error: error instanceof Error ? error.message : 'Unknown error',

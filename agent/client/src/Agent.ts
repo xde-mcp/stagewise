@@ -1,24 +1,17 @@
 import { tools as clientTools } from '@stagewise/agent-tools';
 import type {
-  CoreMessage,
-  CoreAssistantMessage,
-  CoreToolMessage,
-  LanguageModelResponseMetadata,
-} from 'ai';
+  KartonContract,
+  History,
+  ChatMessage,
+} from '@stagewise/karton-contract';
+import {
+  createKartonServer,
+  type KartonServer,
+} from '@stagewise/karton/server';
+import type { InferUIMessageChunk } from 'ai';
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
 import type { PromptSnippet } from '@stagewise/agent-types';
 import type { Tools } from '@stagewise/agent-types';
-import {
-  AgentStateType,
-  createAgentServer,
-  createAgentHook,
-  type UserMessage,
-  type AgentServer,
-} from '@stagewise/agent-interface-internal/agent';
-import {
-  getProjectPath,
-  getProjectInfo,
-} from '@stagewise/agent-prompt-snippets';
 import { createAuthenticatedClient } from './utils/create-authenticated-client.js';
 import type {
   AppRouter,
@@ -27,17 +20,8 @@ import type {
   RouterOutputs,
 } from '@stagewise/api-client';
 
-// Import all the new utilities
-import { countToolCalls } from './utils/message-utils.js';
-import {
-  withTimeout,
-  TimeoutManager,
-  consumeStreamWithTimeout,
-} from './utils/stream-utils.js';
-import {
-  processParallelToolCalls,
-  shouldRecurseAfterToolCall,
-} from './utils/tool-call-utils.js';
+import { TimeoutManager } from './utils/time-out-manager.js';
+import { processParallelToolCalls } from './utils/tool-call-utils.js';
 import {
   createEventEmitter,
   EventFactories,
@@ -48,142 +32,104 @@ import {
   ErrorDescriptions,
   formatErrorDescription,
 } from './utils/error-utils.js';
-
-type ResponseMessage = (CoreAssistantMessage | CoreToolMessage) & {
-  id: string;
-};
-
-// Type that represents what we actually get from tRPC (with serialized dates)
-type Response = LanguageModelResponseMetadata & {
-  messages: Array<ResponseMessage>;
-};
+import { getProjectInfo } from '@stagewise/agent-prompt-snippets';
+import { getProjectPath } from '@stagewise/agent-prompt-snippets';
+import {
+  appendTextDeltaToMessage,
+  attachToolOutputToMessage,
+  createAndActivateNewChat,
+  appendToolInputToMessage,
+} from './utils/karton-helpers.js';
+import { isAbortError } from './utils/is-abort-error.js';
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
 const MAX_RECURSION_DEPTH = 20;
-const STATE_RECOVERY_DELAY = 5000; // 5 seconds
 
 export class Agent {
   private static instance: Agent;
-  private server: AgentServer | null = null;
+  private karton: KartonServer<KartonContract> | null = null;
   private clientRuntime: ClientRuntime;
   private tools: Tools;
-  private history: (CoreMessage | UserMessage)[];
   private client: TRPCClient<AppRouter> | null = null;
   private accessToken: string | null = null;
   private eventEmitter: ReturnType<typeof createEventEmitter>;
-  private currentState?: AgentStateType;
-  private agentDescription?: string;
+  private isWorking = false;
   private timeoutManager: TimeoutManager;
   private recursionDepth = 0;
   private agentTimeout: number = DEFAULT_AGENT_TIMEOUT;
   private authRetryCount = 0;
   private maxAuthRetries = 2;
-  private isExpressMode = false;
+  private abortController: AbortController;
+  private lastMessageId: string | null = null;
+  // undo is only allowed for one chat at a time.
+  // if the user switches to a new chat, the undo stack is cleared
+  private undoToolCallStack: {
+    chatId: string | null;
+    stack: {
+      toolName: string;
+      toolCallId: string;
+      undoExecute: () => Promise<void>;
+    }[];
+  } = {
+    chatId: null,
+    stack: [],
+  };
 
   private constructor(config: {
     clientRuntime: ClientRuntime;
     tools: Tools;
     accessToken?: string;
     onEvent?: AgentEventCallback;
-    agentDescription?: string;
     agentTimeout?: number;
   }) {
     this.clientRuntime = config.clientRuntime;
     this.tools = config.tools;
     this.accessToken = config.accessToken || null;
     this.eventEmitter = createEventEmitter(config.onEvent);
-    this.history = [];
     this.client = createAuthenticatedClient(this.accessToken);
-    this.agentDescription = config.agentDescription;
     this.agentTimeout = config.agentTimeout || DEFAULT_AGENT_TIMEOUT;
     this.timeoutManager = new TimeoutManager();
+    this.abortController = new AbortController();
   }
 
   public shutdown() {
     // Clean up all pending operations
     this.cleanupPendingOperations('Agent shutdown');
-
-    // Close the server
-    if (this.server?.standalone) {
-      this.server.server.close();
-    } else if (this.server && this.isExpressMode) {
-      this.server.wss.close();
-    }
-  }
-
-  /**
-   * Validates a description to ensure it meets length constraints (3-128 characters)
-   * @param description - The description to validate
-   * @returns Valid description, truncated if needed, or undefined if invalid
-   */
-  private validateDescription(description?: string): string | undefined {
-    if (!description || description.trim().length === 0) {
-      return undefined;
-    }
-
-    const trimmed = description.trim();
-
-    // If too short, return undefined
-    if (trimmed.length < 3) {
-      return undefined;
-    }
-
-    // If too long, truncate with ellipsis
-    if (trimmed.length > 128) {
-      const truncated = `${trimmed.substring(0, 125)}...`;
-      return truncated;
-    }
-
-    return trimmed;
   }
 
   /**
    * Sets the agent state and emits a state change event
-   * @param newState - The new state to set
-   * @param description - Optional description of the state change
+   * @param isWorking - The new state to set
    */
-  private setAgentState(newState: AgentStateType, description?: string): void {
-    if (!this.server) return;
-
-    const previousState = this.currentState;
-    this.currentState = newState;
-
-    // Clear any existing state timeout
-    this.timeoutManager.clear('current-state');
+  private setAgentWorking(isWorking: boolean): void {
+    if (!this.karton) return;
+    this.timeoutManager.clear('is-working');
+    this.isWorking = isWorking;
 
     // Set automatic recovery for stuck states
-    if (
-      newState === AgentStateType.WORKING ||
-      newState === AgentStateType.CALLING_TOOL
-    ) {
+    if (isWorking) {
       this.timeoutManager.set(
-        'current-state',
+        'is-working',
         () => {
-          this.setAgentState(
-            AgentStateType.IDLE,
-            'Automatic recovery from stuck state',
-          );
+          this.setAgentWorking(false);
         },
         this.agentTimeout,
       );
     }
 
-    const validatedDescription = this.validateDescription(description);
-    if (validatedDescription) {
-      this.server.interface.state.set(newState, validatedDescription);
-    } else {
-      this.server.interface.state.set(newState);
-    }
-
+    this.karton.setState((draft) => {
+      draft.isWorking = isWorking;
+    });
     this.eventEmitter.emit(
-      EventFactories.agentStateChanged(newState, previousState, description),
+      EventFactories.agentStateChanged(this.isWorking, !this.isWorking),
     );
   }
 
   /**
    * Reinitialize the TRPC client with fresh credentials
    * Call this after authentication changes
+   * @param accessToken - The new access token
    */
   public async reauthenticateTRPCClient(accessToken: string) {
     this.accessToken = accessToken;
@@ -194,16 +140,19 @@ export class Agent {
 
   /**
    * Calls the agent API with automatic retry on authentication failures
+   * @param request - The request to call the agent API with
+   * @returns The result of the agent API call
    */
   private async callAgentWithRetry(
-    request: RouterInputs['agent']['callAgent'],
-  ): Promise<RouterOutputs['agent']['callAgent']> {
+    request: RouterInputs['chat']['callAgent'],
+  ): Promise<RouterOutputs['chat']['callAgent']> {
     try {
       if (!this.client) {
         throw new Error('TRPC API client not initialized');
       }
-
-      const result = await this.client.agent.callAgent.mutate(request);
+      const result = await this.client.chat.callAgent.mutate(request, {
+        signal: this.abortController.signal,
+      });
       // Reset auth retry count on successful call
       this.authRetryCount = 0;
       return result;
@@ -231,6 +180,9 @@ export class Agent {
 
           // Retry the request
           return this.callAgentWithRetry(request);
+        } else if (error instanceof Error && error.name === 'AbortError') {
+          // Abort error is not an auth error
+          throw error;
         } else {
           // Max retries exceeded
           this.authRetryCount = 0;
@@ -249,6 +201,8 @@ export class Agent {
 
   /**
    * Checks if an error is an authentication error
+   * @param error - The error to check
+   * @returns True if the error is an authentication error, false otherwise
    */
   private isAuthenticationError(error: any): boolean {
     // Check for TRPC error with UNAUTHORIZED code
@@ -282,7 +236,7 @@ export class Agent {
    * @param resetRecursionDepth - Whether to reset recursion depth to 0 (default: true)
    */
   private cleanupPendingOperations(
-    reason?: string,
+    _reason?: string,
     resetRecursionDepth = true,
   ): void {
     // Clear all timeouts
@@ -294,10 +248,7 @@ export class Agent {
     }
 
     // Set state to IDLE
-    this.setAgentState(
-      AgentStateType.IDLE,
-      reason || 'Cleanup pending operations',
-    );
+    this.setAgentWorking(false);
   }
 
   /**
@@ -314,7 +265,6 @@ export class Agent {
     tools?: Tools;
     accessToken?: string;
     onEvent?: AgentEventCallback;
-    agentDescription?: string;
     agentTimeout?: number;
   }) {
     const {
@@ -322,7 +272,6 @@ export class Agent {
       tools = clientTools(clientRuntime),
       accessToken,
       onEvent,
-      agentDescription,
       agentTimeout,
     } = config;
     if (!Agent.instance) {
@@ -331,45 +280,10 @@ export class Agent {
         tools,
         accessToken,
         onEvent,
-        agentDescription,
         agentTimeout,
       });
     }
     return Agent.instance;
-  }
-
-  public async initialize() {
-    this.server = await createAgentServer();
-    this.server.setAgentName('stagewise agent');
-    this.server.setAgentDescription(
-      this.agentDescription || 'Your frontend and design agent',
-    );
-
-    this.server.interface.availability.set(true);
-    this.setAgentState(AgentStateType.IDLE);
-
-    this.server.interface.messaging.addUserMessageListener(async (message) => {
-      this.setAgentState(AgentStateType.WORKING);
-
-      const promptSnippets: PromptSnippet[] = [];
-
-      const projectPathPromptSnippet = await getProjectPath(this.clientRuntime);
-      if (projectPathPromptSnippet) {
-        promptSnippets.push(projectPathPromptSnippet);
-      }
-
-      const projectInfoPromptSnippet = await getProjectInfo(this.clientRuntime);
-      if (projectInfoPromptSnippet) {
-        promptSnippets.push(projectInfoPromptSnippet);
-      }
-
-      this.callAgent({
-        history: this.history,
-        clientRuntime: this.clientRuntime,
-        userMessage: message,
-        promptSnippets,
-      });
-    });
   }
 
   /**
@@ -378,54 +292,117 @@ export class Agent {
    * @param pathPrefix - Optional path prefix for agent endpoints (default: '/agent')
    * @param httpServer - Optional HTTP server instance for WebSocket support
    */
-  public async initializeWithExpress(
-    expressApp: Parameters<typeof createAgentHook>[0]['app'],
-    httpServer: Parameters<typeof createAgentHook>[0]['server'],
-    pathPrefix = '/agent',
-  ): Promise<{
-    wss: Awaited<ReturnType<typeof createAgentHook>>['wss'];
+  public async initialize(): Promise<{
+    wss: Awaited<ReturnType<typeof createKartonServer<KartonContract>>>['wss'];
   }> {
-    this.isExpressMode = true;
-    this.server = await createAgentHook({
-      app: expressApp,
-      server: httpServer,
-      wsPath: `${pathPrefix}/ws`,
-      infoPath: `${pathPrefix}/info`,
-      startServer: false,
+    this.karton = await createKartonServer<KartonContract>({
+      procedures: {
+        retrySendingUserMessage: async () => {
+          this.setAgentWorking(true);
+          this.karton?.setState((draft) => {
+            draft.chats[draft.activeChatId!]!.error = undefined;
+          });
+          const promptSnippets: PromptSnippet[] = [];
+          const projectPathPromptSnippet = await getProjectPath(
+            this.clientRuntime,
+          );
+          if (projectPathPromptSnippet) {
+            promptSnippets.push(projectPathPromptSnippet);
+          }
+          await this.callAgent({
+            chatId: this.karton!.state.activeChatId!,
+            history:
+              this.karton!.state.chats[this.karton!.state.activeChatId!]!
+                .messages,
+            clientRuntime: this.clientRuntime,
+            promptSnippets,
+          });
+          this.setAgentWorking(false);
+        },
+        abortAgentCall: async () => {
+          this.abortController.abort();
+          this.abortController = new AbortController();
+        },
+        approveToolCall: async (_toolCallId, _callingClientId) => {},
+        rejectToolCall: async (_toolCallId, _callingClientId) => {},
+        createChat: async () => {
+          return createAndActivateNewChat(this.karton!);
+        },
+        switchChat: async (chatId, _callingClientId) => {
+          this.karton?.setState((draft) => {
+            draft.activeChatId = chatId;
+          });
+          Object.entries(this.karton!.state.chats).forEach(([id, chat]) => {
+            if (chat.messages.length === 0 && id !== chatId)
+              this.karton?.setState((draft) => {
+                delete draft.chats[id];
+              });
+          });
+        },
+        deleteChat: async (chatId, _callingClientId) => {
+          // if the active chat is being deleted, figure out which chat to switch to
+          if (this.karton!.state.activeChatId === chatId) {
+            const nextChatId = Object.keys(this.karton!.state.chats).find(
+              (id) => id !== chatId,
+            );
+            // if there are no other chats, create a new one
+            if (!nextChatId) createAndActivateNewChat(this.karton!);
+            // if there are other chats, switch to the next one
+            else
+              this.karton?.setState((draft) => {
+                draft.activeChatId = nextChatId;
+              });
+          }
+          // finally delete the chat
+          this.karton?.setState((draft) => {
+            delete draft.chats[chatId];
+          });
+        },
+        sendUserMessage: async (message, _callingClientId) => {
+          this.setAgentWorking(true);
+          const newstate = this.karton?.setState((draft) => {
+            const chatId = this.karton!.state.activeChatId!;
+            draft.chats[chatId]!.messages.push(message as any); // TODO: fix the type issue here
+            draft.chats[chatId]!.error = undefined;
+          });
+          const messages =
+            newstate?.chats[this.karton!.state.activeChatId!]!.messages;
+          const promptSnippets: PromptSnippet[] = [];
+          const projectPathPromptSnippet = await getProjectPath(
+            this.clientRuntime,
+          );
+          if (projectPathPromptSnippet) {
+            promptSnippets.push(projectPathPromptSnippet);
+          }
+          const projectInfoPromptSnippet = await getProjectInfo(
+            this.clientRuntime,
+          );
+          if (projectInfoPromptSnippet) {
+            promptSnippets.push(projectInfoPromptSnippet);
+          }
+          this.callAgent({
+            chatId: this.karton!.state.activeChatId!,
+            history: messages,
+            clientRuntime: this.clientRuntime,
+            promptSnippets,
+          }).then(() => {
+            this.setAgentWorking(false);
+          });
+        },
+      },
+      initialState: {
+        activeChatId: null,
+        chats: {},
+        isWorking: false,
+        toolCallApprovalRequests: [],
+      },
     });
-    this.server.setAgentName('stagewise agent');
-    this.server.setAgentDescription(
-      this.agentDescription || 'Your frontend and design agent',
-    );
 
-    this.server.interface.availability.set(true);
-    this.setAgentState(AgentStateType.IDLE);
-
-    this.server.interface.messaging.addUserMessageListener(async (message) => {
-      this.setAgentState(AgentStateType.WORKING);
-
-      const promptSnippets: PromptSnippet[] = [];
-
-      const projectPathPromptSnippet = await getProjectPath(this.clientRuntime);
-      if (projectPathPromptSnippet) {
-        promptSnippets.push(projectPathPromptSnippet);
-      }
-
-      const projectInfoPromptSnippet = await getProjectInfo(this.clientRuntime);
-      if (projectInfoPromptSnippet) {
-        promptSnippets.push(projectInfoPromptSnippet);
-      }
-
-      this.callAgent({
-        history: this.history,
-        clientRuntime: this.clientRuntime,
-        userMessage: message,
-        promptSnippets,
-      });
-    });
+    this.setAgentWorking(false);
+    createAndActivateNewChat(this.karton);
 
     return {
-      wss: this.server.wss,
+      wss: this.karton.wss,
     };
   }
 
@@ -437,21 +414,17 @@ export class Agent {
    * @param promptSnippets - Prompt snippets to append
    */
   private async callAgent({
-    userMessage,
+    chatId,
     history,
     clientRuntime,
     promptSnippets,
   }: {
-    userMessage?: UserMessage;
-    history?: (CoreMessage | UserMessage)[];
+    chatId: string;
+    history?: History;
     clientRuntime: ClientRuntime;
     promptSnippets?: PromptSnippet[];
-  }): Promise<{
-    response: Promise<Response>;
-    history: (CoreMessage | UserMessage)[];
-  }> {
+  }): Promise<void> {
     // Validate prerequisites
-    if (!this.server) throw new Error('Agent not initialized');
     if (!this.client) throw new Error('TRPC API client not initialized');
 
     // Check recursion depth
@@ -460,279 +433,216 @@ export class Agent {
         this.recursionDepth,
         MAX_RECURSION_DEPTH,
       );
-      this.setAgentState(AgentStateType.FAILED, errorDesc);
-      return {
-        response: Promise.resolve({} as Response),
-        history: [],
-      };
+      this.setAgentWorking(false);
+      this.karton?.setState((draft) => {
+        draft.chats[chatId]!.error = {
+          type: 'agent-error',
+          error: new Error(errorDesc),
+        };
+      });
+      return;
     }
 
     this.recursionDepth++;
 
     try {
-      // Initialize and prepare request
-      this.server.interface.messaging.clear();
-      if (userMessage) history = [userMessage]; // TODO: Support chat history in the frontend
+      const lastMessage = history?.at(-1);
+      const isUserMessage = lastMessage?.metadata?.browserData !== undefined;
+      const isFirstUserMessage =
+        history?.filter((m) => m.metadata?.browserData !== undefined).length ===
+        1;
+      const lastMessageMetadata = isUserMessage
+        ? {
+            isUserMessage: true as const,
+            message: lastMessage,
+          }
+        : {
+            isUserMessage: false as const,
+            message: lastMessage,
+          };
+
+      // Prepare update to the chat title
+      if (isFirstUserMessage && lastMessageMetadata.isUserMessage) {
+        this.client.chat.generateChatTitle
+          .mutate({
+            messages: history ?? [],
+          })
+          .then((result) => {
+            this.karton?.setState((draft) => {
+              // chat could've been deleted in the meantime
+              const chatExists = draft.chats[chatId] !== undefined;
+              if (chatExists) draft.chats[chatId]!.title = result.title;
+            });
+          });
+      }
 
       // Emit prompt triggered event
-      this.eventEmitter.emit(
-        EventFactories.agentPromptTriggered(
-          userMessage,
-          promptSnippets?.length || 0,
-        ),
-      );
 
-      // Call the agent API
-      const startTime = Date.now();
+      if (lastMessageMetadata.isUserMessage)
+        this.eventEmitter.emit(
+          EventFactories.agentPromptTriggered(
+            lastMessageMetadata.message,
+            promptSnippets?.length || 0,
+          ),
+        );
+
       const request = {
         messages: history ?? [],
         tools: mapZodToolsToJsonSchemaTools(this.tools),
-        userMessageMetadata: userMessage?.metadata,
         promptSnippets,
       };
 
       const agentResponse = await this.callAgentWithRetry(request);
 
-      if (agentResponse.syntheticToolCalls) {
-        await this.processParallelToolCallsContent(
-          agentResponse.syntheticToolCalls,
-          history ?? [],
-          {
-            syntheticCall: true,
+      const { uiStream, response, fullStream } = agentResponse;
+
+      try {
+        await this.parseUiStream(
+          uiStream as AsyncIterable<InferUIMessageChunk<ChatMessage>>,
+          (messageId) => {
+            this.lastMessageId = messageId;
           },
         );
-        return this.callAgent({
-          history: history ?? [],
-          clientRuntime,
-          userMessage: undefined,
-          promptSnippets,
-        });
+      } catch (error) {
+        // Ignore abort errors, they are handled in the catch block below
+        if (!isAbortError(error)) throw error;
       }
 
-      const { fullStream, response, finishReason } = agentResponse;
+      try {
+        for await (const _ of fullStream) continue; // consume the full stream to catch all errors
+      } catch (_) {}
 
-      this.setAgentState(AgentStateType.WORKING);
+      const toolCalls = (await response).toolCalls;
 
-      // Start stream consumption with timeout protection
-      const streamConsumptionPromise = consumeStreamWithTimeout(
-        fullStream,
-        this.server,
-        this.agentTimeout,
-        (state, desc) => this.setAgentState(state, desc),
+      const toolResults = await processParallelToolCalls(
+        toolCalls,
+        this.tools,
+        this.karton?.state.chats[chatId]!.messages ?? [],
+        this.timeoutManager,
+        (result) => {
+          attachToolOutputToMessage(
+            this.karton!,
+            [result],
+            this.lastMessageId!,
+          );
+        },
       );
-
-      streamConsumptionPromise.catch((_error) => {});
-
-      // Wait for response with timeout
-      const r = await withTimeout(
-        response,
-        this.agentTimeout,
-        `Response timeout after ${this.agentTimeout}ms`,
-      );
-
-      const f = await finishReason;
-      if (f === 'error') {
-        throw new Error('Agent task failed');
-      } else if (f === 'length') {
-        throw new Error('Max tokens per request reached');
-      } else if (f === 'content-filter') {
-        throw new Error('Content needed to be filtered');
-      }
-
-      const responseTime = Date.now() - startTime;
-
-      // Count and emit response metrics
-      const { hasToolCalls, toolCallCount } = countToolCalls(r.messages);
-      this.eventEmitter.emit(
-        EventFactories.agentResponseReceived({
-          messageCount: r.messages.length,
-          hasToolCalls,
-          toolCallCount,
-          responseTime,
-          reason: f,
-          credits: r.credits,
-        }),
-      );
-
-      // Process response messages
-      await this.processResponseMessages(r.messages, history ?? []);
 
       // Check if recursion is needed
-      if (shouldRecurseAfterToolCall(history ?? [])) {
+      if (toolResults.length > 0) {
         return this.callAgent({
-          history: history ?? [],
+          chatId,
+          history: this.karton?.state.chats[chatId]!.messages,
           clientRuntime,
-          userMessage: undefined,
           promptSnippets,
         });
       }
 
       // Clean up and finalize
       this.cleanupPendingOperations('Agent task completed successfully', false);
-      this.history = history ?? [];
-
-      return {
-        response: response as Promise<Response>,
-        history: history ?? [],
-      };
+      return;
     } catch (error) {
-      const errorDesc = formatErrorDescription('Agent task failed', error);
-      this.setAgentState(AgentStateType.FAILED, errorDesc);
+      // If the user has aborted the agent, set the agent to idle
+      if (isAbortError(error)) {
+        this.setAgentWorking(false);
+        return;
+      }
 
-      // Reset to idle after delay
-      setTimeout(() => {
-        if (
-          this.server?.interface.state.get()?.state === AgentStateType.FAILED
-        ) {
-          this.setAgentState(AgentStateType.IDLE);
-        }
-      }, STATE_RECOVERY_DELAY);
+      const errorDesc = formatErrorDescription('Agent failed', error);
+      this.setAgentWorking(false);
+      this.karton?.setState((draft) => {
+        draft.chats[chatId]!.error = {
+          type: 'agent-error',
+          error: new Error(errorDesc),
+        };
+      });
 
-      this.history = [];
-      return {
-        response: Promise.resolve({} as Response),
-        history: [],
-      };
+      return;
     } finally {
       // Ensure recursion depth is decremented
       this.recursionDepth = Math.max(0, this.recursionDepth - 1);
     }
   }
 
-  /**
-   * Processes response messages from the agent, handling text and tool calls
-   */
-  private async processResponseMessages(
-    messages: Array<ResponseMessage>,
-    history: (CoreMessage | UserMessage)[],
-  ): Promise<void> {
-    for (const message of messages) {
-      const assistantMessage = {
-        role: 'assistant' as const,
-        content: [] as Exclude<CoreAssistantMessage['content'], string>,
-      };
-      if (Array.isArray(message.content)) {
-        // Collect all tool calls from this message
-        const toolCalls: Array<{
-          toolName: string;
-          toolCallId: string;
-          args: any;
-        }> = [];
-
-        // Process text content immediately, collect tool calls
-        for (const content of message.content) {
-          if (content.type === 'text') {
-            assistantMessage.content.push({
-              type: 'text',
-              text: content.text,
-            });
-          } else if (content.type === 'tool-call') {
-            toolCalls.push({
-              toolName: content.toolName,
-              toolCallId: content.toolCallId,
-              args: content.args,
-            });
-          }
-        }
-
-        // Add assistant message to history
-        history.push(assistantMessage);
-
-        // Process all tool calls together if any
-        if (toolCalls.length > 0) {
-          await this.processParallelToolCallsContent(toolCalls, history);
-        }
-      } else if (typeof message.content === 'string') {
-        history.push({
-          role: 'assistant',
-          content: [{ type: 'text', text: message.content }],
-        });
+  private async parseUiStream(
+    uiStream: AsyncIterable<InferUIMessageChunk<ChatMessage>>,
+    onNewMessage?: (messageId: string) => void,
+  ) {
+    // Only throw test error with 20% probability
+    let messageId = 'julian-is-cool';
+    let partIndex = -1;
+    for await (const chunk of uiStream) {
+      switch (chunk.type) {
+        case 'start':
+          messageId = chunk.messageId ?? 'julian-is-cool';
+          partIndex++;
+          onNewMessage?.(messageId);
+          break;
+        case 'text-start':
+          break;
+        case 'text-delta':
+          appendTextDeltaToMessage(
+            this.karton!,
+            messageId,
+            chunk.delta,
+            partIndex,
+          );
+          break;
+        case 'tool-input-start':
+          partIndex++;
+          break;
+        case 'tool-input-delta':
+        case 'tool-input-error':
+          break; // Skipped for now
+        case 'tool-input-available':
+          appendToolInputToMessage(this.karton!, messageId, chunk, partIndex);
+          break;
+        case 'tool-output-available':
+          // Should not happen - we append the output and this message
+          break;
       }
     }
   }
 
   /**
-   * Processes parallel tool calls from the response
+   * Undoes all tool calls until the user message is reached
+   * @param userMessageId - The id of the user message
+   * @param chatId - The id of the chat
    */
-  private async processParallelToolCallsContent(
-    toolCalls: Array<{
-      toolName: string;
-      toolCallId: string;
-      args: any;
-    }>,
-    history: (CoreMessage | UserMessage)[],
-    options?: {
-      syntheticCall?: boolean;
-    },
+  private async undoToolCallsUntilUserMessage(
+    userMessageId: string,
+    chatId: string,
   ): Promise<void> {
-    const explanations = toolCalls
-      .map((tc) => ('explanation' in tc.args ? tc.args.explanation : null))
-      .filter((explanation) => explanation !== null);
-
-    if (!options?.syntheticCall) {
-      if (explanations.length > 0) {
-        // Create a combined description that fits within limits
-        let combinedDescription = explanations.join(', ');
-
-        // If we have multiple explanations and the combined length might be too long,
-        // use a summary format instead
-        if (explanations.length > 1 && combinedDescription.length > 100) {
-          combinedDescription = `Running ${explanations.length} tool operations`;
-
-          // If even that's within limits, try to add the first explanation
-          const firstExplanation = explanations[0];
-          const withFirst = `${combinedDescription}: ${firstExplanation}`;
-          if (withFirst.length <= 120) {
-            combinedDescription = withFirst;
-          }
-        }
-
-        this.setAgentState(AgentStateType.CALLING_TOOL, combinedDescription);
-      } else {
-        this.setAgentState(AgentStateType.CALLING_TOOL);
-      }
+    if (this.undoToolCallStack.chatId !== chatId) {
+      // should never happen
+      return;
     }
+    const chat = this.karton?.state.chats[chatId];
 
-    // Emit events for each tool call
-    for (const tc of toolCalls) {
-      const tool = this.tools[tc.toolName];
-      if (!tool) continue;
-
-      this.eventEmitter.emit(
-        EventFactories.toolCallRequested(
-          tc.toolName,
-          tool.stagewiseMetadata?.runtime !== 'browser',
-          tool.stagewiseMetadata?.runtime === 'browser',
-        ),
-      );
-    }
-
-    // Process all tool calls
-    await processParallelToolCalls(
-      toolCalls,
-      this.tools,
-      this.server!,
-      history,
-      (state, desc) => this.setAgentState(state, desc),
-      this.timeoutManager,
-      (result) => {
-        this.eventEmitter.emit(
-          EventFactories.toolCallCompleted(
-            result.toolName,
-            result.success,
-            result.duration,
-            result.error,
-          ),
-        );
-      },
+    const reversedHistory = [...(chat?.messages ?? [])].reverse();
+    const messagesBeforeUserMessage = reversedHistory.slice(
+      reversedHistory.findIndex(
+        (m) => m.role === 'user' && 'id' in m && m.id === userMessageId,
+      ),
     );
 
-    // Update history for browser tools
-    const hasBrowserTools = toolCalls.some(
-      (tc) => this.tools[tc.toolName]?.stagewiseMetadata?.runtime === 'browser',
-    );
-    if (hasBrowserTools) {
-      this.history = history;
+    const toolCallIdsBeforeUserMessage: string[] = [];
+    for (const message of messagesBeforeUserMessage) {
+      if (message.role !== 'assistant') continue;
+      for (const content of message.parts)
+        if (content.type === 'tool-call')
+          toolCallIdsBeforeUserMessage.push(content.toolCallId);
+    }
+
+    while (
+      this.undoToolCallStack.stack.at(-1)?.toolCallId &&
+      toolCallIdsBeforeUserMessage.includes(
+        this.undoToolCallStack.stack.at(-1)!.toolCallId,
+      )
+    ) {
+      const undo = this.undoToolCallStack.stack.pop();
+      if (!undo) break;
+      await undo.undoExecute();
     }
   }
 }

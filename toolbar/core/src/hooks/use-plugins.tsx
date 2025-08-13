@@ -1,19 +1,14 @@
 import { createContext, type ReactNode } from 'react';
 import { useContext, useEffect, useMemo, useRef } from 'react';
 import type {
-  PluginUserMessage,
+  PluginChatMessage,
   ToolbarContext,
   ToolbarPlugin,
 } from '@/plugin-sdk/plugin';
 import { useConfig } from './use-config';
-import type { UserMessage } from '@stagewise/agent-interface-internal/toolbar';
-import { useAgentMessaging } from './agent/use-agent-messaging';
-import {
-  collectUserMessageMetadata,
-  generateId,
-  getIFrameWindow,
-} from '@/utils';
+import { collectUserMessageMetadata, getIFrameWindow } from '@/utils';
 import { usePanels } from './use-panels';
+import { useKartonProcedure } from './use-karton';
 
 export interface PluginContextType {
   plugins: ToolbarPlugin[];
@@ -31,7 +26,7 @@ const PluginContext = createContext<PluginContextType>({
 export function PluginProvider({ children }: { children?: ReactNode }) {
   const { config } = useConfig();
 
-  const { sendMessage } = useAgentMessaging();
+  const sendUserMessage = useKartonProcedure((s) => s.sendUserMessage);
 
   const { openChat } = usePanels();
 
@@ -39,21 +34,18 @@ export function PluginProvider({ children }: { children?: ReactNode }) {
 
   const toolbarContext = useMemo(() => {
     return {
-      sendPrompt: async (prompt: PluginUserMessage) => {
-        const userMessage: UserMessage = {
+      sendPrompt: async (prompt: PluginChatMessage) => {
+        // We don't collect additional pluginContentItems when plugins send messages since it's probably a very specific message anyway
+        sendUserMessage({
           ...prompt,
-          id: generateId(),
-          createdAt: new Date(),
-          sentByPlugin: true,
-          metadata: collectUserMessageMetadata([]),
-          pluginContent: {},
-        };
-        sendMessage(userMessage);
+          metadata: collectUserMessageMetadata([], true),
+          role: 'user',
+        });
         openChat();
       },
       mainAppWindow: getIFrameWindow(),
     };
-  }, [sendMessage]);
+  }, [sendUserMessage]);
 
   // call plugins once on initial load
   const pluginsLoadedRef = useRef(false);

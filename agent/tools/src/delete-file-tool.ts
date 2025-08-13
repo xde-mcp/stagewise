@@ -1,4 +1,5 @@
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ToolResult } from '@stagewise/agent-types';
 import { z } from 'zod';
 
 export const DESCRIPTION = 'Delete a file from the file system';
@@ -8,14 +9,6 @@ export const deleteFileParamsSchema = z.object({
 });
 
 export type DeleteFileParams = z.infer<typeof deleteFileParamsSchema>;
-
-const toolResultSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-  error: z.string().optional(),
-});
-
-type ToolResult = z.infer<typeof toolResultSchema>;
 
 /**
  * Delete file tool
@@ -31,6 +24,7 @@ export async function deleteFileTool(
   // Validate required parameters
   if (!relPath) {
     return {
+      undoExecute: () => Promise.resolve(),
       success: false,
       message: 'Missing required parameter: path',
       error: 'MISSING_PATH',
@@ -44,29 +38,65 @@ export async function deleteFileTool(
     const fileExists = await clientRuntime.fileSystem.fileExists(absolutePath);
     if (!fileExists) {
       return {
+        undoExecute: () => Promise.resolve(),
         success: false,
         message: `File not found: ${relPath}`,
         error: 'FILE_NOT_FOUND',
       };
     }
 
+    // Read the file content before deletion for undo capability
+    const originalContent =
+      await clientRuntime.fileSystem.readFile(absolutePath);
+    if (!originalContent.success || originalContent.content === undefined) {
+      return {
+        undoExecute: () => Promise.resolve(),
+        success: false,
+        message: `Failed to read file before deletion: ${relPath}`,
+        error: 'READ_ERROR',
+      };
+    }
+
+    // Store the original content for undo
+    const fileContent = originalContent.content;
+
     // Delete the file
     const deleteResult =
       await clientRuntime.fileSystem.deleteFile(absolutePath);
     if (!deleteResult.success) {
       return {
+        undoExecute: () => Promise.resolve(),
         success: false,
         message: `Failed to delete file: ${relPath}`,
         error: deleteResult.error || 'DELETE_ERROR',
       };
     }
 
+    // Create the undo function
+    const undoExecute = async (): Promise<void> => {
+      // Ensure directory exists
+      const dir = clientRuntime.fileSystem.getDirectoryName(absolutePath);
+      await clientRuntime.fileSystem.createDirectory(dir);
+
+      // Restore the file with its original content
+      const restoreResult = await clientRuntime.fileSystem.writeFile(
+        absolutePath,
+        fileContent,
+      );
+
+      if (!restoreResult.success) {
+        throw new Error(`Failed to restore deleted file: ${relPath}`);
+      }
+    };
+
     return {
       success: true,
       message: `Successfully deleted file: ${relPath}`,
+      undoExecute,
     };
   } catch (error) {
     return {
+      undoExecute: () => Promise.resolve(),
       success: false,
       message: `Failed to delete file: ${relPath}`,
       error: error instanceof Error ? error.message : 'Unknown error',

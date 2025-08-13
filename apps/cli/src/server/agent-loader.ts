@@ -1,5 +1,3 @@
-import type { Application } from 'express';
-import type { Server } from 'node:http';
 import { printInfoMessages } from '@/utils/print-info-messages.js';
 import { log } from '../utils/logger.js';
 import configResolver from '@/config/index.js';
@@ -13,8 +11,6 @@ let agentInstance: Agent | null = null;
  * Loads and initializes the agent server
  */
 export async function loadAndInitializeAgent(
-  app: Application,
-  server: Server,
   accessToken: string,
 ): Promise<{ success: boolean; wss?: any }> {
   try {
@@ -38,8 +34,6 @@ export async function loadAndInitializeAgent(
     agentInstance = Agent.getInstance({
       clientRuntime,
       accessToken,
-      agentDescription:
-        'Stagewise CLI Agent - Provides development tools and codebase interaction capabilities',
       onEvent: (event) => {
         printInfoMessages(event);
         switch (event.type) {
@@ -53,16 +47,8 @@ export async function loadAndInitializeAgent(
     });
 
     // Initialize agent with Express integration
-    // This will automatically set up the following endpoints:
-    // - /stagewise-toolbar-app/server/ws (WebSocket endpoint)
-    // - /stagewise-toolbar-app/server/info (HTTP info endpoint)
-    const agentServer = await agentInstance.initializeWithExpress(
-      app as any,
-      server,
-      '/stagewise-toolbar-app/server',
-    );
-
-    log.debug('Agent endpoints available at /stagewise-toolbar-app/server/*');
+    // This will automatically set up the Karton endpoint
+    const agentServer = await agentInstance.initialize();
 
     // Return the WebSocket server instance if available
     // The agent SDK may not return the WebSocket server in current versions

@@ -73,11 +73,11 @@ export default async function buildToolbarMain() {
     optimizeDeps: {
       include: [
         '@trpc/client',
-        '@stagewise/agent-interface-internal',
         'lucide-react',
         'zod',
         '@headlessui/react',
         'class-variance-authority',
+        '@stagewise/karton',
       ],
       esbuildOptions: {
         mainFields: ['module', 'main'],

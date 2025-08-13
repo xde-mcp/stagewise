@@ -6,12 +6,21 @@ export type { Tool };
 export const stagewiseToolMetadataSchema = z.object({
   requiresUserInteraction: z.boolean().default(false).optional(),
   runtime: z.enum(['client', 'server', 'browser']).default('client').optional(),
-  type: z.undefined(),
 });
 
 export type StagewiseToolMetadata = z.infer<typeof stagewiseToolMetadataSchema>;
 
+export type ToolResult = {
+  undoExecute: () => Promise<void>;
+  success: boolean;
+  error?: string;
+  message?: string;
+  result?: any;
+};
+
 export type Tools = Record<
   string,
-  Tool<any, any> & { stagewiseMetadata?: StagewiseToolMetadata }
+  Tool<any, ToolResult> & {
+    stagewiseMetadata?: StagewiseToolMetadata;
+  }
 >;

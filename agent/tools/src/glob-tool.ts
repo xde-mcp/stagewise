@@ -1,4 +1,5 @@
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ToolResult } from '@stagewise/agent-types';
 import { z } from 'zod';
 
 export const DESCRIPTION = 'Find files and directories matching a glob pattern';
@@ -9,16 +10,6 @@ export const globParamsSchema = z.object({
 });
 
 export type GlobParams = z.infer<typeof globParamsSchema>;
-
-const toolResultSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-  paths: z.array(z.string()).optional(),
-  totalMatches: z.number().optional(),
-  error: z.string().optional(),
-});
-
-type ToolResult = z.infer<typeof toolResultSchema>;
 
 /**
  * Glob tool for finding files and directories matching a pattern
@@ -36,6 +27,7 @@ export async function globTool(
   // Validate required parameters
   if (!pattern) {
     return {
+      undoExecute: () => Promise.resolve(),
       success: false,
       message: 'Missing required parameter: pattern',
       error: 'MISSING_PATTERN',
@@ -56,6 +48,7 @@ export async function globTool(
 
     if (!globResult.success) {
       return {
+        undoExecute: () => Promise.resolve(),
         success: false,
         message: `Glob search failed: ${globResult.message}`,
         error: globResult.error || 'GLOB_ERROR',
@@ -67,13 +60,17 @@ export async function globTool(
     const message = `Found ${globResult.totalMatches || 0} matches for pattern "${pattern}"${searchLocation}`;
 
     return {
+      undoExecute: () => Promise.resolve(),
       success: true,
       message,
-      paths: globResult.paths,
-      totalMatches: globResult.totalMatches,
+      result: {
+        paths: globResult.paths,
+        totalMatches: globResult.totalMatches,
+      },
     };
   } catch (error) {
     return {
+      undoExecute: () => Promise.resolve(),
       success: false,
       message: `Glob search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error: error instanceof Error ? error.message : 'Unknown error',

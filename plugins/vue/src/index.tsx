@@ -14,7 +14,10 @@ const VuePlugin: ToolbarPlugin = {
   onContextElementHover: getSelectedElementAnnotation,
   onContextElementSelect: getSelectedElementAnnotation,
   onPromptSend: (prompt) => {
-    const content = getSelectedElementsPrompt(prompt.metadata.selectedElements);
+    const content = getSelectedElementsPrompt(
+      prompt.metadata.selectedElements ??
+        prompt.metadata.browserData?.selectedElements,
+    );
 
     if (!content) {
       return { contextSnippets: [] };

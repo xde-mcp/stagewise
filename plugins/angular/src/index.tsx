@@ -14,7 +14,9 @@ const AngularPlugin: ToolbarPlugin = {
   onContextElementHover: getSelectedElementAnnotation,
   onContextElementSelect: getSelectedElementAnnotation,
   onPromptSend: (prompt) => {
-    const content = getSelectedElementsPrompt(prompt.metadata.selectedElements);
+    const content = getSelectedElementsPrompt(
+      prompt.metadata.browserData?.selectedElements,
+    );
 
     if (!content) {
       return { contextSnippets: [] };

@@ -3,14 +3,13 @@ export interface UIHandle {
 }
 
 import type { ReactNode } from 'react';
-import type { UserMessage } from '@stagewise/agent-interface-internal/toolbar';
+import type { ChatMessage } from '@stagewise/karton-contract';
 
-export type PluginUserMessage = Omit<
-  UserMessage,
-  'id' | 'createdAt' | 'sentByPlugin' | 'metadata' | 'pluginContent'
->;
+export type PluginChatMessage = Omit<ChatMessage, 'role' | 'metadata'> & {
+  role: 'plugin';
+};
 export interface ToolbarContext {
-  sendPrompt: (prompt: PluginUserMessage) => void;
+  sendPrompt: (prompt: PluginChatMessage) => void;
   mainAppWindow: Window;
 }
 
@@ -38,13 +37,13 @@ export interface PromptContext {
   contextSnippets: ContextSnippet[];
 }
 
+export type { SelectedElement } from '@stagewise/karton-contract';
+
 /** Additional information that a plugin can provide when the user selects a context element */
 export interface ContextElementContext {
   /** Up to ~50 characters of information (element name, whatever...) that get's rendered when selecting an element */
   annotation: string | null;
 }
-
-export type { SelectedElement } from '@stagewise/agent-interface-internal/toolbar';
 
 export interface ToolbarPlugin {
   /** The name of the plugin shown to the user. */
@@ -76,7 +75,7 @@ export interface ToolbarPlugin {
   /** Called just before a prompt is sent. Plugins can use this to automatically provide additional context for the prompt or simply listen to some change. */
   onPromptSend?:
     | ((
-        prompt: Omit<UserMessage, 'id'>,
+        prompt: Omit<ChatMessage, 'id'>,
       ) => PromptContext | Promise<PromptContext> | null)
     | null;
 
