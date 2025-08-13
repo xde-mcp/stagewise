@@ -32,7 +32,6 @@
     "reset-data": "tsx reset.ts"
   },
   "devDependencies": {
-    "@stagewise/karton-contract": "workspace:*",
     "@stagewise/karton": "workspace:*",
     "@inquirer/prompts": "^7.0.0",
     "@stagewise-plugins/angular": "workspace:*",
