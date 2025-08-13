@@ -10,6 +10,7 @@
     "agent",
     "interaction"
   ],
+  "private": true,
   "author": "tiq UG (haftungsbeschränkt)",
   "homepage": "https://stagewise.io",
   "bugs": {

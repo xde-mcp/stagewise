@@ -1,12 +1,15 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
   "bundledPackages": [
-    "@stagewise/extension-toolbar-srpc-contract",
     "class-variance-authority",
     "class-variance-authority/*",
     "zod",
-    "@stagewise/karton"
+    "@stagewise/agent-types",
+    "@stagewise/karton",
+    "@stagewise/karton-contract",
+    "../../packages/karton-contract"
   ],
+  "projectFolder": "..",
   "apiReport": {
     "enabled": false
   },
