@@ -10,7 +10,7 @@ const baseOptions: BuildOptions = {
   platform: 'node',
   target: 'es2020',
   external: ['@stagewise/karton'],
-  sourcemap: 'inline',
+  sourcemap: false,
   minify: true,
   treeShaking: true,
   // Additional obfuscation options
