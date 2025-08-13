@@ -100,6 +100,7 @@ export async function generateMetadata(props: {
       title: `${page.data.title} | stagewise Newsroom`,
       description: page.data.description,
       locale: 'en_US',
+      images: page.data.ogImage ? [page.data.ogImage] : undefined,
     },
     twitter: {
       title: `${page.data.title} | stagewise Newsroom`,
