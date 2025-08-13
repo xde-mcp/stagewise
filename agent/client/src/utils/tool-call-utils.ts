@@ -1,7 +1,6 @@
 import type { ToolResult } from '@stagewise/agent-types';
 import type { History } from '@stagewise/karton-contract';
 import type { Tools } from '@stagewise/agent-types';
-import { messagesToCoreMessages } from './message-utils.js';
 import type { TimeoutManager } from './stream-utils.js';
 import { ErrorDescriptions } from './error-utils.js';
 import type { TypedToolCall } from 'ai';
@@ -108,7 +107,7 @@ export async function processBrowserToolCall(
 export async function processClientSideToolCall(
   context: ToolCallContext,
 ): Promise<ToolCallProcessingResult> {
-  const { tool, toolName, toolCallId, input, history } = context;
+  const { tool, toolName, toolCallId, input } = context;
 
   const startTime = Date.now();
 
@@ -136,7 +135,7 @@ export async function processClientSideToolCall(
     // Execute the tool
     const executeResult = await tool.execute(input, {
       toolCallId,
-      messages: messagesToCoreMessages(history),
+      messages: [], // the empty array is fine, we don't need to pass in the history - only when the tool calls need it
     });
 
     result = {
