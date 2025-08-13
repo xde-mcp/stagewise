@@ -1,5 +1,15 @@
 # stagewise-vscode-extension
 
+## 0.10.4
+
+### Patch Changes
+
+- Updated dependencies [02140ae]
+- Updated dependencies [02140ae]
+  - @stagewise/agent-interface@0.3.1
+  - @stagewise/agent-client@0.1.0
+  - @stagewise/agent-runtime-vscode@0.0.2
+
 ## 0.10.3
 
 ### Patch Changes
