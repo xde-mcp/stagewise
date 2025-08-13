@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.5.1
+
+### Patch Changes
+
+- a426f4f: Fix logging tests.
+
 ## 0.5.0
 
 ### Minor Changes
