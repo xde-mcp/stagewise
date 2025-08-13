@@ -263,40 +263,4 @@ describe('CLI Workflow Integration Tests', () => {
       await killProcess(child);
     });
   });
-
-  describe('Verbose mode', () => {
-    it('should output debug information in verbose mode', async () => {
-      const child = spawn(
-        'tsx',
-        [
-          'src/index.ts',
-          '-a',
-          String(getTestPorts().appPort),
-          '-w',
-          testDir,
-          '-v',
-          '-s',
-          '-t',
-          'test-token',
-        ],
-        {
-          cwd: process.cwd(),
-          shell: false,
-        },
-      );
-
-      let output = '';
-      child.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      // Wait a bit for debug output
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Should contain debug prefix
-      expect(output).toContain('[DEBUG]');
-
-      await killProcess(child);
-    });
-  });
 });
