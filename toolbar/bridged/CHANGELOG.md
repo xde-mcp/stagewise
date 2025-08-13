@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.7.2
+
+### Patch Changes
+
+- 02140ae: Smaller change to maintain type compatability with new agent-interface.
+
 ## 0.7.1
 
 ### Patch Changes

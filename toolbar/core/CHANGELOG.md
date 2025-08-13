@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.8.0
+
+### Minor Changes
+
+- 02140ae: Adding chat history and migrating to UI messages.
+
 ## 0.7.1
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.3.1
+
+### Patch Changes
+
+- 02140ae: Smaller change to maintain type compatability with new agent-interface.
+
 ## 0.3.0
 
 ### Minor Changes

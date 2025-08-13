@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.5.0
+
+### Minor Changes
+
+- 02140ae: Adding chat history and migrating to UI messages.
+
 ## 0.4.1
 
 ### Patch Changes

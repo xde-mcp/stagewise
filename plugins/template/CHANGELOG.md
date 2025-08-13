@@ -1,5 +1,15 @@
 # @stagewise/plugin-example
 
+## 0.7.0
+
+### Minor Changes
+
+- 02140ae: Adding chat history and migrating to UI messages.
+
+### Patch Changes
+
+- @stagewise/plugin-sdk@0.6.2
+
 ## 0.6.2
 
 ### Patch Changes
