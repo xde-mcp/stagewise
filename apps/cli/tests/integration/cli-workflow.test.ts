@@ -289,9 +289,6 @@ describe('CLI Workflow Integration Tests', () => {
       child.stdout.on('data', (data) => {
         output += data.toString();
       });
-      child.stderr.on('data', (data) => {
-        output += data.toString();
-      });
 
       // Wait a bit for debug output
       await new Promise((resolve) => setTimeout(resolve, 1000));
