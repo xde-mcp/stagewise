@@ -66,9 +66,5 @@ export function sendCreditsMessage(karton: KartonServer<KartonContract>) {
     draft.chats[karton.state.activeChatId!]!.messages.push(
       message as any, // TODO: find the cause of this type error - seems like an immer issue
     );
-    draft.chats[karton.state.activeChatId!]!.error = {
-      type: CustomAgentMessageId.INSUFFICIENT_CREDITS,
-      error: new Error('Insufficient credits'),
-    };
   });
 }
