@@ -227,15 +227,21 @@ async function main() {
     const { server, plugins } = await getServer();
 
     if (!config.bridgeMode && authState?.isAuthenticated) {
-      const subscription = await oauthManager.getSubscription();
+      try {
+        const subscription = await oauthManager.getSubscription();
 
-      startupBanner({
-        subscription,
-        loadedPlugins: plugins,
-        email: authState?.userEmail || '',
-        appPort: config.port,
-        proxyPort: config.appPort,
-      });
+        startupBanner({
+          subscription,
+          loadedPlugins: plugins,
+          email: authState?.userEmail || '',
+          appPort: config.port,
+          proxyPort: config.appPort,
+        });
+      } catch (error) {
+        log.error(
+          `Failed to display startup banner: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
     }
     // Start the server listening
     server.listen(config.port);
