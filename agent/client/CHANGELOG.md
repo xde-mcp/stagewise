@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.1.1
+
+### Patch Changes
+
+- d758c0f: Fix cli throws on insufficient credits.
+
 ## 0.1.0
 
 ### Minor Changes
