@@ -28,7 +28,8 @@
     "dev": "tsx build.ts --watch",
     "clean": "rimraf dist",
     "lint": "echo 'No linting for prompts package'",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest"
   },
   "dependencies": {
     "ai": "5.0.9",
@@ -37,16 +38,17 @@
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
-    "@stagewise/karton-contract": "workspace:*",
-    "@stagewise/karton": "workspace:*",
-    "@stagewise/api-client": "1.1.0",
     "@stagewise/agent-prompt-snippets": "workspace:*",
     "@stagewise/agent-runtime-interface": "workspace:*",
     "@stagewise/agent-tools": "workspace:*",
     "@stagewise/agent-types": "workspace:*",
+    "@stagewise/api-client": "1.1.0",
+    "@stagewise/karton": "workspace:*",
+    "@stagewise/karton-contract": "workspace:*",
     "esbuild": "^0.20.2",
     "rimraf": "^5.0.0",
     "tsx": "^4.7.1",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.4"
   }
 }

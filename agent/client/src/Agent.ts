@@ -41,6 +41,7 @@ import {
   appendToolInputToMessage,
 } from './utils/karton-helpers.js';
 import { isAbortError } from './utils/is-abort-error.js';
+import { getCreditsLeft } from './utils/get-credits-left.js';
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
@@ -389,8 +390,20 @@ export class Agent {
         chats: {},
         isWorking: false,
         toolCallApprovalRequests: [],
+        creditsLeft: 100000, // set the initial credits left to a large number to not trigger the warning ui
       },
     });
+
+    this.client?.subscription.getSubscription
+      .query()
+      .then((subscription) => {
+        this.karton?.setState((draft) => {
+          draft.creditsLeft = subscription.credits.total;
+        });
+      })
+      .catch((_) => {
+        // ignore errors here, there's a default credit amount
+      });
 
     this.setAgentWorking(false);
     createAndActivateNewChat(this.karton);
@@ -508,7 +521,11 @@ export class Agent {
         for await (const _ of fullStream) continue; // consume the full stream to catch all errors
       } catch (_) {}
 
-      const toolCalls = (await response).toolCalls;
+      const { toolCalls, credits } = await response;
+
+      this.karton?.setState((draft) => {
+        draft.creditsLeft = getCreditsLeft(credits);
+      });
 
       const toolResults = await processParallelToolCalls(
         toolCalls,

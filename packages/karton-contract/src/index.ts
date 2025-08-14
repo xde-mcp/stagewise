@@ -33,6 +33,7 @@ type AppState = {
   chats: Record<ChatId, Chat>;
   toolCallApprovalRequests: string[];
   isWorking: boolean;
+  creditsLeft: number;
 };
 
 export type KartonContract = {
