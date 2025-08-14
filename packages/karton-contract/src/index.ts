@@ -24,10 +24,19 @@ export type Chat = {
   error?: AgentError;
 };
 
-export type AgentError = {
-  type: 'agent-error';
-  error: Error;
-};
+export enum CustomAgentMessageId {
+  INSUFFICIENT_CREDITS = 'insufficient-credits-message',
+}
+
+export type AgentError =
+  | {
+      type: 'agent-error';
+      error: Error;
+    }
+  | {
+      type: CustomAgentMessageId.INSUFFICIENT_CREDITS;
+      error: Error;
+    };
 
 type AppState = {
   activeChatId: ChatId | null;
