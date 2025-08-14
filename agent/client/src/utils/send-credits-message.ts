@@ -55,6 +55,13 @@ export function sendCreditsMessage(karton: KartonServer<KartonContract>) {
       break;
   }
 
+  if (
+    karton.state.chats[karton.state.activeChatId!]!.messages.find(
+      (m) => m.id === CustomAgentMessageId.INSUFFICIENT_CREDITS,
+    )
+  )
+    return;
+
   karton.setState((draft) => {
     draft.chats[karton.state.activeChatId!]!.messages.push(
       message as any, // TODO: find the cause of this type error - seems like an immer issue
