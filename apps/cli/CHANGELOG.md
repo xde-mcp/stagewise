@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.5.2
+
+### Patch Changes
+
+- d758c0f: Fix cli throws on insufficient credits.
+
 ## 0.5.1
 
 ### Patch Changes
