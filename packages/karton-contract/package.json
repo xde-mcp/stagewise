@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@stagewise/agent-types": "workspace:*",
-    "@stagewise/api-client": "1.1.0",
+    "@stagewise/api-client": "1.1.1",
     "@stagewise/karton": "workspace:*",
     "ai": "5.0.9",
     "zod": "4.0.17"
