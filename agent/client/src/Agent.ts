@@ -1,4 +1,5 @@
 import { tools as clientTools } from '@stagewise/agent-tools';
+import { convertCreditsToSubscriptionCredits } from './utils/convert-credits-to-subscription-credits.js';
 import type {
   KartonContract,
   History,
@@ -41,7 +42,6 @@ import {
   appendToolInputToMessage,
 } from './utils/karton-helpers.js';
 import { isAbortError } from './utils/is-abort-error.js';
-import { getCreditsLeft } from './utils/get-credits-left.js';
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
@@ -314,6 +314,18 @@ export class Agent {
           });
           this.setAgentWorking(false);
         },
+        refreshSubscription: async () => {
+          this.client?.subscription.getSubscription
+            .query()
+            .then((subscription) => {
+              this.karton?.setState((draft) => {
+                draft.subscription = subscription;
+              });
+            })
+            .catch((_) => {
+              // ignore errors here, there's a default credit amount
+            });
+        },
         abortAgentCall: async () => {
           this.abortController.abort();
           this.abortController = new AbortController();
@@ -390,7 +402,7 @@ export class Agent {
         chats: {},
         isWorking: false,
         toolCallApprovalRequests: [],
-        creditsLeft: 100000, // set the initial credits left to a large number to not trigger the warning ui
+        subscription: undefined,
       },
     });
 
@@ -398,7 +410,7 @@ export class Agent {
       .query()
       .then((subscription) => {
         this.karton?.setState((draft) => {
-          draft.creditsLeft = subscription.credits.total;
+          draft.subscription = subscription;
         });
       })
       .catch((_) => {
@@ -524,7 +536,11 @@ export class Agent {
       const { toolCalls, credits } = await response;
 
       this.karton?.setState((draft) => {
-        draft.creditsLeft = getCreditsLeft(credits);
+        if (draft.subscription)
+          draft.subscription = {
+            ...draft.subscription,
+            credits: convertCreditsToSubscriptionCredits(credits),
+          };
       });
 
       const toolResults = await processParallelToolCalls(

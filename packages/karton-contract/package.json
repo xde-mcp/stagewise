@@ -18,8 +18,9 @@
     }
   },
   "dependencies": {
-    "@stagewise/karton": "workspace:*",
     "@stagewise/agent-types": "workspace:*",
+    "@stagewise/api-client": "1.1.0",
+    "@stagewise/karton": "workspace:*",
     "ai": "5.0.9",
     "zod": "4.0.17"
   },

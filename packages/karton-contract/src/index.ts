@@ -1,6 +1,7 @@
 import type { UserMessageMetadata, SelectedElement } from './metadata.js';
 import type { UIMessage } from 'ai';
 import type { Tool } from '@stagewise/agent-types';
+import type { RouterOutputs } from '@stagewise/api-client';
 
 export type ChatMessage = UIMessage<UserMessageMetadata>;
 export type { UserMessageMetadata, SelectedElement };
@@ -33,7 +34,7 @@ type AppState = {
   chats: Record<ChatId, Chat>;
   toolCallApprovalRequests: string[];
   isWorking: boolean;
-  creditsLeft: number;
+  subscription?: RouterOutputs['subscription']['getSubscription'];
 };
 
 export type KartonContract = {
@@ -50,5 +51,6 @@ export type KartonContract = {
     abortAgentCall: () => Promise<void>;
     approveToolCall: (toolCallId: string) => Promise<void>;
     rejectToolCall: (toolCallId: string) => Promise<void>;
+    refreshSubscription: () => Promise<void>;
   };
 };
