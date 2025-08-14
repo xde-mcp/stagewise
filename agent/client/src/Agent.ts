@@ -471,7 +471,9 @@ export class Agent {
               const chatExists = draft.chats[chatId] !== undefined;
               if (chatExists) draft.chats[chatId]!.title = result.title;
             });
-          });
+          })
+          // ignore errors here, there's a default chat title
+          .catch((_) => {});
       }
 
       // Emit prompt triggered event
