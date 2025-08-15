@@ -587,6 +587,9 @@ export class Agent {
       }
 
       if (isInsufficientCreditsError(error)) {
+        this.eventEmitter.emit(
+          EventFactories.creditsInsufficient(this.karton?.state.subscription),
+        );
         sendCreditsMessage(this.karton!);
         this.setAgentWorking(false);
         this.karton?.setState((draft) => {
