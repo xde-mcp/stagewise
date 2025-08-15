@@ -52,7 +52,7 @@ export const loadConfigFile = async (
 
   try {
     const fileContent = await fs.readFile(configPath, 'utf-8');
-    let parsedContent: any;
+    let parsedContent: ConfigFile;
 
     // Parse JSON with better error handling
     try {

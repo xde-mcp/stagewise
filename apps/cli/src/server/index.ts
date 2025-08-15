@@ -93,8 +93,8 @@ try {
       const convertedPluginArray = `[${pluginExports.join(', ')}].filter(p => p !== null)`;
 
       const config = configResolver.getConfig();
-      const convertedConfig: any = {
-        plugins: '__PLUGIN_PLACEHOLDER__',
+      const convertedConfig: Record<string, any> = {
+        plugins: ['__PLUGIN_PLACEHOLDER__'],
         devAppPort: config.appPort,
       };
 
