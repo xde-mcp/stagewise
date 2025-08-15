@@ -2,5 +2,6 @@
   "port": 3100,
   "appPort": 3000,
   "autoPlugins": true,
-  "plugins": []
+  "plugins": [],
+  "eddyMode": "flappy"
 }

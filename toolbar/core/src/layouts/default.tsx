@@ -15,6 +15,7 @@ import { SettingsPanel } from '@/panels/settings';
 import { ChatPanel } from '@/panels/chat';
 import { AgentConnectivityPanel } from '@/panels/agent-connectivity';
 import { usePlugins } from '@/hooks/use-plugins';
+import { EddyModePanel } from '@/panels/eddy-mode';
 
 const TOOLBAR_POSITION_KEY = 'stagewise_toolbar_toolbar_position';
 
@@ -176,6 +177,7 @@ function PanelsArea({
     isSettingsOpen,
     isAgentConnectivityOpen,
     openPluginName,
+    isEddyModeOpen,
   } = usePanels();
 
   const plugins = usePlugins();
@@ -214,6 +216,10 @@ function PanelsArea({
     >
       <PanelWrapper position={position} isOpen={isChatOpen}>
         <ChatPanel />
+      </PanelWrapper>
+
+      <PanelWrapper position={position} isOpen={isEddyModeOpen}>
+        <EddyModePanel />
       </PanelWrapper>
 
       <PanelWrapper position={position} isOpen={isSettingsOpen}>

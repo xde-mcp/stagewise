@@ -26,6 +26,7 @@ export interface CliStartProperties {
   auto_plugins_enabled: boolean;
   manual_plugins_count: number;
   has_wrapped_command: boolean;
+  eddy_mode?: string;
 }
 
 const TELEMETRY_CONFIG_FILE = 'telemetry.json';

@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import { useAppState } from './use-app-state';
-import { useKartonConnected } from './use-karton';
+import { useKartonConnected, useKartonState } from './use-karton';
+import { useConfig } from './use-config';
 
 const STORAGE_KEY = 'stagewise_toolbar_open_panels';
 
@@ -84,6 +85,11 @@ interface PanelsContext {
    * Whether the agent connectivity panel is open
    */
   isAgentConnectivityOpen: boolean;
+
+  /**
+   * Whether the eddy mode panel is open
+   */
+  isEddyModeOpen: boolean;
 }
 
 const PanelsContext = createContext<PanelsContext>({
@@ -100,6 +106,8 @@ const PanelsContext = createContext<PanelsContext>({
   closePlugin: () => null,
 
   isAgentConnectivityOpen: false,
+
+  isEddyModeOpen: false,
 });
 
 export const PanelsProvider = ({
@@ -108,6 +116,9 @@ export const PanelsProvider = ({
   children?: React.ReactNode;
 }) => {
   const { minimized } = useAppState();
+
+  const config = useConfig();
+  const isWorking = useKartonState((s) => s.isWorking);
 
   // Load persisted state on initialization
   const persistedState = useMemo(() => loadPersistedState(), []);
@@ -170,6 +181,22 @@ export const PanelsProvider = ({
     );
   }, [isAgentConnectivityOpen, isChatOpenInternal, minimized, isInitialLoad]);
 
+  const isEddyModeOpen = useMemo(() => {
+    return (
+      !isAgentConnectivityOpen &&
+      !isInitialLoad &&
+      !minimized &&
+      ['flappy'].includes(config.config.eddyMode) &&
+      isWorking
+    );
+  }, [
+    isAgentConnectivityOpen,
+    isInitialLoad,
+    minimized,
+    config.config.eddyMode,
+    isWorking,
+  ]);
+
   const openPluginName = useMemo(() => {
     return !isAgentConnectivityOpen && !isInitialLoad && !minimized
       ? openPluginInternal
@@ -192,6 +219,7 @@ export const PanelsProvider = ({
         closePlugin: () => setOpenPlugin(null),
 
         isAgentConnectivityOpen,
+        isEddyModeOpen,
       }}
     >
       {children}

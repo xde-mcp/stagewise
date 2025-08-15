@@ -795,6 +795,8 @@ importers:
         specifier: 2.2.12
         version: 2.2.12(typescript@5.9.2)
 
+  fun/flappy: {}
+
   packages/agent-interface-external:
     dependencies:
       cors:
@@ -1376,6 +1378,9 @@ importers:
       '@stagewise/extension-toolbar-srpc-contract':
         specifier: workspace:*
         version: link:../../packages/extension-toolbar-srpc-contract
+      '@stagewise/flappy-game':
+        specifier: workspace:*
+        version: link:../../fun/flappy
       '@stagewise/karton':
         specifier: workspace:*
         version: link:../../packages/karton

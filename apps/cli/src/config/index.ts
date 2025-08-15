@@ -89,6 +89,7 @@ export class ConfigResolver {
         bridgeMode: true,
         autoPlugins: false, // Disabled in bridge mode
         plugins: [],
+        eddyMode: configFile?.eddyMode,
       };
 
       return this.config;
@@ -238,6 +239,7 @@ export class ConfigResolver {
       bridgeMode: args.bridgeMode,
       autoPlugins,
       plugins,
+      eddyMode: configFile?.eddyMode,
     };
 
     return this.config;

@@ -20,6 +20,8 @@ export interface InternalToolbarConfig {
     debounceDelay?: number;
   };
 
+  eddyMode?: string;
+
   /** Experimental features that are not yet stable and might change in the future. */
   experimental?: {
     /**
