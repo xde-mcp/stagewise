@@ -1,7 +1,5 @@
 import { tools as clientTools } from '@stagewise/agent-tools';
-import { isInsufficientCreditsError } from './utils/is-insufficient-credits-error.js';
-import { CustomAgentMessageId } from '@stagewise/karton-contract';
-import { isCustomAgentMessage } from './utils/is-custom-agent-message.js';
+import { AgentErrorType } from '@stagewise/karton-contract';
 import { convertCreditsToSubscriptionCredits } from './utils/convert-credits-to-subscription-credits.js';
 import type {
   KartonContract,
@@ -45,7 +43,7 @@ import {
   appendToolInputToMessage,
 } from './utils/karton-helpers.js';
 import { isAbortError } from './utils/is-abort-error.js';
-import { sendCreditsMessage } from './utils/send-credits-message.js';
+import { isInsufficientCreditsError } from './utils/is-insufficient-credits-error.js';
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
@@ -301,10 +299,6 @@ export class Agent {
           this.karton?.setState((draft) => {
             // remove any errors
             draft.chats[draft.activeChatId!]!.error = undefined;
-            // remove any custom agent messages (e.g. insufficient credits)
-            draft.chats[draft.activeChatId!]!.messages = draft.chats[
-              draft.activeChatId!
-            ]!.messages.filter((m) => !isCustomAgentMessage(m as ChatMessage));
           });
           const promptSnippets: PromptSnippet[] = [];
           const projectPathPromptSnippet = await getProjectPath(
@@ -464,7 +458,7 @@ export class Agent {
       this.setAgentWorking(false);
       this.karton?.setState((draft) => {
         draft.chats[chatId]!.error = {
-          type: 'agent-error',
+          type: AgentErrorType.AGENT_ERROR,
           error: new Error(errorDesc),
         };
       });
@@ -590,11 +584,10 @@ export class Agent {
         this.eventEmitter.emit(
           EventFactories.creditsInsufficient(this.karton?.state.subscription),
         );
-        sendCreditsMessage(this.karton!);
         this.setAgentWorking(false);
         this.karton?.setState((draft) => {
           draft.chats[chatId]!.error = {
-            type: CustomAgentMessageId.INSUFFICIENT_CREDITS,
+            type: AgentErrorType.INSUFFICIENT_CREDITS,
             error: new Error('Insufficient credits'),
           };
         });
@@ -605,7 +598,7 @@ export class Agent {
       this.setAgentWorking(false);
       this.karton?.setState((draft) => {
         draft.chats[chatId]!.error = {
-          type: 'agent-error',
+          type: AgentErrorType.AGENT_ERROR,
           error: new Error(errorDesc),
         };
       });

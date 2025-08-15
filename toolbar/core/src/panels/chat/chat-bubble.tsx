@@ -6,7 +6,10 @@ import type {
   FileUIPart,
   DynamicToolUIPart,
   ReasoningUIPart,
+  AgentError,
 } from '@stagewise/karton-contract';
+import { AgentErrorType } from '@stagewise/karton-contract';
+import { RefreshCcwIcon } from 'lucide-react';
 import {
   BrainIcon,
   CheckIcon,
@@ -29,7 +32,17 @@ import {
 } from '@headlessui/react';
 import ReactMarkdown from 'react-markdown';
 
-export function ChatBubble({ message: msg }: { message: ChatMessage }) {
+export function ChatBubble({
+  message: msg,
+  chatError,
+}: {
+  message: ChatMessage;
+  chatError?: AgentError;
+}) {
+  const retrySendingUserMessage = useKartonProcedure(
+    (p) => p.retrySendingUserMessage,
+  );
+
   return (
     <div className="flex flex-col gap-1">
       <div
@@ -90,7 +103,20 @@ export function ChatBubble({ message: msg }: { message: ChatMessage }) {
           })}
         </div>
 
-        <div className="min-w-12 grow" />
+        <div className="flex h-full min-w-12 grow flex-row items-center justify-start">
+          {msg.role === 'assistant' &&
+            chatError?.type === AgentErrorType.AGENT_ERROR && (
+              <Button
+                aria-label={'Retry'}
+                variant="secondary"
+                glassy
+                onClick={() => void retrySendingUserMessage()}
+                className="!opacity-100 z-10 size-8 cursor-pointer rounded-full p-1 shadow-md backdrop-blur-lg hover:bg-white/60 active:bg-zinc-50/60 disabled:bg-transparent disabled:shadow-none disabled:*:stroke-zinc-500/50"
+              >
+                <RefreshCcwIcon className="size-4" />
+              </Button>
+            )}
+        </div>
       </div>
     </div>
   );
