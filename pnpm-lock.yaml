@@ -963,9 +963,6 @@ importers:
       '@stagewise/agent-types':
         specifier: workspace:*
         version: link:../../agent/types
-      '@stagewise/api-client':
-        specifier: 1.1.1
-        version: 1.1.1(typescript@5.9.2)
       '@stagewise/karton':
         specifier: workspace:*
         version: link:../karton
@@ -976,6 +973,9 @@ importers:
         specifier: 4.0.17
         version: 4.0.17
     devDependencies:
+      '@stagewise/api-client':
+        specifier: 1.1.1
+        version: 1.1.1(typescript@5.9.2)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
