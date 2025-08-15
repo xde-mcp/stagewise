@@ -18,12 +18,13 @@
     }
   },
   "dependencies": {
-    "@stagewise/karton": "workspace:*",
     "@stagewise/agent-types": "workspace:*",
+    "@stagewise/karton": "workspace:*",
     "ai": "5.0.9",
     "zod": "4.0.17"
   },
   "devDependencies": {
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "@stagewise/api-client": "1.1.1"
   }
 }

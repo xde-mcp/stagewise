@@ -1,4 +1,6 @@
 import { tools as clientTools } from '@stagewise/agent-tools';
+import { AgentErrorType } from '@stagewise/karton-contract';
+import { convertCreditsToSubscriptionCredits } from './utils/convert-credits-to-subscription-credits.js';
 import type {
   KartonContract,
   History,
@@ -41,6 +43,7 @@ import {
   appendToolInputToMessage,
 } from './utils/karton-helpers.js';
 import { isAbortError } from './utils/is-abort-error.js';
+import { isInsufficientCreditsError } from './utils/is-insufficient-credits-error.js';
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
@@ -294,6 +297,7 @@ export class Agent {
         retrySendingUserMessage: async () => {
           this.setAgentWorking(true);
           this.karton?.setState((draft) => {
+            // remove any errors
             draft.chats[draft.activeChatId!]!.error = undefined;
           });
           const promptSnippets: PromptSnippet[] = [];
@@ -312,6 +316,18 @@ export class Agent {
             promptSnippets,
           });
           this.setAgentWorking(false);
+        },
+        refreshSubscription: async () => {
+          this.client?.subscription.getSubscription
+            .query()
+            .then((subscription) => {
+              this.karton?.setState((draft) => {
+                draft.subscription = subscription;
+              });
+            })
+            .catch((_) => {
+              // ignore errors here, there's a default credit amount
+            });
         },
         abortAgentCall: async () => {
           this.abortController.abort();
@@ -389,8 +405,20 @@ export class Agent {
         chats: {},
         isWorking: false,
         toolCallApprovalRequests: [],
+        subscription: undefined,
       },
     });
+
+    this.client?.subscription.getSubscription
+      .query()
+      .then((subscription) => {
+        this.karton?.setState((draft) => {
+          draft.subscription = subscription;
+        });
+      })
+      .catch((_) => {
+        // ignore errors here, there's a default credit amount
+      });
 
     this.setAgentWorking(false);
     createAndActivateNewChat(this.karton);
@@ -430,7 +458,7 @@ export class Agent {
       this.setAgentWorking(false);
       this.karton?.setState((draft) => {
         draft.chats[chatId]!.error = {
-          type: 'agent-error',
+          type: AgentErrorType.AGENT_ERROR,
           error: new Error(errorDesc),
         };
       });
@@ -508,7 +536,15 @@ export class Agent {
         for await (const _ of fullStream) continue; // consume the full stream to catch all errors
       } catch (_) {}
 
-      const toolCalls = (await response).toolCalls;
+      const { toolCalls, credits } = await response;
+
+      this.karton?.setState((draft) => {
+        if (draft.subscription)
+          draft.subscription = {
+            ...draft.subscription,
+            credits: convertCreditsToSubscriptionCredits(credits),
+          };
+      });
 
       const toolResults = await processParallelToolCalls(
         toolCalls,
@@ -544,11 +580,25 @@ export class Agent {
         return;
       }
 
+      if (isInsufficientCreditsError(error)) {
+        this.eventEmitter.emit(
+          EventFactories.creditsInsufficient(this.karton?.state.subscription),
+        );
+        this.setAgentWorking(false);
+        this.karton?.setState((draft) => {
+          draft.chats[chatId]!.error = {
+            type: AgentErrorType.INSUFFICIENT_CREDITS,
+            error: new Error('Insufficient credits'),
+          };
+        });
+        return;
+      }
+
       const errorDesc = formatErrorDescription('Agent failed', error);
       this.setAgentWorking(false);
       this.karton?.setState((draft) => {
         draft.chats[chatId]!.error = {
-          type: 'agent-error',
+          type: AgentErrorType.AGENT_ERROR,
           error: new Error(errorDesc),
         };
       });

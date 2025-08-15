@@ -215,6 +215,21 @@ export class TelemetryManager {
     await this.capture('cli-send-prompt');
   }
 
+  async creditsInsufficient(subscription: {
+    status: string;
+    credits: number;
+    credits_used: number;
+    credits_remaining: number;
+  }): Promise<void> {
+    log.debug('[TELEMETRY] Sending credits insufficient');
+    await this.capture('cli-credits-insufficient', {
+      subscription_status: subscription.status,
+      subscription_credits: subscription.credits,
+      subscription_credits_used: subscription.credits_used,
+      subscription_credits_remaining: subscription.credits_remaining,
+    });
+  }
+
   async cliShutdown(): Promise<void> {
     log.debug('[TELEMETRY] CLI shutdown');
     await this.capture('cli-shutdown');
@@ -336,4 +351,10 @@ export const analyticsEvents = {
     telemetryManager.cliAuthInitiated(initiatedAutomatically),
   cliAuthCompleted: (initiatedAutomatically: boolean) =>
     telemetryManager.cliAuthCompleted(initiatedAutomatically),
+  creditsInsufficient: (subscription: {
+    status: string;
+    credits: number;
+    credits_used: number;
+    credits_remaining: number;
+  }) => telemetryManager.creditsInsufficient(subscription),
 };

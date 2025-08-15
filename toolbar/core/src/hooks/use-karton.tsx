@@ -15,6 +15,7 @@ const [KartonProvider, useKartonState, useKartonProcedure, useKartonConnected] =
       activeChatId: '',
       isWorking: false,
       toolCallApprovalRequests: [],
+      subscription: undefined,
     },
   });
 

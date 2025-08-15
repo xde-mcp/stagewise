@@ -53,6 +53,15 @@ export async function loadAndInitializeAgent(
                 );
               });
             break;
+          case 'credits_insufficient':
+            analyticsEvents.creditsInsufficient({
+              status: event.data.subscription?.subscription?.status || '',
+              credits: event.data.subscription?.credits?.total || 0,
+              credits_used: event.data.subscription?.credits?.used || 0,
+              credits_remaining:
+                event.data.subscription?.credits?.available || 0,
+            });
+            break;
           default:
             break;
         }

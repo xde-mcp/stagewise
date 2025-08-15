@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@stagewise/karton-contract';
 import type { RouterOutputs } from '@stagewise/api-client';
+import type { KartonContract } from '@stagewise/karton-contract';
 
 // Event types for analytics tracking
 export type AgentEventType =
@@ -8,11 +9,19 @@ export type AgentEventType =
   | 'tool_call_completed'
   | 'agent_state_changed'
   | 'agent_response_received'
-  | 'auth_token_refresh_required';
+  | 'auth_token_refresh_required'
+  | 'credits_insufficient';
 
 interface BaseAgentEvent {
   type: AgentEventType;
   timestamp: Date;
+}
+
+export interface CreditsInsufficientEvent extends BaseAgentEvent {
+  type: 'credits_insufficient';
+  data: {
+    subscription: KartonContract['state']['subscription'];
+  };
 }
 
 export interface AgentPromptTriggeredEvent extends BaseAgentEvent {
@@ -78,6 +87,7 @@ export interface AuthTokenRefreshRequiredEvent extends BaseAgentEvent {
 
 export type AgentEvent =
   | AgentPromptTriggeredEvent
+  | CreditsInsufficientEvent
   | ToolCallRequestedEvent
   | ToolCallCompletedEvent
   | AgentStateChangedEvent
@@ -107,6 +117,16 @@ export function createEventEmitter(callback?: AgentEventCallback) {
  * Event factory functions
  */
 export const EventFactories = {
+  creditsInsufficient: (
+    subscription: KartonContract['state']['subscription'],
+  ): CreditsInsufficientEvent => ({
+    type: 'credits_insufficient',
+    timestamp: new Date(),
+    data: {
+      subscription,
+    },
+  }),
+
   agentPromptTriggered: (
     userMessage?: ChatMessage,
     promptSnippetsCount = 0,

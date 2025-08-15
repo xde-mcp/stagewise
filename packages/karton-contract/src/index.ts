@@ -1,6 +1,7 @@
 import type { UserMessageMetadata, SelectedElement } from './metadata.js';
 import type { UIMessage } from 'ai';
 import type { Tool } from '@stagewise/agent-types';
+import type { RouterOutputs } from '@stagewise/api-client';
 
 export type ChatMessage = UIMessage<UserMessageMetadata>;
 export type { UserMessageMetadata, SelectedElement };
@@ -23,8 +24,14 @@ export type Chat = {
   error?: AgentError;
 };
 
+export enum AgentErrorType {
+  INSUFFICIENT_CREDITS = 'insufficient-credits-message',
+  AGENT_ERROR = 'agent-error',
+  OTHER = 'other',
+}
+
 export type AgentError = {
-  type: 'agent-error';
+  type: AgentErrorType;
   error: Error;
 };
 
@@ -33,6 +40,7 @@ type AppState = {
   chats: Record<ChatId, Chat>;
   toolCallApprovalRequests: string[];
   isWorking: boolean;
+  subscription?: RouterOutputs['subscription']['getSubscription'];
 };
 
 export type KartonContract = {
@@ -49,5 +57,6 @@ export type KartonContract = {
     abortAgentCall: () => Promise<void>;
     approveToolCall: (toolCallId: string) => Promise<void>;
     rejectToolCall: (toolCallId: string) => Promise<void>;
+    refreshSubscription: () => Promise<void>;
   };
 };
