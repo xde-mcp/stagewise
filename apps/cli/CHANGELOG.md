@@ -1,5 +1,13 @@
 # stagewise
 
+## 0.5.3
+
+### Patch Changes
+
+- 598ff77: Make the "missing credits" notification more user friendly.
+- 073e87c: Added "eddy mode"
+- 5c0eb1a: Fix auth token refresh in the chat.
+
 ## 0.5.2
 
 ### Patch Changes

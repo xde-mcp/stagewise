@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.8.1
+
+### Patch Changes
+
+- 598ff77: Make the "missing credits" notification more user friendly.
+
 ## 0.8.0
 
 ### Minor Changes
