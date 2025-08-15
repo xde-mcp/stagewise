@@ -56,6 +56,7 @@
     "@stagewise/karton": "workspace:*",
     "@stagewise/karton-contract": "workspace:*",
     "@stagewise/srpc": "workspace:*",
+    "@stagewise/flappy-game": "workspace:*",
     "@tailwindcss/postcss": "^4.1.5",
     "@trpc/client": "11.4.3",
     "@types/node": "22.15.2",

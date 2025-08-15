@@ -52,7 +52,7 @@ export const loadConfigFile = async (
 
   try {
     const fileContent = await fs.readFile(configPath, 'utf-8');
-    let parsedContent: ConfigFile;
+    let parsedContent: any;
 
     // Parse JSON with better error handling
     try {
@@ -69,10 +69,18 @@ export const loadConfigFile = async (
       throw error;
     }
 
+    // Extract eddyMode before validation (keep it undocumented)
+    const eddyMode = parsedContent.eddyMode;
+
     // Validate with zod
     try {
       const validatedConfig = configFileSchema.parse(parsedContent);
-      return validatedConfig;
+      // Add eddyMode back if it exists
+      const result: ConfigFile = validatedConfig;
+      if (eddyMode !== undefined) {
+        result.eddyMode = eddyMode;
+      }
+      return result;
     } catch (zodError) {
       if (zodError instanceof z.ZodError) {
         const issues = zodError.errors.map((err) => {

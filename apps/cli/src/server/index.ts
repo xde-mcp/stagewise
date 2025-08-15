@@ -93,10 +93,15 @@ try {
       const convertedPluginArray = `[${pluginExports.join(', ')}].filter(p => p !== null)`;
 
       const config = configResolver.getConfig();
-      const convertedConfig = {
+      const convertedConfig: any = {
         plugins: '__PLUGIN_PLACEHOLDER__',
         devAppPort: config.appPort,
       };
+
+      // Add eddyMode if it exists
+      if (config.eddyMode !== undefined) {
+        convertedConfig.eddyMode = config.eddyMode;
+      }
 
       let configString = JSON.stringify(convertedConfig);
       configString = configString.replace(

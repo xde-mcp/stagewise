@@ -174,6 +174,7 @@ async function main() {
       auto_plugins_enabled: config.autoPlugins,
       manual_plugins_count: config.plugins.length,
       has_wrapped_command: hasWrappedCommand,
+      eddy_mode: config.eddyMode,
     });
 
     // Track if config file was found

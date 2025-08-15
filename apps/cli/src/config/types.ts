@@ -13,6 +13,7 @@ export interface ConfigFile {
   appPort?: number;
   autoPlugins?: boolean;
   plugins?: Array<string | { name: string; path?: string; url?: string }>;
+  eddyMode?: string;
 }
 
 export interface Config {
@@ -25,4 +26,5 @@ export interface Config {
   bridgeMode: boolean;
   autoPlugins: boolean;
   plugins: Array<string | { name: string; path?: string; url?: string }>;
+  eddyMode?: string;
 }
