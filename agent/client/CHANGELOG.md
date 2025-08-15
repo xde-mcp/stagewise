@@ -1,5 +1,12 @@
 # @stagewise-agent/client-sdk
 
+## 0.1.2
+
+### Patch Changes
+
+- 598ff77: Make the "missing credits" notification more user friendly.
+- 5c0eb1a: Fix auth token refresh in the chat.
+
 ## 0.1.1
 
 ### Patch Changes

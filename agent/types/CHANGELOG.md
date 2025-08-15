@@ -1,5 +1,11 @@
 # @stagewise/types
 
+## 0.1.1
+
+### Patch Changes
+
+- 598ff77: Make the "missing credits" notification more user friendly.
+
 ## 0.1.0
 
 ### Minor Changes

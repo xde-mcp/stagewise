@@ -1,5 +1,12 @@
 # @stagewise/client-prompt-snippets
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [598ff77]
+  - @stagewise/agent-types@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
