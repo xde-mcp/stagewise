@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Zap, Settings, Layers, MessageSquare, User } from 'lucide-react';
 import { Clipboard } from '@/components/clipboard';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
+import { CustomVideoPlayer } from '@/components/landing/custom-video-player';
 import { usePostHog } from 'posthog-js/react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -116,7 +117,7 @@ export default function Home() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-black dark:text-white">
       {/* Hero Section */}
-      <section className="container relative z-10 mx-auto px-4 pt-40 pb-12 sm:pt-28 md:pb-16">
+      <section className="container relative z-10 mx-auto px-4 pt-24 pb-12 sm:pt-28 md:pb-16">
         <div className="mx-auto max-w-7xl">
           <ScrollReveal>
             <div className="mb-12 px-4 text-center sm:px-0">
@@ -126,7 +127,7 @@ export default function Home() {
                   href="https://www.ycombinator.com/companies/stagewise"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-orange-500/5 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 dark:border-zinc-600 dark:text-zinc-300"
                 >
                   <span>
                     Backed by{' '}
@@ -143,7 +144,7 @@ export default function Home() {
                   onClick={() => posthog?.capture('hero_github_star_click')}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-orange-500/5 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500"
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-300 px-3 py-1.5 font-medium text-sm text-zinc-700 dark:border-zinc-600 dark:text-zinc-300"
                 >
                   <StarIcon className="size-4 text-yellow-500" />
                   GitHub
@@ -167,7 +168,7 @@ export default function Home() {
                 </a>
               </div>
               <h1 className="mb-6 font-bold text-3xl tracking-tight md:text-5xl">
-                <span className="bg-gradient-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
+                <span className="bg-gradient-to-br from-zinc-800 via-zinc-900 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
                   The frontend coding agent for
                   <br />
                   production codebases
@@ -180,14 +181,28 @@ export default function Home() {
               </p>
 
               <div className="py-4">
-                <p className="mx-auto mb-2 font-medium text-sm text-zinc-600 dark:text-zinc-400">
-                  To start the agent, simply run this command in the root of
-                  your dev app:
-                </p>
-                <Clipboard
-                  text="npx stagewise@latest"
-                  className="mx-auto mb-6 justify-center"
-                />
+                <button
+                  onClick={() => {
+                    const gettingStartedSection =
+                      document.getElementById('getting-started');
+                    gettingStartedSection?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    });
+                  }}
+                  type="button"
+                  className="group relative mx-auto mb-6 overflow-hidden rounded-xl bg-gradient-to-br from-zinc-800 via-zinc-900 to-black px-6 py-2.5 font-normal text-white shadow-[0_4px_20px_rgba(0,0,0,0.3),0_2px_10px_rgba(0,0,0,0.2)]"
+                >
+                  <span className="relative z-10">Get Started</span>
+                  {/* Plastic effect overlay - more subtle gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/8 to-white/15" />
+                  {/* Multi-layered soft glowing border effect for gradual transition */}
+                  <div className="absolute inset-0 rounded-xl shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0_2px_0.5px_rgba(255,255,255,0.25),inset_0_0_4px_1px_rgba(255,255,255,0.15),inset_0_0_8px_2px_rgba(255,255,255,0.08),0_0_0_0.5px_rgba(255,255,255,0.05)]" />
+                  {/* Top highlight for 3D effect - more diffused */}
+                  <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-70" />
+                  {/* Additional subtle rim lighting for plastic depth */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/5 to-transparent" />
+                </button>
               </div>
             </div>
           </ScrollReveal>
@@ -205,6 +220,97 @@ export default function Home() {
                 preload="auto"
                 playsInline
               />
+            </div>
+          </ScrollReveal>
+
+          {/* Get Started Section */}
+          <ScrollReveal delay={400}>
+            <div
+              id="getting-started"
+              className="mx-auto mt-32 max-w-6xl scroll-mt-32 text-center"
+            >
+              <h2 className="mb-12 font-bold text-3xl md:text-4xl">
+                Get Started
+              </h2>
+              <div className="grid items-center gap-12 md:grid-cols-2">
+                {/* Steps List */}
+                <div className="text-left text-center md:text-left">
+                  <ol className="space-y-8">
+                    <li className="flex gap-4">
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-zinc-800 via-zinc-900 to-black font-semibold text-white dark:from-zinc-100 dark:via-zinc-300 dark:to-white dark:text-black">
+                        {/* Plastic effect overlay - more subtle gradient */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-t from-transparent via-white/8 to-white/15" />
+                        {/* Multi-layered soft glowing border effect for gradual transition */}
+                        <div className="absolute inset-0 rounded-full shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0_2px_0.5px_rgba(255,255,255,0.25),inset_0_0_4px_1px_rgba(255,255,255,0.15),inset_0_0_8px_2px_rgba(255,255,255,0.08),0_0_0_0.5px_rgba(255,255,255,0.05)]" />
+
+                        {/* Additional subtle rim lighting for plastic depth */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/5 to-transparent" />
+                        <span className="relative z-10">1</span>
+                      </div>
+                      <div>
+                        <h3 className="mb-1 font-semibold text-lg text-zinc-900 dark:text-zinc-100">
+                          Start your local app in dev mode
+                        </h3>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                          <code>pnpm dev</code> or <code>npm run dev</code>
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-zinc-800 via-zinc-900 to-black font-semibold text-white dark:from-zinc-100 dark:via-zinc-300 dark:to-white dark:text-black">
+                        {/* Plastic effect overlay - more subtle gradient */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-t from-transparent via-white/8 to-white/15" />
+                        {/* Multi-layered soft glowing border effect for gradual transition */}
+                        <div className="absolute inset-0 rounded-full shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0_2px_0.5px_rgba(255,255,255,0.25),inset_0_0_4px_1px_rgba(255,255,255,0.15),inset_0_0_8px_2px_rgba(255,255,255,0.08),0_0_0_0.5px_rgba(255,255,255,0.05)]" />
+
+                        {/* Additional subtle rim lighting for plastic depth */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/5 to-transparent" />
+                        <span className="relative z-10">2</span>
+                      </div>
+                      <div>
+                        <h3 className="mb-1 font-semibold text-lg text-zinc-900 dark:text-zinc-100">
+                          Open a new terminal and navigate to your app directory
+                        </h3>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                          <code>cd Users/juliangoetze/projects/my-website</code>
+                        </p>
+                      </div>
+                    </li>
+                    <li className="flex gap-4">
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-zinc-800 via-zinc-900 to-black font-semibold text-white dark:from-zinc-100 dark:via-zinc-300 dark:to-white dark:text-black">
+                        {/* Plastic effect overlay - more subtle gradient */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-t from-transparent via-white/8 to-white/15" />
+                        {/* Multi-layered soft glowing border effect for gradual transition */}
+                        <div className="absolute inset-0 rounded-full shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.4),inset_0_0_2px_0.5px_rgba(255,255,255,0.25),inset_0_0_4px_1px_rgba(255,255,255,0.15),inset_0_0_8px_2px_rgba(255,255,255,0.08),0_0_0_0.5px_rgba(255,255,255,0.05)]" />
+
+                        {/* Additional subtle rim lighting for plastic depth */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/5 to-transparent" />
+                        <span className="relative z-10">3</span>
+                      </div>
+                      <div>
+                        <h3 className="mb-1 font-semibold text-lg text-zinc-900 dark:text-zinc-100">
+                          Run stagewise in the terminal
+                        </h3>
+
+                        <Clipboard
+                          text="npx stagewise@latest"
+                          className="justify-start"
+                        />
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+
+                {/* Getting Started Video */}
+                <div className="overflow-hidden rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.25)] dark:shadow-[0_0_40px_rgba(255,255,255,0.1)]">
+                  <CustomVideoPlayer
+                    videoSrc="https://www.youtube.com/embed/c6uWIPelZLw?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1"
+                    thumbnailSrc="https://img.youtube.com/vi/c6uWIPelZLw/maxresdefault.jpg"
+                    alt="Getting started with stagewise"
+                    className="w-full"
+                  />
+                </div>
+              </div>
             </div>
           </ScrollReveal>
 
