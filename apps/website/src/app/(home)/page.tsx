@@ -252,7 +252,7 @@ export default function Home() {
                           Start your local app in dev mode
                         </h3>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                          <code>pnpm dev</code> or <code>npm dev</code>
+                          <code>pnpm dev</code> or <code>npm run dev</code>
                         </p>
                       </div>
                     </li>

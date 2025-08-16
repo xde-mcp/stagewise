@@ -23,32 +23,70 @@ function isYouTubeUrl(url: string): boolean {
   return url.includes('youtube.com') || url.includes('youtu.be');
 }
 
-// Helper function to convert YouTube URL to embed format with autoplay
-function getYouTubeEmbedUrl(url: string): string {
-  // If it's already an embed URL, just ensure it has the right parameters
-  if (url.includes('youtube.com/embed/')) {
+// Helper function to convert YouTube URL to embed format with proper validation and parameters
+function getYouTubeEmbedUrl(
+  url: string,
+  muted = false,
+  origin?: string,
+): string {
+  // YouTube video ID pattern (11 characters: letters, numbers, underscore, hyphen)
+  const videoIdPattern = /^[A-Za-z0-9_-]{11}$/;
+
+  try {
     const urlObj = new URL(url);
-    urlObj.searchParams.set('autoplay', '1');
-    urlObj.searchParams.set('controls', '1');
-    urlObj.searchParams.set('rel', '0');
-    urlObj.searchParams.set('modestbranding', '1');
-    urlObj.searchParams.set('enablejsapi', '1');
-    return urlObj.toString();
-  }
+    let videoId = '';
 
-  // Extract video ID from various YouTube URL formats
-  let videoId = '';
-  if (url.includes('youtube.com/watch?v=')) {
-    videoId = url.split('v=')[1]?.split('&')[0] || '';
-  } else if (url.includes('youtu.be/')) {
-    videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
-  }
+    // Handle different YouTube URL formats
+    if (
+      urlObj.hostname === 'www.youtube.com' ||
+      urlObj.hostname === 'youtube.com'
+    ) {
+      if (urlObj.pathname === '/watch') {
+        // Regular watch URL: https://www.youtube.com/watch?v=VIDEO_ID
+        videoId = urlObj.searchParams.get('v') || '';
+      } else if (urlObj.pathname.startsWith('/embed/')) {
+        // Already an embed URL: https://www.youtube.com/embed/VIDEO_ID
+        videoId = urlObj.pathname.substring(7); // Remove '/embed/'
+      }
+    } else if (urlObj.hostname === 'youtu.be') {
+      // Short URL: https://youtu.be/VIDEO_ID
+      videoId = urlObj.pathname.substring(1); // Remove leading '/'
+    }
 
-  if (videoId) {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&rel=0&modestbranding=1&enablejsapi=1`;
-  }
+    // Validate the extracted video ID
+    if (!videoId || !videoIdPattern.test(videoId)) {
+      // If no valid video ID found, return original URL
+      return url;
+    }
 
-  return url;
+    // Create embed URL with validated video ID
+    const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
+
+    // Set required search parameters
+    embedUrl.searchParams.set('autoplay', '1');
+    embedUrl.searchParams.set('controls', '1');
+    embedUrl.searchParams.set('rel', '0');
+    embedUrl.searchParams.set('modestbranding', '1');
+    embedUrl.searchParams.set('enablejsapi', '1');
+
+    // Set origin parameter
+    const originValue =
+      origin || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (originValue) {
+      embedUrl.searchParams.set('origin', originValue);
+    }
+
+    // Set muted parameter if requested
+    if (muted) {
+      embedUrl.searchParams.set('mute', '1');
+    }
+
+    return embedUrl.toString();
+  } catch (error) {
+    // If URL parsing fails, return original URL
+    console.warn('Failed to parse YouTube URL:', error);
+    return url;
+  }
 }
 
 export function CustomVideoPlayer({
@@ -78,19 +116,26 @@ export function CustomVideoPlayer({
       if (isYouTube) {
         // For YouTube videos, we'll load the iframe with autoplay
         if (iframeRef.current) {
-          const embedUrl = getYouTubeEmbedUrl(videoSrc);
+          const origin =
+            typeof window !== 'undefined' ? window.location.origin : undefined;
+          const embedUrl = getYouTubeEmbedUrl(videoSrc, muted, origin);
           iframeRef.current.src = embedUrl;
 
-          // Try to unmute after a short delay to let the video load
-          setTimeout(() => {
-            if (iframeRef.current?.contentWindow) {
-              // Send message to YouTube iframe to unmute
-              iframeRef.current.contentWindow.postMessage(
+          // Listen for iframe load event to send unmute command
+          const handleIframeLoad = () => {
+            const win = iframeRef.current?.contentWindow;
+            if (win && iframeRef.current?.src) {
+              const targetOrigin = new URL(iframeRef.current.src).origin;
+              win.postMessage(
                 '{"event":"command","func":"unMute","args":""}',
-                '*',
+                targetOrigin,
               );
             }
-          }, 500);
+          };
+
+          iframeRef.current.addEventListener('load', handleIframeLoad, {
+            once: true,
+          });
         }
         setShowThumbnail(false);
       } else {
