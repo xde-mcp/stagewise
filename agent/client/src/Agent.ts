@@ -44,7 +44,11 @@ type AsyncIterableItem<T> = T extends AsyncIterable<infer U> ? U : never;
 type AllYieldedItems = AsyncIterableItem<
   RouterOutputs['chat']['streamAgentCall']
 >;
-type LastResponse = Extract<AllYieldedItems, { messages: unknown }>;
+type ReturnValue<T> = T extends AsyncGenerator<infer _U, infer V, infer _W>
+  ? V
+  : never;
+
+type LastResponse = ReturnValue<RouterOutputs['chat']['streamAgentCall']>;
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
@@ -150,11 +154,7 @@ export class Agent {
   private async callAgentWithRetry(
     request: RouterInputs['chat']['streamAgentCall'],
   ): Promise<
-    AsyncIterable<
-      RouterOutputs['chat']['streamAgentCall'] extends AsyncIterable<infer T>
-        ? T
-        : never
-    >
+    AsyncIterable<AsyncIterableItem<RouterOutputs['chat']['streamAgentCall']>>
   > {
     try {
       if (!this.client) {
@@ -626,9 +626,7 @@ export class Agent {
 
   private async parseUiStream(
     uiStream: AsyncIterable<
-      RouterOutputs['chat']['streamAgentCall'] extends AsyncIterable<infer T>
-        ? T
-        : never
+      AsyncIterableItem<RouterOutputs['chat']['streamAgentCall']>
     >,
     onLastMessage: (message: LastResponse) => void,
     onNewMessage?: (messageId: string) => void,
@@ -636,39 +634,43 @@ export class Agent {
     // Only throw test error with 20% probability
     let messageId = 'julian-is-cool';
     let partIndex = -1;
-    for await (const chunk of uiStream) {
-      if (!('type' in chunk)) {
-        onLastMessage(chunk);
-        continue;
-      }
-      switch (chunk.type) {
-        case 'start':
-          messageId = chunk.messageId ?? 'julian-is-cool';
-          partIndex++;
-          onNewMessage?.(chunk.messageId ?? 'julian-is-cool');
-          break;
-        case 'text-start':
-          break;
-        case 'text-delta':
-          appendTextDeltaToMessage(
-            this.karton!,
-            messageId,
-            chunk.delta,
-            partIndex,
-          );
-          break;
-        case 'tool-input-start':
-          partIndex++;
-          break;
-        case 'tool-input-delta':
-        case 'tool-input-error':
-          break; // Skipped for now
-        case 'tool-input-available':
-          appendToolInputToMessage(this.karton!, messageId, chunk, partIndex);
-          break;
-        case 'tool-output-available':
-          // Should not happen - we append the output and this message
-          break;
+    const iterator = uiStream[Symbol.asyncIterator]();
+
+    while (true) {
+      const { done, value } = await iterator.next();
+      if (done) {
+        onLastMessage(value);
+        break;
+      } else {
+        switch (value.type) {
+          case 'start':
+            messageId = value.messageId ?? 'julian-is-cool';
+            partIndex++;
+            onNewMessage?.(value.messageId ?? 'julian-is-cool');
+            continue;
+          case 'text-start':
+            continue;
+          case 'text-delta':
+            appendTextDeltaToMessage(
+              this.karton!,
+              messageId,
+              value.delta,
+              partIndex,
+            );
+            continue;
+          case 'tool-input-start':
+            partIndex++;
+            continue;
+          case 'tool-input-delta':
+          case 'tool-input-error':
+            break; // Skipped for now
+          case 'tool-input-available':
+            appendToolInputToMessage(this.karton!, messageId, value, partIndex);
+            continue;
+          case 'tool-output-available':
+            // Should not happen - we append the output and this message
+            continue;
+        }
       }
     }
   }

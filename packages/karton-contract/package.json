@@ -25,6 +25,6 @@
   },
   "devDependencies": {
     "typescript": "^5.9.2",
-    "@stagewise/api-client": "1.1.1"
+    "@stagewise/api-client": "1.2.0"
   }
 }

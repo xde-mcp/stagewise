@@ -71,8 +71,8 @@ importers:
         specifier: workspace:*
         version: link:../types
       '@stagewise/api-client':
-        specifier: ../../../platform/packages/api-client
-        version: link:../../../platform/packages/api-client
+        specifier: 1.2.0
+        version: 1.2.0(typescript@5.9.2)
       '@stagewise/karton':
         specifier: workspace:*
         version: link:../../packages/karton
@@ -269,8 +269,8 @@ importers:
         version: 5.0.9(zod@4.0.17)
     devDependencies:
       '@stagewise/api-client':
-        specifier: ../../../platform/packages/api-client
-        version: link:../../../platform/packages/api-client
+        specifier: 1.2.0
+        version: 1.2.0(typescript@5.9.2)
       rimraf:
         specifier: ^5.0.0
         version: 5.0.10
@@ -302,8 +302,8 @@ importers:
         specifier: workspace:*
         version: link:../../agent/runtime-node
       '@stagewise/api-client':
-        specifier: ../../../platform/packages/api-client
-        version: link:../../../platform/packages/api-client
+        specifier: 1.2.0
+        version: 1.2.0(typescript@5.9.2)
       '@stagewise/karton':
         specifier: workspace:*
         version: link:../../packages/karton
@@ -976,8 +976,8 @@ importers:
         version: 4.0.17
     devDependencies:
       '@stagewise/api-client':
-        specifier: ../../../platform/packages/api-client
-        version: link:../../../platform/packages/api-client
+        specifier: 1.2.0
+        version: 1.2.0(typescript@5.9.2)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
@@ -6141,6 +6141,9 @@ packages:
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
 
+  '@stagewise/api-client@1.2.0':
+    resolution: {integrity: sha512-Q68ybV7z3qXDa1sLFBA23FLEaY1ER5vp2nb4Py5eQhxEXtlo5CAXX3ADJMh7oFUO760ycF1VAnDwxptwwAcmlQ==}
+
   '@standard-schema/spec@1.0.0':
     resolution: {integrity: sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA==}
 
@@ -6434,6 +6437,12 @@ packages:
     resolution: {integrity: sha512-i2suttUCfColktXT8bqex5kHW5jpT15nwUh0hGSDiW1keN621kSUQKcLJ095blqQAUgB+lsmgSqSMmB4L9shQQ==}
     peerDependencies:
       '@trpc/server': 11.4.3
+      typescript: '>=5.7.2'
+
+  '@trpc/client@11.4.4':
+    resolution: {integrity: sha512-86OZl+Y+Xlt9ITGlhCMImERcsWCOrVzpNuzg3XBlsDSmSs9NGsghKjeCpJQlE36XaG3aze+o9pRukiYYvBqxgQ==}
+    peerDependencies:
+      '@trpc/server': 11.4.4
       typescript: '>=5.7.2'
 
   '@trpc/server@11.4.3':
@@ -20136,6 +20145,16 @@ snapshots:
 
   '@speed-highlight/core@1.2.7': {}
 
+  '@stagewise/api-client@1.2.0(typescript@5.9.2)':
+    dependencies:
+      '@trpc/client': 11.4.4(@trpc/server@11.4.4(typescript@5.9.2))(typescript@5.9.2)
+      '@trpc/server': 11.4.4(typescript@5.9.2)
+      ai: 5.0.9(zod@4.0.17)
+      superjson: 2.2.2
+      zod: 4.0.17
+    transitivePeerDependencies:
+      - typescript
+
   '@standard-schema/spec@1.0.0': {}
 
   '@standard-schema/utils@0.3.0': {}
@@ -20437,6 +20456,11 @@ snapshots:
   '@tootallnate/quickjs-emscripten@0.23.0': {}
 
   '@trpc/client@11.4.3(@trpc/server@11.4.4(typescript@5.9.2))(typescript@5.9.2)':
+    dependencies:
+      '@trpc/server': 11.4.4(typescript@5.9.2)
+      typescript: 5.9.2
+
+  '@trpc/client@11.4.4(@trpc/server@11.4.4(typescript@5.9.2))(typescript@5.9.2)':
     dependencies:
       '@trpc/server': 11.4.4(typescript@5.9.2)
       typescript: 5.9.2
