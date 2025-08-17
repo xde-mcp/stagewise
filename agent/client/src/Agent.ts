@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { tools as clientTools } from '@stagewise/agent-tools';
 import { AgentErrorType } from '@stagewise/karton-contract';
 import { convertCreditsToSubscriptionCredits } from './utils/convert-credits-to-subscription-credits.js';
@@ -41,9 +42,6 @@ import { isAbortError } from './utils/is-abort-error.js';
 import { isInsufficientCreditsError } from './utils/is-insufficient-credits-error.js';
 
 type AsyncIterableItem<T> = T extends AsyncIterable<infer U> ? U : never;
-type AllYieldedItems = AsyncIterableItem<
-  RouterOutputs['chat']['streamAgentCall']
->;
 type ReturnValue<T> = T extends AsyncGenerator<infer _U, infer V, infer _W>
   ? V
   : never;
@@ -631,8 +629,7 @@ export class Agent {
     onLastMessage: (message: LastResponse) => void,
     onNewMessage?: (messageId: string) => void,
   ) {
-    // Only throw test error with 20% probability
-    let messageId = 'julian-is-cool';
+    let messageId = '';
     let partIndex = -1;
     const iterator = uiStream[Symbol.asyncIterator]();
 
@@ -644,9 +641,9 @@ export class Agent {
       } else {
         switch (value.type) {
           case 'start':
-            messageId = value.messageId ?? 'julian-is-cool';
+            messageId = value.messageId ?? randomUUID();
             partIndex++;
-            onNewMessage?.(value.messageId ?? 'julian-is-cool');
+            onNewMessage?.(messageId);
             continue;
           case 'text-start':
             continue;
