@@ -1,16 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import { tools as clientTools } from '@stagewise/agent-tools';
 import { AgentErrorType } from '@stagewise/karton-contract';
 import { convertCreditsToSubscriptionCredits } from './utils/convert-credits-to-subscription-credits.js';
-import type {
-  KartonContract,
-  History,
-  ChatMessage,
-} from '@stagewise/karton-contract';
+import type { KartonContract, History } from '@stagewise/karton-contract';
 import {
   createKartonServer,
   type KartonServer,
 } from '@stagewise/karton/server';
-import type { InferUIMessageChunk } from 'ai';
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
 import type { PromptSnippet } from '@stagewise/agent-types';
 import type { Tools } from '@stagewise/agent-types';
@@ -44,6 +40,13 @@ import {
 } from './utils/karton-helpers.js';
 import { isAbortError } from './utils/is-abort-error.js';
 import { isInsufficientCreditsError } from './utils/is-insufficient-credits-error.js';
+
+type AsyncIterableItem<T> = T extends AsyncIterable<infer U> ? U : never;
+type ReturnValue<T> = T extends AsyncGenerator<infer _U, infer V, infer _W>
+  ? V
+  : never;
+
+type LastResponse = ReturnValue<RouterOutputs['chat']['streamAgentCall']>;
 
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
@@ -147,16 +150,24 @@ export class Agent {
    * @returns The result of the agent API call
    */
   private async callAgentWithRetry(
-    request: RouterInputs['chat']['callAgent'],
-  ): Promise<RouterOutputs['chat']['callAgent']> {
+    request: RouterInputs['chat']['streamAgentCall'],
+  ): Promise<
+    AsyncIterable<AsyncIterableItem<RouterOutputs['chat']['streamAgentCall']>>
+  > {
     try {
       if (!this.client) {
         throw new Error('TRPC API client not initialized');
       }
-      const result = await this.client.chat.callAgent.mutate(request, {
-        signal: this.abortController.signal,
-      });
-      // Reset auth retry count on successful call
+      const result = this.client.chat.streamAgentCall.mutate(
+        {
+          messages: request.messages,
+          tools: mapZodToolsToJsonSchemaTools(this.tools),
+          promptSnippets: request.promptSnippets,
+        },
+        {
+          signal: this.abortController.signal,
+        },
+      );
       this.authRetryCount = 0;
       return result;
     } catch (error) {
@@ -518,25 +529,26 @@ export class Agent {
 
       const agentResponse = await this.callAgentWithRetry(request);
 
-      const { uiStream, response, fullStream } = agentResponse;
+      let lastResponse: LastResponse | undefined;
 
       try {
         await this.parseUiStream(
-          uiStream as AsyncIterable<InferUIMessageChunk<ChatMessage>>,
+          agentResponse,
+          (message) => {
+            lastResponse = message;
+          },
           (messageId) => {
             this.lastMessageId = messageId;
           },
         );
       } catch (error) {
-        // Ignore abort errors, they are handled in the catch block below
-        if (!isAbortError(error)) throw error;
+        if (isAbortError(error)) return;
+        throw error;
       }
 
-      try {
-        for await (const _ of fullStream) continue; // consume the full stream to catch all errors
-      } catch (_) {}
+      if (!lastResponse) throw new Error('Unknown error, please try again');
 
-      const { toolCalls, credits } = await response;
+      const { toolCalls, credits } = lastResponse;
 
       this.karton?.setState((draft) => {
         if (draft.subscription)
@@ -611,41 +623,51 @@ export class Agent {
   }
 
   private async parseUiStream(
-    uiStream: AsyncIterable<InferUIMessageChunk<ChatMessage>>,
+    uiStream: AsyncIterable<
+      AsyncIterableItem<RouterOutputs['chat']['streamAgentCall']>
+    >,
+    onLastMessage: (message: LastResponse) => void,
     onNewMessage?: (messageId: string) => void,
   ) {
-    // Only throw test error with 20% probability
-    let messageId = 'julian-is-cool';
+    let messageId = '';
     let partIndex = -1;
-    for await (const chunk of uiStream) {
-      switch (chunk.type) {
-        case 'start':
-          messageId = chunk.messageId ?? 'julian-is-cool';
-          partIndex++;
-          onNewMessage?.(messageId);
-          break;
-        case 'text-start':
-          break;
-        case 'text-delta':
-          appendTextDeltaToMessage(
-            this.karton!,
-            messageId,
-            chunk.delta,
-            partIndex,
-          );
-          break;
-        case 'tool-input-start':
-          partIndex++;
-          break;
-        case 'tool-input-delta':
-        case 'tool-input-error':
-          break; // Skipped for now
-        case 'tool-input-available':
-          appendToolInputToMessage(this.karton!, messageId, chunk, partIndex);
-          break;
-        case 'tool-output-available':
-          // Should not happen - we append the output and this message
-          break;
+    const iterator = uiStream[Symbol.asyncIterator]();
+
+    while (true) {
+      const { done, value } = await iterator.next();
+      if (done) {
+        onLastMessage(value);
+        break;
+      } else {
+        switch (value.type) {
+          case 'start':
+            messageId = value.messageId ?? randomUUID();
+            partIndex++;
+            onNewMessage?.(messageId);
+            continue;
+          case 'text-start':
+            continue;
+          case 'text-delta':
+            appendTextDeltaToMessage(
+              this.karton!,
+              messageId,
+              value.delta,
+              partIndex,
+            );
+            continue;
+          case 'tool-input-start':
+            partIndex++;
+            continue;
+          case 'tool-input-delta':
+          case 'tool-input-error':
+            break; // Skipped for now
+          case 'tool-input-available':
+            appendToolInputToMessage(this.karton!, messageId, value, partIndex);
+            continue;
+          case 'tool-output-available':
+            // Should not happen - we append the output and this message
+            continue;
+        }
       }
     }
   }
