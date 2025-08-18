@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.8.2
+
+### Patch Changes
+
+- 5eefab8: Removing own properties from selected elements to fix abort errors.
+
 ## 0.8.1
 
 ### Patch Changes
