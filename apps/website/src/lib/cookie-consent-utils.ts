@@ -29,9 +29,11 @@ export function setCookieConsent(status: 'accepted' | 'denied'): void {
   if (typeof window === 'undefined') return;
 
   // Only add domain attribute for actual stagewise.io domains
-  const domainAttribute = window.location.hostname.endsWith('stagewise.io')
-    ? `; domain=${COOKIE_DOMAIN}`
-    : '';
+  const domainAttribute =
+    window.location.hostname === 'stagewise.io' ||
+    window.location.hostname.endsWith('.stagewise.io')
+      ? `; domain=${COOKIE_DOMAIN}`
+      : '';
 
   // Add Secure flag when using HTTPS
   const secureAttribute =
@@ -48,9 +50,11 @@ export function removeCookieConsent(): void {
   if (typeof window === 'undefined') return;
 
   // Only add domain attribute for actual stagewise.io domains
-  const domainAttribute = window.location.hostname.endsWith('stagewise.io')
-    ? `; domain=${COOKIE_DOMAIN}`
-    : '';
+  const domainAttribute =
+    window.location.hostname === 'stagewise.io' ||
+    window.location.hostname.endsWith('.stagewise.io')
+      ? `; domain=${COOKIE_DOMAIN}`
+      : '';
 
   // Add Secure flag when using HTTPS
   const secureAttribute =
