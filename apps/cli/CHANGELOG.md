@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.5.5
+
+### Patch Changes
+
+- 2ea5d11: Remove ownProperties from selectedElements to prevent abort errors.
+
 ## 0.5.4
 
 ### Patch Changes
