@@ -28,16 +28,16 @@ export function getCookieConsent(): ConsentStatus {
 export function setCookieConsent(status: 'accepted' | 'denied'): void {
   if (typeof window === 'undefined') return;
 
-  // Determine if we're in development or production
-  const isDevelopment =
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1';
+  // Only add domain attribute for actual stagewise.io domains
+  const domainAttribute = window.location.hostname.endsWith('stagewise.io')
+    ? `; domain=${COOKIE_DOMAIN}`
+    : '';
 
-  // In development, don't set domain so cookie works on localhost
-  // In production, set domain to .stagewise.io for cross-subdomain sharing
-  const domainAttribute = isDevelopment ? '' : `; domain=${COOKIE_DOMAIN}`;
+  // Add Secure flag when using HTTPS
+  const secureAttribute =
+    window.location.protocol === 'https:' ? '; Secure' : '';
 
-  const cookieString = `${COOKIE_NAME}=${status}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax${domainAttribute}`;
+  const cookieString = `${COOKIE_NAME}=${status}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax${domainAttribute}${secureAttribute}`;
   document.cookie = cookieString;
 }
 
@@ -47,13 +47,16 @@ export function setCookieConsent(status: 'accepted' | 'denied'): void {
 export function removeCookieConsent(): void {
   if (typeof window === 'undefined') return;
 
-  const isDevelopment =
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1';
+  // Only add domain attribute for actual stagewise.io domains
+  const domainAttribute = window.location.hostname.endsWith('stagewise.io')
+    ? `; domain=${COOKIE_DOMAIN}`
+    : '';
 
-  const domainAttribute = isDevelopment ? '' : `; domain=${COOKIE_DOMAIN}`;
+  // Add Secure flag when using HTTPS
+  const secureAttribute =
+    window.location.protocol === 'https:' ? '; Secure' : '';
 
   // Set cookie with max-age=0 to delete it
-  const cookieString = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax${domainAttribute}`;
+  const cookieString = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax${domainAttribute}${secureAttribute}`;
   document.cookie = cookieString;
 }

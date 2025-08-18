@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import posthog from 'posthog-js';
 import {
   Card,
   CardContent,
@@ -32,6 +33,9 @@ export function CookieBanner() {
   const handleDeny = () => {
     setCookieConsent('denied');
     setShowBanner(false);
+    // Immediately opt out and clear any PostHog identifiers
+    posthog.opt_out_capturing();
+    posthog.reset();
   };
 
   if (!showBanner) {

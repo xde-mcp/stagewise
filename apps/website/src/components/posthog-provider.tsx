@@ -22,11 +22,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         debug: process.env.NODE_ENV === 'development',
         persistence: 'cookie', // Use cookies only with consent
       });
-    } else if (consent === 'denied') {
-      // If user explicitly denied, ensure PostHog is not running
-      if (posthog.__loaded) {
-        posthog.opt_out_capturing();
-      }
+    } else {
+      // For null or denied consent, ensure PostHog is completely disabled
+      posthog.opt_out_capturing();
+      posthog.reset();
     }
   }, []);
 
