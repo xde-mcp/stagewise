@@ -127,7 +127,7 @@ export const PanelsProvider = ({
     persistedState.isSettingsOpen ?? false,
   );
   const [isChatOpenInternal, setIsChatOpen] = useState(
-    persistedState.isChatOpen ?? false,
+    persistedState.isChatOpen ?? true,
   );
   const [openPluginInternal, setOpenPlugin] = useState<string | null>(
     persistedState.openPlugin ?? null,
