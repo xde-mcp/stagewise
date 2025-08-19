@@ -9,7 +9,6 @@ export type AgentEventType =
   | 'tool_call_completed'
   | 'agent_state_changed'
   | 'agent_response_received'
-  | 'auth_token_refresh_required'
   | 'credits_insufficient';
 
 interface BaseAgentEvent {
@@ -76,23 +75,13 @@ export interface AgentResponseReceivedEvent extends BaseAgentEvent {
   };
 }
 
-export interface AuthTokenRefreshRequiredEvent extends BaseAgentEvent {
-  type: 'auth_token_refresh_required';
-  data: {
-    reason: 'expired' | 'invalid' | 'missing';
-    retryAttempt: number;
-    originalError?: string;
-  };
-}
-
 export type AgentEvent =
   | AgentPromptTriggeredEvent
   | CreditsInsufficientEvent
   | ToolCallRequestedEvent
   | ToolCallCompletedEvent
   | AgentStateChangedEvent
-  | AgentResponseReceivedEvent
-  | AuthTokenRefreshRequiredEvent;
+  | AgentResponseReceivedEvent;
 
 export type AgentEventCallback = (event: AgentEvent) => void;
 
@@ -210,20 +199,6 @@ export const EventFactories = {
       toolCallCount,
       responseTime,
       credits,
-    },
-  }),
-
-  authTokenRefreshRequired: (
-    reason: 'expired' | 'invalid' | 'missing',
-    retryAttempt: number,
-    originalError?: string,
-  ): AuthTokenRefreshRequiredEvent => ({
-    type: 'auth_token_refresh_required',
-    timestamp: new Date(),
-    data: {
-      reason,
-      retryAttempt,
-      originalError,
     },
   }),
 };
