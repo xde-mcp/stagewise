@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.1.4
+
+### Patch Changes
+
+- be1f43a: Fix reauthentication on expired tokens.
+
 ## 0.1.3
 
 ### Patch Changes
