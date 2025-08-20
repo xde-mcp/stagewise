@@ -23,6 +23,10 @@ const config = {
         protocol: 'https',
         hostname: 'img.youtube.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'media.licdn.com',
+      },
     ],
   },
   async rewrites() {
