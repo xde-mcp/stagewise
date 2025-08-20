@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.8.3
+
+### Patch Changes
+
+- ce191ae: Open the Toolbar agent chat by default on first load (when no persisted panel state exists).
+
 ## 0.8.2
 
 ### Patch Changes

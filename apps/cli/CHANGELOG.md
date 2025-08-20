@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.5.6
+
+### Patch Changes
+
+- be1f43a: Fix reauthentication on expired tokens.
+
 ## 0.5.5
 
 ### Patch Changes
