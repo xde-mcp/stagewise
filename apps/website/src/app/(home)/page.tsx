@@ -229,7 +229,7 @@ export default function Home() {
                   {/* Top highlight for 3D effect - more diffused */}
                   <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-70" />
                   {/* Additional subtle rim lighting for plastic depth */}
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/5 to-transparent" />
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/5 to-transparent transition-all duration-300 group-hover:from-white/20 group-hover:to-white/8" />
                 </button>
               </div>
             </div>
@@ -555,11 +555,25 @@ export default function Home() {
           {[
             {
               quote:
-                'sounds like drag and drop finally grew up and got serious',
-              name: 'Sharoon Babu',
-              role: '',
+                "I'm still amazed about how good Stagewise works. I think it's going to become one of my main tools for developement.",
+              name: 'Noah Yildiz',
+              role: 'Co-Founder @Tulip Insights',
               avatar:
-                'https://pbs.twimg.com/profile_images/1938943867866476545/NcsCjirt_400x400.jpg',
+                'https://pbs.twimg.com/profile_images/1958073430877548544/wPnU4cYf_400x400.jpg',
+            },
+            {
+              quote:
+                "Our team's productivity has skyrocketed since we adopted Stagewise. Collaboration between designers and developers has never been smoother.",
+              name: 'David Garcia',
+              role: 'Engineering Manager @ FutureWorks',
+              avatar: null,
+            },
+            {
+              quote:
+                'A must-have tool for any modern development workflow. It simplifies complex tasks and makes coding enjoyable again.',
+              name: 'Kevin Harris',
+              role: 'Staff Engineer @ DevHouse',
+              avatar: null,
             },
             {
               quote:
@@ -571,14 +585,7 @@ export default function Home() {
             },
             {
               quote:
-                'This is what I expected DreamWeaver would do 12 years ago, great work, keep it up!',
-              name: 'Frank Torres Riveira',
-              role: 'Engineering Manager at Botkeeper',
-              avatar:
-                'https://media.licdn.com/dms/image/v2/D4E03AQGM4UtH4FIrxA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1663699550212?e=1758758400&v=beta&t=m1EzKkPnA2E-rxjanJrxZlQjZxma9XpW5EZki9NbeOY',
-            },
-            {
-              quote: 'my personal yoda atm @stagewise_io',
+                'i am not a designer but have an eye it (sort of)\n...\nmy personal yoda atm @stagewise_io',
               name: 's.AI.kat',
               role: '',
               avatar:
@@ -586,18 +593,19 @@ export default function Home() {
             },
             {
               quote:
-                "Our team's productivity has skyrocketed since we adopted Stagewise. Collaboration between designers and developers has never been smoother.",
-              name: 'David Garcia',
-              role: 'Engineering Manager @ FutureWorks',
-              avatar: null,
+                'This is what I expected DreamWeaver would do 12 years ago, great work, keep it up!',
+              name: 'Frank Torres Riveira',
+              role: 'Engineering Manager at Botkeeper',
+              avatar:
+                'https://media.licdn.com/dms/image/v2/D4E03AQGM4UtH4FIrxA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1663699550212?e=1758758400&v=beta&t=m1EzKkPnA2E-rxjanJrxZlQjZxma9XpW5EZki9NbeOY',
             },
             {
               quote:
-                "stagewise in cursor is different gravy. UI changes for code you didn't write has never been easier",
-              name: 'Kareem',
-              role: '',
+                'This tool cuts Design time by 50%\n...\nJust tell Stagewise what you want and watch your UI update in real time.',
+              name: 'Harshil Tomar',
+              role: 'Co-Founder @vibedocs.pro',
               avatar:
-                'https://pbs.twimg.com/profile_images/1923032215954305024/6Y7NyOBy_400x400.jpg',
+                'https://pbs.twimg.com/profile_images/1947060359862341634/qQsmk06l_400x400.jpg',
             },
             {
               quote:
@@ -609,18 +617,11 @@ export default function Home() {
             },
             {
               quote:
-                "I'm still amazed about how good Stagewise works. I think it's going to become one of my main tools for developement.",
-              name: 'Noah Yildiz',
-              role: 'Co-Founder @Tulip Insights',
+                'sounds like drag and drop finally grew up and got serious',
+              name: 'Sharoon Babu',
+              role: '',
               avatar:
-                'https://pbs.twimg.com/profile_images/1958073430877548544/wPnU4cYf_400x400.jpg',
-            },
-            {
-              quote:
-                'A must-have tool for any modern development workflow. It simplifies complex tasks and makes coding enjoyable again.',
-              name: 'Kevin Harris',
-              role: 'Staff Engineer @ DevHouse',
-              avatar: null,
+                'https://pbs.twimg.com/profile_images/1938943867866476545/NcsCjirt_400x400.jpg',
             },
           ].map((testimonial, i) => (
             <ScrollReveal key={testimonial.name} delay={i * 100}>
