@@ -2,12 +2,10 @@ import { createNodeApiClient, type TRPCClient } from '@stagewise/api-client';
 import type { AppRouter } from '@stagewise/api-client';
 
 export function createAuthenticatedClient(
-  accessToken: string | null,
+  accessToken: string,
 ): TRPCClient<AppRouter> {
   try {
-    const headers = accessToken
-      ? { Authorization: `Bearer ${accessToken}` }
-      : ({} as Record<string, string>);
+    const headers = { Authorization: `Bearer ${accessToken}` };
 
     return createNodeApiClient({
       fetch: fetch,

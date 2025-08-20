@@ -46,6 +46,7 @@ export class OAuthManager {
   private connections = new Set<any>();
   private refreshPromise: Promise<void> | null = null;
   private cachedAccessToken: string | null = null;
+  private cachedRefreshToken: string | null = null;
   private authInitiatedAutomatically = false;
 
   async initiateOAuthFlow(
@@ -72,6 +73,7 @@ export class OAuthManager {
 
       // Clear cached access token
       this.cachedAccessToken = null;
+      this.cachedRefreshToken = null;
 
       // Clear stored authentication state
       await tokenManager.clearToken();
@@ -168,7 +170,7 @@ export class OAuthManager {
 
       // Update cached access token
       this.cachedAccessToken = tokenPair.accessToken;
-
+      this.cachedRefreshToken = tokenPair.refreshToken;
       // Store tokens
       await tokenManager.storeToken(tokenData);
 
@@ -537,6 +539,7 @@ export class OAuthManager {
 
       // Update cached access token
       this.cachedAccessToken = tokenPair.accessToken;
+      this.cachedRefreshToken = tokenPair.refreshToken;
 
       // Update stored tokens
       await tokenManager.storeToken(tokenData);
@@ -664,6 +667,7 @@ export class OAuthManager {
 
     // Clear cached access token
     this.cachedAccessToken = null;
+    this.cachedRefreshToken = null;
   }
 
   /**
@@ -782,17 +786,27 @@ export class OAuthManager {
   /**
    * Get the currently saved access token immediately (without refresh)
    */
-  async getAccessToken(): Promise<string | null> {
+  async getToken(): Promise<{
+    accessToken: string;
+    refreshToken: string;
+  } | null> {
     // Return cached token if available
-    if (this.cachedAccessToken) {
-      return this.cachedAccessToken;
+    if (this.cachedAccessToken && this.cachedRefreshToken) {
+      return {
+        accessToken: this.cachedAccessToken,
+        refreshToken: this.cachedRefreshToken,
+      };
     }
 
     // Load from storage for the first time and cache it
     const authState = await this.getAuthState();
-    if (authState?.accessToken) {
+    if (authState?.accessToken && authState.refreshToken) {
       this.cachedAccessToken = authState.accessToken;
-      return this.cachedAccessToken;
+      this.cachedRefreshToken = authState.refreshToken;
+      return {
+        accessToken: authState.accessToken,
+        refreshToken: authState.refreshToken,
+      };
     }
 
     return null;

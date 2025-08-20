@@ -219,12 +219,14 @@ export const getServer = async () => {
     if (!config.bridgeMode) {
       try {
         // Get access token for agent
-        const accessToken = await oauthManager.getAccessToken();
-
-        if (accessToken) {
+        const token = await oauthManager.getToken();
+        if (token) {
           // Load and initialize agent using the loader module
           // This will register agent routes at /stagewise-toolbar-app/server/*
-          const agentResult = await loadAndInitializeAgent(accessToken);
+          const agentResult = await loadAndInitializeAgent(
+            token.accessToken,
+            token.refreshToken,
+          );
           if (agentResult.success && agentResult.wss) {
             agentWss = agentResult.wss;
             log.debug('Received websocket server from agent loader');

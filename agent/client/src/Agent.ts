@@ -57,8 +57,9 @@ export class Agent {
   private karton: KartonServer<KartonContract> | null = null;
   private clientRuntime: ClientRuntime;
   private tools: Tools;
-  private client: TRPCClient<AppRouter> | null = null;
-  private accessToken: string | null = null;
+  private client: TRPCClient<AppRouter>;
+  private accessToken: string;
+  private refreshToken: string;
   private eventEmitter: ReturnType<typeof createEventEmitter>;
   private isWorking = false;
   private timeoutManager: TimeoutManager;
@@ -85,13 +86,15 @@ export class Agent {
   private constructor(config: {
     clientRuntime: ClientRuntime;
     tools: Tools;
-    accessToken?: string;
+    accessToken: string;
+    refreshToken: string;
     onEvent?: AgentEventCallback;
     agentTimeout?: number;
   }) {
     this.clientRuntime = config.clientRuntime;
     this.tools = config.tools;
-    this.accessToken = config.accessToken || null;
+    this.accessToken = config.accessToken;
+    this.refreshToken = config.refreshToken;
     this.eventEmitter = createEventEmitter(config.onEvent);
     this.client = createAuthenticatedClient(this.accessToken);
     this.agentTimeout = config.agentTimeout || DEFAULT_AGENT_TIMEOUT;
@@ -133,18 +136,6 @@ export class Agent {
   }
 
   /**
-   * Reinitialize the TRPC client with fresh credentials
-   * Call this after authentication changes
-   * @param accessToken - The new access token
-   */
-  public async reauthenticateTRPCClient(accessToken: string) {
-    this.accessToken = accessToken;
-    this.client = createAuthenticatedClient(this.accessToken);
-    // Reset auth retry count on successful reauth
-    this.authRetryCount = 0;
-  }
-
-  /**
    * Calls the agent API with automatic retry on authentication failures
    * @param request - The request to call the agent API with
    * @returns The result of the agent API call
@@ -155,10 +146,7 @@ export class Agent {
     AsyncIterable<AsyncIterableItem<RouterOutputs['chat']['streamAgentCall']>>
   > {
     try {
-      if (!this.client) {
-        throw new Error('TRPC API client not initialized');
-      }
-      const result = this.client.chat.streamAgentCall.mutate(
+      const result = await this.client.chat.streamAgentCall.mutate(
         {
           messages: request.messages,
           tools: mapZodToolsToJsonSchemaTools(this.tools),
@@ -175,24 +163,14 @@ export class Agent {
       if (this.isAuthenticationError(error)) {
         if (this.authRetryCount < this.maxAuthRetries) {
           this.authRetryCount++;
+          const { accessToken, refreshToken } =
+            await this.client.session.refreshToken.mutate({
+              refreshToken: this.refreshToken!,
+            });
+          this.refreshToken = refreshToken;
+          this.accessToken = accessToken;
+          this.client = createAuthenticatedClient(this.accessToken);
 
-          // Emit event to request token refresh
-          this.eventEmitter.emit(
-            EventFactories.authTokenRefreshRequired(
-              'expired',
-              this.authRetryCount,
-              error instanceof Error ? error.message : String(error),
-            ),
-          );
-
-          // Exponential backoff: 2s, 4s, 8s...
-          const backoffDelay = Math.min(
-            2000 * Math.pow(2, this.authRetryCount - 1),
-            10000,
-          );
-          await new Promise((resolve) => setTimeout(resolve, backoffDelay));
-
-          // Retry the request
           return this.callAgentWithRetry(request);
         } else if (error instanceof Error && error.name === 'AbortError') {
           // Abort error is not an auth error
@@ -273,7 +251,8 @@ export class Agent {
   public static getInstance(config: {
     clientRuntime: ClientRuntime;
     tools?: Tools;
-    accessToken?: string;
+    accessToken: string;
+    refreshToken: string;
     onEvent?: AgentEventCallback;
     agentTimeout?: number;
   }) {
@@ -281,6 +260,7 @@ export class Agent {
       clientRuntime,
       tools = clientTools(clientRuntime),
       accessToken,
+      refreshToken,
       onEvent,
       agentTimeout,
     } = config;
@@ -289,6 +269,7 @@ export class Agent {
         clientRuntime,
         tools,
         accessToken,
+        refreshToken,
         onEvent,
         agentTimeout,
       });

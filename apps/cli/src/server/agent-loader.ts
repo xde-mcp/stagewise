@@ -4,7 +4,6 @@ import configResolver from '@/config/index.js';
 import { Agent } from '@stagewise/agent-client';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { analyticsEvents } from '@/utils/telemetry.js';
-import { oauthManager } from '@/auth/oauth.js';
 
 let agentInstance: Agent | null = null;
 
@@ -13,6 +12,7 @@ let agentInstance: Agent | null = null;
  */
 export async function loadAndInitializeAgent(
   accessToken: string,
+  refreshToken: string,
 ): Promise<{ success: boolean; wss?: any }> {
   try {
     // Validate we have the required constructors
@@ -35,23 +35,12 @@ export async function loadAndInitializeAgent(
     agentInstance = Agent.getInstance({
       clientRuntime,
       accessToken,
+      refreshToken,
       onEvent: async (event) => {
         printInfoMessages(event);
         switch (event.type) {
           case 'agent_prompt_triggered':
             analyticsEvents.sendPrompt();
-            break;
-          case 'auth_token_refresh_required':
-            await oauthManager
-              .ensureValidAccessToken()
-              .then((token) => {
-                agentInstance?.reauthenticateTRPCClient(token);
-              })
-              .catch((error) => {
-                log.error(
-                  `Error refreshing token: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                );
-              });
             break;
           case 'credits_insufficient':
             analyticsEvents.creditsInsufficient({
