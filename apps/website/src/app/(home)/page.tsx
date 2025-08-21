@@ -229,7 +229,7 @@ export default function Home() {
                   {/* Top highlight for 3D effect - more diffused */}
                   <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-70" />
                   {/* Additional subtle rim lighting for plastic depth */}
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/5 to-transparent" />
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/5 to-transparent transition-all duration-300 group-hover:from-white/20 group-hover:to-white/8" />
                 </button>
               </div>
             </div>
@@ -555,33 +555,11 @@ export default function Home() {
           {[
             {
               quote:
-                'This Cursor Extension is awesome. Accurate tweaking of UI was always a struggle, but @stagewise_io allows you to bring full context to Cursor, just point and command.',
-              name: 'Jason Zhou',
-              role: 'Product engineer @ TaskMaster AI',
+                "I'm still amazed about how good Stagewise works. I think it's going to become one of my main tools for development.",
+              name: 'Noah Yildiz',
+              role: 'Co-Founder @Tulip Insights',
               avatar:
-                'https://pbs.twimg.com/profile_images/1613651966663749632/AuQiWkVc_400x400.jpg',
-            },
-            {
-              quote:
-                'How did I even use Cursor before this?! Amazing extension.',
-              name: 'Dennis Cutraro',
-              role: 'Founder @ unfuture',
-              avatar: null,
-            },
-            {
-              quote:
-                "This is an amazing extension. The setup is quite simple, and it impresses from the very beginning. I was surprised how well it worked right away, even in a poorly designed brownfield project. This is only the beginning, I'm excited to see how it develops.",
-              name: 'Egor Koldasov',
-              role: '',
-              avatar: null,
-            },
-            {
-              quote:
-                'Just tried Stagewise plugin for Cursor - point and tell what to change. Way easier than describing UI elements in prompts.',
-              name: 'Renat Abbiazov',
-              role: '',
-              avatar:
-                'https://pbs.twimg.com/profile_images/1641815076477837313/1IfZhFZM_400x400.jpg',
+                'https://pbs.twimg.com/profile_images/1958073430877548544/wPnU4cYf_400x400.jpg',
             },
             {
               quote:
@@ -592,11 +570,42 @@ export default function Home() {
             },
             {
               quote:
-                "stagewise in cursor is different gravy. UI changes for code you didn't write has never been easier",
-              name: 'Kareem',
+                'A must-have tool for any modern development workflow. It simplifies complex tasks and makes coding enjoyable again.',
+              name: 'Kevin Harris',
+              role: 'Staff Engineer @ DevHouse',
+              avatar: null,
+            },
+            {
+              quote:
+                'have been using this tool even before i met these guys - highly recommend!!',
+              name: 'Sung Cho',
+              role: 'Co-Founder @Hyrpnote (YC S25)',
+              avatar:
+                'https://media.licdn.com/dms/image/v2/D4E03AQGkhhXjy4zbdw/profile-displayphoto-shrink_400_400/B4EZgfJs99GoAk-/0/1752869294899?e=1758758400&v=beta&t=IUXl4dJZRIGbuc4Qgj3URXzK2mwPRPgL8kD-cfLOFA4',
+            },
+            {
+              quote:
+                'i am not a designer but have an eye it (sort of)\n...\nmy personal yoda atm @stagewise_io',
+              name: 's.AI.kat',
               role: '',
               avatar:
-                'https://pbs.twimg.com/profile_images/1923032215954305024/6Y7NyOBy_400x400.jpg',
+                'https://pbs.twimg.com/profile_images/1914221163363897344/eORLDkWc_400x400.jpg',
+            },
+            {
+              quote:
+                'This is what I expected DreamWeaver would do 12 years ago, great work, keep it up!',
+              name: 'Frank Torres Riveira',
+              role: 'Engineering Manager at Botkeeper',
+              avatar:
+                'https://media.licdn.com/dms/image/v2/D4E03AQGM4UtH4FIrxA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1663699550212?e=1758758400&v=beta&t=m1EzKkPnA2E-rxjanJrxZlQjZxma9XpW5EZki9NbeOY',
+            },
+            {
+              quote:
+                'This tool cuts Design time by 50%\n...\nJust tell Stagewise what you want and watch your UI update in real time.',
+              name: 'Harshil Tomar',
+              role: 'Co-Founder @vibedocs.pro',
+              avatar:
+                'https://pbs.twimg.com/profile_images/1947060359862341634/qQsmk06l_400x400.jpg',
             },
             {
               quote:
@@ -608,25 +617,18 @@ export default function Home() {
             },
             {
               quote:
-                "🚨 VIBE CODERS: If you are using @cursor and working on a frontend, install stagewise immediately. Go in to debt if you have to. ps - it's free :)",
-              name: 'John Schoenith',
+                'sounds like drag and drop finally grew up and got serious',
+              name: 'Sharoon Babu',
               role: '',
               avatar:
-                'https://pbs.twimg.com/profile_images/1905304449016627200/2GQ72XW5_400x400.jpg',
-            },
-            {
-              quote:
-                'A must-have tool for any modern development workflow. It simplifies complex tasks and makes coding enjoyable again.',
-              name: 'Kevin Harris',
-              role: 'Staff Engineer @ DevHouse',
-              avatar: null,
+                'https://pbs.twimg.com/profile_images/1938943867866476545/NcsCjirt_400x400.jpg',
             },
           ].map((testimonial, i) => (
             <ScrollReveal key={testimonial.name} delay={i * 100}>
               <div className="flex h-full flex-col justify-between rounded-2xl border border-zinc-500/20 bg-white p-6 shadow-[rgba(0,0,0,0.1)] shadow-lg transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="mb-4">
                   <p className="text-zinc-600 dark:text-zinc-400">
-                    "{testimonial.quote}"
+                    {testimonial.quote}
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
