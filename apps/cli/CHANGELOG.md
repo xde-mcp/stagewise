@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.5.7
+
+### Patch Changes
+
+- d6af842: Making the binary-file exclusion in the grep tool more robust.
+
 ## 0.5.6
 
 ### Patch Changes
