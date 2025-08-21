@@ -555,7 +555,7 @@ export default function Home() {
           {[
             {
               quote:
-                "I'm still amazed about how good Stagewise works. I think it's going to become one of my main tools for developement.",
+                "I'm still amazed about how good Stagewise works. I think it's going to become one of my main tools for development.",
               name: 'Noah Yildiz',
               role: 'Co-Founder @Tulip Insights',
               avatar:
