@@ -13,6 +13,18 @@ import {
 } from '@stagewise/agent-runtime-interface';
 
 /**
+ * Binary file detection settings
+ * Following ripgrep's approach of checking for NUL bytes
+ */
+const BINARY_DETECTION = {
+  /**
+   * Number of bytes to check at the beginning of a file for binary detection
+   * 8KB is sufficient to catch most binary files while being efficient
+   */
+  CHECK_BUFFER_SIZE: 1024, // 1KB
+};
+
+/**
  * Node.js implementation of the file system provider
  * Uses Node.js fs API for file operations
  *
@@ -277,20 +289,54 @@ export class NodeFileSystemProvider extends BaseFileSystemProvider {
       maxMatches?: number;
       excludePatterns?: string[];
       respectGitignore?: boolean;
+      searchBinaryFiles?: boolean;
     },
   ): Promise<GrepResult> {
     try {
       const regex = new RegExp(pattern, options?.caseSensitive ? 'g' : 'gi');
       const matches: GrepMatch[] = [];
       let filesSearched = 0;
+      let totalOutputSize = 0;
       const basePath = this.resolvePath(path);
+      const MAX_OUTPUT_SIZE = 1 * 1024 * 1024; // 1MB limit for total output
 
       const searchFile = async (filePath: string) => {
         if (options?.maxMatches && matches.length >= options.maxMatches) {
           return;
         }
 
+        // Check if we've exceeded the output size limit before reading the file
+        if (totalOutputSize >= MAX_OUTPUT_SIZE) {
+          return;
+        }
+
         try {
+          // Check for binary files unless explicitly told to search them
+          if (!options?.searchBinaryFiles) {
+            // Read a small buffer to check for NUL bytes (following ripgrep's approach)
+            const stats = await fs.stat(filePath);
+            const bytesToRead = Math.min(
+              stats.size,
+              BINARY_DETECTION.CHECK_BUFFER_SIZE,
+            );
+
+            if (bytesToRead > 0) {
+              const fileHandle = await fs.open(filePath, 'r');
+              try {
+                const buffer = Buffer.alloc(bytesToRead);
+                await fileHandle.read(buffer, 0, bytesToRead, 0);
+
+                // Check for NUL bytes (0x00) which indicate binary content
+                if (buffer.includes(0x00)) {
+                  // Skip binary file silently (like ripgrep does by default)
+                  return;
+                }
+              } finally {
+                await fileHandle.close();
+              }
+            }
+          }
+
           const content = await fs.readFile(filePath, 'utf-8');
           const lines = content.split('\n');
           filesSearched++;
@@ -315,13 +361,25 @@ export class NodeFileSystemProvider extends BaseFileSystemProvider {
                 preview = `${preview.substring(0, MAX_PREVIEW_LENGTH - 3)}...`;
               }
 
-              matches.push({
+              const matchEntry: GrepMatch = {
                 path: relative(this.config.workingDirectory, filePath),
                 line: i + 1,
                 column: match.index + 1,
                 match: match[0],
                 preview,
-              });
+              };
+
+              // Estimate the size of this match entry when serialized
+              const estimatedSize = JSON.stringify(matchEntry).length;
+
+              // Check if adding this match would exceed the output size limit
+              if (totalOutputSize + estimatedSize > MAX_OUTPUT_SIZE) {
+                // Stop collecting matches if we're about to exceed the size limit
+                return;
+              }
+
+              matches.push(matchEntry);
+              totalOutputSize += estimatedSize;
             }
           }
         } catch (_error) {
@@ -381,9 +439,21 @@ export class NodeFileSystemProvider extends BaseFileSystemProvider {
         await searchFile(basePath);
       }
 
+      // Check if we potentially truncated results due to size
+      const wasTruncatedBySize = totalOutputSize >= MAX_OUTPUT_SIZE;
+      const wasTruncatedByCount =
+        options?.maxMatches && matches.length >= options.maxMatches;
+
+      let message = `Found ${matches.length} matches in ${filesSearched} files`;
+      if (wasTruncatedBySize) {
+        message += ' (truncated due to output size limit)';
+      } else if (wasTruncatedByCount) {
+        message += ' (truncated due to match limit)';
+      }
+
       return {
         success: true,
-        message: `Found ${matches.length} matches in ${filesSearched} files`,
+        message,
         matches,
         totalMatches: matches.length,
         filesSearched,

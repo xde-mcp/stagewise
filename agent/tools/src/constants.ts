@@ -39,6 +39,47 @@ export const FILE_SIZE_LIMITS = {
 };
 
 /**
+ * Grep search limits to prevent excessive output that could cause API errors
+ */
+export const GREP_LIMITS = {
+  /**
+   * Default maximum number of matches to return if not specified
+   * 500 matches provides good coverage without overwhelming the API
+   */
+  DEFAULT_MAX_MATCHES: 200,
+
+  /**
+   * Maximum total output size for grep results
+   * 1MB - prevents "Request Entity Too Large" errors
+   */
+  MAX_TOTAL_OUTPUT_SIZE: 1 * 1024 * 1024, // 1MB
+
+  /**
+   * Message to append when grep results are truncated
+   */
+  TRUNCATION_MESSAGE:
+    '\n[Results truncated due to size limits. Use more specific patterns or file filters to narrow your search.]',
+};
+
+/**
+ * Binary file detection settings
+ * Following ripgrep's approach of checking for NUL bytes
+ */
+export const BINARY_DETECTION = {
+  /**
+   * Number of bytes to check at the beginning of a file for binary detection
+   * 8KB is sufficient to catch most binary files while being efficient
+   */
+  CHECK_BUFFER_SIZE: 1024, // 1KB
+
+  /**
+   * Message shown when a file is skipped due to binary content
+   */
+  SKIP_MESSAGE: (fileName: string) =>
+    `Skipped binary file: ${fileName} (contains NUL bytes)`,
+};
+
+/**
  * Error messages for file size limit violations
  */
 export const FILE_SIZE_ERROR_MESSAGES = {
