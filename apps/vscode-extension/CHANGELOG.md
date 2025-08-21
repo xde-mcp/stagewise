@@ -1,5 +1,11 @@
 # stagewise-vscode-extension
 
+## 0.11.1
+
+### Patch Changes
+
+- 0934b02: Only show migration-guide once.
+
 ## 0.11.0
 
 ### Minor Changes
