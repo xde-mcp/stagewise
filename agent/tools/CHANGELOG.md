@@ -1,5 +1,11 @@
 # @stagewise/tools-client
 
+## 0.1.1
+
+### Patch Changes
+
+- d6af842: Making the binary-file exclusion in the grep tool more robust.
+
 ## 0.1.0
 
 ### Minor Changes
