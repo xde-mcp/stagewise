@@ -71,12 +71,6 @@ export const BINARY_DETECTION = {
    * 8KB is sufficient to catch most binary files while being efficient
    */
   CHECK_BUFFER_SIZE: 1024, // 1KB
-
-  /**
-   * Message shown when a file is skipped due to binary content
-   */
-  SKIP_MESSAGE: (fileName: string) =>
-    `Skipped binary file: ${fileName} (contains NUL bytes)`,
 };
 
 /**
