@@ -86,7 +86,7 @@ export function useMetaSync() {
 
         // Get other important meta tags
         const importantMetaTags = iframeDocument.querySelectorAll(
-          'meta[name="description"], meta[name="keywords"], meta[name="author"], meta[name="viewport"], meta[charset]',
+          'meta[name="description"], meta[name="keywords"], meta[name="author"]',
         );
         importantMetaTags.forEach((meta) => {
           const metaEl = meta as HTMLMetaElement;
@@ -94,8 +94,6 @@ export function useMetaSync() {
 
           if (metaEl.name) attributes.name = metaEl.name;
           if (metaEl.content) attributes.content = metaEl.content;
-          if (metaEl.getAttribute('charset'))
-            attributes.charset = metaEl.getAttribute('charset')!;
 
           metaElements.push({
             tag: 'meta',
@@ -123,19 +121,23 @@ export function useMetaSync() {
           // Remove existing similar elements first
           if (metaInfo.tag === 'meta') {
             if (metaInfo.attributes.property) {
-              const existing = document.querySelector(
+              const existing = document.querySelectorAll(
                 `meta[property="${metaInfo.attributes.property}"]`,
               );
-              if (existing && !syncedElementsRef.current.has(existing)) {
-                existing.remove();
-              }
+              existing.forEach((el) => {
+                if (!syncedElementsRef.current.has(el)) {
+                  el.remove();
+                }
+              });
             } else if (metaInfo.attributes.name) {
-              const existing = document.querySelector(
+              const existing = document.querySelectorAll(
                 `meta[name="${metaInfo.attributes.name}"]`,
               );
-              if (existing && !syncedElementsRef.current.has(existing)) {
-                existing.remove();
-              }
+              existing.forEach((el) => {
+                if (!syncedElementsRef.current.has(el)) {
+                  el.remove();
+                }
+              });
             }
           } else if (metaInfo.tag === 'link') {
             if (metaInfo.attributes.rel?.includes('icon')) {
@@ -192,6 +194,14 @@ export function useMetaSync() {
             if (mutation.target.nodeName === 'META') return true;
             if (mutation.target.nodeName === 'LINK') return true;
 
+            // Check for text content changes in TITLE elements
+            if (mutation.type === 'characterData') {
+              const parentNode = mutation.target.parentNode;
+              if (parentNode && parentNode.nodeName === 'TITLE') {
+                return true;
+              }
+            }
+
             // Check added/removed nodes
             for (const node of mutation.addedNodes) {
               if (
@@ -226,7 +236,16 @@ export function useMetaSync() {
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ['content', 'href', 'property', 'name', 'rel'],
+            attributeFilter: [
+              'content',
+              'href',
+              'property',
+              'name',
+              'rel',
+              'sizes',
+              'type',
+            ],
+            characterData: true,
           });
         }
 
