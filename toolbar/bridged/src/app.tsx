@@ -7,6 +7,7 @@ import { AppStateProvider } from './hooks/use-app-state.js';
 import type { InternalToolbarConfig } from './config.js';
 import { MainAppBlocker } from './components/main-app-blocker.js';
 import { UrlSynchronizer } from './components/url-synchronizer.js';
+import { MetaSynchronizer } from './components/meta-synchronizer';
 
 export function App(config?: InternalToolbarConfig) {
   // Get the initial URL from the parent window
@@ -28,6 +29,7 @@ export function App(config?: InternalToolbarConfig) {
         appPort={config?.appPort}
         urlSyncConfig={config?.urlSync}
       />
+      <MetaSynchronizer />
       <AppStateProvider>
         <MainAppBlocker />
         <ContextProviders config={config}>
