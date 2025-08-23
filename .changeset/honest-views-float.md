@@ -3,4 +3,5 @@
 "stagewise": patch
 ---
 
-Add a separate element-selection button to the toolbar.
++Make context element selection a separately triggerable action and rename hotkey action:
++- HotkeyActions.CTRL_ALT_C → HotkeyActions.CTRL_ALT_PERIOD
