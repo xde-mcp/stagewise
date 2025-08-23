@@ -1,7 +1,7 @@
 import { hotkeyActionDefinitions, type HotkeyActions } from '../utils';
-import useBrowserInfo from './use-user-agent';
+import useBrowserInfo from '../hooks/use-user-agent';
 
-export function useHotkeyListenerComboText(action: HotkeyActions) {
+export function HotkeyComboText({ action }: { action: HotkeyActions }) {
   const userAgent = useBrowserInfo();
 
   return userAgent.os.name.toLowerCase().includes('mac')

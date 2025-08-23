@@ -50,17 +50,6 @@ export function ChatPanel() {
     }
   }, []);
 
-  // Handle escape key to stop prompt creation
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && chatState.isPromptCreationActive) {
-        chatState.stopPromptCreation();
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [chatState.isPromptCreationActive, chatState.stopPromptCreation]);
-
   // Focus management for prompt creation mode
   useEffect(() => {
     if (chatState.isPromptCreationActive && enableInputField) {

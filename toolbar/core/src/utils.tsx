@@ -156,7 +156,7 @@ export interface HotkeyActionDefinition {
 
 export enum HotkeyActions {
   ESC = 0,
-  CTRL_ALT_C = 1,
+  CTRL_ALT_PERIOD = 1,
 }
 
 export const hotkeyActionDefinitions: Record<
@@ -168,11 +168,11 @@ export const hotkeyActionDefinitions: Record<
     keyComboMac: 'esc',
     isEventMatching: (ev) => ev.code === 'Escape',
   },
-  [HotkeyActions.CTRL_ALT_C]: {
-    keyComboDefault: 'Ctrl+Alt+C',
-    keyComboMac: '⌘+⌥+C',
+  [HotkeyActions.CTRL_ALT_PERIOD]: {
+    keyComboDefault: 'Ctrl+Alt+.',
+    keyComboMac: '⌘+⌥+.',
     isEventMatching: (ev) =>
-      ev.code === 'KeyC' && (ev.ctrlKey || ev.metaKey) && ev.altKey,
+      ev.code === 'Period' && (ev.ctrlKey || ev.metaKey) && ev.altKey,
   },
 };
 

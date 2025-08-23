@@ -40,6 +40,9 @@ interface ChatContext {
   isPromptCreationActive: boolean;
   startPromptCreation: () => void;
   stopPromptCreation: () => void;
+  isContextSelectorActive: boolean;
+  startContextSelector: () => void;
+  stopContextSelector: () => void;
   isSending: boolean;
 }
 
@@ -53,6 +56,9 @@ const ChatHistoryContext = createContext<ChatContext>({
   isPromptCreationActive: false,
   startPromptCreation: () => {},
   stopPromptCreation: () => {},
+  isContextSelectorActive: false,
+  startContextSelector: () => {},
+  stopContextSelector: () => {},
   isSending: false,
 });
 
@@ -63,6 +69,8 @@ interface ChatStateProviderProps {
 export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   const [chatInput, setChatInput] = useState<string>('');
   const [isPromptCreationMode, setIsPromptCreationMode] =
+    useState<boolean>(false);
+  const [isContextSelectorMode, setIsContextSelectorMode] =
     useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [domContextElements, setDomContextElements] = useState<
@@ -80,39 +88,55 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
 
   const sendChatMessage = useKartonProcedure((p) => p.sendUserMessage);
   const isWorking = useKartonState((s) => s.isWorking);
-  const { isChatOpen } = usePanels();
+  const { isChatOpen, openChat } = usePanels();
 
   const startPromptCreation = useCallback(() => {
     setIsPromptCreationMode(true);
+
+    // open the chat panel if it's not open
+    if (!isChatOpen) {
+      openChat();
+    }
+
     plugins.forEach((plugin) => {
       plugin.onPromptingStart?.();
     });
-  }, [plugins]);
+  }, [plugins, isChatOpen, openChat]);
 
   const stopPromptCreation = useCallback(() => {
     setIsPromptCreationMode(false);
+    // Always stop context selector when stopping prompt creation
+    setIsContextSelectorMode(false);
     setDomContextElements([]);
     plugins.forEach((plugin) => {
       plugin.onPromptingAbort?.();
     });
   }, [plugins]);
 
+  const startContextSelector = useCallback(() => {
+    setIsContextSelectorMode(true);
+  }, []);
+
+  const stopContextSelector = useCallback(() => {
+    setIsContextSelectorMode(false);
+  }, []);
+
   useEffect(() => {
     if (!isChatOpen) {
-      stopPromptCreation();
+      stopPromptCreation(); // This also stops context selector
     }
   }, [isChatOpen, stopPromptCreation]);
 
   useEffect(() => {
     if (minimized) {
-      stopPromptCreation();
+      stopPromptCreation(); // This also stops context selector
     }
-  }, [minimized]);
+  }, [minimized, stopPromptCreation]);
 
   // Auto-stop prompt creation when agent is busy
   useEffect(() => {
-    if (isPromptCreationMode && isWorking) {
-      stopPromptCreation();
+    if (isWorking && isPromptCreationMode) {
+      stopPromptCreation(); // This also stops context selector
     }
   }, [isWorking, isPromptCreationMode, stopPromptCreation]);
 
@@ -224,14 +248,20 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       // Reset state after sending
       setChatInput('');
       setDomContextElements([]);
-      stopPromptCreation();
+      stopPromptCreation(); // This also stops context selector
 
       // Send the message using the chat capability
       await sendChatMessage(message);
     } finally {
       setIsSending(false);
     }
-  }, [chatInput, domContextElements, plugins, sendChatMessage]);
+  }, [
+    chatInput,
+    domContextElements,
+    plugins,
+    sendChatMessage,
+    stopPromptCreation,
+  ]);
 
   const value: ChatContext = {
     chatInput,
@@ -243,6 +273,9 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     isPromptCreationActive: isPromptCreationMode,
     startPromptCreation,
     stopPromptCreation,
+    isContextSelectorActive: isContextSelectorMode,
+    startContextSelector,
+    stopContextSelector,
     isSending,
   };
 
