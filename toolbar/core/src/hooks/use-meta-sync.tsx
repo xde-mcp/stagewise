@@ -22,12 +22,6 @@ export function useMetaSync() {
         const iframeDocument = iframe.contentDocument;
         if (!iframeWindow || !iframeDocument) return;
 
-        // Clear previously synced elements
-        syncedElementsRef.current.forEach((element) => {
-          element.remove();
-        });
-        syncedElementsRef.current.clear();
-
         // Get all relevant meta elements from iframe
         const metaElements: MetaElement[] = [];
 
@@ -116,7 +110,14 @@ export function useMetaSync() {
           });
         }
 
+        // Clear previously synced elements now that new metaElements is computed
+        syncedElementsRef.current.forEach((element) => {
+          element.remove();
+        });
+        syncedElementsRef.current.clear();
+
         // Apply meta elements to parent document
+        const fragment = document.createDocumentFragment();
         metaElements.forEach((metaInfo) => {
           // Remove existing similar elements first
           if (metaInfo.tag === 'meta') {
@@ -163,9 +164,10 @@ export function useMetaSync() {
             }
           });
 
-          document.head.appendChild(element);
+          fragment.appendChild(element);
           syncedElementsRef.current.add(element);
         });
+        document.head.appendChild(fragment);
       } catch (e) {
         if (e instanceof DOMException && e.name === 'SecurityError') {
           console.debug('Cannot access cross-origin iframe head');
