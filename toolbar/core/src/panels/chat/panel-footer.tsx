@@ -3,9 +3,9 @@ import { TextSlideshow } from '@/components/ui/text-slideshow';
 import { Button } from '@/components/ui/button';
 import { PanelFooter } from '@/components/ui/panel';
 import { useChatState } from '@/hooks/use-chat-state';
-import { cn } from '@/utils';
+import { cn, HotkeyActions } from '@/utils';
 import { Textarea } from '@headlessui/react';
-import { ArrowUpIcon, SquareIcon } from 'lucide-react';
+import { ArrowUpIcon, SquareIcon, MousePointerIcon } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import {
   useKartonState,
@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { HotkeyComboText } from '@/components/hotkey-combo-text';
 
 const GlassyTextInputClassNames =
   'origin-center rounded-xl border border-black/10 ring-1 ring-white/20 transition-all duration-150 ease-out after:absolute after:inset-0 after:size-full after:content-normal after:rounded-[inherit] after:bg-gradient-to-b after:from-white/5 after:to-white/0 after:transition-colors after:duration-150 after:ease-out disabled:pointer-events-none disabled:bg-black/5 disabled:text-foreground/60 disabled:opacity-30';
@@ -122,6 +123,7 @@ export function ChatPanelFooter({
             onFocus={() => {
               if (!chatState.isPromptCreationActive) {
                 chatState.startPromptCreation();
+                chatState.startContextSelector();
               }
             }}
             onKeyDown={handleKeyDown}
@@ -132,6 +134,7 @@ export function ChatPanelFooter({
               GlassyTextInputClassNames,
               'scrollbar-thin scrollbar-thumb-black/20 scrollbar-track-transparent z-10 w-full resize-none rounded-2xl bg-zinc-500/5 px-2 py-1 text-zinc-950 shadow-md backdrop-blur-lg transition-all duration-300 ease-out placeholder:text-foreground/40 focus:bg-blue-200/20 focus:shadow-blue-400/10 focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
               showMultiLineTextArea && !isWorking ? 'h-26' : 'h-8',
+              chatState.isPromptCreationActive && 'pr-8', // Add padding for context button
             )}
             placeholder={!showTextSlideshow && 'Type a message...'}
           />
@@ -149,6 +152,56 @@ export function ChatPanelFooter({
               ]}
             />
           </div>
+          {/* Context selector button - shown when prompt creation is active */}
+          {chatState.isPromptCreationActive && (
+            <div className="-translate-y-1/2 absolute top-1/2 right-2 z-30">
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    onMouseDown={(e) => {
+                      // Prevent default to avoid losing focus from input
+                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (chatState.isContextSelectorActive) {
+                        chatState.stopContextSelector();
+                      } else {
+                        chatState.startContextSelector();
+                      }
+                      // Keep input focused
+                      inputRef.current?.focus();
+                    }}
+                    aria-label="Select context elements"
+                    variant="ghost"
+                    className={cn(
+                      'z-10 size-6 cursor-pointer rounded-full border-none bg-transparent p-0 backdrop-blur-lg',
+                      chatState.isContextSelectorActive
+                        ? 'bg-blue-600/10 text-blue-600'
+                        : 'text-zinc-500 opacity-70',
+                    )}
+                  >
+                    <MousePointerIcon className={'size-4'} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {chatState.isContextSelectorActive ? (
+                    <>
+                      Stop selecting elements (
+                      <HotkeyComboText action={HotkeyActions.ESC} />)
+                    </>
+                  ) : (
+                    <>
+                      Add reference elements (
+                      <HotkeyComboText action={HotkeyActions.CTRL_ALT_PERIOD} />
+                      )
+                    </>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
         {canStop && (
           <Tooltip>

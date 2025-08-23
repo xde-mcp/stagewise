@@ -1,7 +1,13 @@
 import { Tooltip as BaseTooltip } from '@base-ui-components/react/tooltip';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
-export const Tooltip = BaseTooltip.Root;
+export const Tooltip = ({
+  children,
+}: {
+  children: ReactElement | ReactNode | ReactNode[];
+}) => {
+  return <BaseTooltip.Root delay={200}>{children}</BaseTooltip.Root>;
+};
 
 export const TooltipTrigger = ({ children }: { children: ReactElement }) => {
   // @ts-expect-error - TODO: fix this
