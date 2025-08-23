@@ -94,7 +94,7 @@ try {
 
       const config = configResolver.getConfig();
       const convertedConfig: Record<string, any> = {
-        plugins: ['__PLUGIN_PLACEHOLDER__'],
+        plugins: '__PLUGIN_PLACEHOLDER__',
         devAppPort: config.appPort,
       };
 
