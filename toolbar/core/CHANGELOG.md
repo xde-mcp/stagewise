@@ -1,5 +1,12 @@
 # @stagewise/toolbar
 
+## 0.8.4
+
+### Patch Changes
+
+- 03cc4e7: +Make context element selection a separately triggerable action and rename hotkey action:
+  +- HotkeyActions.CTRL_ALT_C → HotkeyActions.CTRL_ALT_PERIOD
+
 ## 0.8.3
 
 ### Patch Changes
