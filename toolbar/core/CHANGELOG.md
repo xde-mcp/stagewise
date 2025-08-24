@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.9.0
+
+### Minor Changes
+
+- 967bb23: Synchronize meta tags and titles from dev app to wrapping toolbar app
+
 ## 0.8.4
 
 ### Patch Changes
