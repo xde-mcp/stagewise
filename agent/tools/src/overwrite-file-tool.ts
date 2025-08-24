@@ -1,5 +1,9 @@
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
-import type { ToolResult } from '@stagewise/agent-types';
+import type {
+  ToolResult,
+  FileModifyDiff,
+  FileCreateDiff,
+} from '@stagewise/agent-types';
 import { z } from 'zod';
 
 export const DESCRIPTION =
@@ -124,10 +128,24 @@ export async function overwriteFileTool(
     const action = fileExists ? 'updated' : 'created';
     const message = `Successfully ${action} file: ${relPath}`;
 
+    const diff = fileExists
+      ? ({
+          path: relPath,
+          changeType: 'modify',
+          before: originalContent || '',
+          after: cleanContent,
+        } satisfies FileModifyDiff)
+      : ({
+          path: relPath,
+          changeType: 'create',
+          after: cleanContent,
+        } satisfies FileCreateDiff);
+
     return {
       success: true,
       message,
       undoExecute,
+      diff,
     };
   } catch (error) {
     return {

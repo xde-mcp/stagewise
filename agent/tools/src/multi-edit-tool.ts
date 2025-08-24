@@ -1,5 +1,5 @@
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
-import type { ToolResult } from '@stagewise/agent-types';
+import type { ToolResult, FileModifyDiff } from '@stagewise/agent-types';
 import { z } from 'zod';
 import { checkFileSize } from './file-utils';
 import { FILE_SIZE_LIMITS } from './constants';
@@ -191,11 +191,20 @@ export async function multiEditTool(
         }
       };
 
+      // Create diff data
+      const diff: FileModifyDiff = {
+        path: file_path,
+        changeType: 'modify',
+        before: originalContent,
+        after: content,
+      };
+
       const result = {
         success: true,
         message: `Successfully applied ${totalEditsApplied} edits to ${file_path}`,
         result: { editsApplied: totalEditsApplied },
         undoExecute: undoExecute,
+        diff,
       };
 
       return result;

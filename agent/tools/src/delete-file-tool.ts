@@ -1,5 +1,5 @@
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
-import type { ToolResult } from '@stagewise/agent-types';
+import type { ToolResult, FileDeleteDiff } from '@stagewise/agent-types';
 import { z } from 'zod';
 
 export const DESCRIPTION = 'Delete a file from the file system';
@@ -85,10 +85,18 @@ export async function deleteFileTool(
       }
     };
 
+    // Create diff data
+    const diff: FileDeleteDiff = {
+      path: relPath,
+      changeType: 'delete',
+      before: fileContent,
+    };
+
     return {
       success: true,
       message: `Successfully deleted file: ${relPath}`,
       undoExecute,
+      diff,
     };
   } catch (error) {
     return {

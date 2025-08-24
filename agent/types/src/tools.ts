@@ -10,12 +10,34 @@ export const stagewiseToolMetadataSchema = z.object({
 
 export type StagewiseToolMetadata = z.infer<typeof stagewiseToolMetadataSchema>;
 
+export type FileModifyDiff = {
+  path: string;
+  changeType: 'modify';
+  before: string;
+  after: string;
+};
+
+export type FileCreateDiff = {
+  path: string;
+  changeType: 'create';
+  after: string;
+};
+
+export type FileDeleteDiff = {
+  path: string;
+  changeType: 'delete';
+  before: string;
+};
+
+export type FileDiff = FileModifyDiff | FileCreateDiff | FileDeleteDiff;
+
 export type ToolResult = {
   undoExecute?: () => Promise<void>;
   success: boolean;
   error?: string;
   message?: string;
   result?: any;
+  diff?: FileDiff;
 };
 
 export type Tools = Record<
