@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.2.0
+
+### Minor Changes
+
+- 299e75a: Implement undo functionality - it is now possible to restore a checkpoint and revert all file modifications to this point.
+
 ## 0.1.4
 
 ### Patch Changes
