@@ -82,7 +82,6 @@ describe('OAuthManager', () => {
           extensionId: 'test-extension',
           createdAt: '2024-01-01T00:00:00Z',
           isExpiringSoon: false,
-          hasEarlyAgentAccess: true,
         },
       });
 
@@ -231,7 +230,6 @@ describe('OAuthManager', () => {
         ).toISOString(),
         userId: 'test-user-id',
         userEmail: 'test@example.com',
-        hasEarlyAgentAccess: true,
       });
 
       vi.mocked(axios.get).mockResolvedValueOnce({
@@ -240,7 +238,6 @@ describe('OAuthManager', () => {
           valid: true,
           userId: 'test-user-id',
           userEmail: 'test@example.com',
-          hasEarlyAgentAccess: true,
         },
       });
 
@@ -404,7 +401,6 @@ describe('OAuthManager', () => {
           valid: true,
           userId: 'test-user-id',
           userEmail: 'test@example.com',
-          hasEarlyAgentAccess: true,
         },
       });
 
@@ -458,32 +454,6 @@ describe('OAuthManager', () => {
 
       const { oauthManager } = await import('../../../src/auth/oauth');
       const result = await oauthManager.isAuthenticated();
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('hasEarlyAgentAccess', () => {
-    it('should return true if user has early access', async () => {
-      const { tokenManager } = await import('../../../src/auth/token-manager');
-      vi.mocked(tokenManager.getStoredToken).mockResolvedValue({
-        accessToken: 'valid-token',
-        hasEarlyAgentAccess: true,
-      });
-
-      const { oauthManager } = await import('../../../src/auth/oauth');
-      const result = await oauthManager.hasEarlyAgentAccess();
-      expect(result).toBe(true);
-    });
-
-    it('should return false if user does not have early access', async () => {
-      const { tokenManager } = await import('../../../src/auth/token-manager');
-      vi.mocked(tokenManager.getStoredToken).mockResolvedValue({
-        accessToken: 'valid-token',
-        hasEarlyAgentAccess: false,
-      });
-
-      const { oauthManager } = await import('../../../src/auth/oauth');
-      const result = await oauthManager.hasEarlyAgentAccess();
       expect(result).toBe(false);
     });
   });

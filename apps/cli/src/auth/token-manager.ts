@@ -14,7 +14,6 @@ export interface TokenData {
   refreshExpiresAt?: string;
   userId?: string;
   userEmail?: string;
-  hasEarlyAgentAccess?: boolean;
 }
 
 export class TokenManager {
