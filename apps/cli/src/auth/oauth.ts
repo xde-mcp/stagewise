@@ -28,7 +28,6 @@ interface AuthState {
   userEmail?: string;
   expiresAt?: string; // Access token expiry
   refreshExpiresAt?: string; // Refresh token expiry
-  hasEarlyAgentAccess?: boolean;
 }
 
 interface SessionValidationResponse {
@@ -38,7 +37,6 @@ interface SessionValidationResponse {
   extensionId: string;
   createdAt: string;
   isExpiringSoon: boolean;
-  hasEarlyAgentAccess: boolean;
 }
 
 export class OAuthManager {
@@ -154,9 +152,6 @@ export class OAuthManager {
       const sessionData: SessionValidationResponse = sessionResponse.data;
 
       log.debug(`Successfully authenticated as: ${sessionData.userEmail}`);
-      if (sessionData.hasEarlyAgentAccess) {
-        log.debug('✅ Early Agent Access enabled');
-      }
 
       const tokenData: TokenData = {
         accessToken: tokenPair.accessToken,
@@ -165,7 +160,6 @@ export class OAuthManager {
         refreshExpiresAt: tokenPair.refreshExpiresAt,
         userId: sessionData.userId,
         userEmail: sessionData.userEmail,
-        hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
       };
 
       // Update cached access token
@@ -534,7 +528,6 @@ export class OAuthManager {
         refreshExpiresAt: tokenPair.refreshExpiresAt,
         userId: sessionData.userId,
         userEmail: sessionData.userEmail,
-        hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
       };
 
       // Update cached access token
@@ -705,7 +698,6 @@ export class OAuthManager {
             ...storedToken,
             userId: sessionData.userId,
             userEmail: sessionData.userEmail,
-            hasEarlyAgentAccess: sessionData.hasEarlyAgentAccess,
           };
 
           if (JSON.stringify(updatedToken) !== JSON.stringify(storedToken)) {
@@ -720,7 +712,6 @@ export class OAuthManager {
             userEmail: updatedToken.userEmail,
             expiresAt: updatedToken.expiresAt,
             refreshExpiresAt: updatedToken.refreshExpiresAt,
-            hasEarlyAgentAccess: updatedToken.hasEarlyAgentAccess,
           };
 
           return authState;
@@ -755,7 +746,6 @@ export class OAuthManager {
         userEmail: storedToken.userEmail,
         expiresAt: storedToken.expiresAt,
         refreshExpiresAt: storedToken.refreshExpiresAt,
-        hasEarlyAgentAccess: storedToken.hasEarlyAgentAccess,
       };
       return authState;
     }
@@ -779,7 +769,6 @@ export class OAuthManager {
       userEmail: storedToken.userEmail,
       expiresAt: storedToken.expiresAt,
       refreshExpiresAt: storedToken.refreshExpiresAt,
-      hasEarlyAgentAccess: storedToken.hasEarlyAgentAccess,
     };
   }
 
@@ -831,14 +820,6 @@ export class OAuthManager {
     }
 
     return true;
-  }
-
-  /**
-   * Check if the authenticated user has early agent access
-   */
-  async hasEarlyAgentAccess(): Promise<boolean> {
-    const authState = await this.getAuthState();
-    return authState?.hasEarlyAgentAccess ?? false;
   }
 
   /**
