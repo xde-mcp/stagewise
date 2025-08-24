@@ -48,6 +48,8 @@ type ReturnValue<T> = T extends AsyncGenerator<infer _U, infer V, infer _W>
 
 type LastResponse = ReturnValue<RouterOutputs['chat']['streamAgentCall']>;
 
+type ChatId = string;
+
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
 const MAX_RECURSION_DEPTH = 20;
@@ -71,17 +73,14 @@ export class Agent {
   private lastMessageId: string | null = null;
   // undo is only allowed for one chat at a time.
   // if the user switches to a new chat, the undo stack is cleared
-  private undoToolCallStack: {
-    chatId: string | null;
-    stack: {
+  private undoToolCallStack: Map<
+    ChatId,
+    {
       toolName: string;
       toolCallId: string;
-      undoExecute: () => Promise<void>;
-    }[];
-  } = {
-    chatId: null,
-    stack: [],
-  };
+      undoExecute?: () => Promise<void>;
+    }[]
+  > = new Map();
 
   private constructor(config: {
     clientRuntime: ClientRuntime;
@@ -286,6 +285,9 @@ export class Agent {
   }> {
     this.karton = await createKartonServer<KartonContract>({
       procedures: {
+        undoToolCallsUntilUserMessage: async (userMessageId, chatId) => {
+          await this.undoToolCallsUntilUserMessage(userMessageId, chatId);
+        },
         retrySendingUserMessage: async () => {
           this.setAgentWorking(true);
           this.karton?.setState((draft) => {
@@ -441,6 +443,9 @@ export class Agent {
     // Validate prerequisites
     if (!this.client) throw new Error('TRPC API client not initialized');
 
+    if (!this.undoToolCallStack.has(chatId))
+      this.undoToolCallStack.set(chatId, []);
+
     // Check recursion depth
     if (this.recursionDepth >= MAX_RECURSION_DEPTH) {
       const errorDesc = ErrorDescriptions.recursionDepthExceeded(
@@ -545,6 +550,11 @@ export class Agent {
         this.karton?.state.chats[chatId]!.messages ?? [],
         this.timeoutManager,
         (result) => {
+          this.undoToolCallStack.get(chatId)?.push({
+            toolName: result.toolName,
+            toolCallId: result.toolCallId,
+            undoExecute: result.result?.undoExecute,
+          });
           attachToolOutputToMessage(
             this.karton!,
             [result],
@@ -662,36 +672,45 @@ export class Agent {
     userMessageId: string,
     chatId: string,
   ): Promise<void> {
-    if (this.undoToolCallStack.chatId !== chatId) {
-      // should never happen
-      return;
-    }
+    if (!this.undoToolCallStack.has(chatId)) return;
     const chat = this.karton?.state.chats[chatId];
 
-    const reversedHistory = [...(chat?.messages ?? [])].reverse();
-    const messagesBeforeUserMessage = reversedHistory.slice(
-      reversedHistory.findIndex(
-        (m) => m.role === 'user' && 'id' in m && m.id === userMessageId,
-      ),
+    const history = chat?.messages ?? [];
+    const userMessageIndex = history.findIndex(
+      (m) => m.role === 'user' && 'id' in m && m.id === userMessageId,
     );
 
-    const toolCallIdsBeforeUserMessage: string[] = [];
-    for (const message of messagesBeforeUserMessage) {
+    // Get all messages that come after the user message
+    const messagesAfterUserMessage =
+      userMessageIndex !== -1 ? history.slice(userMessageIndex + 1) : [];
+
+    const toolCallIdsAfterUserMessage: string[] = [];
+    for (const message of messagesAfterUserMessage) {
       if (message.role !== 'assistant') continue;
       for (const content of message.parts)
-        if (content.type === 'tool-call')
-          toolCallIdsBeforeUserMessage.push(content.toolCallId);
+        if (content.type === 'dynamic-tool')
+          toolCallIdsAfterUserMessage.push(content.toolCallId);
     }
 
     while (
-      this.undoToolCallStack.stack.at(-1)?.toolCallId &&
-      toolCallIdsBeforeUserMessage.includes(
-        this.undoToolCallStack.stack.at(-1)!.toolCallId,
+      this.undoToolCallStack.get(chatId)?.at(-1)?.toolCallId &&
+      toolCallIdsAfterUserMessage.includes(
+        this.undoToolCallStack.get(chatId)?.at(-1)?.toolCallId ?? '',
       )
     ) {
-      const undo = this.undoToolCallStack.stack.pop();
+      const undo = this.undoToolCallStack.get(chatId)?.pop();
       if (!undo) break;
-      await undo.undoExecute();
+      await undo.undoExecute?.();
     }
+
+    // Keep messages up to user message
+    this.karton?.setState((draft) => {
+      if (userMessageIndex !== -1) {
+        draft.chats[chatId]!.messages = history.slice(
+          0,
+          userMessageIndex,
+        ) as any;
+      }
+    });
   }
 }

@@ -30,7 +30,7 @@ export interface ToolCallProcessingResult {
     type: 'error' | 'user_interaction_required';
     message: string;
   };
-  result?: any;
+  result?: ToolResult;
 }
 
 /**
@@ -54,7 +54,8 @@ export async function processBrowserToolCall(
 
   try {
     // TODO: call
-    const toolCallResult = {
+    const toolCallResult: ToolResult = {
+      success: true,
       result: {
         type: 'tool-result' as const,
         toolName,

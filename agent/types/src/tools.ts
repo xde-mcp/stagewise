@@ -11,7 +11,7 @@ export const stagewiseToolMetadataSchema = z.object({
 export type StagewiseToolMetadata = z.infer<typeof stagewiseToolMetadataSchema>;
 
 export type ToolResult = {
-  undoExecute: () => Promise<void>;
+  undoExecute?: () => Promise<void>;
   success: boolean;
   error?: string;
   message?: string;
