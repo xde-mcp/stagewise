@@ -1,5 +1,12 @@
 # stagewise
 
+## 0.5.9
+
+### Patch Changes
+
+- 79ba594: Load plugins in a correct structure again
+- 58faba1: Remove earlyAgentAccess references in the cli.
+
 ## 0.5.8
 
 ### Patch Changes
