@@ -54,7 +54,7 @@ export function ChatBubble({
   const isWorking = useKartonState((s) => s.isWorking);
   const { setChatInput, addChatDomContext } = useChatState();
 
-  const confirmRestore = useCallback(() => {
+  const confirmRestore = useCallback(async () => {
     if (!msg.id || !activeChatId) return;
 
     // Extract text content from message parts
@@ -97,7 +97,7 @@ export function ChatBubble({
     }
 
     // Call the undo procedure to revert changes
-    undoToolCallsUntilUserMessage(msg.id, activeChatId);
+    await undoToolCallsUntilUserMessage(msg.id, activeChatId);
   }, [
     msg,
     activeChatId,
@@ -189,7 +189,7 @@ export function ChatBubble({
                 >
                   <PopoverPanel
                     anchor="top start"
-                    className="z-[9999] w-64 [--anchor-gap:8px]"
+                    className="overflow-visible! z-[9999] w-64 p-1 [--anchor-gap:8px]"
                   >
                     <div className="rounded-xl bg-white/95 p-3 shadow-xl ring-1 ring-zinc-950/10 ring-inset backdrop-blur-lg">
                       <p className="font-medium text-sm text-zinc-950">
