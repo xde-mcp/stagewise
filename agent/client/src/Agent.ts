@@ -550,11 +550,13 @@ export class Agent {
         this.karton?.state.chats[chatId]!.messages ?? [],
         this.timeoutManager,
         (result) => {
-          this.undoToolCallStack.get(chatId)?.push({
-            toolName: result.toolName,
-            toolCallId: result.toolCallId,
-            undoExecute: result.result?.undoExecute,
-          });
+          if (result.result?.undoExecute) {
+            this.undoToolCallStack.get(chatId)?.push({
+              toolName: result.toolName,
+              toolCallId: result.toolCallId,
+              undoExecute: result.result?.undoExecute,
+            });
+          }
           attachToolOutputToMessage(
             this.karton!,
             [result],
@@ -692,11 +694,11 @@ export class Agent {
           toolCallIdsAfterUserMessage.push(content.toolCallId);
     }
 
+    const idsAfter = new Set(toolCallIdsAfterUserMessage);
+
     while (
       this.undoToolCallStack.get(chatId)?.at(-1)?.toolCallId &&
-      toolCallIdsAfterUserMessage.includes(
-        this.undoToolCallStack.get(chatId)?.at(-1)?.toolCallId ?? '',
-      )
+      idsAfter.has(this.undoToolCallStack.get(chatId)?.at(-1)?.toolCallId!)
     ) {
       const undo = this.undoToolCallStack.get(chatId)?.pop();
       if (!undo) break;
