@@ -49,7 +49,6 @@ export async function readFileTool(
   // Validate required parameters
   if (!target_file) {
     return {
-      undoExecute: () => Promise.resolve(),
       success: false,
       message: 'Missing required parameter: target_file',
       error: 'MISSING_TARGET_FILE',
@@ -63,7 +62,6 @@ export async function readFileTool(
       start_line_one_indexed < 1
     ) {
       return {
-        undoExecute: () => Promise.resolve(),
         success: false,
         message:
           'start_line_one_indexed must be a positive integer (1-indexed)',
@@ -76,7 +74,6 @@ export async function readFileTool(
       end_line_one_indexed_inclusive < 1
     ) {
       return {
-        undoExecute: () => Promise.resolve(),
         success: false,
         message:
           'end_line_one_indexed_inclusive must be a positive integer (1-indexed)',
@@ -86,7 +83,6 @@ export async function readFileTool(
 
     if (end_line_one_indexed_inclusive < start_line_one_indexed) {
       return {
-        undoExecute: () => Promise.resolve(),
         success: false,
         message:
           'end_line_one_indexed_inclusive must be greater than or equal to start_line_one_indexed',
@@ -102,7 +98,6 @@ export async function readFileTool(
     const fileExists = await clientRuntime.fileSystem.fileExists(absolutePath);
     if (!fileExists) {
       return {
-        undoExecute: () => Promise.resolve(),
         success: false,
         message: `File does not exist: ${target_file}`,
         error: 'FILE_NOT_FOUND',
@@ -119,7 +114,6 @@ export async function readFileTool(
 
       if (!sizeCheck.isWithinLimit) {
         return {
-          undoExecute: () => Promise.resolve(),
           success: false,
           message:
             sizeCheck.error || `File is too large to read: ${target_file}`,
@@ -143,7 +137,6 @@ export async function readFileTool(
 
     if (!readResult.success) {
       return {
-        undoExecute: () => Promise.resolve(),
         success: false,
         message: `Failed to read file: ${target_file}`,
         error: readResult.error || 'READ_ERROR',
@@ -162,7 +155,6 @@ export async function readFileTool(
     }
 
     return {
-      undoExecute: () => Promise.resolve(),
       success: true,
       message,
       result: {
@@ -172,7 +164,6 @@ export async function readFileTool(
     };
   } catch (error) {
     return {
-      undoExecute: () => Promise.resolve(),
       success: false,
       message: `Failed to read file: ${target_file}`,
       error: error instanceof Error ? error.message : 'Unknown error',

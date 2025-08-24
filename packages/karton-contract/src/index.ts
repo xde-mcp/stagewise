@@ -58,5 +58,9 @@ export type KartonContract = {
     approveToolCall: (toolCallId: string) => Promise<void>;
     rejectToolCall: (toolCallId: string) => Promise<void>;
     refreshSubscription: () => Promise<void>;
+    undoToolCallsUntilUserMessage: (
+      userMessageId: string,
+      chatId: string,
+    ) => Promise<void>;
   };
 };
