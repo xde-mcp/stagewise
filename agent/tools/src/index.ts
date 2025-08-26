@@ -1,8 +1,4 @@
-import type {
-  Tools,
-  ToolResult,
-  ToolWithMetadata,
-} from '@stagewise/agent-types';
+import type { ToolResult, ToolWithMetadata } from '@stagewise/agent-types';
 import { tool, type InferUITools, type Tool, type ToolUIPart } from 'ai';
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
 import {
@@ -152,7 +148,7 @@ export function cliTools(clientRuntime: ClientRuntime): CliToolsReturn {
         },
       }),
     ),
-  } satisfies Tools satisfies CliToolsReturn;
+  } satisfies CliToolsReturn;
 }
 
 export type CliTools = CliToolsReturn;
