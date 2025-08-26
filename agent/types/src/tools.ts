@@ -86,7 +86,7 @@ export type ToolResult = {
   success: boolean;
   error?: string;
   message?: string;
-  result?: any;
+  result?: unknown;
   diff?: FileDiff;
 };
 

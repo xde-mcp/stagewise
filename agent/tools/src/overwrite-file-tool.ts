@@ -6,6 +6,7 @@ import type {
 } from '@stagewise/agent-types';
 import { z } from 'zod';
 import { prepareDiffContent } from './file-utils';
+import type { PreparedDiffContent } from './file-utils';
 
 export const DESCRIPTION =
   'Overwrite the entire content of a file. Creates the file if it does not exist, along with any necessary directories.';
@@ -130,8 +131,8 @@ export async function overwriteFileTool(
     const message = `Successfully ${action} file: ${relPath}`;
 
     // Prepare content for diff (check for binary/large files)
-    let beforePrepared = null;
-    let afterPrepared = null;
+    let beforePrepared: PreparedDiffContent | null = null;
+    let afterPrepared: PreparedDiffContent | null = null;
 
     if (fileExists && originalContent) {
       beforePrepared = await prepareDiffContent(
