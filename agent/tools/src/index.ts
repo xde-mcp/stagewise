@@ -70,7 +70,7 @@ function clientSideTool<T extends Tool>(tool: T): ToolWithMetadata<T> {
 }
 
 // Define explicit return type to avoid exposing internal zod types
-type ToolsAiReturn = {
+type CliToolsReturn = {
   overwriteFileTool: ToolWithMetadata<Tool<OverwriteFileParams, ToolResult>>;
   readFileTool: ToolWithMetadata<Tool<ReadFileParams, ToolResult>>;
   listFilesTool: ToolWithMetadata<Tool<ListFilesParams, ToolResult>>;
@@ -80,7 +80,7 @@ type ToolsAiReturn = {
   deleteFileTool: ToolWithMetadata<Tool<DeleteFileParams, ToolResult>>;
 };
 
-export function toolsAi(clientRuntime: ClientRuntime): ToolsAiReturn {
+export function cliTools(clientRuntime: ClientRuntime): CliToolsReturn {
   return {
     overwriteFileTool: clientSideTool(
       tool({
@@ -152,9 +152,9 @@ export function toolsAi(clientRuntime: ClientRuntime): ToolsAiReturn {
         },
       }),
     ),
-  } satisfies Tools satisfies ToolsAiReturn;
+  } satisfies Tools satisfies CliToolsReturn;
 }
 
-export type ToolsAi = ToolsAiReturn;
-export type UITools = InferUITools<ToolsAi>;
+export type CliTools = CliToolsReturn;
+export type UITools = InferUITools<CliTools>;
 export type ToolPart = ToolUIPart<UITools>;

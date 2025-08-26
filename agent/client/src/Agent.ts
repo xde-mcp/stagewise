@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { toolsAi as clientTools } from '@stagewise/agent-tools';
+import { cliTools } from '@stagewise/agent-tools';
 import { AgentErrorType } from '@stagewise/karton-contract';
 import { convertCreditsToSubscriptionCredits } from './utils/convert-credits-to-subscription-credits.js';
 import type { KartonContract, History } from '@stagewise/karton-contract';
@@ -47,7 +47,7 @@ function isToolCallType(type: string): type is ToolCallType {
   return type === 'dynamic-tool' || type.startsWith('tool-');
 }
 
-type Tools = ReturnType<typeof clientTools>;
+type Tools = ReturnType<typeof cliTools>;
 type AsyncIterableItem<T> = T extends AsyncIterable<infer U> ? U : never;
 type ReturnValue<T> = T extends AsyncGenerator<infer _U, infer V, infer _W>
   ? V
@@ -264,7 +264,7 @@ export class Agent {
   }) {
     const {
       clientRuntime,
-      tools = clientTools(clientRuntime),
+      tools = cliTools(clientRuntime),
       accessToken,
       refreshToken,
       onEvent,
