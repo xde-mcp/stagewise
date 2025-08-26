@@ -13,10 +13,13 @@ export function mapZodToolsToJsonSchemaTools(
     (acc, [key, value]) => {
       acc[key] = {
         description: value.description ?? `Tool: ${key}`,
-        inputSchema: z.toJSONSchema(value.inputSchema as z.ZodType) as any,
+        inputSchema: z.toJSONSchema(value.inputSchema as z.ZodType),
       };
       return acc;
     },
-    {} as Record<string, { description: string; inputSchema: any }>,
+    {} as Record<
+      string,
+      { description: string; inputSchema: z.core.JSONSchema.BaseSchema }
+    >,
   );
 }
