@@ -161,18 +161,22 @@ export async function overwriteFileTool(
         afterContentSize: afterPrepared.contentSize,
       };
 
-      if (!beforePrepared?.omitted && !afterPrepared.omitted) {
+      if (beforePrepared && !beforePrepared.omitted && !afterPrepared.omitted) {
         diff = {
           ...baseModifyDiff,
-          before: beforePrepared!.content!,
+          before: beforePrepared.content!,
           after: afterPrepared.content!,
           beforeOmitted: false,
           afterOmitted: false,
         };
-      } else if (!beforePrepared?.omitted && afterPrepared.omitted) {
+      } else if (
+        beforePrepared &&
+        !beforePrepared.omitted &&
+        afterPrepared.omitted
+      ) {
         diff = {
           ...baseModifyDiff,
-          before: beforePrepared!.content!,
+          before: beforePrepared.content!,
           beforeOmitted: false,
           afterOmitted: true,
         };

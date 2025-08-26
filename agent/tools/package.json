@@ -21,8 +21,10 @@
     "lint": "echo 'No linting for tools-client package'",
     "type-check": "tsc --noEmit"
   },
+  "dependencies": {
+    "ai": "5.0.9"
+  },
   "devDependencies": {
-    "ai": "5.0.9",
     "@stagewise/agent-runtime-interface": "workspace:*",
     "@stagewise/agent-types": "workspace:*",
     "esbuild": "0.25.9",

@@ -1,7 +1,7 @@
 import type { KartonContract, ChatMessage } from '@stagewise/karton-contract';
 import type { KartonServer } from '@stagewise/karton/server';
 import type { ToolCallProcessingResult } from './tool-call-utils.js';
-import type { InferUIMessageChunk } from 'ai';
+import type { InferUIMessageChunk, ToolUIPart } from 'ai';
 
 function messageExists(
   karton: KartonServer<KartonContract>,
@@ -105,9 +105,7 @@ export function appendToolInputToMessage(
           createdAt: new Date(),
         },
       });
-      return;
-    }
-    if (partIndex >= message.parts.length) {
+    } else if (partIndex >= message.parts.length) {
       // If the current part index is greater than the number of parts, create a new one
       message.parts.push({
         type: `tool-${chunk.toolName}` as any,
@@ -119,15 +117,15 @@ export function appendToolInputToMessage(
     } else {
       // If the message has parts, append to the existing one
       const part = message.parts[partIndex];
-      if (
-        !part ||
-        part.type !== 'dynamic-tool' ||
-        part.type !== `tool-${chunk.toolName}`
-      )
-        return;
+      if (!part) return; // this should never happen
 
-      part.state = 'input-available';
-      part.input = chunk.input;
+      if (
+        part.type === 'dynamic-tool' ||
+        part.type === `tool-${chunk.toolName}`
+      ) {
+        (part as ToolUIPart).state = 'input-available';
+        (part as ToolUIPart).input = chunk.input;
+      }
     }
   });
 }

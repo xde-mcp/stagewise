@@ -152,7 +152,11 @@ export async function prepareDiffContent(
   filePath: string,
   clientRuntime: ClientRuntime,
 ): Promise<PreparedDiffContent> {
-  const contentSize = Buffer.byteLength(content, 'utf-8');
+  // Use TextEncoder for cross-platform byte length calculation
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const encoded = encoder.encode(content);
+  const contentSize = encoded.byteLength;
 
   // Check if file is binary
   const isBinary = await clientRuntime.fileSystem.isBinary(filePath);
@@ -170,16 +174,29 @@ export async function prepareDiffContent(
   if (contentSize > maxDiffBytes) {
     // Truncate the content to fit within the limit
     const truncationIndicator = '\n... (content truncated)';
-    const truncateAt =
-      maxDiffBytes - Buffer.byteLength(truncationIndicator, 'utf-8');
+    const indicatorBytes = encoder.encode(truncationIndicator);
+    const budget = Math.max(0, maxDiffBytes - indicatorBytes.byteLength);
 
-    // Find a reasonable truncation point (try to break at a newline)
-    let truncatedContent = content.substring(0, truncateAt);
-    const lastNewline = truncatedContent.lastIndexOf('\n');
-    if (lastNewline > truncateAt * 0.8) {
-      // If there's a newline in the last 20%, break there
-      truncatedContent = truncatedContent.substring(0, lastNewline);
+    // Take a byte-accurate slice
+    let slice = encoded.subarray(0, budget);
+
+    // Try to find a newline in the last 20% of the slice
+    const backtrackWindow = Math.floor(slice.byteLength * 0.2);
+    const viewStart = Math.max(0, slice.byteLength - backtrackWindow);
+    const recent = slice.subarray(viewStart);
+    const recentStr = decoder.decode(recent);
+    const lastNewlineInRecent = recentStr.lastIndexOf('\n');
+
+    if (lastNewlineInRecent !== -1) {
+      // Calculate the byte position of the newline in the original slice
+      const bytesBeforeNewline = encoder.encode(
+        recentStr.slice(0, lastNewlineInRecent),
+      ).byteLength;
+      const newlinePosInSlice = viewStart + bytesBeforeNewline;
+      slice = slice.subarray(0, newlinePosInSlice);
     }
+
+    const truncatedContent = decoder.decode(slice);
 
     return {
       content: truncatedContent + truncationIndicator,
