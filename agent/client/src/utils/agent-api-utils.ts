@@ -1,5 +1,7 @@
-import type { Tools } from '@stagewise/agent-types';
+import type { cliTools } from '@stagewise/agent-tools';
 import { z } from 'zod';
+
+type Tools = ReturnType<typeof cliTools>;
 
 /**
  * Maps Zod schema tools to JSON schema format for the API

@@ -48,6 +48,9 @@ importers:
       ai:
         specifier: 5.0.9
         version: 5.0.9(zod@4.0.17)
+      diff:
+        specifier: ^8.0.2
+        version: 8.0.2
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
@@ -208,6 +211,10 @@ importers:
         version: 5.9.2
 
   agent/tools:
+    dependencies:
+      ai:
+        specifier: 5.0.9
+        version: 5.0.9(zod@4.0.17)
     devDependencies:
       '@stagewise/agent-runtime-interface':
         specifier: workspace:*
@@ -894,6 +901,9 @@ importers:
 
   packages/karton-contract:
     dependencies:
+      '@stagewise/agent-tools':
+        specifier: workspace:*
+        version: link:../../agent/tools
       '@stagewise/agent-types':
         specifier: workspace:*
         version: link:../../agent/types
@@ -1318,6 +1328,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      diff:
+        specifier: ^8.0.2
+        version: 8.0.2
       lucide-react:
         specifier: ^0.523.0
         version: 0.523.0(react@19.1.1)

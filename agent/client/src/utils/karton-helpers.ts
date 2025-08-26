@@ -1,7 +1,7 @@
 import type { KartonContract, ChatMessage } from '@stagewise/karton-contract';
 import type { KartonServer } from '@stagewise/karton/server';
 import type { ToolCallProcessingResult } from './tool-call-utils.js';
-import type { InferUIMessageChunk } from 'ai';
+import type { InferUIMessageChunk, ToolUIPart } from 'ai';
 
 function messageExists(
   karton: KartonServer<KartonContract>,
@@ -65,12 +65,6 @@ export function appendTextDeltaToMessage(
 
       const textPart = message.parts[partIndex];
       if (!textPart || textPart.type !== 'text') {
-        console.error(
-          '\n\nText part not found or not a text part\n\n',
-          partIndex,
-          message.parts,
-          messageId,
-        );
         return;
       }
 
@@ -100,7 +94,7 @@ export function appendToolInputToMessage(
         id: messageId,
         parts: [
           {
-            type: 'dynamic-tool',
+            type: `tool-${chunk.toolName}` as any, // reconstruct the type from the tool name
             state: 'input-available',
             input: chunk.input,
             toolCallId: chunk.toolCallId,
@@ -111,12 +105,10 @@ export function appendToolInputToMessage(
           createdAt: new Date(),
         },
       });
-      return;
-    }
-    if (partIndex >= message.parts.length) {
+    } else if (partIndex >= message.parts.length) {
       // If the current part index is greater than the number of parts, create a new one
       message.parts.push({
-        type: 'dynamic-tool',
+        type: `tool-${chunk.toolName}` as any,
         toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
         state: 'input-available',
@@ -125,20 +117,15 @@ export function appendToolInputToMessage(
     } else {
       // If the message has parts, append to the existing one
       const part = message.parts[partIndex];
-      if (!part || part.type !== 'dynamic-tool')
-        return console.error(
-          'Part is not a dynamic tool',
-          part,
-          'partIndex:',
-          partIndex,
-          'message:',
-          message.parts,
-          'messageId:',
-          messageId,
-        );
+      if (!part) return; // this should never happen
 
-      part.state = 'input-available';
-      part.input = chunk.input;
+      if (
+        part.type === 'dynamic-tool' ||
+        part.type === `tool-${chunk.toolName}`
+      ) {
+        (part as ToolUIPart).state = 'input-available';
+        (part as ToolUIPart).input = chunk.input;
+      }
     }
   });
 }
@@ -157,22 +144,18 @@ export function attachToolOutputToMessage(
       const part = message.parts.find(
         (p) => 'toolCallId' in p && p.toolCallId === result.toolCallId,
       );
-      if (part?.type !== 'dynamic-tool') {
-        console.error(
-          'Part is not a dynamic tool',
-          part,
-          'message:',
-          message.parts,
-        );
-        return;
-      }
+      if (!part) continue;
+      if (part.type !== 'dynamic-tool' && !part.type.startsWith('tool-'))
+        continue;
+
+      const toolPart = part as ToolUIPart;
 
       if (result.success) {
-        part.state = 'output-available';
-        part.output = result.result;
+        toolPart.state = 'output-available';
+        toolPart.output = result.result;
       } else {
-        part.state = 'output-error';
-        part.errorText = result.error?.message;
+        toolPart.state = 'output-error';
+        toolPart.errorText = result.error?.message;
       }
     }
   });

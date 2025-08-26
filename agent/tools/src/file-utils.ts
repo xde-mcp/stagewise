@@ -129,3 +129,88 @@ export class ContentSizeTracker {
     return `Processed ${this.fileCount} files, skipped ${skippedCount} large files`;
   }
 }
+
+/**
+ * Result of preparing content for diff
+ */
+export interface PreparedDiffContent {
+  content?: string;
+  truncated: boolean;
+  omitted: boolean;
+  contentSize: number;
+}
+
+/**
+ * Prepares file content for inclusion in diffs, handling binary and large files safely
+ * @param content The file content to prepare
+ * @param filePath The file path (for binary detection)
+ * @param clientRuntime The client runtime for file operations
+ * @returns Prepared content with metadata about how it was handled
+ */
+export async function prepareDiffContent(
+  content: string,
+  filePath: string,
+  clientRuntime: ClientRuntime,
+): Promise<PreparedDiffContent> {
+  // Use TextEncoder for cross-platform byte length calculation
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const encoded = encoder.encode(content);
+  const contentSize = encoded.byteLength;
+
+  // Check if file is binary
+  const isBinary = await clientRuntime.fileSystem.isBinary(filePath);
+  if (isBinary) {
+    return {
+      content: undefined,
+      truncated: false,
+      omitted: true,
+      contentSize,
+    };
+  }
+
+  // Check if content exceeds the max diff size
+  const maxDiffBytes = FILE_SIZE_LIMITS.MAX_DIFF_BYTES || 100 * 1024; // 100KB default
+  if (contentSize > maxDiffBytes) {
+    // Truncate the content to fit within the limit
+    const truncationIndicator = '\n... (content truncated)';
+    const indicatorBytes = encoder.encode(truncationIndicator);
+    const budget = Math.max(0, maxDiffBytes - indicatorBytes.byteLength);
+
+    // Take a byte-accurate slice
+    let slice = encoded.subarray(0, budget);
+
+    // Try to find a newline in the last 20% of the slice
+    const backtrackWindow = Math.floor(slice.byteLength * 0.2);
+    const viewStart = Math.max(0, slice.byteLength - backtrackWindow);
+    const recent = slice.subarray(viewStart);
+    const recentStr = decoder.decode(recent);
+    const lastNewlineInRecent = recentStr.lastIndexOf('\n');
+
+    if (lastNewlineInRecent !== -1) {
+      // Calculate the byte position of the newline in the original slice
+      const bytesBeforeNewline = encoder.encode(
+        recentStr.slice(0, lastNewlineInRecent),
+      ).byteLength;
+      const newlinePosInSlice = viewStart + bytesBeforeNewline;
+      slice = slice.subarray(0, newlinePosInSlice);
+    }
+
+    const truncatedContent = decoder.decode(slice);
+
+    return {
+      content: truncatedContent + truncationIndicator,
+      truncated: true,
+      omitted: false,
+      contentSize,
+    };
+  }
+
+  // Content is safe to include in full
+  return {
+    content,
+    truncated: false,
+    omitted: false,
+    contentSize,
+  };
+}
