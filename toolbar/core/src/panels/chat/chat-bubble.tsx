@@ -135,6 +135,14 @@ export function ChatBubble({
             <TimeAgo date={msg.metadata.createdAt} />
           </div>
           {msg.parts.map((part, index) => {
+            if (part.type === 'dynamic-tool' || part.type.startsWith('tool-')) {
+              return (
+                <ToolPartItem
+                  key={`content_part_${index.toString()}`}
+                  toolPart={part as ToolPart | DynamicToolUIPart}
+                />
+              );
+            }
             switch (part.type) {
               case 'text':
                 return (
@@ -155,20 +163,6 @@ export function ChatBubble({
                   <FilePartItem
                     key={`content_part_${index.toString()}`}
                     filePart={part}
-                  />
-                );
-              case 'tool-deleteFileTool':
-              case 'tool-globTool':
-              case 'tool-grepSearchTool':
-              case 'tool-listFilesTool':
-              case 'tool-readFileTool':
-              case 'tool-multiEditTool':
-              case 'tool-overwriteFileTool':
-              case 'dynamic-tool':
-                return (
-                  <ToolPartItem
-                    key={`content_part_${index.toString()}`}
-                    toolPart={part}
                   />
                 );
               default:
