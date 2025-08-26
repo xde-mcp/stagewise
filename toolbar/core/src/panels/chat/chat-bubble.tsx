@@ -15,6 +15,7 @@ import {
   BrainIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   CogIcon,
   EyeIcon,
   FileIcon,
@@ -23,7 +24,7 @@ import {
   TrashIcon,
   XIcon,
 } from 'lucide-react';
-import { memo, useMemo, useCallback, Fragment } from 'react';
+import { memo, useMemo, useCallback, Fragment, useState } from 'react';
 import TimeAgo from 'react-timeago';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useChatState } from '@/hooks/use-chat-state';
@@ -37,7 +38,8 @@ import {
   Transition,
 } from '@headlessui/react';
 import ReactMarkdown from 'react-markdown';
-import { getToolDescription } from './chat-bubble-tool-diff';
+import { getToolDescription, isFileEditTool } from './chat-bubble-tool-diff';
+import { diffLines } from 'diff';
 
 export function ChatBubble({
   message: msg,
@@ -313,6 +315,132 @@ const FilePartItem = memo(({ filePart }: { filePart: FileUIPart }) => {
   );
 });
 
+const DiffDisplay = memo(
+  ({ toolPart }: { toolPart: ToolPart | DynamicToolUIPart }) => {
+    if (!isFileEditTool(toolPart) || !toolPart.output?.diff) return null;
+
+    const { diff } = toolPart.output;
+
+    // Handle different diff types
+    let beforeContent = '';
+    let afterContent = '';
+    let isOmitted = false;
+
+    if (diff.changeType === 'create') {
+      if ('omitted' in diff && diff.omitted) {
+        isOmitted = true;
+      } else if ('after' in diff) {
+        afterContent = diff.after;
+      }
+    } else if (diff.changeType === 'delete') {
+      if ('omitted' in diff && diff.omitted) {
+        isOmitted = true;
+      } else if ('before' in diff) {
+        beforeContent = diff.before;
+      }
+    } else if (diff.changeType === 'modify') {
+      if (diff.beforeOmitted && diff.afterOmitted) {
+        isOmitted = true;
+      } else {
+        if ('before' in diff && !diff.beforeOmitted) {
+          beforeContent = diff.before;
+        }
+        if ('after' in diff && !diff.afterOmitted) {
+          afterContent = diff.after;
+        }
+        if (diff.beforeOmitted || diff.afterOmitted) {
+          isOmitted = true;
+        }
+      }
+    }
+
+    // Don't show diff if content is omitted
+    if (isOmitted) {
+      return (
+        <div className="mt-2 rounded-lg bg-zinc-100/50 p-2 text-xs text-zinc-600">
+          <span className="italic">Diff content omitted (file too large)</span>
+        </div>
+      );
+    }
+
+    const changes = diffLines(beforeContent, afterContent);
+
+    // Process changes to show context lines
+    const processedChanges: Array<{
+      type: 'add' | 'remove' | 'context';
+      lines: string[];
+    }> = [];
+
+    changes.forEach((part, index) => {
+      const lines = (part.value || '').split('\n').filter((l, i, arr) => {
+        // Remove empty last line if it's the result of split
+        return !(i === arr.length - 1 && l === '');
+      });
+
+      if (part.added) {
+        processedChanges.push({ type: 'add', lines });
+      } else if (part.removed) {
+        processedChanges.push({ type: 'remove', lines });
+      } else {
+        // Context lines - show only 1 line before and after changes
+        if (lines.length > 0) {
+          const contextLines: string[] = [];
+
+          // If this is the first part or last part, show 1 line
+          if (index === 0 && lines.length > 0) {
+            contextLines.push(lines[lines.length - 1]);
+          } else if (index === changes.length - 1 && lines.length > 0) {
+            contextLines.push(lines[0]);
+          } else if (lines.length === 1) {
+            contextLines.push(lines[0]);
+          } else if (lines.length > 1) {
+            // Show last line of context before and first line after
+            contextLines.push(lines[lines.length - 1]);
+            if (index < changes.length - 1) {
+              contextLines.push(lines[0]);
+            }
+          }
+
+          if (contextLines.length > 0) {
+            processedChanges.push({ type: 'context', lines: contextLines });
+          }
+        }
+      }
+    });
+
+    return (
+      <div className="mt-2 overflow-x-auto rounded-lg bg-zinc-900 font-mono text-xs">
+        <div className="min-w-fit">
+          {processedChanges.map((change, idx) => (
+            <div key={`${change.type}-${idx}-${change.lines.length}`}>
+              {change.lines.map((line, lineIdx) => (
+                <div
+                  key={`${change.type}-${idx}-${lineIdx}-${line.slice(0, 20)}`}
+                  className={cn(
+                    'whitespace-pre px-2 py-0.5',
+                    change.type === 'add' && 'bg-green-900/30 text-green-300',
+                    change.type === 'remove' && 'bg-red-900/30 text-red-300',
+                    change.type === 'context' && 'text-zinc-400',
+                  )}
+                >
+                  <span className="select-none opacity-50">
+                    {change.type === 'add'
+                      ? '+'
+                      : change.type === 'remove'
+                        ? '-'
+                        : ' '}
+                  </span>{' '}
+                  {line}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  },
+);
+
 const ToolPartItem = memo(
   ({ toolPart }: { toolPart: ToolPart | DynamicToolUIPart }) => {
     const approveToolCall = useKartonProcedure((p) => p.approveToolCall);
@@ -320,6 +448,7 @@ const ToolPartItem = memo(
     const toolCallApprovalRequests = useKartonState(
       (s) => s.toolCallApprovalRequests,
     );
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const requiresApproval = useMemo(
       () =>
@@ -327,6 +456,17 @@ const ToolPartItem = memo(
         (toolPart.state === 'output-available' ||
           toolPart.state === 'output-error'),
       [toolCallApprovalRequests, toolPart.toolCallId, toolPart.state],
+    );
+
+    const canShowDiff = useMemo(
+      () =>
+        isFileEditTool(toolPart) &&
+        toolPart.state === 'output-available' &&
+        toolPart.output?.diff &&
+        (toolPart.output.diff.changeType === 'modify' ||
+          toolPart.output.diff.changeType === 'create' ||
+          toolPart.output.diff.changeType === 'delete'),
+      [toolPart],
     );
 
     return (
@@ -373,7 +513,24 @@ const ToolPartItem = memo(
             </div>
           )}
           {toolPart.state === 'output-available' && (
-            <CheckIcon className="size-3 text-green-600" />
+            <>
+              <CheckIcon className="size-3 text-green-600" />
+              {canShowDiff && (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="transition-transform duration-150 hover:scale-110"
+                  aria-label="Toggle diff view"
+                >
+                  <ChevronRightIcon
+                    className={cn(
+                      'size-3 text-zinc-600 transition-transform',
+                      isExpanded && 'rotate-90',
+                    )}
+                  />
+                </button>
+              )}
+            </>
           )}
           {toolPart.state === 'output-error' && (
             <XIcon className="size-3 text-rose-600" />
@@ -384,6 +541,7 @@ const ToolPartItem = memo(
               <CogIcon className="size-3 animate-spin text-blue-600" />
             )}
         </div>
+        {isExpanded && canShowDiff && <DiffDisplay toolPart={toolPart} />}
       </div>
     );
   },
