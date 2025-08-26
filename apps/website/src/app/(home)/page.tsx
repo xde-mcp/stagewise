@@ -238,7 +238,7 @@ export default function Home() {
           <ScrollReveal delay={300}>
             <div className="mx-auto mt-8 max-w-3xl scale-[1.02] transform overflow-hidden rounded-xl border border-zinc-900/50 shadow-[0_0_40px_rgba(0,0,0,0.25)] transition-transform duration-500 dark:border-zinc-100/50 dark:shadow-[0_0_40px_rgba(255,255,255,0.1)]">
               <video
-                src="https://github.com/stagewise-io/assets/raw/1aeae6c24e0aedc959ae3fb730ea569c984e3a13/edited/0-5-0-custom-agent/github-projects-demo.mp4"
+                src="https://github.com/stagewise-io/assets/raw/b6d57224fdc78a06a5a704efe85f0bde09d80cb7/edited/0-6-0-undo/landing-demo-undo.mp4"
                 width={1200}
                 height={675}
                 className="w-full"
