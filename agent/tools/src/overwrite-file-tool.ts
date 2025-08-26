@@ -52,6 +52,7 @@ export async function overwriteFileTool(
     // Check if file exists and read original content for undo capability
     const fileExists = await clientRuntime.fileSystem.fileExists(absolutePath);
     let originalContent: string | undefined;
+    let beforePrepared: PreparedDiffContent | null = null;
 
     if (fileExists) {
       const readResult = await clientRuntime.fileSystem.readFile(absolutePath);
@@ -63,6 +64,11 @@ export async function overwriteFileTool(
         };
       }
       originalContent = readResult.content;
+      beforePrepared = await prepareDiffContent(
+        originalContent,
+        absolutePath,
+        clientRuntime,
+      );
     }
 
     // Clean up content - remove markdown code blocks if present
@@ -131,18 +137,7 @@ export async function overwriteFileTool(
     const message = `Successfully ${action} file: ${relPath}`;
 
     // Prepare content for diff (check for binary/large files)
-    let beforePrepared: PreparedDiffContent | null = null;
-    let afterPrepared: PreparedDiffContent | null = null;
-
-    if (fileExists && originalContent) {
-      beforePrepared = await prepareDiffContent(
-        originalContent,
-        absolutePath,
-        clientRuntime,
-      );
-    }
-
-    afterPrepared = await prepareDiffContent(
+    const afterPrepared = await prepareDiffContent(
       cleanContent,
       absolutePath,
       clientRuntime,
