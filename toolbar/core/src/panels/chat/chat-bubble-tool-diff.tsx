@@ -29,7 +29,7 @@ const getFallbackToolDescription = (toolPart: ToolPart | DynamicToolUIPart) => {
   return <span className="text-black/80 text-xs">{getToolName(toolPart)}</span>;
 };
 
-export const getToolName = (toolPart: ToolPart | DynamicToolUIPart) => {
+export const getToolName = (toolPart: ToolPart | DynamicToolUIPart): string => {
   switch (toolPart.type) {
     case 'tool-readFileTool':
       return 'Reading Files';
@@ -53,6 +53,8 @@ export const getToolName = (toolPart: ToolPart | DynamicToolUIPart) => {
     }
     case 'dynamic-tool':
       return toolPart.toolName;
+    default:
+      return 'Unknown Tool';
   }
 };
 
