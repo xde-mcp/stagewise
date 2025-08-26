@@ -1,5 +1,14 @@
 # @stagewise/client-prompt-snippets
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [8026be4]
+  - @stagewise/agent-runtime-interface@0.2.0
+  - @stagewise/agent-types@0.3.0
+  - @stagewise/agent-project-information@0.1.1
+
 ## 0.1.4
 
 ### Patch Changes

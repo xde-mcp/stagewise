@@ -1,5 +1,11 @@
 # @stagewise/agent-runtime-node
 
+## 0.2.0
+
+### Minor Changes
+
+- 8026be4: Added file diff information to tool results.
+
 ## 0.1.1
 
 ### Patch Changes

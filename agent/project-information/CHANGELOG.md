@@ -1,5 +1,12 @@
 # @stagewise/agent-project-information
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [8026be4]
+  - @stagewise/agent-runtime-interface@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
