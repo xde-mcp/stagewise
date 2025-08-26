@@ -145,24 +145,17 @@ export function attachToolOutputToMessage(
         (p) => 'toolCallId' in p && p.toolCallId === result.toolCallId,
       );
       if (!part) continue;
-      if (
-        part.type !== 'dynamic-tool' &&
-        part.type !== 'tool-deleteFileTool' &&
-        part.type !== 'tool-overwriteFileTool' &&
-        part.type !== 'tool-globTool' &&
-        part.type !== 'tool-grepSearchTool' &&
-        part.type !== 'tool-listFilesTool' &&
-        part.type !== 'tool-multiEditTool' &&
-        part.type !== 'tool-readFileTool'
-      )
+      if (part.type !== 'dynamic-tool' && !part.type.startsWith('tool-'))
         continue;
 
+      const toolPart = part as ToolUIPart;
+
       if (result.success) {
-        part.state = 'output-available';
-        part.output = result.result;
+        toolPart.state = 'output-available';
+        toolPart.output = result.result;
       } else {
-        part.state = 'output-error';
-        part.errorText = result.error?.message;
+        toolPart.state = 'output-error';
+        toolPart.errorText = result.error?.message;
       }
     }
   });
