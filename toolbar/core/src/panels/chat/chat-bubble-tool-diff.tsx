@@ -13,16 +13,16 @@ export type ToolPartWithDiff = Extract<
   }
 >;
 
-export const hasDiff = (
+export const isFileEditTool = (
   toolPart: ToolPart | DynamicToolUIPart,
 ): toolPart is ToolPartWithDiff => {
   if (
-    toolPart.type !== 'tool-deleteFileTool' &&
-    toolPart.type !== 'tool-multiEditTool' &&
-    toolPart.type !== 'tool-overwriteFileTool'
+    toolPart.type === 'tool-deleteFileTool' ||
+    toolPart.type === 'tool-multiEditTool' ||
+    toolPart.type === 'tool-overwriteFileTool'
   )
-    return false;
-  else return true;
+    return true;
+  else return false;
 };
 
 const getFallbackToolDescription = (toolPart: ToolPart | DynamicToolUIPart) => {
@@ -61,7 +61,12 @@ const getFileName = (path: string) => {
 };
 
 export const getToolDescription = (toolPart: ToolPart | DynamicToolUIPart) => {
-  if (!hasDiff(toolPart)) return getFallbackToolDescription(toolPart);
+  if (
+    !isFileEditTool(toolPart) ||
+    toolPart.state !== 'output-available' ||
+    toolPart.output.diff === undefined
+  )
+    return getFallbackToolDescription(toolPart);
 
   switch (toolPart.output.diff.changeType) {
     case 'create': {
