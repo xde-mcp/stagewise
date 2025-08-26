@@ -1,5 +1,12 @@
 # @stagewise/toolbar
 
+## 0.11.0
+
+### Minor Changes
+
+- 8026be4: Added file diff information to tool results.
+- f9ecf2f: Added a file edit diff component in the toolbar.
+
 ## 0.10.0
 
 ### Minor Changes
