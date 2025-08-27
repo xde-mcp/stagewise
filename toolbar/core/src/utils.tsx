@@ -451,6 +451,15 @@ export const getSelectedElementInfo = (
   };
 };
 
+export async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export const collectUserMessageMetadata = (
   selectedElements: SelectedElement[],
   sentByPlugin?: boolean,
@@ -506,5 +515,92 @@ export const getDataUriForData = (data: string) => {
   } catch (error) {
     console.error('Failed to create blob URL from base64 data:', error);
     return '';
+  }
+};
+
+export const isAnthropicSupportedFileType = (mimeType: string): boolean => {
+  const supportedTypes = [
+    // Images
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    // Documents
+    'application/pdf',
+    'text/plain',
+    'text/markdown',
+  ];
+
+  return supportedTypes.includes(mimeType.toLowerCase());
+};
+
+export const isAnthropicSupportedFile = (
+  file: File,
+): { supported: boolean; reason?: string } => {
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
+
+  // Check file size first
+  if (file.size > MAX_FILE_SIZE) {
+    const sizeMB = Math.round(file.size / (1024 * 1024));
+    return {
+      supported: false,
+      reason: `File too large (${sizeMB}MB). Maximum size is 20MB`,
+    };
+  }
+
+  // Check file type
+  if (!isAnthropicSupportedFileType(file.type)) {
+    return {
+      supported: false,
+      reason: 'Unsupported file type',
+    };
+  }
+
+  return { supported: true };
+};
+
+export const openFileUrl = async (url: string, filename?: string) => {
+  // Handle opening file URLs, converting data URLs to blob URLs if necessary
+  if (!url) return;
+
+  try {
+    // Check if it's a data URL
+    if (url.startsWith('data:')) {
+      // Use fetch to stream-decode data URLs to Blob
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Open the blob URL in a new tab with security flags
+      const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+
+      // Clean up blob URL after a delay
+      if (newWindow) {
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 1000);
+      } else {
+        // If popup was blocked, try downloading instead
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename || 'file';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up blob URL
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 100);
+      }
+    } else {
+      // Regular URL - open normally with security flags
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (error) {
+    console.error('Failed to open file URL:', error);
+    // Fallback to regular window.open with security flags
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 };

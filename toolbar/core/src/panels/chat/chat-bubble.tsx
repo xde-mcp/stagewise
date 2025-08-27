@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { cn } from '@/utils';
+import { cn, openFileUrl } from '@/utils';
 import type {
   ToolPart,
   ChatMessage,
@@ -284,26 +284,25 @@ const ReasoningPartItem = memo(
 );
 
 const FilePartItem = memo(({ filePart }: { filePart: FileUIPart }) => {
-  if (filePart.type.startsWith('image/')) {
-    return (
-      <a href={filePart.url} target="_blank" rel="noopener noreferrer">
-        <img
-          src={filePart.url}
-          alt={filePart.filename ?? 'Generated file'}
-          className="h-auto max-w-full rounded-lg"
-        />
-      </a>
-    );
-  }
+  const isImage = filePart.mediaType.startsWith('image/');
+
   return (
     <div
       role="button"
       className="flex w-full cursor-pointer items-center gap-2 rounded-lg bg-black/5 p-2 hover:bg-black/10"
       onClick={() => {
-        window.open(filePart.url, '_blank');
+        void openFileUrl(filePart.url, filePart.filename);
       }}
     >
-      <FileIcon className="size-4" />
+      {isImage ? (
+        <img
+          src={filePart.url}
+          alt={filePart.filename ?? 'Generated file'}
+          className="size-4 rounded object-cover"
+        />
+      ) : (
+        <FileIcon className="size-4" />
+      )}
       <span className="text-xs">{filePart.filename ?? 'Generated file'}</span>
     </div>
   );
