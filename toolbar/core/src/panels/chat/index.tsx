@@ -217,7 +217,7 @@ export function ChatPanel() {
       className={cn(
         anyMessageInChat
           ? 'h-[35vh] max-h-[50vh] min-h-[20vh]'
-          : '!h-[calc-size(auto,size)] min-h-0',
+          : '!h-auto min-h-0',
         isDragging && 'ring-1 ring-blue-500/50',
       )}
     >
@@ -235,7 +235,7 @@ export function ChatPanel() {
           className={cn(
             'block px-1 py-0',
             'h-full max-h-96 min-h-64',
-            'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_48px,black_calc(95%-16px),transparent_calc(100%-16px))]',
+            'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_48px,black_calc(95%_-_16px),transparent_calc(100%_-_16px))]',
             'overflow-hidden rounded-[inherit]',
           )}
         >

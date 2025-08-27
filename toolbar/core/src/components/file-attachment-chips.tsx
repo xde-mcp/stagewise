@@ -51,8 +51,14 @@ function FileAttachmentChip({ attachment, onDelete }: FileAttachmentChipProps) {
   const fileName = useMemo(() => {
     const name = attachment.file.name;
     if (name.length > 20) {
-      const extension = name.split('.').pop();
-      return `${name.substring(0, 15)}...${extension ? `.${extension}` : ''}`;
+      const lastDot = name.lastIndexOf('.');
+      const base = lastDot > 0 ? name.substring(0, lastDot) : name;
+      const ext = lastDot > 0 ? name.substring(lastDot) : '';
+
+      if (base.length > 15) {
+        return `${base.substring(0, 15)}...${ext}`;
+      }
+      return `${base}${ext}`;
     }
     return name;
   }, [attachment.file.name]);

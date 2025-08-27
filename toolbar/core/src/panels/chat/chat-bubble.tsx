@@ -291,7 +291,7 @@ const FilePartItem = memo(({ filePart }: { filePart: FileUIPart }) => {
       role="button"
       className="flex w-full cursor-pointer items-center gap-2 rounded-lg bg-black/5 p-2 hover:bg-black/10"
       onClick={() => {
-        openFileUrl(filePart.url, filePart.filename);
+        void openFileUrl(filePart.url, filePart.filename);
       }}
     >
       {isImage ? (

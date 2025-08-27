@@ -537,14 +537,14 @@ export const isAnthropicSupportedFileType = (mimeType: string): boolean => {
 export const isAnthropicSupportedFile = (
   file: File,
 ): { supported: boolean; reason?: string } => {
-  const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB in bytes
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
 
   // Check file size first
   if (file.size > MAX_FILE_SIZE) {
     const sizeMB = Math.round(file.size / (1024 * 1024));
     return {
       supported: false,
-      reason: `File too large (${sizeMB}MB). Maximum size is 500MB`,
+      reason: `File too large (${sizeMB}MB). Maximum size is 20MB`,
     };
   }
 
@@ -559,34 +559,20 @@ export const isAnthropicSupportedFile = (
   return { supported: true };
 };
 
-export const openFileUrl = (url: string, filename?: string) => {
+export const openFileUrl = async (url: string, filename?: string) => {
   // Handle opening file URLs, converting data URLs to blob URLs if necessary
   if (!url) return;
 
   try {
     // Check if it's a data URL
     if (url.startsWith('data:')) {
-      // Extract MIME type and base64 data
-      const [mimeInfo, base64Data] = url.split(',');
-      const mimeType =
-        mimeInfo.match(/data:([^;]+)/)?.[1] || 'application/octet-stream';
-
-      // Remove any whitespace from base64 string
-      const cleanBase64 = base64Data.replace(/\s+/g, '');
-
-      // Convert base64 to binary
-      const binaryString = atob(cleanBase64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // Create blob with proper MIME type
-      const blob = new Blob([bytes], { type: mimeType });
+      // Use fetch to stream-decode data URLs to Blob
+      const res = await fetch(url);
+      const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
 
-      // Open the blob URL in a new tab
-      const newWindow = window.open(blobUrl, '_blank');
+      // Open the blob URL in a new tab with security flags
+      const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
 
       // Clean up blob URL after a delay
       if (newWindow) {
@@ -609,12 +595,12 @@ export const openFileUrl = (url: string, filename?: string) => {
         }, 100);
       }
     } else {
-      // Regular URL - open normally
-      window.open(url, '_blank');
+      // Regular URL - open normally with security flags
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   } catch (error) {
     console.error('Failed to open file URL:', error);
-    // Fallback to regular window.open
-    window.open(url, '_blank');
+    // Fallback to regular window.open with security flags
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 };
