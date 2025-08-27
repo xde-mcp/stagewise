@@ -1,4 +1,5 @@
 import { ContextElementsChipsFlexible } from '@/components/context-elements-chips-flexible';
+import { FileAttachmentChips } from '@/components/file-attachment-chips';
 import { TextSlideshow } from '@/components/ui/text-slideshow';
 import { Button } from '@/components/ui/button';
 import { PanelFooter } from '@/components/ui/panel';
@@ -80,6 +81,38 @@ export function ChatPanelFooter({
     [handleSubmit, isComposing],
   );
 
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = e.clipboardData.items;
+      const files: File[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) {
+            files.push(file);
+          }
+        }
+      }
+
+      if (files.length > 0) {
+        // Prevent default paste for files
+        e.preventDefault();
+        files.forEach((file) => {
+          chatState.addFileAttachment(file);
+        });
+
+        // Start prompt creation if not already active
+        if (!chatState.isPromptCreationActive) {
+          chatState.startPromptCreation();
+          chatState.startContextSelector();
+        }
+      }
+    },
+    [chatState],
+  );
+
   const handleCompositionStart = useCallback(() => {
     setIsComposing(true);
   }, []);
@@ -108,10 +141,19 @@ export function ChatPanelFooter({
       className="absolute right-px bottom-px left-px z-10 flex flex-col items-stretch gap-1 px-3 pt-2 pb-3"
       ref={ref}
     >
-      <ContextElementsChipsFlexible
-        domContextElements={chatState.domContextElements}
-        removeChatDomContext={chatState.removeChatDomContext}
-      />
+      {(chatState.fileAttachments.length > 0 ||
+        chatState.domContextElements.length > 0) && (
+        <div className="scrollbar-thin flex gap-2 overflow-x-auto pb-1">
+          <FileAttachmentChips
+            fileAttachments={chatState.fileAttachments}
+            removeFileAttachment={chatState.removeFileAttachment}
+          />
+          <ContextElementsChipsFlexible
+            domContextElements={chatState.domContextElements}
+            removeChatDomContext={chatState.removeChatDomContext}
+          />
+        </div>
+      )}
       <div className="flex h-fit flex-1 flex-row items-end justify-between gap-1">
         <div className="relative flex flex-1 pr-1">
           <Textarea
@@ -127,6 +169,7 @@ export function ChatPanelFooter({
               }
             }}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
             disabled={!enableInputField}

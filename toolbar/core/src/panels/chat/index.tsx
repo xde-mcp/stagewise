@@ -1,7 +1,7 @@
 import { Panel, PanelContent } from '@/components/ui/panel';
 import { useChatState } from '@/hooks/use-chat-state';
 import { cn } from '@/utils';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ChatHistory } from './chat-history';
 import { ChatPanelFooter } from './panel-footer';
 import { ChatPanelHeader } from './panel-header';
@@ -13,6 +13,7 @@ import {
 
 export function ChatPanel() {
   const chatState = useChatState();
+  const [isDragging, setIsDragging] = useState(false);
   const { activeChatId, isWorking, chats } = useKartonState(
     useComparingSelector((s) => ({
       activeChatId: s.activeChatId,
@@ -102,6 +103,49 @@ export function ChatPanel() {
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the panel entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!panelRef.current?.contains(relatedTarget)) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+
+      const files = Array.from(e.dataTransfer.files);
+      files.forEach((file) => {
+        chatState.addFileAttachment(file);
+      });
+
+      // Start prompt creation if not already active
+      if (!chatState.isPromptCreationActive && enableInputField) {
+        chatState.startPromptCreation();
+      }
+    },
+    [chatState, enableInputField],
+  );
+
   // Handle clicks outside footer to stop prompt creation
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -173,22 +217,36 @@ export function ChatPanel() {
       className={cn(
         anyMessageInChat
           ? 'h-[35vh] max-h-[50vh] min-h-[20vh]'
-          : '!h-[calc-size(auto,size)] h-auto min-h-0',
+          : '!h-[calc-size(auto,size)] min-h-0',
+        isDragging && 'ring-1 ring-blue-500/50',
       )}
     >
-      <ChatPanelHeader />
-      <PanelContent
-        className={cn(
-          'block px-1 py-0',
-          'h-full max-h-96 min-h-64',
-          'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_48px,black_calc(95%-16px),transparent_calc(100%-16px))]',
-          'overflow-hidden rounded-[inherit]',
-        )}
+      <div
+        className="relative flex size-full flex-col"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        role="region"
+        aria-label="Chat panel drop zone"
       >
-        {/* This are renders the output of the agent as markdown and makes it scrollable if necessary. */}
-        <ChatHistory ref={chatHistoryRef} />
-      </PanelContent>
-      <ChatPanelFooter ref={footerRef} inputRef={inputRef} />
+        <ChatPanelHeader />
+        <PanelContent
+          className={cn(
+            'block px-1 py-0',
+            'h-full max-h-96 min-h-64',
+            'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_48px,black_calc(95%-16px),transparent_calc(100%-16px))]',
+            'overflow-hidden rounded-[inherit]',
+          )}
+        >
+          {/* This are renders the output of the agent as markdown and makes it scrollable if necessary. */}
+          <ChatHistory ref={chatHistoryRef} />
+        </PanelContent>
+        <ChatPanelFooter ref={footerRef} inputRef={inputRef} />
+        {isDragging && (
+          <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-3xl bg-blue-500/10 backdrop-blur-[1px]" />
+        )}
+      </div>
     </Panel>
   );
 }

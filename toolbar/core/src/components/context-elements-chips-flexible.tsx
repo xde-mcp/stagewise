@@ -25,20 +25,18 @@ export function ContextElementsChipsFlexible({
   }
 
   return (
-    <div className="">
-      <div className="scrollbar-thin flex gap-2 overflow-x-auto pb-1">
-        {domContextElements.map((contextElement, index) => (
-          <ContextElementChip
-            key={`${contextElement.element.tagName}-${index}`}
-            element={contextElement.element}
-            pluginContext={contextElement.pluginContext}
-            onDelete={() => removeChatDomContext(contextElement.element)}
-            onHover={setHoveredElement}
-            onUnhover={() => setHoveredElement(null)}
-          />
-        ))}
-      </div>
-    </div>
+    <>
+      {domContextElements.map((contextElement, index) => (
+        <ContextElementChip
+          key={`${contextElement.element.tagName}-${index}`}
+          element={contextElement.element}
+          pluginContext={contextElement.pluginContext}
+          onDelete={() => removeChatDomContext(contextElement.element)}
+          onHover={setHoveredElement}
+          onUnhover={() => setHoveredElement(null)}
+        />
+      ))}
+    </>
   );
 }
 

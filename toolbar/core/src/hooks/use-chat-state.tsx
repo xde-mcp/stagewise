@@ -6,10 +6,12 @@ import {
   generateId,
   getSelectedElementInfo,
   collectUserMessageMetadata,
+  fileToDataUrl,
+  isAnthropicSupportedFile,
 } from '@/utils';
 import { usePanels } from './use-panels';
 import { useKartonProcedure, useKartonState } from './use-karton';
-import type { ChatMessage } from '@stagewise/karton-contract';
+import type { ChatMessage, FileUIPart } from '@stagewise/karton-contract';
 
 interface ContextSnippet {
   promptContextName: string;
@@ -20,6 +22,12 @@ export type PluginContextSnippets = {
   pluginName: string;
   contextSnippets: ContextSnippet[];
 };
+
+export interface FileAttachment {
+  id: string;
+  file: File;
+  url: string;
+}
 
 interface ChatContext {
   // Chat content operations
@@ -35,6 +43,12 @@ interface ChatContext {
   addChatDomContext: (element: HTMLElement) => void;
   removeChatDomContext: (element: HTMLElement) => void;
   sendMessage: () => void;
+
+  // File attachments
+  fileAttachments: FileAttachment[];
+  addFileAttachment: (file: File) => void;
+  removeFileAttachment: (id: string) => void;
+  clearFileAttachments: () => void;
 
   // UI state
   isPromptCreationActive: boolean;
@@ -53,6 +67,10 @@ const ChatHistoryContext = createContext<ChatContext>({
   addChatDomContext: () => {},
   removeChatDomContext: () => {},
   sendMessage: () => {},
+  fileAttachments: [],
+  addFileAttachment: () => {},
+  removeFileAttachment: () => {},
+  clearFileAttachments: () => {},
   isPromptCreationActive: false,
   startPromptCreation: () => {},
   stopPromptCreation: () => {},
@@ -82,6 +100,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       }[];
     }[]
   >([]);
+  const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
 
   const { minimized } = useAppState();
   const { plugins } = usePlugins();
@@ -102,6 +121,31 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       plugin.onPromptingStart?.();
     });
   }, [plugins, isChatOpen, openChat]);
+
+  const addFileAttachment = useCallback((file: File) => {
+    const id = generateId();
+    const url = URL.createObjectURL(file);
+    setFileAttachments((prev) => [...prev, { id, file, url }]);
+  }, []);
+
+  const removeFileAttachment = useCallback((id: string) => {
+    setFileAttachments((prev) => {
+      const attachment = prev.find((a) => a.id === id);
+      if (attachment) {
+        URL.revokeObjectURL(attachment.url);
+      }
+      return prev.filter((a) => a.id !== id);
+    });
+  }, []);
+
+  const clearFileAttachments = useCallback(() => {
+    setFileAttachments((prev) => {
+      prev.forEach((attachment) => {
+        URL.revokeObjectURL(attachment.url);
+      });
+      return [];
+    });
+  }, []);
 
   const stopPromptCreation = useCallback(() => {
     setIsPromptCreationMode(false);
@@ -172,6 +216,21 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     setIsSending(true);
 
     try {
+      // Filter only supported file attachments (type and size)
+      const supportedAttachments = fileAttachments.filter(
+        (attachment) => isAnthropicSupportedFile(attachment.file).supported,
+      );
+
+      // Convert supported file attachments to FileUIPart
+      const fileParts: FileUIPart[] = await Promise.all(
+        supportedAttachments.map(async (attachment) => ({
+          type: 'file' as const,
+          mediaType: attachment.file.type,
+          filename: attachment.file.name,
+          url: await fileToDataUrl(attachment.file),
+        })),
+      );
+
       // Collect metadata for selected elements
       const metadata = collectUserMessageMetadata(
         domContextElements.map((item) => getSelectedElementInfo(item.element)),
@@ -180,7 +239,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
 
       const message: ChatMessage = {
         id: generateId(),
-        parts: [{ type: 'text' as const, text: chatInput }],
+        parts: [...fileParts, { type: 'text' as const, text: chatInput }],
         role: 'user',
         metadata: {
           ...metadata,
@@ -248,6 +307,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       // Reset state after sending
       setChatInput('');
       setDomContextElements([]);
+      clearFileAttachments();
       stopPromptCreation(); // This also stops context selector
 
       // Send the message using the chat capability
@@ -258,8 +318,10 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
   }, [
     chatInput,
     domContextElements,
+    fileAttachments,
     plugins,
     sendChatMessage,
+    clearFileAttachments,
     stopPromptCreation,
   ]);
 
@@ -270,6 +332,10 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     addChatDomContext,
     removeChatDomContext,
     sendMessage,
+    fileAttachments,
+    addFileAttachment,
+    removeFileAttachment,
+    clearFileAttachments,
     isPromptCreationActive: isPromptCreationMode,
     startPromptCreation,
     stopPromptCreation,
