@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.8.0
+
+### Minor Changes
+
+- 295c809: Add file support for the stagewise agent.
+
 ## 0.7.0
 
 ### Minor Changes
