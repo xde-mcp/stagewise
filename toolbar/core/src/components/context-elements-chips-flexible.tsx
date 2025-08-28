@@ -1,5 +1,5 @@
 import { useContextChipHover } from '@/hooks/use-context-chip-hover';
-import { XIcon } from 'lucide-react';
+import { XIcon, SquareDashedMousePointer } from 'lucide-react';
 import { useMemo } from 'react';
 import { cn } from '@/utils';
 
@@ -84,6 +84,7 @@ function ContextElementChip({
       onMouseEnter={() => onHover(element)}
       onMouseLeave={() => onUnhover()}
     >
+      <SquareDashedMousePointer className="size-3 text-foreground/60" />
       <span className="max-w-24 truncate font-medium text-foreground/80">
         {chipLabel}
       </span>
