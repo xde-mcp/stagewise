@@ -87,7 +87,6 @@ export class Agent {
   private undoToolCallStack: Map<
     ChatId,
     {
-      toolName: string;
       toolCallId: string;
       undoExecute?: () => Promise<void>;
     }[]
@@ -255,9 +254,8 @@ export class Agent {
       const pendingToolCalls = findPendingToolCalls(this.karton!, chatId);
       if (pendingToolCalls.length > 0) {
         const abortedResults: ToolCallProcessingResult[] = pendingToolCalls.map(
-          ({ toolCallId, toolName }) => ({
+          ({ toolCallId }) => ({
             success: false,
-            toolName,
             toolCallId,
             duration: 0,
             error: {
@@ -607,7 +605,6 @@ export class Agent {
         (result) => {
           if (result.result?.undoExecute) {
             this.undoToolCallStack.get(chatId)?.push({
-              toolName: result.toolName,
               toolCallId: result.toolCallId,
               undoExecute: result.result?.undoExecute,
             });

@@ -114,6 +114,7 @@ export function appendToolInputToMessage(
     const message = draft.chats[karton.state.activeChatId!]!.messages.find(
       (m) => m.id === messageId,
     );
+
     if (!message) {
       // If the message doesn't exist, create it
       draft.chats[karton.state.activeChatId!]!.messages.push({
@@ -121,12 +122,11 @@ export function appendToolInputToMessage(
         id: messageId,
         parts: [
           {
-            type: `tool-${chunk.toolName}` as any, // reconstruct the type from the tool name
+            type: `tool-${chunk.toolName}` as any,
             state: 'input-available',
             input: chunk.input,
             toolCallId: chunk.toolCallId,
-            toolName: chunk.toolName,
-          },
+          } satisfies ToolUIPart,
         ],
         metadata: {
           createdAt: new Date(),
@@ -137,10 +137,9 @@ export function appendToolInputToMessage(
       message.parts.push({
         type: `tool-${chunk.toolName}` as any,
         toolCallId: chunk.toolCallId,
-        toolName: chunk.toolName,
         state: 'input-available',
         input: chunk.input,
-      });
+      } satisfies ToolUIPart);
     } else {
       // If the message has parts, append to the existing one
       const part = message.parts[partIndex];
@@ -203,7 +202,7 @@ export function attachToolOutputToMessage(
 export function findPendingToolCalls(
   karton: KartonServer<KartonContract>,
   chatId: string,
-): Array<{ toolCallId: string; toolName: string }> {
+): Array<{ toolCallId: string }> {
   const chat = karton.state.chats[chatId];
   if (!chat) return [];
 
@@ -221,21 +220,21 @@ export function findPendingToolCalls(
 
   if (!lastAssistantMessage) return [];
 
-  const pendingToolCalls: Array<{ toolCallId: string; toolName: string }> = [];
+  const pendingToolCalls: Array<{ toolCallId: string }> = [];
 
   // Check each part of the assistant message
   for (const part of lastAssistantMessage.parts) {
-    if (part.type === 'tool-call' || part.type === 'dynamic-tool') {
+    if (part.type === 'dynamic-tool' || part.type.startsWith('tool-')) {
+      const toolPart = part as Extract<
+        ToolUIPart,
+        { state: 'input-available' }
+      >;
       // Check if this tool call has a result
-      const hasResult =
-        part.type === 'dynamic-tool' &&
-        'result' in part &&
-        part.result !== undefined;
+      const hasResult = toolPart.output !== undefined;
 
-      if (!hasResult && 'toolCallId' in part && 'toolName' in part) {
+      if (!hasResult && 'toolCallId' in part) {
         pendingToolCalls.push({
-          toolCallId: part.toolCallId,
-          toolName: part.toolName,
+          toolCallId: toolPart.toolCallId,
         });
       }
     }
