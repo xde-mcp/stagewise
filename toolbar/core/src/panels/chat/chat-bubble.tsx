@@ -511,6 +511,7 @@ const ToolPartItem = memo(
           {requiresApproval && (
             <div className="flex flex-row items-center gap-1">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 className="h-4 w-5"
@@ -522,6 +523,7 @@ const ToolPartItem = memo(
                 <XIcon className="size-4" />
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 className="h-4 w-5"
