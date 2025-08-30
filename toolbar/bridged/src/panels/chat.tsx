@@ -4,6 +4,7 @@ import {
   PanelHeader,
   PanelFooter,
 } from '@/components/ui/panel';
+import { useKartonProcedure } from '@/hooks/use-karton';
 import { CircleQuestionMark } from 'lucide-react';
 import { Select } from '@/components/ui/select';
 import { useAgentState } from '@/hooks/agent/use-agent-state';
@@ -102,6 +103,9 @@ export function ChatPanel() {
   const agentState = useAgentState();
   const chatState = useChatState();
   const chatMessaging = useAgentMessaging();
+  const trackCopyToClipboard = useKartonProcedure(
+    (p) => p.trackCopyToClipboard,
+  );
   const [isComposing, setIsComposing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const { connected, availableAgents, connectAgent, disconnectAgent } =
@@ -227,6 +231,7 @@ export function ChatPanel() {
   }, [chatState.chatInput, chatState.domContextElements, plugins]);
 
   const handleCopyToClipboard = useCallback(async () => {
+    void trackCopyToClipboard();
     if (chatState.chatInput.trim()) {
       try {
         // Build the full prompt with metadata

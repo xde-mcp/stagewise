@@ -1,4 +1,6 @@
 import express, { type Request, type Response } from 'express';
+import { createKartonServer } from '@stagewise/karton/server';
+import type { KartonContract } from '@stagewise/karton-contract-bridged';
 import { createServer } from 'node:http';
 import { configResolver } from '../config/index.js';
 import { proxy } from './proxy.js';
@@ -13,6 +15,7 @@ import {
   generatePluginImportMapEntries,
   type Plugin,
 } from './plugin-loader.js';
+import { analyticsEvents } from '../utils/telemetry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -213,6 +216,8 @@ export const getServer = async () => {
     const server = createServer(app);
 
     // Initialize agent server if not in bridge mode (BEFORE wildcard route)
+    let bridgeModeWss: any = null;
+    let bridgeModeWsPath: string | null = null;
     let agentWss: any = null;
     let agentWsPath: string | null = null;
 
@@ -249,6 +254,24 @@ export const getServer = async () => {
       }
     }
 
+    if (config.bridgeMode) {
+      const kartonServer = await createKartonServer<KartonContract>({
+        initialState: {
+          noop: false,
+        },
+        procedures: {
+          trackCopyToClipboard: async () => {
+            await analyticsEvents.trackCopyToClipboard();
+          },
+        },
+      });
+      bridgeModeWss = kartonServer.wss;
+      bridgeModeWsPath = '/stagewise-toolbar-app/karton';
+      log.debug(
+        `Bridge mode WebSocket server configured for path: ${bridgeModeWsPath}`,
+      );
+    }
+
     // Add wildcard route LAST, after all other routes including agent routes
     app.get(
       /^(?!\/stagewise-toolbar-app).*$/,
@@ -265,11 +288,17 @@ export const getServer = async () => {
         log.debug(`Proxying WebSocket request to app port ${config.appPort}`);
         proxy.upgrade?.(request, socket as any, head);
       } else {
-        if (agentWss && url === '/stagewise-toolbar-app/karton') {
+        if (agentWss && url === agentWsPath) {
           // Handle agent WebSocket requests
           log.debug('Handling agent WebSocket upgrade');
           agentWss.handleUpgrade(request, socket, head, (ws: any) => {
             agentWss.emit('connection', ws, request);
+          });
+        } else if (bridgeModeWss && url === bridgeModeWsPath) {
+          // Handle bridge mode WebSocket requests
+          log.debug('Handling bridge mode WebSocket upgrade');
+          bridgeModeWss.handleUpgrade(request, socket, head, (ws: any) => {
+            bridgeModeWss.emit('connection', ws, request);
           });
         } else {
           log.debug(`Unknown WebSocket path: ${url}`);

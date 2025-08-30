@@ -49,6 +49,8 @@
     "build": "tsc -b && tsx build.vite.ts production"
   },
   "devDependencies": {
+    "@stagewise/karton": "workspace:*",
+    "@stagewise/karton-contract-bridged": "workspace:*",
     "@base-ui-components/react": "1.0.0-beta.2",
     "@headlessui/react": "2.2.2",
     "@microsoft/api-extractor": "^7.52.8",

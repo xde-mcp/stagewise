@@ -1,0 +1,27 @@
+{
+  "name": "@stagewise/karton-contract-bridged",
+  "author": "tiq UG (haftungsbeschränkt)",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@stagewise/karton": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@stagewise/api-client": "1.3.0"
+  }
+}

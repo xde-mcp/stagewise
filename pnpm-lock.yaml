@@ -283,6 +283,9 @@ importers:
       '@stagewise/karton':
         specifier: workspace:*
         version: link:../../packages/karton
+      '@stagewise/karton-contract-bridged':
+        specifier: workspace:*
+        version: link:../../packages/karton-contract-bridged
       '@stagewise/toolbar':
         specifier: workspace:*
         version: link:../../toolbar/core
@@ -927,6 +930,19 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
 
+  packages/karton-contract-bridged:
+    dependencies:
+      '@stagewise/karton':
+        specifier: workspace:*
+        version: link:../karton
+    devDependencies:
+      '@stagewise/api-client':
+        specifier: 1.3.0
+        version: 1.3.0(typescript@5.9.2)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
   packages/stage-ui:
     dependencies:
       '@base-ui-components/react':
@@ -1296,6 +1312,12 @@ importers:
       '@stagewise/agent-interface':
         specifier: workspace:*
         version: link:../../packages/agent-interface-external
+      '@stagewise/karton':
+        specifier: workspace:*
+        version: link:../../packages/karton
+      '@stagewise/karton-contract-bridged':
+        specifier: workspace:*
+        version: link:../../packages/karton-contract-bridged
       '@stagewise/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -6038,6 +6060,9 @@ packages:
 
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
+
+  '@stagewise/api-client@1.3.0':
+    resolution: {integrity: sha512-1la0mPWBUByspE1Ke1pbNlB+CN0kOqMAntkgOl9tX4fECfBUJWC2jr4g8o8/srboJXElMk+YCvqNU1psKEq6Yg==}
 
   '@stagewise/api-client@1.4.0':
     resolution: {integrity: sha512-eYp42eNFDQdts5yCo2gTMVpYBB6EXfkDZrejsx84bYvG8ukHMIwtnKtbdvhXTSaqf+La1r5W/7tpBNtaU7ppjA==}
@@ -20239,6 +20264,16 @@ snapshots:
       - vite
 
   '@speed-highlight/core@1.2.7': {}
+
+  '@stagewise/api-client@1.3.0(typescript@5.9.2)':
+    dependencies:
+      '@trpc/client': 11.4.4(@trpc/server@11.4.4(typescript@5.9.2))(typescript@5.9.2)
+      '@trpc/server': 11.4.4(typescript@5.9.2)
+      ai: 5.0.9(zod@4.0.17)
+      superjson: 2.2.2
+      zod: 4.0.17
+    transitivePeerDependencies:
+      - typescript
 
   '@stagewise/api-client@1.4.0(typescript@5.9.2)':
     dependencies:

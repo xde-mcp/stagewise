@@ -1,4 +1,5 @@
 import { PluginProvider } from '@/hooks/use-plugins';
+import { KartonProvider } from '@/hooks/use-karton';
 import type { InternalToolbarConfig } from '../config.js';
 import { ChatStateProvider } from '@/hooks/use-chat-state';
 import type { ReactNode } from 'react';
@@ -24,7 +25,9 @@ export function ContextProviders({
             <AgentMessagingProvider>
               <PanelsProvider>
                 <PluginProvider>
-                  <ChatStateProvider>{children}</ChatStateProvider>
+                  <KartonProvider>
+                    <ChatStateProvider>{children}</ChatStateProvider>
+                  </KartonProvider>
                 </PluginProvider>
               </PanelsProvider>
             </AgentMessagingProvider>
