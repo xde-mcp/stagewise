@@ -116,7 +116,7 @@ function getAgentUniqueKey(agent: AgentInfo): string {
 function persistSelectedAgent(agent: AgentInfo): void {
   try {
     const uniqueKey = getAgentUniqueKey(agent);
-    sessionStorage.setItem('stagewise_toolbar_selected_agent', uniqueKey);
+    localStorage.setItem('stagewise_toolbar_selected_agent', uniqueKey);
     console.debug(`[AgentProvider] Persisted selected agent: ${uniqueKey}`);
   } catch (error) {
     console.warn('[AgentProvider] Failed to persist selected agent:', error);
@@ -128,7 +128,7 @@ function persistSelectedAgent(agent: AgentInfo): void {
  */
 function getPersistedAgentKey(): string | null {
   try {
-    return sessionStorage.getItem('stagewise_toolbar_selected_agent');
+    return localStorage.getItem('stagewise_toolbar_selected_agent');
   } catch (error) {
     console.warn('[AgentProvider] Failed to retrieve persisted agent:', error);
     return null;
@@ -162,7 +162,7 @@ function findPersistedAgent(availableAgents: AgentInfo[]): AgentInfo | null {
  */
 function persistClipboardMode(): void {
   try {
-    sessionStorage.setItem('stagewise_toolbar_selected_agent', 'clipboard');
+    localStorage.setItem('stagewise_toolbar_selected_agent', 'clipboard');
     console.debug('[AgentProvider] Persisted clipboard mode selection');
   } catch (error) {
     console.warn('[AgentProvider] Failed to persist clipboard mode:', error);
@@ -174,9 +174,7 @@ function persistClipboardMode(): void {
  */
 function isClipboardModePersisted(): boolean {
   try {
-    const persisted = sessionStorage.getItem(
-      'stagewise_toolbar_selected_agent',
-    );
+    const persisted = localStorage.getItem('stagewise_toolbar_selected_agent');
     return persisted === 'clipboard';
   } catch (error) {
     console.warn('[AgentProvider] Failed to check clipboard mode:', error);
@@ -189,7 +187,7 @@ function isClipboardModePersisted(): boolean {
  */
 function clearPersistedSelection(): void {
   try {
-    sessionStorage.removeItem('stagewise_toolbar_selected_agent');
+    localStorage.removeItem('stagewise_toolbar_selected_agent');
     console.debug('[AgentProvider] Cleared persisted selection');
   } catch (error) {
     console.warn('[AgentProvider] Failed to clear persisted selection:', error);

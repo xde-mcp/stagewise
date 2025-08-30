@@ -263,13 +263,20 @@ export function ChatPanel() {
         if (!connected) {
           // In clipboard mode, trigger copy to clipboard
           handleCopyToClipboard();
-        } else {
-          // Connected to agent, send message
+        } else if (canSendMessage) {
+          // Connected to agent and message is valid, send message
           handleSubmit();
         }
+        // If connected but !canSendMessage, do nothing
       }
     },
-    [handleSubmit, handleCopyToClipboard, isComposing, connected],
+    [
+      handleSubmit,
+      handleCopyToClipboard,
+      isComposing,
+      connected,
+      canSendMessage,
+    ],
   );
 
   const handleCompositionStart = useCallback(() => {
@@ -440,7 +447,12 @@ export function ChatPanel() {
           <div className="flex flex-row items-center justify-end gap-4">
             <div className="mr-auto flex h-8 flex-row items-center pl-2">
               <div
-                className="cursor-pointer"
+                className={cn(
+                  'cursor-pointer rounded-full p-1 transition-colors duration-200',
+                  isInfoOpen
+                    ? 'bg-blue-600/10 text-blue-600'
+                    : 'text-foreground/60 hover:text-foreground/80',
+                )}
                 onClick={() => {
                   if (isInfoOpen) {
                     closeInfo();
@@ -450,7 +462,7 @@ export function ChatPanel() {
                 }}
                 role="button"
               >
-                <CircleQuestionMark className="!text-foreground/60 size-4" />
+                <CircleQuestionMark className="size-4" />
               </div>
             </div>
             {/* Agent selector */}
