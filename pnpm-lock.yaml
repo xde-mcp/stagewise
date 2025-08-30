@@ -1347,9 +1347,6 @@ importers:
       rollup-plugin-dts:
         specifier: ^6.2.1
         version: 6.2.1(rollup@4.45.0)(typescript@5.9.2)
-      select:
-        specifier: link:@base-ui-components/react/select
-        version: link:@base-ui-components/react/select
       serialize-javascript:
         specifier: ^6.0.2
         version: 6.0.2

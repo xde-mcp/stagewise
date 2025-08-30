@@ -78,6 +78,7 @@ export default async function buildToolbarMain() {
         'zod',
         '@headlessui/react',
         'class-variance-authority',
+        '@base-ui-components/react',
       ],
       esbuildOptions: {
         mainFields: ['module', 'main'],

@@ -590,7 +590,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
 
       // Try to reconnect to previously selected agent if connection was lost
       if (
-        !connected &&
+        !connected.current &&
         previouslySelectedPortRef.current &&
         !isManualSelectionRef.current &&
         !isClipboardModePersisted() // Don't reconnect if clipboard mode is active
@@ -952,7 +952,7 @@ export function AgentProvider({ children }: { children?: ReactNode }) {
 
   useEffect(() => {
     console.debug(
-      `[AgentProvider] Connection state changed: ${connected ? `Connected to port ${connectedPort}` : 'Not connected'}`,
+      `[AgentProvider] Connection state changed: ${connected.current ? `Connected to port ${connectedPort}` : 'Not connected'}`,
     );
   }, [connected, connectedPort]);
 

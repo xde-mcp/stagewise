@@ -100,5 +100,19 @@ export function HotkeyListener() {
   useEventListener('keydown', hotKeyListener, {
     capture: true,
   });
+
+  // Also listen to iframe events to capture hotkeys when iframe has focus
+  const iframe = document.getElementById(
+    'user-app-iframe',
+  ) as HTMLIFrameElement;
+  useEventListener(
+    'keydown',
+    hotKeyListener,
+    {
+      capture: true,
+    },
+    iframe?.contentWindow,
+  );
+
   return null;
 }

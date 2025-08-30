@@ -130,7 +130,7 @@ body {
   .g-fast { opacity: var(--chat-grad-bg-opacity-fast); transition: opacity 1s ease-in-out; }
 }
 
-@plugin 'tailwind-scrollbar';
+@plugin "tailwind-scrollbar";
 
 @theme default {
   --color-background: var(--color-white);

@@ -200,39 +200,59 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       };
 
       const pluginProcessingPromises = plugins.map(async (plugin) => {
-        const handlerResult = await plugin.onPromptSend?.(baseUserMessage);
+        try {
+          const handlerResult = await plugin.onPromptSend?.(baseUserMessage);
 
-        if (
-          !handlerResult ||
-          !handlerResult.contextSnippets ||
-          handlerResult.contextSnippets.length === 0
-        ) {
+          if (
+            !handlerResult ||
+            !handlerResult.contextSnippets ||
+            handlerResult.contextSnippets.length === 0
+          ) {
+            return null;
+          }
+
+          const snippetPromises = handlerResult.contextSnippets.map(
+            async (snippet) => {
+              try {
+                const resolvedContent =
+                  typeof snippet.content === 'string'
+                    ? snippet.content
+                    : await snippet.content();
+                return {
+                  promptContextName: snippet.promptContextName,
+                  content: resolvedContent,
+                };
+              } catch (snippetError) {
+                console.error(
+                  `Failed to resolve snippet for plugin ${plugin.pluginName}:`,
+                  snippetError,
+                );
+                return null;
+              }
+            },
+          );
+
+          const resolvedSnippets = await Promise.all(snippetPromises);
+          const validSnippets = resolvedSnippets.filter(
+            (snippet): snippet is NonNullable<typeof snippet> =>
+              snippet !== null,
+          );
+
+          if (validSnippets.length > 0) {
+            const pluginSnippets: PluginContextSnippets = {
+              pluginName: plugin.pluginName,
+              contextSnippets: validSnippets,
+            };
+            return pluginSnippets;
+          }
+          return null;
+        } catch (pluginError) {
+          console.error(
+            `Failed to process plugin ${plugin.pluginName}:`,
+            pluginError,
+          );
           return null;
         }
-
-        const snippetPromises = handlerResult.contextSnippets.map(
-          async (snippet) => {
-            const resolvedContent =
-              typeof snippet.content === 'string'
-                ? snippet.content
-                : await snippet.content();
-            return {
-              promptContextName: snippet.promptContextName,
-              content: resolvedContent,
-            };
-          },
-        );
-
-        const resolvedSnippets = await Promise.all(snippetPromises);
-
-        if (resolvedSnippets.length > 0) {
-          const pluginSnippets: PluginContextSnippets = {
-            pluginName: plugin.pluginName,
-            contextSnippets: resolvedSnippets,
-          };
-          return pluginSnippets;
-        }
-        return null;
       });
 
       const allPluginContexts = await Promise.all(pluginProcessingPromises);

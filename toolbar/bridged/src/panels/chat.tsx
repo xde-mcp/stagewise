@@ -147,48 +147,67 @@ export function ChatPanel() {
 
     // Process plugin context snippets
     const pluginProcessingPromises = plugins.map(async (plugin) => {
-      const baseUserMessage = {
-        id: '',
-        createdAt: new Date(),
-        contentItems: [{ type: 'text' as const, text: chatState.chatInput }],
-        metadata,
-        pluginContent: {},
-        sentByPlugin: false,
-      };
+      try {
+        const baseUserMessage = {
+          id: '',
+          createdAt: new Date(),
+          contentItems: [{ type: 'text' as const, text: chatState.chatInput }],
+          metadata,
+          pluginContent: {},
+          sentByPlugin: false,
+        };
 
-      const handlerResult = await plugin.onPromptSend?.(baseUserMessage);
+        const handlerResult = await plugin.onPromptSend?.(baseUserMessage);
 
-      if (
-        !handlerResult ||
-        !handlerResult.contextSnippets ||
-        handlerResult.contextSnippets.length === 0
-      ) {
+        if (
+          !handlerResult ||
+          !handlerResult.contextSnippets ||
+          handlerResult.contextSnippets.length === 0
+        ) {
+          return null;
+        }
+
+        const snippetPromises = handlerResult.contextSnippets.map(
+          async (snippet) => {
+            try {
+              const resolvedContent =
+                typeof snippet.content === 'string'
+                  ? snippet.content
+                  : await snippet.content();
+              return {
+                promptContextName: snippet.promptContextName,
+                content: resolvedContent,
+              };
+            } catch (snippetError) {
+              console.error(
+                `Failed to resolve snippet for plugin ${plugin.pluginName}:`,
+                snippetError,
+              );
+              return null;
+            }
+          },
+        );
+
+        const resolvedSnippets = await Promise.all(snippetPromises);
+        const validSnippets = resolvedSnippets.filter(
+          (snippet): snippet is NonNullable<typeof snippet> => snippet !== null,
+        );
+
+        if (validSnippets.length > 0) {
+          const pluginSnippets: PluginContextSnippets = {
+            pluginName: plugin.pluginName,
+            contextSnippets: validSnippets,
+          };
+          return pluginSnippets;
+        }
+        return null;
+      } catch (pluginError) {
+        console.error(
+          `Failed to process plugin ${plugin.pluginName}:`,
+          pluginError,
+        );
         return null;
       }
-
-      const snippetPromises = handlerResult.contextSnippets.map(
-        async (snippet) => {
-          const resolvedContent =
-            typeof snippet.content === 'string'
-              ? snippet.content
-              : await snippet.content();
-          return {
-            promptContextName: snippet.promptContextName,
-            content: resolvedContent,
-          };
-        },
-      );
-
-      const resolvedSnippets = await Promise.all(snippetPromises);
-
-      if (resolvedSnippets.length > 0) {
-        const pluginSnippets: PluginContextSnippets = {
-          pluginName: plugin.pluginName,
-          contextSnippets: resolvedSnippets,
-        };
-        return pluginSnippets;
-      }
-      return null;
     });
 
     const allPluginContexts = await Promise.all(pluginProcessingPromises);
@@ -264,7 +283,7 @@ export function ChatPanel() {
   /* If the user clicks on prompt creation mode, we force-focus the input field all the time. */
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isIntentionallyStoppingRef = useRef<boolean>(false);
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const blurHandler = () => {
@@ -534,13 +553,24 @@ export function ChatPanel() {
                   onClick={handleCopyToClipboard}
                   glassy
                   variant="primary"
-                  className="size-8 cursor-pointer rounded-full p-1"
+                  className="relative size-8 cursor-pointer rounded-full p-1"
                 >
-                  {isCopied ? (
-                    <CheckIcon className="size-4 stroke-green-600" />
-                  ) : (
+                  <div
+                    className={cn(
+                      'absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out',
+                      isCopied ? 'scale-0 opacity-0' : 'scale-100 opacity-100',
+                    )}
+                  >
                     <CopyIcon className="size-4" />
-                  )}
+                  </div>
+                  <div
+                    className={cn(
+                      'absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out',
+                      isCopied ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
+                    )}
+                  >
+                    <CheckIcon className="size-4 stroke-white" />
+                  </div>
                 </Button>
               )}
               {connected && (

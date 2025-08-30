@@ -23,6 +23,7 @@ interface Agent {
   name: string;
   domain: string;
   logo: string;
+  appName: string;
 }
 
 const agents: Agent[] = [
@@ -31,42 +32,49 @@ const agents: Agent[] = [
     name: 'Cursor.com',
     domain: 'cursor.com',
     logo: CursorLogoImg,
+    appName: 'cursor',
   },
   {
     id: 'windsurf',
     name: 'Windsurf.com',
     domain: 'windsurf.com',
     logo: WindsurfLogoImg,
+    appName: 'windsurf',
   },
   {
     id: 'cline',
     name: 'Cline.bot',
     domain: 'cline.bot',
     logo: ClineLogoImg,
+    appName: 'vscode',
   },
   {
     id: 'roocode',
     name: 'Roo-Code',
     domain: 'roocline.dev/',
     logo: RooCodeLogoImg,
+    appName: 'vscode',
   },
   {
     id: 'trae',
     name: 'Trae',
     domain: 'trae.ai',
     logo: TraeLogoImg,
+    appName: 'trae',
   },
   {
     id: 'kilocode',
     name: 'Kilo-Code',
     domain: 'kilocode.ai',
     logo: KilocodeLogoImg,
+    appName: 'vscode',
   },
   {
     id: 'copilot',
     name: 'GitHub Copilot',
     domain: 'github.com/features/copilot',
     logo: GithubCopilotLogoImg,
+    appName: 'vscode',
   },
 ];
 
@@ -85,7 +93,7 @@ function getAgentExtensionUrl(agent: Agent) {
 export function InfoPanel() {
   const { availableAgents, connected } = useAgents();
 
-  const isInstalled = (id: string) => {
+  const isInstalled = (appName: string) => {
     // Get all agents (available + connected)
     const allAgents = [...availableAgents];
     if (connected) {
@@ -96,7 +104,7 @@ export function InfoPanel() {
     return allAgents.some((agent) => {
       const agentNameLower = (agent.name || '').toLowerCase();
       const agentDescLower = (agent.description || '').toLowerCase();
-      const searchId = id.toLowerCase();
+      const searchId = appName.toLowerCase();
 
       // Check for partial matches in name or description
       return (
@@ -132,10 +140,14 @@ export function InfoPanel() {
                 </span>
               </div>
 
-              {!isInstalled(agent.id) ? (
+              {!isInstalled(agent.appName) ? (
                 <Button
                   onClick={() => {
-                    window.open(getAgentExtensionUrl(agent), '_blank');
+                    window.open(
+                      getAgentExtensionUrl(agent),
+                      '_blank',
+                      'noopener,noreferrer',
+                    );
                   }}
                   variant="secondary"
                   size="sm"
