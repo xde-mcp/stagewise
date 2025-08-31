@@ -535,7 +535,7 @@ export function ChatPanel() {
                 },
               ]}
               placeholder="Select destination..."
-              className="h-8 w-max max-w-48 gap-4 border-none bg-transparent shadow-none hover:bg-blue-400/10 hover:shadow-none"
+              className="h-8 w-max max-w-48 border-none bg-transparent shadow-none hover:bg-blue-400/10 hover:shadow-none"
             />
 
             {/* Buttons grouped on the right */}
