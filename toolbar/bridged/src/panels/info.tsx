@@ -42,10 +42,24 @@ const agents: Agent[] = [
     appName: 'windsurf',
   },
   {
+    id: 'trae',
+    name: 'Trae',
+    domain: 'trae.ai',
+    logo: TraeLogoImg,
+    appName: 'trae',
+  },
+  {
     id: 'cline',
     name: 'Cline.bot',
     domain: 'cline.bot',
     logo: ClineLogoImg,
+    appName: 'vscode',
+  },
+  {
+    id: 'copilot',
+    name: 'GitHub Copilot',
+    domain: 'github.com/features/copilot',
+    logo: GithubCopilotLogoImg,
     appName: 'vscode',
   },
   {
@@ -56,24 +70,10 @@ const agents: Agent[] = [
     appName: 'vscode',
   },
   {
-    id: 'trae',
-    name: 'Trae',
-    domain: 'trae.ai',
-    logo: TraeLogoImg,
-    appName: 'trae',
-  },
-  {
     id: 'kilocode',
     name: 'Kilo-Code',
     domain: 'kilocode.ai',
     logo: KilocodeLogoImg,
-    appName: 'vscode',
-  },
-  {
-    id: 'copilot',
-    name: 'GitHub Copilot',
-    domain: 'github.com/features/copilot',
-    logo: GithubCopilotLogoImg,
     appName: 'vscode',
   },
 ];
