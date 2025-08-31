@@ -53,28 +53,28 @@ const agents: Agent[] = [
     name: 'Cline.bot',
     domain: 'cline.bot',
     logo: ClineLogoImg,
-    appName: 'vscode',
+    appName: 'code',
   },
   {
     id: 'copilot',
     name: 'GitHub Copilot',
     domain: 'github.com/features/copilot',
     logo: GithubCopilotLogoImg,
-    appName: 'vscode',
+    appName: 'code',
   },
   {
     id: 'roocode',
     name: 'Roo-Code',
     domain: 'roocline.dev/',
     logo: RooCodeLogoImg,
-    appName: 'vscode',
+    appName: 'code',
   },
   {
     id: 'kilocode',
     name: 'Kilo-Code',
     domain: 'kilocode.ai',
     logo: KilocodeLogoImg,
-    appName: 'vscode',
+    appName: 'code',
   },
 ];
 
