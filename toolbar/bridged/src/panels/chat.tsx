@@ -5,7 +5,7 @@ import {
   PanelFooter,
 } from '@/components/ui/panel';
 import { useKartonProcedure } from '@/hooks/use-karton';
-import { CircleQuestionMark } from 'lucide-react';
+import { CircleQuestionMark, Plus } from 'lucide-react';
 import { Select } from '@/components/ui/select';
 import { useAgentState } from '@/hooks/agent/use-agent-state';
 import { useChatState } from '@/hooks/use-chat-state';
@@ -108,6 +108,9 @@ export function ChatPanel() {
   );
   const [isComposing, setIsComposing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<string | number>(
+    'clipboard',
+  );
   const { connected, availableAgents, connectAgent, disconnectAgent } =
     useAgents();
   const { plugins } = usePlugins();
@@ -297,6 +300,15 @@ export function ChatPanel() {
   const isIntentionallyStoppingRef = useRef<boolean>(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sync selectedAgent state with connected agent
+  useEffect(() => {
+    if (connected?.port) {
+      setSelectedAgent(connected.port);
+    } else {
+      setSelectedAgent('clipboard');
+    }
+  }, [connected?.port]);
+
   useEffect(() => {
     const blurHandler = () => {
       // Don't refocus if we're intentionally stopping prompt creation
@@ -472,7 +484,18 @@ export function ChatPanel() {
             </div>
             {/* Agent selector */}
             <Select
+              value={selectedAgent}
               onChange={(value) => {
+                if (value === 'connect-other-agents') {
+                  // Open the info panel
+                  openInfo();
+                  setSelectedAgent('clipboard');
+                  return;
+                }
+
+                // Update the selectedAgent state immediately for UI responsiveness
+                setSelectedAgent(value);
+
                 if (value === 'clipboard') {
                   // Disconnect from any connected agent when clipboard is selected
                   disconnectAgent(true); // Pass true to indicate clipboard mode
@@ -488,9 +511,8 @@ export function ChatPanel() {
               }}
               items={[
                 {
-                  label: 'Clipboard',
+                  label: 'Clipboard Agent',
                   value: 'clipboard',
-                  icon: <CopyIcon className="size-4" />,
                 },
                 ...availableAgents.map((agent) => {
                   const logo = getAgentLogo(agent.name, agent.description);
@@ -506,8 +528,12 @@ export function ChatPanel() {
                     ) : null,
                   };
                 }),
+                availableAgents.length === 0 && {
+                  label: 'Connect other agents...',
+                  value: 'connect-other-agents',
+                  icon: <Plus className="size-4" />,
+                },
               ]}
-              value={connected?.port || 'clipboard'}
               placeholder="Select destination..."
               className="h-8 w-max max-w-48 gap-4 border-none bg-transparent shadow-none hover:bg-blue-400/10 hover:shadow-none"
             />
