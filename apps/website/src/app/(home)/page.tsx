@@ -43,7 +43,7 @@ import CSSLogo from './_components/techstack_logos/css.png';
 function SimplifiedSetupGuide() {
   return (
     <div className="flex max-w-3xl flex-col items-center text-center">
-      <h2 className="mb-6 font-bold text-3xl md:text-4xl">Start in seconds</h2>
+      <h2 className="mb-6 font-bold text-3xl md:text-4xl">Get started</h2>
       <p className="mb-8 text-lg text-zinc-600 dark:text-zinc-400">
         Get up and running with stagewise in just 3 simple steps
       </p>
@@ -57,7 +57,9 @@ function SimplifiedSetupGuide() {
               1
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Start the dev server</h3>
+              <h3 className="font-semibold text-lg">
+                Start the dev server of your app
+              </h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Start the dev server of your local dev project
               </p>
@@ -69,7 +71,7 @@ function SimplifiedSetupGuide() {
               2
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Open second terminal</h3>
+              <h3 className="font-semibold text-lg">Open a second terminal</h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Open a second terminal window in the root of your dev project
               </p>
@@ -81,7 +83,9 @@ function SimplifiedSetupGuide() {
               3
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Invoke the command</h3>
+              <h3 className="font-semibold text-lg">
+                Invoke the stagewise command
+              </h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Run the stagewise command and start building
               </p>
@@ -358,7 +362,7 @@ function CompatibilitySection() {
       <div className="max-w-6xl">
         <div className="mb-20 text-center">
           <h2 className="mb-6 font-bold text-3xl md:text-4xl">
-            Universal Tech Stack Support
+            stagewise Supports All Frameworks
           </h2>
           <div className="flex justify-center">
             <p className="max-w-3xl text-lg text-zinc-600 dark:text-zinc-400">
@@ -891,14 +895,14 @@ export default function Home() {
                   <span className="bg-gradient-to-br from-zinc-800 via-zinc-900 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
                     The frontend coding agent for
                     <br />
-                    real codebases
+                    your existing project
                   </span>
                 </h1>
                 <div className="flex justify-center">
                   <p className="mb-8 max-w-3xl text-center text-lg text-zinc-600 dark:text-zinc-400">
-                    stagewise runs locally, lives inside your browser and let's
-                    you build app frontends simply by selecting elements and
-                    prompting changes.
+                    stagewise runs locally, lives inside your browser and lets
+                    you edit the frontend of your existing project simply by
+                    selecting elements and prompting changes.
                   </p>
                 </div>
 
@@ -959,6 +963,18 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Simplified Setup Guide Section */}
+      <section
+        id="setup-guide"
+        className="container relative z-10 border-zinc-200 border-t px-4 py-32 md:py-40 dark:border-zinc-800"
+      >
+        <ScrollReveal>
+          <div className="flex justify-center pt-8">
+            <SimplifiedSetupGuide />
+          </div>
+        </ScrollReveal>
+      </section>
+
       {/* Customer Testimonials Section */}
       <section className="relative z-10 border-zinc-200 border-t py-32 md:py-40 dark:border-zinc-800">
         <div className="container mx-auto px-4">
@@ -976,18 +992,6 @@ export default function Home() {
             <CustomerReviewsSlideshow />
           </ScrollReveal>
         </div>
-      </section>
-
-      {/* Simplified Setup Guide Section */}
-      <section
-        id="setup-guide"
-        className="container relative z-10 border-zinc-200 border-t px-4 py-32 md:py-40 dark:border-zinc-800"
-      >
-        <ScrollReveal>
-          <div className="flex justify-center pt-8">
-            <SimplifiedSetupGuide />
-          </div>
-        </ScrollReveal>
       </section>
 
       {/* Enhanced Bento Grid Features Section */}

@@ -32,7 +32,8 @@ export function PackageManagerClipboard() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(packageManagerCommands[selectedPM]);
+      const command = packageManagerCommands[selectedPM];
+      await navigator.clipboard.writeText(command);
       setCopied(true);
       posthog?.capture('quickstart_toolbar_copy_click', {
         package_manager: selectedPM,
@@ -49,7 +50,7 @@ export function PackageManagerClipboard() {
   };
 
   return (
-    <div className="glass-body relative flex w-fit items-center rounded-full bg-white/60 p-2 transition-all duration-200 dark:bg-zinc-900/60">
+    <div className="glass-body relative flex w-fit items-center gap-2 rounded-full bg-white/60 p-2 transition-all duration-200 dark:bg-zinc-900/60">
       {/* Dropdown for package manager selection */}
       <div className="relative">
         <Menu>
@@ -67,9 +68,7 @@ export function PackageManagerClipboard() {
             {Object.entries(packageManagerLabels).map(([pm, label]) => (
               <MenuItem
                 key={pm}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+                onClick={() => {
                   handlePackageManagerSelect(pm as PackageManager);
                 }}
               >
@@ -87,7 +86,7 @@ export function PackageManagerClipboard() {
         onClick={handleCopy}
         aria-label="Copy to clipboard"
       >
-        <span className="select-all font-mono text-sm">
+        <span className="select-all whitespace-nowrap font-mono text-sm">
           {packageManagerCommands[selectedPM]}
         </span>
         {copied ? (
