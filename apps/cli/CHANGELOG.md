@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.8.2
+
+### Patch Changes
+
+- 6c97bc0: Make the whole code-diff tool-result preview clickable.
+
 ## 0.8.1
 
 ### Patch Changes
