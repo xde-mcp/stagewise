@@ -10,7 +10,7 @@ import type {
   AgentError,
 } from '@stagewise/karton-contract';
 import { AgentErrorType } from '@stagewise/karton-contract';
-import { RefreshCcwIcon, Redo2 } from 'lucide-react';
+import { RefreshCcwIcon, Redo2, Undo2 } from 'lucide-react';
 import {
   BrainIcon,
   CheckIcon,
@@ -24,7 +24,14 @@ import {
   TrashIcon,
   XIcon,
 } from 'lucide-react';
-import { memo, useMemo, useCallback, Fragment, useState } from 'react';
+import {
+  memo,
+  useMemo,
+  useCallback,
+  Fragment,
+  useState,
+  useEffect,
+} from 'react';
 import TimeAgo from 'react-timeago';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useChatState } from '@/hooks/use-chat-state';
@@ -44,25 +51,67 @@ import { diffLines } from 'diff';
 export function ChatBubble({
   message: msg,
   chatError,
+  isLastMessage,
 }: {
   message: ChatMessage;
   chatError?: AgentError;
+  isLastMessage: boolean;
 }) {
   const retrySendingUserMessage = useKartonProcedure(
     (p) => p.retrySendingUserMessage,
   );
-  const undoToolCallsUntilUserMessage = useKartonProcedure(
-    (p) => p.undoToolCallsUntilUserMessage,
+  const undoToolCallsUntilLatestUserMessage = useKartonProcedure(
+    (p) => p.undoToolCallsUntilLatestUserMessage,
+  );
+  const assistantMadeCodeChangesUntilLatestUserMessage = useKartonProcedure(
+    (p) => p.assistantMadeCodeChangesUntilLatestUserMessage,
   );
   const activeChatId = useKartonState((s) => s.activeChatId);
   const isWorking = useKartonState((s) => s.isWorking);
   const { setChatInput, addChatDomContext } = useChatState();
+  const [hasCodeChanges, setHasCodeChanges] = useState(false);
+
+  useEffect(() => {
+    if (
+      msg.role === 'assistant' &&
+      isLastMessage &&
+      !isWorking &&
+      activeChatId
+    ) {
+      const checkCodeChanges = async () => {
+        try {
+          const hasChanges =
+            await assistantMadeCodeChangesUntilLatestUserMessage(activeChatId);
+          setHasCodeChanges(hasChanges);
+        } catch (error) {
+          console.warn('Failed to check for code changes:', error);
+          setHasCodeChanges(false);
+        }
+      };
+      void checkCodeChanges();
+    } else {
+      setHasCodeChanges(false);
+    }
+  }, [
+    msg.role,
+    isLastMessage,
+    isWorking,
+    activeChatId,
+    assistantMadeCodeChangesUntilLatestUserMessage,
+  ]);
 
   const confirmRestore = useCallback(async () => {
     if (!msg.id || !activeChatId) return;
 
+    const latestUserMessage =
+      await undoToolCallsUntilLatestUserMessage(activeChatId);
+    if (!latestUserMessage) {
+      console.warn('Could not find latest user message');
+      return;
+    }
+
     // Extract text content from message parts
-    const textContent = msg.parts
+    const textContent = latestUserMessage.parts
       .filter((part) => part.type === 'text')
       .map((part) => (part as TextUIPart).text)
       .join('\n');
@@ -71,43 +120,42 @@ export function ChatBubble({
     setChatInput(textContent);
 
     // Restore selected elements if they exist
-    if (msg.metadata?.browserData?.selectedElements) {
+    if (latestUserMessage.metadata?.browserData?.selectedElements) {
       // Try to find and restore the elements using their xpath
-      msg.metadata.browserData.selectedElements.forEach((element) => {
-        try {
-          // Try to find the element using xpath
-          const iframe = document.getElementById(
-            'user-app-iframe',
-          ) as HTMLIFrameElement;
-          const result = document.evaluate(
-            element.xpath,
-            iframe?.contentDocument || document,
-            null,
-            XPathResult.FIRST_ORDERED_NODE_TYPE,
-            null,
-          );
+      latestUserMessage.metadata.browserData.selectedElements.forEach(
+        (element) => {
+          try {
+            // Try to find the element using xpath
+            const iframe = document.getElementById(
+              'user-app-iframe',
+            ) as HTMLIFrameElement;
+            const result = document.evaluate(
+              element.xpath,
+              iframe?.contentDocument || document,
+              null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null,
+            );
 
-          if (
-            result.singleNodeValue &&
-            result.singleNodeValue instanceof HTMLElement
-          ) {
-            addChatDomContext(result.singleNodeValue as HTMLElement);
+            if (
+              result.singleNodeValue &&
+              result.singleNodeValue instanceof HTMLElement
+            ) {
+              addChatDomContext(result.singleNodeValue as HTMLElement);
+            }
+          } catch (_e) {
+            // If xpath lookup fails, we can't restore this element
+            console.warn('Could not restore element:', element.xpath);
           }
-        } catch (_e) {
-          // If xpath lookup fails, we can't restore this element
-          console.warn('Could not restore element:', element.xpath);
-        }
-      });
+        },
+      );
     }
-
-    // Call the undo procedure to revert changes
-    await undoToolCallsUntilUserMessage(msg.id, activeChatId);
   }, [
     msg,
     activeChatId,
     setChatInput,
     addChatDomContext,
-    undoToolCallsUntilUserMessage,
+    undoToolCallsUntilLatestUserMessage,
   ]);
 
   return (
@@ -118,57 +166,127 @@ export function ChatBubble({
           msg.role === 'assistant' ? 'flex-row' : 'flex-row-reverse',
         )}
       >
-        <div
-          className={cn(
-            'group relative min-h-8 animate-chat-bubble-appear space-y-3 break-words rounded-2xl bg-white/5 px-2.5 py-1.5 font-normal text-sm shadow-lg shadow-zinc-950/10 ring-1 ring-inset last:mb-0.5',
-            msg.role === 'assistant'
-              ? 'min-w-48 origin-bottom-left rounded-bl-xs bg-zinc-100/60 text-zinc-950 ring-zinc-950/5'
-              : 'origin-bottom-right rounded-br-xs bg-blue-600/90 text-white ring-white/5',
-          )}
-        >
+        <div className="flex max-w-full flex-col items-end gap-2">
           <div
             className={cn(
-              'group-hover:-top-3 -top-2 absolute z-20 w-max rounded-full bg-white/90 px-1.5 py-0.5 text-xs text-zinc-950/80 opacity-0 shadow-sm ring-1 ring-zinc-500/10 ring-inset transition-all duration-150 ease-out group-hover:opacity-100',
-              msg.role === 'assistant' ? 'left-1' : 'right-1',
+              'group relative min-h-8 max-w-full animate-chat-bubble-appear space-y-3 break-words rounded-2xl bg-white/5 px-2.5 py-1.5 font-normal text-sm shadow-lg shadow-zinc-950/10 ring-1 ring-inset last:mb-0.5',
+              msg.role === 'assistant'
+                ? 'min-w-48 origin-bottom-left rounded-bl-xs bg-zinc-100/60 text-zinc-950 ring-zinc-950/5'
+                : 'origin-bottom-right rounded-br-xs bg-blue-600/90 text-white ring-white/5',
             )}
           >
-            <TimeAgo date={msg.metadata.createdAt} />
+            <div
+              className={cn(
+                'group-hover:-top-3 -top-2 absolute z-20 w-max rounded-full bg-white/90 px-1.5 py-0.5 text-xs text-zinc-950/80 opacity-0 shadow-sm ring-1 ring-zinc-500/10 ring-inset transition-all duration-150 ease-out group-hover:opacity-100',
+                msg.role === 'assistant' ? 'left-1' : 'right-1',
+              )}
+            >
+              <TimeAgo date={msg.metadata.createdAt} />
+            </div>
+            {msg.parts.map((part, index) => {
+              if (
+                part.type === 'dynamic-tool' ||
+                part.type.startsWith('tool-')
+              ) {
+                return (
+                  <ToolPartItem
+                    key={`content_part_${index.toString()}`}
+                    toolPart={part as ToolPart | DynamicToolUIPart}
+                  />
+                );
+              }
+              switch (part.type) {
+                case 'text':
+                  return (
+                    <TextPartItem
+                      key={`content_part_${index.toString()}`}
+                      textPart={part}
+                    />
+                  );
+                case 'reasoning':
+                  return (
+                    <ReasoningPartItem
+                      key={`content_part_${index.toString()}`}
+                      reasoningPart={part}
+                    />
+                  );
+                case 'file':
+                  return (
+                    <FilePartItem
+                      key={`content_part_${index.toString()}`}
+                      filePart={part}
+                    />
+                  );
+                default:
+                  return null;
+              }
+            })}
           </div>
-          {msg.parts.map((part, index) => {
-            if (part.type === 'dynamic-tool' || part.type.startsWith('tool-')) {
-              return (
-                <ToolPartItem
-                  key={`content_part_${index.toString()}`}
-                  toolPart={part as ToolPart | DynamicToolUIPart}
-                />
-              );
-            }
-            switch (part.type) {
-              case 'text':
-                return (
-                  <TextPartItem
-                    key={`content_part_${index.toString()}`}
-                    textPart={part}
-                  />
-                );
-              case 'reasoning':
-                return (
-                  <ReasoningPartItem
-                    key={`content_part_${index.toString()}`}
-                    reasoningPart={part}
-                  />
-                );
-              case 'file':
-                return (
-                  <FilePartItem
-                    key={`content_part_${index.toString()}`}
-                    filePart={part}
-                  />
-                );
-              default:
-                return null;
-            }
-          })}
+          {msg.role === 'assistant' &&
+            isLastMessage &&
+            !isWorking &&
+            hasCodeChanges && (
+              <Popover className="relative">
+                {({ close }) => (
+                  <>
+                    <PopoverButton
+                      type="button"
+                      aria-label="Undo changes"
+                      className="flex cursor-pointer flex-row items-center gap-1 text-xs text-zinc-600 transition-colors hover:text-zinc-900 focus:outline-none"
+                    >
+                      Undo changes
+                      <Undo2 className="size-3" />
+                    </PopoverButton>
+
+                    <Transition
+                      as={Fragment}
+                      enter="transition ease-out duration-200"
+                      enterFrom="opacity-0 translate-y-1 scale-95"
+                      enterTo="opacity-100 translate-y-0 scale-100"
+                      leave="transition ease-in duration-150"
+                      leaveFrom="opacity-100 translate-y-0 scale-100"
+                      leaveTo="opacity-0 translate-y-1 scale-95"
+                    >
+                      <PopoverPanel
+                        anchor="top end"
+                        className="overflow-visible! z-[9999] w-64 p-1 [--anchor-gap:8px]"
+                      >
+                        <div className="rounded-xl bg-white/95 p-3 shadow-xl ring-1 ring-zinc-950/10 ring-inset backdrop-blur-lg">
+                          <p className="font-medium text-sm text-zinc-950">
+                            Undo changes?
+                          </p>
+                          <p className="mt-1 text-xs text-zinc-600">
+                            This will undo all changes made by the assistant
+                            after this message.
+                          </p>
+                          <div className="mt-3 flex justify-end gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => close()}
+                              className="h-7 px-2 py-1 text-xs"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => {
+                                confirmRestore();
+                                close();
+                              }}
+                              className="h-7 px-2 py-1 text-xs"
+                            >
+                              Undo
+                            </Button>
+                          </div>
+                        </div>
+                      </PopoverPanel>
+                    </Transition>
+                  </>
+                )}
+              </Popover>
+            )}
         </div>
 
         {msg.role === 'user' && msg.id && !isWorking && (
