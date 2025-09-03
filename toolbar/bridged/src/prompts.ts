@@ -264,7 +264,7 @@ export function createPrompt(
   // Handle case when no elements are selected
   if (!selectedElements || selectedElements.length === 0) {
     return `<task>
-  <action>Find and modify the source code based on the user's request</action>
+  <action>Implement the frontend changes based on my request and the provided context below.</action>
   <user_request>${userPrompt}</user_request>
   <page_url>${url}</page_url>
   <note>No specific elements were selected. Analyze the general page implementation or request clarification.</note>
@@ -279,7 +279,7 @@ export function createPrompt(
 
   // Build the complete prompt with clear structure
   return `<task>
-  <action>Find and modify the source code implementation for the selected UI elements</action>
+  <action>Implement the frontend changes based on my request and the provided context below.</action>
   <user_request>${userPrompt}</user_request>
   <page_url>${url}</page_url>
 </task>

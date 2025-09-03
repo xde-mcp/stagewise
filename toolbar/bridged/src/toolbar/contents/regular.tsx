@@ -1,6 +1,6 @@
 import { ToolbarSection } from '@/toolbar/components/section';
 import { ToolbarButton } from '@/toolbar/components/button';
-import { MessageCircleIcon, PuzzleIcon } from 'lucide-react';
+import { MessageCircleIcon, PuzzleIcon, Settings } from 'lucide-react';
 import { usePanels } from '@/hooks/use-panels';
 import { usePlugins } from '@/hooks/use-plugins';
 import { useChatState } from '@/hooks/use-chat-state';
@@ -13,6 +13,9 @@ export function RegularContent() {
     openPluginName,
     closePlugin,
     openPlugin,
+    isInfoOpen,
+    openInfo,
+    closeInfo,
   } = usePanels();
 
   const { startPromptCreation, startContextSelector } = useChatState();
@@ -60,6 +63,12 @@ export function RegularContent() {
           active={isChatOpen}
         >
           <MessageCircleIcon className="size-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={isInfoOpen ? closeInfo : openInfo}
+          active={isInfoOpen}
+        >
+          <Settings className="size-4" />
         </ToolbarButton>
       </ToolbarSection>
     </>

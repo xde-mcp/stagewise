@@ -19,9 +19,11 @@ import RooCodeLogoImg from './roo_code.png';
 import GithubCopilotLogoImg from './github_copilot.png';
 import TraeLogoImg from './trae.png';
 import KilocodeLogoImg from './kilocode.png';
+import ClaudeCodeLogoImg from './claude.png';
 
 // Export PNG logos
 export {
+  ClaudeCodeLogoImg,
   KilocodeLogoImg,
   CursorLogoImg,
   StagewiseLogoImg,

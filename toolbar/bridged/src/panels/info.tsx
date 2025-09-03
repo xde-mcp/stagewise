@@ -14,9 +14,15 @@ import {
   RooCodeLogoImg,
   GithubCopilotLogoImg,
   KilocodeLogoImg,
+  ClaudeCodeLogoImg,
 } from '@/components/logos';
 import { Button } from '@/components/ui/button';
 import { useAgents } from '@/hooks/agent/use-agent-provider';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface Agent {
   id: string;
@@ -24,9 +30,18 @@ interface Agent {
   domain: string;
   logo: string;
   appName: string;
+  clipboard?: boolean;
 }
 
 const agents: Agent[] = [
+  {
+    id: 'claude',
+    name: 'Claude Code',
+    domain: 'claude.com',
+    logo: ClaudeCodeLogoImg,
+    appName: 'claude',
+    clipboard: true,
+  },
   {
     id: 'cursor',
     name: 'Cursor.com',
@@ -139,8 +154,7 @@ export function InfoPanel() {
                   {agent.name}
                 </span>
               </div>
-
-              {!isInstalled(agent.appName) ? (
+              {!isInstalled(agent.appName) && !agent.clipboard && (
                 <Button
                   onClick={() => {
                     window.open(
@@ -156,7 +170,8 @@ export function InfoPanel() {
                 >
                   Install the extension
                 </Button>
-              ) : (
+              )}{' '}
+              {isInstalled(agent.appName) && !agent.clipboard && (
                 <Button
                   variant="secondary"
                   size="sm"
@@ -166,6 +181,29 @@ export function InfoPanel() {
                 >
                   Connected
                 </Button>
+              )}
+              {agent.clipboard && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <span className="inline-block">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-8 px-4 text-xs"
+                        disabled={true}
+                        glassy
+                      >
+                        Via Copy Mode
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      Use the copy mode to copy and paste prompts to{' '}
+                      {agent.name}.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           ))}

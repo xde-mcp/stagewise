@@ -5,7 +5,7 @@ import {
   PanelFooter,
 } from '@/components/ui/panel';
 import { useKartonProcedure } from '@/hooks/use-karton';
-import { CircleQuestionMark, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Select } from '@/components/ui/select';
 import { useAgentState } from '@/hooks/agent/use-agent-state';
 import { useChatState } from '@/hooks/use-chat-state';
@@ -49,6 +49,7 @@ import {
   TraeLogoImg,
   WindsurfLogoImg,
   ClineLogoImg,
+  ClaudeCodeLogoImg,
   RooCodeLogoImg,
   GithubCopilotLogoImg,
   KilocodeLogoImg,
@@ -95,6 +96,7 @@ const getAgentLogo = (name: string, description: string): string | null => {
     return KilocodeLogoImg;
   if (searchText.includes('github') || searchText.includes('copilot'))
     return GithubCopilotLogoImg;
+  if (searchText.includes('claude')) return ClaudeCodeLogoImg;
 
   return null;
 };
@@ -114,7 +116,7 @@ export function ChatPanel() {
   const { connected, availableAgents, connectAgent, disconnectAgent } =
     useAgents();
   const { plugins } = usePlugins();
-  const { isInfoOpen, openInfo, closeInfo } = usePanels();
+  const { openInfo } = usePanels();
 
   const enableInputField = useMemo(() => {
     // Always enable input for clipboard mode or when agent is connected and ready
@@ -462,26 +464,6 @@ export function ChatPanel() {
             </div>
           </div>
           <div className="flex flex-row items-center justify-end gap-4">
-            <div className="mr-auto flex h-8 flex-row items-center pl-2">
-              <div
-                className={cn(
-                  'cursor-pointer rounded-full p-1 transition-colors duration-200',
-                  isInfoOpen
-                    ? 'bg-blue-600/10 text-blue-600'
-                    : 'text-foreground/60 hover:text-foreground/80',
-                )}
-                onClick={() => {
-                  if (isInfoOpen) {
-                    closeInfo();
-                  } else {
-                    openInfo();
-                  }
-                }}
-                role="button"
-              >
-                <CircleQuestionMark className="size-4" />
-              </div>
-            </div>
             {/* Agent selector */}
             <Select
               value={selectedAgent}
@@ -511,7 +493,7 @@ export function ChatPanel() {
               }}
               items={[
                 {
-                  label: 'Clipboard Agent',
+                  label: 'Copy Mode',
                   value: 'clipboard',
                 },
                 ...availableAgents.map((agent) => {
@@ -528,7 +510,7 @@ export function ChatPanel() {
                     ) : null,
                   };
                 }),
-                availableAgents.length === 0 && {
+                {
                   label: 'Connect other agents...',
                   value: 'connect-other-agents',
                   icon: <Plus className="size-4" />,
@@ -596,23 +578,19 @@ export function ChatPanel() {
                   onClick={handleCopyToClipboard}
                   glassy
                   variant="primary"
-                  className="relative size-8 cursor-pointer rounded-full p-1"
+                  className="h-8 cursor-pointer"
                 >
                   <div
                     className={cn(
-                      'absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out',
-                      isCopied ? 'scale-0 opacity-0' : 'scale-100 opacity-100',
+                      'flex items-center justify-center gap-2 transition-all duration-300 ease-out',
                     )}
                   >
-                    <CopyIcon className="size-4" />
-                  </div>
-                  <div
-                    className={cn(
-                      'absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out',
-                      isCopied ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
+                    <div>{isCopied ? 'Copied' : 'Copy'}</div>
+                    {isCopied ? (
+                      <CheckIcon className="size-4" />
+                    ) : (
+                      <CopyIcon className="size-4" />
                     )}
-                  >
-                    <CheckIcon className="size-4 stroke-white" />
                   </div>
                 </Button>
               )}
