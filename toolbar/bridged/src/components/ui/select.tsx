@@ -75,32 +75,31 @@ export function Select<T = any>({
             <BaseSelect.ScrollUpArrow className="flex h-6 items-center justify-center text-zinc-400">
               <ChevronUpIcon className="size-4" />
             </BaseSelect.ScrollUpArrow>
-            {items.map(
-              (item) =>
-                item && (
-                  <BaseSelect.Item
-                    key={String(item.value)}
-                    value={item.value}
-                    className={cn(
-                      'relative flex cursor-pointer select-none items-center rounded-lg px-2 py-2 text-sm',
-                      'text-foreground/80 outline-none',
-                      'transition-colors duration-150',
-                      'hover:bg-zinc-100/80',
-                      'data-[selected]:bg-blue-600 data-[selected]:text-white',
-                      'data-[selected]:data-[focused]:bg-blue-600 data-[focused]:bg-zinc-100/80',
-                    )}
-                  >
-                    <BaseSelect.ItemText className="flex items-center gap-2">
-                      {item.icon && (
-                        <span className="size-4 flex-shrink-0">
-                          {item.icon}
-                        </span>
-                      )}
-                      <span>{item.label}</span>
-                    </BaseSelect.ItemText>
-                  </BaseSelect.Item>
-                ),
-            )}
+            {items.map((item, _index) => (
+              <BaseSelect.Item
+                key={
+                  typeof item.value === 'object'
+                    ? JSON.stringify(item.value)
+                    : String(item.value)
+                }
+                value={item.value}
+                className={cn(
+                  'relative flex cursor-pointer select-none items-center rounded-lg px-2 py-2 text-sm',
+                  'text-foreground/80 outline-none',
+                  'transition-colors duration-150',
+                  'hover:bg-zinc-100/80',
+                  'data-[selected]:bg-blue-600 data-[selected]:text-white',
+                  'data-[selected]:data-[focused]:bg-blue-600 data-[focused]:bg-zinc-100/80',
+                )}
+              >
+                <BaseSelect.ItemText className="flex items-center gap-2">
+                  {item.icon && (
+                    <span className="size-4 flex-shrink-0">{item.icon}</span>
+                  )}
+                  <span>{item.label}</span>
+                </BaseSelect.ItemText>
+              </BaseSelect.Item>
+            ))}
             <BaseSelect.ScrollDownArrow className="flex h-6 items-center justify-center text-zinc-400">
               <ChevronDownIcon className="size-4" />
             </BaseSelect.ScrollDownArrow>

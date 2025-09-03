@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from 'express';
+import type { WebSocketServer, WebSocket } from 'ws';
 import { createKartonServer } from '@stagewise/karton/server';
 import type { KartonContract } from '@stagewise/karton-contract-bridged';
 import { createServer } from 'node:http';
@@ -216,9 +217,9 @@ export const getServer = async () => {
     const server = createServer(app);
 
     // Initialize agent server if not in bridge mode (BEFORE wildcard route)
-    let bridgeModeWss: any = null;
+    let bridgeModeWss: WebSocketServer | null = null;
     let bridgeModeWsPath: string | null = null;
-    let agentWss: any = null;
+    let agentWss: WebSocketServer | null = null;
     let agentWsPath: string | null = null;
 
     if (!config.bridgeMode) {
@@ -291,15 +292,20 @@ export const getServer = async () => {
         if (agentWss && url === agentWsPath) {
           // Handle agent WebSocket requests
           log.debug('Handling agent WebSocket upgrade');
-          agentWss.handleUpgrade(request, socket, head, (ws: any) => {
+          agentWss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
             agentWss.emit('connection', ws, request);
           });
         } else if (bridgeModeWss && url === bridgeModeWsPath) {
           // Handle bridge mode WebSocket requests
           log.debug('Handling bridge mode WebSocket upgrade');
-          bridgeModeWss.handleUpgrade(request, socket, head, (ws: any) => {
-            bridgeModeWss.emit('connection', ws, request);
-          });
+          bridgeModeWss.handleUpgrade(
+            request,
+            socket,
+            head,
+            (ws: WebSocket) => {
+              bridgeModeWss.emit('connection', ws, request);
+            },
+          );
         } else {
           log.debug(`Unknown WebSocket path: ${url}`);
           socket.destroy();
