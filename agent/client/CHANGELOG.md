@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.3.2
+
+### Patch Changes
+
+- 650fbb7: Add undo button below assistant messages as well.
+
 ## 0.3.1
 
 ### Patch Changes

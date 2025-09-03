@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.12.3
+
+### Patch Changes
+
+- 650fbb7: Add undo button below assistant messages as well.
+
 ## 0.12.2
 
 ### Patch Changes
