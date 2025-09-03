@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { cliTools } from '@stagewise/agent-tools';
 import { isAbortError } from './utils/is-abort-error.js';
+import { cliTools, type UITools } from '@stagewise/agent-tools';
 import { AgentErrorType } from '@stagewise/karton-contract';
 import { convertCreditsToSubscriptionCredits } from './utils/convert-credits-to-subscription-credits.js';
-import type { KartonContract, History } from '@stagewise/karton-contract';
+import type {
+  KartonContract,
+  History,
+  ChatMessage,
+} from '@stagewise/karton-contract';
 import {
   createKartonServer,
   type KartonServer,
@@ -336,6 +340,11 @@ export class Agent {
         undoToolCallsUntilUserMessage: async (userMessageId, chatId) => {
           await this.undoToolCallsUntilUserMessage(userMessageId, chatId);
         },
+        undoToolCallsUntilLatestUserMessage: async (
+          chatId,
+        ): Promise<ChatMessage | null> => {
+          return await this.undoToolCallsUntilLatestUserMessage(chatId);
+        },
         retrySendingUserMessage: async () => {
           this.setAgentWorking(true);
           this.karton?.setState((draft) => {
@@ -451,6 +460,11 @@ export class Agent {
           }).then(() => {
             this.setAgentWorking(false);
           });
+        },
+        assistantMadeCodeChangesUntilLatestUserMessage: async (chatId) => {
+          return await this.assistantMadeCodeChangesUntilLatestUserMessage(
+            chatId,
+          );
         },
       },
       initialState: {
@@ -718,6 +732,59 @@ export class Agent {
         }
       }
     }
+  }
+
+  /**
+   * Checks if the chat has code changes
+   * @param chatId - The id of the chat
+   * @returns True if the chat has code changes, false otherwise
+   */
+  private async assistantMadeCodeChangesUntilLatestUserMessage(
+    chatId: string,
+  ): Promise<boolean> {
+    const chat = this.karton?.state.chats[chatId];
+    const history = chat?.messages ?? [];
+    const reversedHistory = [...history].reverse();
+    const userMessageIndex = reversedHistory.findIndex(
+      (m) => m.role === 'user' && 'id' in m,
+    );
+    let hasMadeCodeChanges = false;
+    for (let i = 0; i < userMessageIndex; i++) {
+      const message = reversedHistory[i]!;
+      for (const part of message.parts) {
+        if (isToolCallType(part.type)) {
+          const toolCall = part as ToolUIPart<UITools>;
+          if (toolCall.output?.diff) {
+            hasMadeCodeChanges = true;
+            break;
+          }
+        }
+      }
+    }
+    return hasMadeCodeChanges;
+  }
+
+  /**
+   * Undoes all tool calls until the latest user message is reached
+   * @param chatId - The id of the chat
+   */
+  private async undoToolCallsUntilLatestUserMessage(
+    chatId: string,
+  ): Promise<ChatMessage | null> {
+    if (!this.undoToolCallStack.has(chatId)) return null;
+    const chat = this.karton?.state.chats[chatId];
+    const history = chat?.messages ?? [];
+    const reversedHistory = [...history].reverse();
+    const userMessageIndex = reversedHistory.findIndex(
+      (m) => m.role === 'user' && 'id' in m,
+    );
+    if (userMessageIndex === -1) return null;
+    const latestUserMessage = reversedHistory[userMessageIndex]!;
+    await this.undoToolCallsUntilUserMessage(
+      reversedHistory[userMessageIndex]!.id,
+      chatId,
+    );
+    return latestUserMessage;
   }
 
   /**

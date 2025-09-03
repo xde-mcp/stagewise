@@ -68,5 +68,11 @@ export type KartonContract = {
       userMessageId: string,
       chatId: string,
     ) => Promise<void>;
+    undoToolCallsUntilLatestUserMessage: (
+      chatId: string,
+    ) => Promise<ChatMessage | null>;
+    assistantMadeCodeChangesUntilLatestUserMessage: (
+      chatId: string,
+    ) => Promise<boolean>;
   };
 };

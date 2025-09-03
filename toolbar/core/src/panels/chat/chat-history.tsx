@@ -100,7 +100,11 @@ export function ChatHistory({ ref }: { ref: React.RefObject<HTMLDivElement> }) {
     >
       {renderedMessages.map((message, index) => {
         return (
-          <ChatBubble key={`${message.role}-${index}`} message={message} />
+          <ChatBubble
+            key={`${message.role}-${index}`}
+            message={message}
+            isLastMessage={index === renderedMessages.length - 1}
+          />
         );
       }) ?? []}
 
