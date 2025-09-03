@@ -60,6 +60,9 @@ export function ChatBubble({
   const retrySendingUserMessage = useKartonProcedure(
     (p) => p.retrySendingUserMessage,
   );
+  const undoToolCallsUntilUserMessage = useKartonProcedure(
+    (p) => p.undoToolCallsUntilUserMessage,
+  );
   const undoToolCallsUntilLatestUserMessage = useKartonProcedure(
     (p) => p.undoToolCallsUntilLatestUserMessage,
   );
@@ -68,7 +71,7 @@ export function ChatBubble({
   );
   const activeChatId = useKartonState((s) => s.activeChatId);
   const isWorking = useKartonState((s) => s.isWorking);
-  const { setChatInput, addChatDomContext } = useChatState();
+  const { setChatInput } = useChatState();
   const [hasCodeChanges, setHasCodeChanges] = useState(false);
 
   useEffect(() => {
@@ -103,6 +106,18 @@ export function ChatBubble({
   const confirmRestore = useCallback(async () => {
     if (!msg.id || !activeChatId) return;
 
+    const textContent = msg.parts
+      .filter((part) => part.type === 'text')
+      .map((part) => (part as TextUIPart).text)
+      .join('\n');
+
+    setChatInput(textContent);
+    await undoToolCallsUntilUserMessage(msg.id, activeChatId);
+  }, [msg.id, activeChatId, setChatInput, undoToolCallsUntilUserMessage]);
+
+  const confirmUndo = useCallback(async () => {
+    if (!msg.id || !activeChatId) return;
+
     const latestUserMessage =
       await undoToolCallsUntilLatestUserMessage(activeChatId);
     if (!latestUserMessage) {
@@ -119,44 +134,8 @@ export function ChatBubble({
     // Populate the input with the text content
     setChatInput(textContent);
 
-    // Restore selected elements if they exist
-    if (latestUserMessage.metadata?.browserData?.selectedElements) {
-      // Try to find and restore the elements using their xpath
-      latestUserMessage.metadata.browserData.selectedElements.forEach(
-        (element) => {
-          try {
-            // Try to find the element using xpath
-            const iframe = document.getElementById(
-              'user-app-iframe',
-            ) as HTMLIFrameElement;
-            const result = document.evaluate(
-              element.xpath,
-              iframe?.contentDocument || document,
-              null,
-              XPathResult.FIRST_ORDERED_NODE_TYPE,
-              null,
-            );
-
-            if (
-              result.singleNodeValue &&
-              result.singleNodeValue instanceof HTMLElement
-            ) {
-              addChatDomContext(result.singleNodeValue as HTMLElement);
-            }
-          } catch (_e) {
-            // If xpath lookup fails, we can't restore this element
-            console.warn('Could not restore element:', element.xpath);
-          }
-        },
-      );
-    }
-  }, [
-    msg,
-    activeChatId,
-    setChatInput,
-    addChatDomContext,
-    undoToolCallsUntilLatestUserMessage,
-  ]);
+    // TODO: restore selected elements
+  }, [msg, activeChatId, setChatInput, undoToolCallsUntilLatestUserMessage]);
 
   return (
     <div className="flex flex-col gap-1">
@@ -272,7 +251,7 @@ export function ChatBubble({
                               variant="primary"
                               size="sm"
                               onClick={() => {
-                                confirmRestore();
+                                confirmUndo();
                                 close();
                               }}
                               className="h-7 px-2 py-1 text-xs"
