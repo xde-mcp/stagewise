@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.3.1
+
+### Patch Changes
+
+- f5a806d: Fixing tool-call aborts mid execution!
+
 ## 0.3.0
 
 ### Minor Changes

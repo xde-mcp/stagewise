@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.8.3
+
+### Patch Changes
+
+- f5a806d: Fixing tool-call aborts mid execution!
+
 ## 0.8.2
 
 ### Patch Changes
