@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.8.4
+
+### Patch Changes
+
+- 650fbb7: Add undo button below assistant messages as well.
+
 ## 0.8.3
 
 ### Patch Changes
