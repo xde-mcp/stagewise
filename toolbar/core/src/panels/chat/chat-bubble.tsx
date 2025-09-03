@@ -112,30 +112,38 @@ export function ChatBubble({
       .join('\n');
 
     setChatInput(textContent);
-    await undoToolCallsUntilUserMessage(msg.id, activeChatId);
+    try {
+      await undoToolCallsUntilUserMessage(msg.id, activeChatId);
+    } catch (error) {
+      console.warn('Failed to undo tool calls:', error);
+    }
   }, [msg.id, activeChatId, setChatInput, undoToolCallsUntilUserMessage]);
 
   const confirmUndo = useCallback(async () => {
-    if (!msg.id || !activeChatId) return;
+    if (!activeChatId) return;
 
-    const latestUserMessage =
-      await undoToolCallsUntilLatestUserMessage(activeChatId);
-    if (!latestUserMessage) {
-      console.warn('Could not find latest user message');
-      return;
+    try {
+      const latestUserMessage =
+        await undoToolCallsUntilLatestUserMessage(activeChatId);
+      if (!latestUserMessage) {
+        console.warn('Could not find latest user message');
+        return;
+      }
+
+      // Extract text content from message parts
+      const textContent = latestUserMessage.parts
+        .filter((part) => part.type === 'text')
+        .map((part) => (part as TextUIPart).text)
+        .join('\n');
+
+      // Populate the input with the text content
+      setChatInput(textContent);
+    } catch (error) {
+      console.warn('Failed to undo tool calls:', error);
     }
 
-    // Extract text content from message parts
-    const textContent = latestUserMessage.parts
-      .filter((part) => part.type === 'text')
-      .map((part) => (part as TextUIPart).text)
-      .join('\n');
-
-    // Populate the input with the text content
-    setChatInput(textContent);
-
     // TODO: restore selected elements
-  }, [msg, activeChatId, setChatInput, undoToolCallsUntilLatestUserMessage]);
+  }, [activeChatId, setChatInput, undoToolCallsUntilLatestUserMessage]);
 
   return (
     <div className="flex flex-col gap-1">
