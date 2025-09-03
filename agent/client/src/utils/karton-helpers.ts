@@ -225,14 +225,11 @@ export function findPendingToolCalls(
   // Check each part of the assistant message
   for (const part of lastAssistantMessage.parts) {
     if (part.type === 'dynamic-tool' || part.type.startsWith('tool-')) {
-      const toolPart = part as Extract<
-        ToolUIPart,
-        { state: 'input-available' }
-      >;
-      // Check if this tool call has a result
-      const hasResult = toolPart.output !== undefined;
+      const toolPart = part as ToolUIPart;
 
-      if (!hasResult && 'toolCallId' in part) {
+      // Only consider tool calls with 'input-available' state as pending
+      // Other states like 'output-available' or 'output-error' are terminal
+      if (toolPart.state === 'input-available' && 'toolCallId' in part) {
         pendingToolCalls.push({
           toolCallId: toolPart.toolCallId,
         });

@@ -632,7 +632,7 @@ export class Agent {
       return;
     } catch (error) {
       if (isAbortError(error)) {
-        console.log('abort error');
+        this.cleanupPendingOperations('Agent call aborted', false);
         return;
       }
 
