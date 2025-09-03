@@ -249,15 +249,15 @@ export function ChatBubble({
                     >
                       <PopoverPanel
                         anchor="top end"
-                        className="overflow-visible! z-[9999] w-64 p-1 [--anchor-gap:8px]"
+                        className="!overflow-visible z-[9999] w-64 p-1 [--anchor-gap:8px]"
                       >
                         <div className="rounded-xl bg-white/95 p-3 shadow-xl ring-1 ring-zinc-950/10 ring-inset backdrop-blur-lg">
                           <p className="font-medium text-sm text-zinc-950">
                             Undo changes?
                           </p>
                           <p className="mt-1 text-xs text-zinc-600">
-                            This will undo all changes made by the assistant
-                            after this message.
+                            This will undo all changes the assistant made since
+                            your last message.
                           </p>
                           <div className="mt-3 flex justify-end gap-2">
                             <Button
