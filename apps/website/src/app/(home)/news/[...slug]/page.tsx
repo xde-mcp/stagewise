@@ -53,6 +53,7 @@ export default async function PostPage(props: {
               `https://stagewise.io${post.url}`,
             )}`}
             target="_blank"
+            rel="noopener noreferrer"
             aria-label="Share this post on LinkedIn"
             className="glass-body glass-body-motion glass-body-interactive glass-body-motion-interactive flex h-8 items-center justify-center rounded-sm bg-[#0b66c2] px-4 text-sm text-white"
           >
@@ -63,6 +64,7 @@ export default async function PostPage(props: {
               `Check out the news from @stagewise_io: ${title}`,
             )}&url=${encodeURIComponent(`https://stagewise.io${post.url}`)}`}
             target="_blank"
+            rel="noopener noreferrer"
             aria-label="Share this post on X"
             className="glass-body glass-body-motion glass-body-interactive glass-body-motion-interactive flex h-8 items-center justify-center rounded-sm bg-black px-4 text-sm text-white dark:bg-zinc-800"
           >

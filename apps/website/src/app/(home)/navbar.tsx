@@ -45,13 +45,16 @@ export function Navbar() {
         )}
       >
         <div className="flex w-full items-center justify-between sm:w-24">
-          <div className="relative size-10 scale-100 overflow-hidden rounded-full shadow-lg ring-1 ring-black/20 ring-inset">
+          <Link
+            href="/"
+            className="relative size-10 scale-100 cursor-pointer overflow-hidden rounded-full shadow-lg ring-1 ring-black/20 ring-inset"
+          >
             <AnimatedGradientBackground className="absolute inset-0 size-full" />
             <Logo
               className="absolute top-[24%] left-[24%] z-10 size-1/2 drop-shadow-xs"
               color="white"
             />
-          </div>
+          </Link>
           <Button
             variant="secondary"
             size="icon-md"

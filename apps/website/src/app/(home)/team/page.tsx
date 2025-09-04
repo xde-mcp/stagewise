@@ -39,7 +39,7 @@ export default function TeamPage() {
                 We are{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/glenntws/"
                 >
                   Glenn
@@ -47,7 +47,7 @@ export default function TeamPage() {
                 and{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/juliangoetze/"
                 >
                   Julian
@@ -64,7 +64,7 @@ export default function TeamPage() {
                 Our journey as a team began at the{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/company/founders-foundation-ggmbh/"
                 >
                   Founders Foundation
@@ -87,7 +87,7 @@ export default function TeamPage() {
                 Pooling our skills and teaming up with our friend{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/nicklas-scharpff/"
                 >
                   Nicklas
@@ -99,7 +99,7 @@ export default function TeamPage() {
                 The explosion of support on{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://github.com/stagewise-io/stagewise"
                 >
                   GitHub

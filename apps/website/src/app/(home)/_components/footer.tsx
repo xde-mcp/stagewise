@@ -34,6 +34,7 @@ export function Footer() {
             href="https://github.com/stagewise-io/stagewise"
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
+            rel="noopener noreferrer"
             onClick={() =>
               posthog?.capture('footer_link_click', { destination: 'github' })
             }
@@ -45,6 +46,7 @@ export function Footer() {
             href="https://discord.gg/gkdGsDYaKA"
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
+            rel="noopener noreferrer"
             onClick={() =>
               posthog?.capture('footer_link_click', {
                 destination: 'discord',
@@ -58,6 +60,7 @@ export function Footer() {
             href="mailto:sales@stagewise.io"
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
+            rel="noopener noreferrer"
             onClick={() =>
               posthog?.capture('footer_link_click', {
                 destination: 'contact',

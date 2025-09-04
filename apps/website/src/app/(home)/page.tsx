@@ -12,9 +12,9 @@ import {
   Rocket,
   Eye,
   Brain,
-  TerminalIcon,
+  Terminal,
 } from 'lucide-react';
-import { Button } from '@stagewise/stage-ui/components/button';
+import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { PackageManagerClipboard } from '@/components/package-manager-clipboard';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { usePostHog } from 'posthog-js/react';
@@ -106,11 +106,12 @@ function SimplifiedSetupGuide() {
             <p className="text-left text-blue-700 text-sm dark:text-blue-300">
               Here for the stagewise integration with other agents?
             </p>
-            <Button size="sm" variant="primary" className="shrink-0">
-              <Link href="/docs/advanced-usage/use-different-agents">
-                Get Started
-              </Link>
-            </Button>
+            <Link
+              href="/docs/advanced-usage/use-different-agents"
+              className={`${buttonVariants({ variant: 'primary', size: 'sm' })} shrink-0`}
+            >
+              Get Started
+            </Link>
           </div>
         </div>
       </div>
@@ -142,7 +143,7 @@ function BentoGrid() {
     {
       title: 'Secure by Design',
       description:
-        'Fully local agent architecture with BYOK support. Use own model providers - or get maximum ease of use with our subscription.',
+        'Fully local agent architecture. Use your own model providers - or get maximum ease of use with our subscription.',
       icon: <Shield className="h-8 w-8 text-violet-500 dark:text-violet-400" />,
       className:
         'aspect-video bg-gradient-to-br from-violet-300/8 via-violet-200/4 to-transparent dark:from-violet-400/20 dark:via-violet-300/10 dark:to-transparent',
@@ -151,7 +152,7 @@ function BentoGrid() {
     {
       title: 'Lightning Fast',
       description:
-        'When iterating on UX and UI, you need snappy responses. stagewise focusses on maximum speed to deliver an unmatched experience.',
+        'When iterating on UX and UI, you need snappy responses. stagewise focuses on maximum speed to deliver an unmatched experience.',
       icon: <Rocket className="h-8 w-8 text-indigo-500 dark:text-indigo-400" />,
       className:
         'aspect-video bg-gradient-to-br from-indigo-300/8 via-indigo-200/4 to-transparent dark:from-indigo-400/20 dark:via-indigo-300/10 dark:to-transparent',
@@ -473,7 +474,7 @@ function DevelopmentStepsSlideshow() {
       description:
         'Transform ideas into visual concepts with AI-powered design suggestions that understand your brand and user needs.',
       features: [
-        'Generate whole new sections from simple one shot prompts',
+        'Generate whole new sections from simple one-shot prompts',
         'Ask stagewise to give feedback on ideas and concepts',
       ],
       gradient: 'from-blue-500/5 to-indigo-500/5',
@@ -895,7 +896,7 @@ export default function Home() {
                   <span className="bg-gradient-to-br from-zinc-800 via-zinc-900 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
                     The frontend coding agent for
                     <br />
-                    your existing project
+                    real codebases
                   </span>
                 </h1>
                 <div className="flex justify-center">
@@ -918,7 +919,7 @@ export default function Home() {
                   variant="primary"
                   className="mb-6"
                 >
-                  <TerminalIcon className="size-4 stroke-3" />
+                  <Terminal className="size-4 stroke-3" />
                   Install stagewise
                 </Button>
               </div>
@@ -1056,12 +1057,18 @@ export default function Home() {
                   size="lg"
                   variant="primary"
                 >
-                  <TerminalIcon className="size-4 stroke-3" />
+                  <Terminal className="size-4 stroke-3" />
                   Install stagewise
                 </Button>
-                <Button variant="secondary" size="lg">
-                  <Link href="/docs">View Documentation</Link>
-                </Button>
+                <Link
+                  href="/docs"
+                  className={buttonVariants({
+                    variant: 'secondary',
+                    size: 'lg',
+                  })}
+                >
+                  View Documentation
+                </Link>
               </div>
 
               <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">

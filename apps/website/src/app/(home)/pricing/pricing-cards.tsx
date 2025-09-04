@@ -65,7 +65,7 @@ export function PricingCards({ plans }: PricingCardsProps) {
                   window.open('https://console.stagewise.io', '_blank')
                 }
                 className="w-full"
-                variant="primary"
+                variant={plan.popular ? 'primary' : 'secondary'}
                 size="lg"
               >
                 Get Started
