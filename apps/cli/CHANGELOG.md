@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.8.5
+
+### Patch Changes
+
+- 7e7040a: Update stale Discord links.
+
 ## 0.8.4
 
 ### Patch Changes
