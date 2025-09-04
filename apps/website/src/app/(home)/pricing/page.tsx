@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { CheckCircle } from 'lucide-react';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
+import { PricingCards } from './pricing-cards';
 
 export const metadata: Metadata = {
   title: 'Pricing | stagewise',
@@ -62,50 +62,7 @@ export default function PricingPage() {
         </div>
       </ScrollReveal>
 
-      <div className="mx-auto max-w-4xl">
-        <div className="grid gap-8 md:grid-cols-2 md:items-stretch">
-          {plans.map((plan) => (
-            <ScrollReveal key={plan.name} delay={100}>
-              <div className="glass-body relative flex h-full flex-col rounded-2xl bg-white/80 p-8 dark:bg-zinc-900/80">
-                <div className="mb-8 text-center">
-                  <h3 className="mb-6 font-bold text-2xl text-zinc-900 dark:text-white">
-                    {plan.name}
-                  </h3>
-                  <div className="mb-4">
-                    <span className="font-bold text-4xl text-zinc-900 dark:text-white">
-                      {plan.price}
-                    </span>
-                    <span className="ml-2 text-zinc-600 dark:text-zinc-400">
-                      {plan.period}
-                    </span>
-                    {plan.vatNote && (
-                      <div className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-                        {plan.vatNote}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-zinc-600 dark:text-zinc-400">
-                    {plan.description}
-                  </p>
-                </div>
-
-                <div className="mb-8 flex-1">
-                  <ul className="space-y-4">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-3">
-                        <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
-                        <span className="text-zinc-700 dark:text-zinc-300">
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </ScrollReveal>
-          ))}
-        </div>
-      </div>
+      <PricingCards plans={plans} />
 
       <div className="mx-auto max-w-4xl">
         <ScrollReveal delay={200}>

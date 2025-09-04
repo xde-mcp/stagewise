@@ -205,7 +205,7 @@ export default function MigrateToCLI() {
                   window.parent.postMessage(
                     {
                       command: 'openDiscord',
-                      url: 'https://discord.gg/6gjx9ESbhf',
+                      url: 'https://discord.gg/gkdGsDYaKA',
                     },
                     '*',
                   );

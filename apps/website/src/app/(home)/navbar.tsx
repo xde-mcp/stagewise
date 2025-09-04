@@ -86,7 +86,7 @@ export function Navbar() {
               size: 'icon-md',
               variant: 'secondary',
             })}
-            href="https://discord.gg/stagewise"
+            href="https://discord.gg/gkdGsDYaKA"
           >
             <SiDiscord className="size-5" />
           </Link>

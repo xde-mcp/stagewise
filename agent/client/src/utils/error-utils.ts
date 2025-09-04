@@ -42,7 +42,7 @@ function extractErrorMessage(error: unknown): string {
         case 'INSUFFICIENT_CREDITS':
           return `Insufficient credits. Visit https://console.stagewise.io to buy more credits.`;
         case 'RATE_LIMIT_EXCEEDED':
-          return `Rate limit exceeded. Please reach out to https://discord.gg/6gjx9ESbhf to resolve this issue.`;
+          return `Rate limit exceeded. Please reach out to https://discord.gg/gkdGsDYaKA to resolve this issue.`;
         default:
           return error.message;
       }
