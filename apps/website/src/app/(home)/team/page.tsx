@@ -7,7 +7,7 @@ export default function TeamPage() {
     <div className="relative min-h-screen overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-black dark:text-white">
       {/* Hero Section */}
       <section className="container relative z-10 mx-auto px-4 pt-40 pb-12 sm:pt-28 md:pb-16">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-2xl">
           <ScrollReveal>
             <div className="mb-12 text-center">
               <h1 className="mb-6 font-bold text-3xl tracking-tight md:text-5xl">
@@ -39,7 +39,7 @@ export default function TeamPage() {
                 We are{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/glenntws/"
                 >
                   Glenn
@@ -47,7 +47,7 @@ export default function TeamPage() {
                 and{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/juliangoetze/"
                 >
                   Julian
@@ -64,7 +64,7 @@ export default function TeamPage() {
                 Our journey as a team began at the{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/company/founders-foundation-ggmbh/"
                 >
                   Founders Foundation
@@ -87,7 +87,7 @@ export default function TeamPage() {
                 Pooling our skills and teaming up with our friend{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/nicklas-scharpff/"
                 >
                   Nicklas
@@ -99,7 +99,7 @@ export default function TeamPage() {
                 The explosion of support on{' '}
                 <a
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href="https://github.com/stagewise-io/stagewise"
                 >
                   GitHub

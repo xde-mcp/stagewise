@@ -111,7 +111,7 @@ export function AgentConnectivityPanel() {
               Read the docs
             </DropdownMenuLinkItem>
             <DropdownMenuLinkItem
-              href="https://discord.gg/y8gdNb4D"
+              href="https://discord.gg/gkdGsDYaKA"
               target="_blank"
             >
               Join the community
