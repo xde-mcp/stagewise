@@ -1,5 +1,15 @@
 import type { UserMessageMetadata } from '@stagewise/karton-contract';
 
+function escapeXml(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export function browserMetadataToContextSnippet(
   browserData: UserMessageMetadata['browserData'] | undefined,
 ): string | null {
@@ -11,11 +21,11 @@ export function browserMetadataToContextSnippet(
     </description>
     <content>
       <current-url>
-        ${browserData.currentUrl}
+        ${escapeXml(browserData.currentUrl)}
       </current-url>
 
       <current-title>
-        ${browserData.currentTitle}
+        ${escapeXml(browserData.currentTitle)}
       </current-title>
 
       <current-zoom-level>
@@ -31,11 +41,11 @@ export function browserMetadataToContextSnippet(
       </device-pixel-ratio>
 
       <user-agent>
-        ${browserData.userAgent}
+        ${escapeXml(browserData.userAgent)}
       </user-agent>
 
       <locale>
-        ${browserData.locale}
+        ${escapeXml(browserData.locale)}
       </locale>
     </content>
   </browser-metadata>

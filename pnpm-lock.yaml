@@ -78,9 +78,6 @@ importers:
       zod:
         specifier: 4.0.17
         version: 4.0.17
-      zod-to-json-schema:
-        specifier: ^3.24.5
-        version: 3.24.5(zod@4.0.17)
     devDependencies:
       '@stagewise/agent-runtime-interface':
         specifier: workspace:*
@@ -184,9 +181,6 @@ importers:
       zod:
         specifier: 4.0.17
         version: 4.0.17
-      zod-to-json-schema:
-        specifier: ^3.24.5
-        version: 3.24.5(zod@4.0.17)
 
   agent/runtime-interface:
     devDependencies:
@@ -277,9 +271,6 @@ importers:
       zod:
         specifier: 4.0.17
         version: 4.0.17
-      zod-to-json-schema:
-        specifier: ^3.24.5
-        version: 3.24.5(zod@4.0.17)
 
   agent/types:
     dependencies:
