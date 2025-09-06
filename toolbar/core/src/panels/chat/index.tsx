@@ -222,7 +222,7 @@ export function ChatPanel() {
       )}
     >
       <div
-        className="relative flex size-full flex-col"
+        className="relative flex size-full flex-col rounded-3xl bg-transparent"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
