@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.9.1
+
+### Patch Changes
+
+- a06cb59: Locally declare unbundled type import of KartonContract.
+
 ## 0.9.0
 
 ### Minor Changes
