@@ -43,76 +43,184 @@ function getElementAttributes(element: HTMLElement): { [key: string]: string } {
 }
 
 /**
- * Generates a detailed context string for a single HTMLElement.
+ * Recursively generates context for child elements up to a specified depth.
+ * @param element - The parent element whose children to process
+ * @param currentDepth - Current depth level (1-based)
+ * @param maxDepth - Maximum depth to traverse (default 3)
+ * @param maxChildrenPerLevel - Maximum number of children to include per level (default 3)
+ * @param indent - Base indentation for formatting
+ */
+function generateChildrenContext(
+  element: HTMLElement,
+  currentDepth = 1,
+  maxDepth = 3,
+  maxChildrenPerLevel = 3,
+  indent = '      ',
+): string {
+  if (
+    currentDepth > maxDepth ||
+    !element.children ||
+    element.children.length === 0
+  ) {
+    return '';
+  }
+
+  let context = '';
+  const childrenToProcess = Math.min(
+    element.children.length,
+    maxChildrenPerLevel,
+  );
+
+  for (let i = 0; i < childrenToProcess; i++) {
+    const child = element.children[i] as HTMLElement;
+    if (!child) continue;
+
+    context += `${indent}<child depth="${currentDepth}" index="${i + 1}">\n`;
+    context += `${indent}  <tag>${child.tagName.toLowerCase()}</tag>\n`;
+
+    if (child.id) {
+      context += `${indent}  <id>${child.id}</id>\n`;
+    }
+
+    const classes = Array.from(child.classList).join(' ');
+    if (classes) {
+      context += `${indent}  <classes>${classes}</classes>\n`;
+    }
+
+    // Add text content if it's directly in this element (not from children)
+    const directText = Array.from(child.childNodes)
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent?.trim())
+      .filter((text) => text)
+      .join(' ');
+
+    if (directText) {
+      const maxLength = 100;
+      const truncatedText =
+        directText.length > maxLength
+          ? `${directText.substring(0, maxLength)}...`
+          : directText;
+      context += `${indent}  <text>${truncatedText}</text>\n`;
+    }
+
+    // Recursively add children if we haven't reached max depth
+    if (currentDepth < maxDepth && child.children.length > 0) {
+      const childrenContext = generateChildrenContext(
+        child,
+        currentDepth + 1,
+        maxDepth,
+        maxChildrenPerLevel,
+        `${indent}    `,
+      );
+      if (childrenContext) {
+        context += `${indent}  <children>\n`;
+        context += childrenContext;
+        context += `${indent}  </children>\n`;
+      }
+    }
+
+    context += `${indent}</child>\n`;
+  }
+
+  // Add note if there are more children than shown
+  if (element.children.length > maxChildrenPerLevel) {
+    context += `${indent}<!-- ${element.children.length - maxChildrenPerLevel} more child element(s) not shown -->\n`;
+  }
+
+  return context;
+}
+
+/**
+ * Generates a comprehensive context string for a single HTMLElement.
  */
 function generateElementContext(element: HTMLElement, index: number): string {
-  let context = `<element index="${index + 1}">\n`;
-  context += `  <tag>${element.tagName.toLowerCase()}</tag>\n`;
+  let context = `  <element index="${index + 1}">\n`;
+  context += `    <tag>${element.tagName.toLowerCase()}</tag>\n`;
 
   const id = element.id;
   if (id) {
-    context += `  <id>${id}</id>\n`;
+    context += `    <id>${id}</id>\n`;
   }
 
-  const classes = Array.from(element.classList).join(', ');
+  const classes = Array.from(element.classList).join(' ');
   if (classes) {
-    context += `  <classes>${classes}</classes>\n`;
+    context += `    <classes>${classes}</classes>\n`;
   }
 
+  // Include all attributes
   const attributes = getElementAttributes(element);
   if (Object.keys(attributes).length > 0) {
-    context += `  <attributes>\n`;
+    context += `    <attributes>\n`;
     for (const [key, value] of Object.entries(attributes)) {
-      if (key.toLowerCase() !== 'class' || !classes) {
-        context += `    <${key}>${value}</${key}>\n`;
+      // Skip class and id as they're already included above
+      if (key.toLowerCase() !== 'class' && key.toLowerCase() !== 'id') {
+        context += `      <${key}>${value}</${key}>\n`;
       }
     }
-    context += `  </attributes>\n`;
+    context += `    </attributes>\n`;
   }
 
+  // Include full text content
   const text = element.innerText?.trim();
   if (text) {
-    const maxLength = 100;
-    context += `  <text>${text.length > maxLength ? `${text.substring(0, maxLength)}...` : text}</text>\n`;
+    const maxLength = 200; // Increased from 50 to capture more context
+    context += `    <text>${text.length > maxLength ? `${text.substring(0, maxLength)}...` : text}</text>\n`;
   }
 
-  context += `  <structural_context>\n`;
+  // Include parent element context (enhanced formatting)
+  context += `    <!-- PARENT ELEMENT -->\n`;
+  context += `    <parent_element>\n`;
   if (element.parentElement) {
     const parent = element.parentElement;
-    context += `    <parent>\n`;
     context += `      <tag>${parent.tagName.toLowerCase()}</tag>\n`;
     if (parent.id) {
       context += `      <id>${parent.id}</id>\n`;
     }
-    const parentClasses = Array.from(parent.classList).join(', ');
+    const parentClasses = Array.from(parent.classList).join(' ');
     if (parentClasses) {
       context += `      <classes>${parentClasses}</classes>\n`;
     }
-    context += `    </parent>\n`;
   } else {
-    context += `    <parent>No parent element found (likely root or disconnected)</parent>\n`;
+    context += `      <note>No parent element found (likely root or disconnected)</note>\n`;
   }
-  context += `  </structural_context>\n`;
+  context += `    </parent_element>\n`;
 
+  // Include recursive child elements (up to 3 levels deep)
+  if (element.children && element.children.length > 0) {
+    context += `    <!-- CHILD ELEMENTS (recursive, max 3 levels deep) -->\n`;
+    context += `    <child_elements>\n`;
+    const childrenContext = generateChildrenContext(element);
+    context += childrenContext;
+    context += `    </child_elements>\n`;
+  }
+
+  // Include computed styles
   try {
     const styles = window.getComputedStyle(element);
     const relevantStyles = {
+      display: styles.display,
+      position: styles.position,
       color: styles.color,
       backgroundColor: styles.backgroundColor,
       fontSize: styles.fontSize,
       fontWeight: styles.fontWeight,
-      display: styles.display,
+      width: styles.width,
+      height: styles.height,
+      padding: styles.padding,
+      margin: styles.margin,
     };
-    context += `  <styles>\n`;
+    context += `    <computed_styles>\n`;
     for (const [key, value] of Object.entries(relevantStyles)) {
-      context += `    <${key}>${value}</${key}>\n`;
+      if (value && value !== 'none' && value !== 'auto' && value !== '0px') {
+        context += `      <${key}>${value}</${key}>\n`;
+      }
     }
-    context += `  </styles>\n`;
+    context += `    </computed_styles>\n`;
   } catch (_e) {
-    context += `  <styles>Could not retrieve computed styles</styles>\n`;
+    context += `    <computed_styles>Could not retrieve computed styles</computed_styles>\n`;
   }
 
-  context += `</element>\n`;
+  context += `  </element>\n`;
   return context;
 }
 
@@ -123,7 +231,7 @@ export interface PluginContextSnippets {
 [];
 
 /**
- * Creates a comprehensive prompt for a Coding Agent LLM.
+ * Creates a clear, action-oriented prompt for a Coding Agent LLM.
  *
  * @param selectedElements - An array of HTMLElements the user interacted with.
  * @param userPrompt - The user's natural language instruction.
@@ -137,40 +245,45 @@ export function createPrompt(
   url: string,
   contextSnippets: PluginContextSnippets[],
 ): string {
-  const pluginContext = contextSnippets
-    .map((snippet) =>
-      `
-      <plugin_contexts>
-<${snippet.pluginName}>
-${snippet.contextSnippets.map((snippet) => `    <${snippet.promptContextName}>${snippet.content}</${snippet.promptContextName}>`).join('\n')}
-</${snippet.pluginName}>
-</plugin_contexts>
-`.trim(),
-    )
-    .join('\n');
+  // Format plugin contexts if available
+  const pluginContext =
+    contextSnippets.length > 0
+      ? `\n<plugin_contexts>\n${contextSnippets
+          .map(
+            (snippet) =>
+              `  <${snippet.pluginName}>\n${snippet.contextSnippets
+                .map(
+                  (s) =>
+                    `    <${s.promptContextName}>${s.content}</${s.promptContextName}>`,
+                )
+                .join('\n')}\n  </${snippet.pluginName}>`,
+          )
+          .join('\n')}\n</plugin_contexts>`
+      : '';
 
+  // Handle case when no elements are selected
   if (!selectedElements || selectedElements.length === 0) {
-    return `
-    <request>
-      <user_goal>${userPrompt}</user_goal>
-      <url>${url}</url>
-  <context>No specific element was selected on the page. Please analyze the page code in general or ask for clarification.</context>
-  ${pluginContext}
-</request>`.trim();
+    return `<task>
+  <action>Implement the frontend changes based on my request and the provided context below.</action>
+  <user_request>${userPrompt}</user_request>
+  <page_url>${url}</page_url>
+  <note>No specific elements were selected. Analyze the general page implementation or request clarification.</note>
+</task>${pluginContext}`.trim();
   }
 
-  let detailedContext = '';
+  // Generate comprehensive context for each element
+  let elementContext = '';
   selectedElements.forEach((element, index) => {
-    detailedContext += generateElementContext(element, index);
+    elementContext += generateElementContext(element, index);
   });
 
-  return `
-<request>
-  <user_goal>${userPrompt}</user_goal>
-  <url>${url}</url>
-  <selected_elements>
-    ${detailedContext.trim()}
-  </selected_elements>
-  ${pluginContext}
-</request>`.trim();
+  // Build the complete prompt with clear structure
+  return `<task>
+  <action>Implement the frontend changes based on my request and the provided context below.</action>
+  <user_request>${userPrompt}</user_request>
+  <page_url>${url}</page_url>
+</task>
+
+<selected_elements>
+${elementContext}</selected_elements>${pluginContext}`.trim();
 }

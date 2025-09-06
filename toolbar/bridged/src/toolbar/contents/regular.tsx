@@ -1,24 +1,24 @@
 import { ToolbarSection } from '@/toolbar/components/section';
 import { ToolbarButton } from '@/toolbar/components/button';
-import { MessageCircleIcon, PuzzleIcon, SettingsIcon } from 'lucide-react';
+import { MessageCircleIcon, PuzzleIcon, Settings } from 'lucide-react';
 import { usePanels } from '@/hooks/use-panels';
 import { usePlugins } from '@/hooks/use-plugins';
 import { useChatState } from '@/hooks/use-chat-state';
 
 export function RegularContent() {
   const {
-    isSettingsOpen,
-    openSettings,
-    closeSettings,
     isChatOpen,
     openChat,
     closeChat,
     openPluginName,
     closePlugin,
     openPlugin,
+    isInfoOpen,
+    openInfo,
+    closeInfo,
   } = usePanels();
 
-  const { startPromptCreation } = useChatState();
+  const { startPromptCreation, startContextSelector } = useChatState();
 
   const plugins = usePlugins();
 
@@ -28,14 +28,6 @@ export function RegularContent() {
 
   return (
     <>
-      <ToolbarSection>
-        <ToolbarButton
-          onClick={isSettingsOpen ? closeSettings : openSettings}
-          active={isSettingsOpen}
-        >
-          <SettingsIcon className="size-4" />
-        </ToolbarButton>
-      </ToolbarSection>
       {pluginsWithActions.length > 0 && (
         <ToolbarSection>
           {pluginsWithActions.map((plugin) => (
@@ -65,11 +57,18 @@ export function RegularContent() {
               : () => {
                   openChat();
                   startPromptCreation();
+                  startContextSelector();
                 }
           }
           active={isChatOpen}
         >
           <MessageCircleIcon className="size-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={isInfoOpen ? closeInfo : openInfo}
+          active={isInfoOpen}
+        >
+          <Settings className="size-4" />
         </ToolbarButton>
       </ToolbarSection>
     </>

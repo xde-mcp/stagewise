@@ -215,6 +215,13 @@ export class TelemetryManager {
     await this.capture('cli-send-prompt');
   }
 
+  async trackCopyToClipboard(): Promise<void> {
+    log.debug('[TELEMETRY] Tracking copy to clipboard');
+    await this.capture('agent_prompt_triggered', {
+      appName: 'clipboard',
+    });
+  }
+
   async creditsInsufficient(subscription: {
     status: string;
     credits: number;
@@ -357,4 +364,5 @@ export const analyticsEvents = {
     credits_used: number;
     credits_remaining: number;
   }) => telemetryManager.creditsInsufficient(subscription),
+  trackCopyToClipboard: () => telemetryManager.trackCopyToClipboard(),
 };
