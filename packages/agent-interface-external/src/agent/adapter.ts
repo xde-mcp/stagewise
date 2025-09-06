@@ -17,6 +17,8 @@ import type { AvailabilityImplementation } from '../router/capabilities/availabi
 import type { MessagingImplementation } from '../router/capabilities/messaging';
 import type { StateImplementation } from '../router/capabilities/state';
 
+import { randomUUID } from 'node:crypto';
+
 /**
  * Optional configuration for the AgentTransportAdapter.
  */
@@ -150,7 +152,7 @@ export class AgentTransportAdapter implements TransportInterface {
     // 1. Set default options
     this._options = {
       toolCallTimeoutMs: options?.toolCallTimeoutMs ?? 30000,
-      idGenerator: options?.idGenerator ?? (() => crypto.randomUUID()),
+      idGenerator: options?.idGenerator ?? (() => randomUUID()),
     };
 
     // 2. Initialize state with defaults
