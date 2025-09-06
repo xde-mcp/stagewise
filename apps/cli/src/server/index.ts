@@ -282,20 +282,21 @@ export const getServer = async () => {
     // Set up WebSocket upgrade handling
     server.on('upgrade', (request, socket, head) => {
       const url = request.url || '';
+      const { pathname } = new URL(url, 'http://localhost');
       log.debug(`WebSocket upgrade request for: ${url}`);
 
       // For all other requests (except toolbar app paths), proxy them
-      if (!url.startsWith('/stagewise-toolbar-app')) {
+      if (!pathname.startsWith('/stagewise-toolbar-app')) {
         log.debug(`Proxying WebSocket request to app port ${config.appPort}`);
         proxy.upgrade?.(request, socket as any, head);
       } else {
-        if (agentWss && url === agentWsPath) {
+        if (agentWss && pathname === agentWsPath) {
           // Handle agent WebSocket requests
           log.debug('Handling agent WebSocket upgrade');
           agentWss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
             agentWss.emit('connection', ws, request);
           });
-        } else if (bridgeModeWss && url === bridgeModeWsPath) {
+        } else if (bridgeModeWss && pathname === bridgeModeWsPath) {
           // Handle bridge mode WebSocket requests
           log.debug('Handling bridge mode WebSocket upgrade');
           bridgeModeWss.handleUpgrade(
@@ -307,7 +308,7 @@ export const getServer = async () => {
             },
           );
         } else {
-          log.debug(`Unknown WebSocket path: ${url}`);
+          log.debug(`Unknown WebSocket path: ${pathname}`);
           socket.destroy();
         }
       }
