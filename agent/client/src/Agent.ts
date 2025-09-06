@@ -60,8 +60,6 @@ function isToolCallType(type: string): type is ToolCallType {
 type Tools = ReturnType<typeof cliTools>;
 type ChatId = string;
 
-const LLM_PROXY_URL = process.env.LLM_PROXY_URL || 'https://llm.stagewise.io';
-
 // Configuration constants
 const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
 const MAX_RECURSION_DEPTH = 20;
@@ -131,6 +129,9 @@ export class Agent {
   }
 
   private initializeLitellm() {
+    const LLM_PROXY_URL =
+      process.env.LLM_PROXY_URL || 'https://llm.stagewise.io';
+
     this.litellm = createAnthropic({
       baseURL: `${LLM_PROXY_URL}/v1`, // will use the anthropic/v1/messages endpoint of the litellm proxy
       apiKey: this.accessToken, // stagewise access token
