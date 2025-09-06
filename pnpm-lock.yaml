@@ -283,9 +283,6 @@ importers:
       '@stagewise/karton':
         specifier: workspace:*
         version: link:../../packages/karton
-      '@stagewise/karton-contract-bridged':
-        specifier: workspace:*
-        version: link:../../packages/karton-contract-bridged
       '@stagewise/toolbar':
         specifier: workspace:*
         version: link:../../toolbar/core
