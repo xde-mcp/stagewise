@@ -1,7 +1,6 @@
 import express, { type Request, type Response } from 'express';
 import type { WebSocketServer, WebSocket } from 'ws';
 import { createKartonServer } from '@stagewise/karton/server';
-import type { KartonContract } from '@stagewise/karton-contract-bridged';
 import { createServer } from 'node:http';
 import { configResolver } from '../config/index.js';
 import { proxy } from './proxy.js';
@@ -17,6 +16,19 @@ import {
   type Plugin,
 } from './plugin-loader.js';
 import { analyticsEvents } from '../utils/telemetry.js';
+
+// ATTENTION: keep in sync with @stagewise/karton-contract-bridged - can't import because types aren't bundled -.-
+type KartonContract = {
+  state: {
+    noop: boolean;
+  };
+  clientProcedures: {
+    noop: () => Promise<void>;
+  };
+  serverProcedures: {
+    trackCopyToClipboard: () => Promise<void>;
+  };
+};
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
