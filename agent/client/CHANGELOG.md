@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.4.0
+
+### Minor Changes
+
+- add73d9: Move agent and prompting logic completely clientside.
+
 ## 0.3.3
 
 ### Patch Changes

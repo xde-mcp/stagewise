@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.10.0
+
+### Minor Changes
+
+- add73d9: Move agent and prompting logic completely clientside.
+
 ## 0.9.2
 
 ### Patch Changes
