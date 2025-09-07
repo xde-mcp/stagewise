@@ -2,6 +2,7 @@ import type { KartonContract, ChatMessage } from '@stagewise/karton-contract';
 import type { KartonServer } from '@stagewise/karton/server';
 import type { ToolCallProcessingResult } from './tool-call-utils.js';
 import type { InferUIMessageChunk, ToolUIPart } from 'ai';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Checks if a message with the given ID exists in the active chat
@@ -24,7 +25,7 @@ function messageExists(
  * @returns The unique ID of the newly created chat
  */
 export function createAndActivateNewChat(karton: KartonServer<KartonContract>) {
-  const chatId = crypto.randomUUID();
+  const chatId = randomUUID();
   const title = `New Chat - ${new Date().toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
