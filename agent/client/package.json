@@ -35,13 +35,13 @@
     "diff": "^8.0.2",
     "node-fetch": "^3.3.2",
     "zod": "4.0.17",
-    "@stagewise/agent-prompts": "workspace:*",
-    "@stagewise/agent-prompt-snippets": "workspace:*",
-    "@stagewise/agent-tools": "workspace:*",
     "@stagewise/api-client": "1.4.0",
     "@stagewise/karton": "workspace:*"
   },
   "devDependencies": {
+    "@stagewise/agent-prompts": "workspace:*",
+    "@stagewise/agent-prompt-snippets": "workspace:*",
+    "@stagewise/agent-tools": "workspace:*",
     "@stagewise/agent-runtime-interface": "workspace:*",
     "@stagewise/agent-types": "workspace:*",
     "@stagewise/karton-contract": "workspace:*",
