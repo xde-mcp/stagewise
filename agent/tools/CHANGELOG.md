@@ -1,5 +1,11 @@
 # @stagewise/tools-client
 
+## 0.4.0
+
+### Minor Changes
+
+- add73d9: Move agent and prompting logic completely clientside.
+
 ## 0.3.0
 
 ### Minor Changes
