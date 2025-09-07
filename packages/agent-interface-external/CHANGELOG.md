@@ -1,5 +1,11 @@
 # @stagewise/agent-interface
 
+## 0.3.2
+
+### Patch Changes
+
+- 2f23d4b: Refactor crypto import to fix node v18 issues.
+
 ## 0.3.1
 
 ### Patch Changes

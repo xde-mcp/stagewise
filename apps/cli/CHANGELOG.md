@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.9.2
+
+### Patch Changes
+
+- 2f23d4b: Refactor crypto import to fix node v18 issues.
+
 ## 0.9.1
 
 ### Patch Changes
