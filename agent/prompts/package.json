@@ -1,6 +1,5 @@
 {
-  "name": "@stagewise/agent-tools",
-  "version": "0.3.0",
+  "name": "@stagewise/agent-prompts",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +17,7 @@
     "build": "tsx build.ts && tsc --emitDeclarationOnly",
     "dev": "tsx build.ts --watch",
     "clean": "rimraf dist",
-    "lint": "echo 'No linting for tools-client package'",
+    "lint": "biome check .",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -27,9 +26,11 @@
   "devDependencies": {
     "@stagewise/agent-runtime-interface": "workspace:*",
     "@stagewise/agent-types": "workspace:*",
+    "@stagewise/karton-contract": "workspace:*",
     "esbuild": "0.25.9",
     "rimraf": "^5.0.0",
     "typescript": "^5.0.0",
+    "vitest": "^3.2.4",
     "zod": "4.0.17"
   }
 }
