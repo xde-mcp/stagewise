@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.13.1
+
+### Patch Changes
+
+- 88ad499: Fix border radius in chat list view.
+
 ## 0.13.0
 
 ### Minor Changes
