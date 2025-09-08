@@ -51,6 +51,11 @@ export async function loadAndInitializeAgent(
                 event.data.subscription?.credits?.available || 0,
             });
             break;
+          case 'plan_limits_exceeded':
+            analyticsEvents.planLimitsExceeded({
+              status: event.data.subscription?.subscription?.status || '',
+            });
+            break;
           default:
             break;
         }

@@ -9,7 +9,8 @@ export type AgentEventType =
   | 'tool_call_completed'
   | 'agent_state_changed'
   | 'agent_response_received'
-  | 'credits_insufficient';
+  | 'credits_insufficient'
+  | 'plan_limits_exceeded';
 
 interface BaseAgentEvent {
   type: AgentEventType;
@@ -18,6 +19,13 @@ interface BaseAgentEvent {
 
 export interface CreditsInsufficientEvent extends BaseAgentEvent {
   type: 'credits_insufficient';
+  data: {
+    subscription: KartonContract['state']['subscription'];
+  };
+}
+
+export interface PlanLimitsExceededEvent extends BaseAgentEvent {
+  type: 'plan_limits_exceeded';
   data: {
     subscription: KartonContract['state']['subscription'];
   };
@@ -78,6 +86,7 @@ export interface AgentResponseReceivedEvent extends BaseAgentEvent {
 export type AgentEvent =
   | AgentPromptTriggeredEvent
   | CreditsInsufficientEvent
+  | PlanLimitsExceededEvent
   | ToolCallRequestedEvent
   | ToolCallCompletedEvent
   | AgentStateChangedEvent
@@ -110,6 +119,16 @@ export const EventFactories = {
     subscription: KartonContract['state']['subscription'],
   ): CreditsInsufficientEvent => ({
     type: 'credits_insufficient',
+    timestamp: new Date(),
+    data: {
+      subscription,
+    },
+  }),
+
+  planLimitsExceeded: (
+    subscription: KartonContract['state']['subscription'],
+  ): PlanLimitsExceededEvent => ({
+    type: 'plan_limits_exceeded',
     timestamp: new Date(),
     data: {
       subscription,

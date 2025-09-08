@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isAbortError } from './utils/is-abort-error.js';
+import { isAuthenticationError } from './utils/is-authentication-error.js';
 import {
   type KartonContract,
   type History,
@@ -50,6 +51,10 @@ import {
   type ToolCallProcessingResult,
 } from './utils/tool-call-utils.js';
 import { generateChatTitle } from './utils/generate-chat-title.js';
+import {
+  isPlanLimitsExceededError,
+  type PlanLimitsExceededError,
+} from './utils/is-plan-limit-error.js';
 
 type ToolCallType = 'dynamic-tool' | `tool-${string}`;
 
@@ -163,33 +168,6 @@ export class Agent {
     });
     this.eventEmitter.emit(
       EventFactories.agentStateChanged(this.isWorking, !this.isWorking),
-    );
-  }
-
-  /**
-   * Checks if an error is an authentication error
-   * @param error - The error to check
-   * @returns True if the error is an authentication error, false otherwise
-   */
-  private isAuthenticationError(error: any): boolean {
-    // Check for TRPC error with UNAUTHORIZED code
-    if (error?.data?.code === 'UNAUTHORIZED') return true;
-
-    // Check for HTTP 401 status
-    if (error?.data?.httpStatus === 401) return true;
-
-    // Check error message for auth-related keywords
-    const errorMessage = error?.message || '';
-    const authErrorPatterns = [
-      'unauthorized',
-      'authentication',
-      'invalid token',
-      'expired token',
-      '401',
-    ];
-
-    return authErrorPatterns.some((pattern) =>
-      errorMessage.toLowerCase().includes(pattern),
     );
   }
 
@@ -534,12 +512,35 @@ export class Agent {
         abortSignal: this.abortController.signal,
         temperature: 0.7,
         maxOutputTokens: 64000,
+        maxRetries: 0,
         messages: [systemPrompt, ...uiMessagesToModelMessages(history ?? [])],
         onError: async (error) => {
           if (isAbortError(error.error)) {
             this.authRetryCount = 0;
             this.cleanupPendingOperations('Agent call aborted');
-          } else if (this.isAuthenticationError(error.error)) {
+          } else if (isPlanLimitsExceededError(error.error)) {
+            const planLimitsExceededError = isPlanLimitsExceededError(
+              error.error,
+            ) as PlanLimitsExceededError;
+            this.authRetryCount = 0;
+            this.eventEmitter.emit(
+              EventFactories.planLimitsExceeded(
+                this.karton?.state.subscription,
+              ),
+            );
+            this.karton?.setState((draft) => {
+              draft.chats[chatId]!.error = {
+                type: AgentErrorType.PLAN_LIMITS_EXCEEDED,
+                error: {
+                  message: `Plan limit exceeded, please wait ${planLimitsExceededError.data.cooldownMinutes} minutes before your next request.`,
+                  isPaidPlan: planLimitsExceededError.data.isPaidPlan || false,
+                  cooldownMinutes: planLimitsExceededError.data.cooldownMinutes,
+                },
+              };
+            });
+            this.cleanupPendingOperations('Plan limits exceeded');
+            return;
+          } else if (isAuthenticationError(error.error)) {
             // refresh token and call agent again with retry limit
             if (this.authRetryCount < this.maxAuthRetries) {
               this.authRetryCount++;
@@ -583,7 +584,9 @@ export class Agent {
             this.karton?.setState((draft) => {
               draft.chats[chatId]!.error = {
                 type: AgentErrorType.INSUFFICIENT_CREDITS,
-                error: new Error('Insufficient credits'),
+                error: {
+                  message: 'Insufficient credits',
+                },
               };
             });
             return;
