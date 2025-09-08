@@ -40,19 +40,24 @@ export enum AgentErrorType {
 export type AgentError =
   | {
       type: AgentErrorType.INSUFFICIENT_CREDITS;
-      error: { message: string };
+      error: { name: string; message: string };
     }
   | {
       type: AgentErrorType.PLAN_LIMITS_EXCEEDED;
-      error: { message: string; isPaidPlan: boolean; cooldownMinutes?: number };
+      error: {
+        name: string;
+        message: string;
+        isPaidPlan: boolean;
+        cooldownMinutes?: number;
+      };
     }
   | {
       type: AgentErrorType.AGENT_ERROR;
-      error: { message: string };
+      error: { name: string; message: string };
     }
   | {
       type: AgentErrorType.OTHER;
-      error: { message: string };
+      error: { name: string; message: string };
     };
 
 type AppState = {

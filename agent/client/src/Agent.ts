@@ -532,6 +532,7 @@ export class Agent {
               draft.chats[chatId]!.error = {
                 type: AgentErrorType.PLAN_LIMITS_EXCEEDED,
                 error: {
+                  name: 'Plan limit exceeded',
                   message: `Plan limit exceeded, please wait ${planLimitsExceededError.data.cooldownMinutes} minutes before your next request.`,
                   isPaidPlan: planLimitsExceededError.data.isPaidPlan || false,
                   cooldownMinutes: planLimitsExceededError.data.cooldownMinutes,
@@ -585,6 +586,7 @@ export class Agent {
               draft.chats[chatId]!.error = {
                 type: AgentErrorType.INSUFFICIENT_CREDITS,
                 error: {
+                  name: 'Insufficient credits',
                   message: 'Insufficient credits',
                 },
               };

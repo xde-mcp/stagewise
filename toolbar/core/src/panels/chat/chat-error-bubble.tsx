@@ -95,7 +95,7 @@ export function ChatErrorBubble({ error }: { error: AgentError }) {
           <Markdown>{errorMessage}</Markdown>
           {!isHandledError && (
             <span className="mt-2 block text-xs italic">
-              {error.type}: {error.error.message}
+              {error.type}: {error.error.name}
             </span>
           )}
         </div>
