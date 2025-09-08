@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.11.0
+
+### Minor Changes
+
+- 737b059: Adding handlers for plan limit reached errors.
+
 ## 0.10.0
 
 ### Minor Changes
