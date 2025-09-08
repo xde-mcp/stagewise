@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.14.0
+
+### Minor Changes
+
+- 737b059: Adding handlers for plan limit reached errors.
+
 ## 0.13.1
 
 ### Patch Changes

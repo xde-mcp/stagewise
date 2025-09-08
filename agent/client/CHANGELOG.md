@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.5.0
+
+### Minor Changes
+
+- 737b059: Adding handlers for plan limit reached errors.
+
 ## 0.4.0
 
 ### Minor Changes
