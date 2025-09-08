@@ -40,13 +40,13 @@ const needsExtraCreditsMessage = `Oh no, you ran out of credits!\n\nYou can [buy
 const needsSubscriptionMessage = `Wow, looks like you ran out of included credits in your trial!\n\nLet's [setup your subscription](https://console.stagewise.io/billing/checkout) so we can continue working on your app 💪`;
 const freeTrialPlanLimitExceededMessage = (minutes?: number) =>
   minutes !== undefined
-    ? `Wow, looks like you ran out of included credits in your trial!\n\nYou can [setup a subscription](https://console.stagewise.io/billing/checkout) or wait ${formatDuration(minutes)} before your next request 💪`
-    : `Wow, looks like you ran out of included credits in your trial!\n\nYou can [setup a subscription](https://console.stagewise.io/billing/checkout) so we can continue working on your app 💪`;
+    ? `Wow, looks like you ran out of your daily prompts in your trial!\n\nYou can [setup a subscription](https://console.stagewise.io/billing/checkout) or wait ${formatDuration(minutes)} before your next request 💪`
+    : `Wow, looks like you ran out of your daily prompts in your trial!\n\nYou can [setup a subscription](https://console.stagewise.io/billing/checkout) so we can continue working on your app 💪`;
 
 const paidPlanLimitExceededMessage = (minutes?: number) =>
   minutes !== undefined
-    ? `Wow, looks like you ran out of included credits in your subscription!\n\nYou have to wait ${formatDuration(minutes)} before your next request or [ping the stagewise team on Discord](https://discord.gg/gkdGsDYaKA) 💪`
-    : `Wow, looks like you ran out of included credits in your subscription!\n\nYou can wait until the cooldown period ends (max 24 hours) or [ping the stagewise team on Discord](https://discord.gg/gkdGsDYaKA) 💪`;
+    ? `Wow, looks like you ran out of your daily prompts in your subscription!\n\nYou need to wait ${formatDuration(minutes)} before your next request or [ping the stagewise team on Discord](https://discord.gg/gkdGsDYaKA) 💪`
+    : `Wow, looks like you ran out of your daily prompts in your subscription!\n\nYou can wait until the cooldown period ends (max 24 hours) or [ping the stagewise team on Discord](https://discord.gg/gkdGsDYaKA) 💪`;
 
 export function ChatErrorBubble({ error }: { error: AgentError }) {
   const retrySendingUserMessage = useKartonProcedure(
