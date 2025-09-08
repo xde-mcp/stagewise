@@ -32,14 +32,33 @@ export type Chat = {
 
 export enum AgentErrorType {
   INSUFFICIENT_CREDITS = 'insufficient-credits-message',
+  PLAN_LIMITS_EXCEEDED = 'plan-limits-exceeded',
   AGENT_ERROR = 'agent-error',
   OTHER = 'other',
 }
 
-export type AgentError = {
-  type: AgentErrorType;
-  error: Error;
-};
+export type AgentError =
+  | {
+      type: AgentErrorType.INSUFFICIENT_CREDITS;
+      error: { name: string; message: string };
+    }
+  | {
+      type: AgentErrorType.PLAN_LIMITS_EXCEEDED;
+      error: {
+        name: string;
+        message: string;
+        isPaidPlan: boolean;
+        cooldownMinutes?: number;
+      };
+    }
+  | {
+      type: AgentErrorType.AGENT_ERROR;
+      error: { name: string; message: string };
+    }
+  | {
+      type: AgentErrorType.OTHER;
+      error: { name: string; message: string };
+    };
 
 type AppState = {
   activeChatId: ChatId | null;

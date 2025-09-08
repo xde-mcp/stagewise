@@ -222,6 +222,13 @@ export class TelemetryManager {
     });
   }
 
+  async planLimitsExceeded(subscription: { status: string }): Promise<void> {
+    log.debug('[TELEMETRY] Sending plan limits exceeded');
+    await this.capture('cli-plan-limits-exceeded', {
+      subscription_status: subscription.status,
+    });
+  }
+
   async creditsInsufficient(subscription: {
     status: string;
     credits: number;
@@ -364,5 +371,7 @@ export const analyticsEvents = {
     credits_used: number;
     credits_remaining: number;
   }) => telemetryManager.creditsInsufficient(subscription),
+  planLimitsExceeded: (subscription: { status: string }) =>
+    telemetryManager.planLimitsExceeded(subscription),
   trackCopyToClipboard: () => telemetryManager.trackCopyToClipboard(),
 };
