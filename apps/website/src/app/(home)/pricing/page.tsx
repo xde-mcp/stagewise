@@ -28,7 +28,7 @@ export default function PricingPage() {
       price: 'Free',
       period: 'to start',
       description: 'Perfect for getting started with stagewise',
-      features: ['~7 daily prompts', 'Community support'],
+      features: ['~12 daily prompts', 'Community support'],
 
       popular: false,
     },
@@ -38,7 +38,7 @@ export default function PricingPage() {
       period: 'per month',
       description: 'Full access with limited prompts',
       features: [
-        '~70 daily prompts',
+        '~120 daily prompts',
         'Full platform access',
         'Priority support',
       ],
