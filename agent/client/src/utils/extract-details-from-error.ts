@@ -28,7 +28,7 @@ export function extractDetailsFromError(error: unknown): ErrorDetails | null {
       }
     } catch {
       return null;
-      // If JSON parsing fails, return false
+      // If JSON parsing fails, return null
     }
   }
 

@@ -63,12 +63,12 @@ export function ChatErrorBubble({ error }: { error: AgentError }) {
           : needsSubscriptionMessage;
       case AgentErrorType.PLAN_LIMITS_EXCEEDED:
         return subscription?.hasSubscription
-          ? paidPlanLimitExceededMessage(error.error.cooldownMinutes || 0)
-          : freeTrialPlanLimitExceededMessage(error.error.cooldownMinutes || 0);
+          ? paidPlanLimitExceededMessage(error.error.cooldownMinutes)
+          : freeTrialPlanLimitExceededMessage(error.error.cooldownMinutes);
       default:
         return error.error.message;
     }
-  }, [error.type, subscription]);
+  }, [error, subscription?.hasSubscription]);
 
   const isHandledError = useMemo(() => {
     return (
