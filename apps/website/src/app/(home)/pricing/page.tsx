@@ -28,7 +28,7 @@ export default function PricingPage() {
       price: 'Free',
       period: 'to start',
       description: 'Perfect for getting started with stagewise',
-      features: ['€5 starting credits included', 'Community support'],
+      features: ['~7 daily prompts', 'Community support'],
 
       popular: false,
     },
@@ -36,9 +36,9 @@ export default function PricingPage() {
       name: 'Pro',
       price: '€20',
       period: 'per month',
-      description: 'Full access with monthly credits included',
+      description: 'Full access with limited prompts',
       features: [
-        '€20 monthly credits included',
+        '~70 daily prompts',
         'Full platform access',
         'Priority support',
       ],
@@ -56,46 +56,13 @@ export default function PricingPage() {
             Simple, transparent pricing
           </h1>
           <p className="max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-            Start with €5 free credits, then pay €20/month for full access. Your
-            subscription fee becomes usable credits.
+            Start with a free trial, then upgrade to Pro for full access with
+            generous usage limits included.
           </p>
         </div>
       </ScrollReveal>
 
       <PricingCards plans={plans} />
-
-      <div className="mx-auto max-w-4xl">
-        <ScrollReveal delay={200}>
-          <div>
-            <div className="mb-8 border-zinc-200 border-t dark:border-zinc-800" />
-            <h2 className="mb-8 text-center font-bold text-2xl text-zinc-900 dark:text-white">
-              Usage-Based Pricing
-            </h2>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="text-center">
-                <div className="mb-2 font-bold text-3xl text-zinc-900 dark:text-white">
-                  €1.50
-                </div>
-                <div className="text-zinc-600 dark:text-zinc-400">
-                  per 1M input tokens
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="mb-2 font-bold text-3xl text-zinc-900 dark:text-white">
-                  €7.50
-                </div>
-                <div className="text-zinc-600 dark:text-zinc-400">
-                  per 1M output tokens
-                </div>
-              </div>
-            </div>
-            <p className="mt-6 text-center text-zinc-600 dark:text-zinc-400">
-              Only pay for what you use. Credits from your Pro subscription can
-              be used towards usage costs.
-            </p>
-          </div>
-        </ScrollReveal>
-      </div>
     </div>
   );
 }
