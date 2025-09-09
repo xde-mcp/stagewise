@@ -5,7 +5,8 @@ export type PlanLimitsExceededError = {
   data: {
     code: 'PLAN_LIMIT_EXCEEDED';
     message?: string;
-    tokensUsed?: number;
+    inputTokensUsed?: number;
+    outputTokensUsed?: number;
     maxTokens?: number;
     windowMinutes?: number;
     cooldownMinutes?: number;
@@ -23,7 +24,8 @@ export function isPlanLimitsExceededError(
       data: {
         code: 'PLAN_LIMIT_EXCEEDED',
         message: errorDetails.message || 'Plan limits exceeded',
-        tokensUsed: errorDetails.tokensUsed || 0,
+        inputTokensUsed: errorDetails.inputTokensUsed || 0,
+        outputTokensUsed: errorDetails.outputTokensUsed || 0,
         maxTokens: errorDetails.maxTokens || 0,
         windowMinutes: errorDetails.windowMinutes || 0,
         cooldownMinutes: errorDetails.cooldownMinutes || 0,
