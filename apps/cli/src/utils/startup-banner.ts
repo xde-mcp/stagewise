@@ -14,25 +14,14 @@ type StartupBannerProps = {
   proxyPort: number;
 };
 
-export function startupBanner({ subscription, email }: StartupBannerProps) {
-  const noSubscriptionText = 'No subscription';
+export function startupBanner({ email }: StartupBannerProps) {
   const t = new table({
     head: [
       chalk.cyan.bold('Email'),
-      chalk.cyan.bold('Status'),
-      chalk.cyan.bold('Subscription'),
+      chalk.cyan.bold('Subscription (new pricing)'),
     ],
-    colWidths: [
-      email.length + 4,
-      subscription?.subscription?.status?.length ||
-        noSubscriptionText.length + 4,
-      43,
-    ],
+    colWidths: [email.length + 4, 43],
   });
-  t.push([
-    email,
-    subscription?.subscription?.status || noSubscriptionText,
-    `Check at https://console.stagewise.io`,
-  ]);
+  t.push([email, `Check at https://console.stagewise.io`]);
   log.info(t.toString());
 }
