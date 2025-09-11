@@ -1,5 +1,11 @@
 # stagewise
 
+## 0.11.1
+
+### Patch Changes
+
+- ab359b9: Removing credits from startup-banner.
+
 ## 0.11.0
 
 ### Minor Changes
