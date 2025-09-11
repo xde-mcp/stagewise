@@ -1,5 +1,11 @@
 # @stagewise-agent/client-sdk
 
+## 0.5.1
+
+### Patch Changes
+
+- ab359b9: Update plan-limit error to reflect input + output tokens.
+
 ## 0.5.0
 
 ### Minor Changes
