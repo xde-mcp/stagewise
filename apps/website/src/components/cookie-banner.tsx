@@ -43,7 +43,7 @@ export function CookieBanner() {
   }
 
   return (
-    <div className="slide-in-from-bottom fixed right-4 bottom-4 z-50 w-sm animate-in rounded-xl bg-white/80 backdrop-blur-lg duration-300">
+    <div className="slide-in-from-bottom fixed right-4 bottom-4 z-50 w-sm animate-in rounded-xl bg-background/80 backdrop-blur-lg duration-300">
       <Card className="shadow-lg">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Cookie Consent</CardTitle>
