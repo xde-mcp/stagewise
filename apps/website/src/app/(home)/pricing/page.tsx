@@ -52,9 +52,14 @@ export default function PricingPage() {
     <div className="flex w-full max-w-6xl flex-col gap-12 px-4">
       <ScrollReveal>
         <div className="flex flex-col items-center gap-4 text-center">
-          <h1 className="bg-gradient-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text font-bold text-3xl text-transparent tracking-tight md:text-5xl dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
-            Simple, transparent pricing
-          </h1>
+          <div className="relative">
+            <span className="glass-body -top-12 -translate-x-1/2 md:-top-2 absolute left-1/2 rounded-full bg-primary px-3 py-1 font-medium text-primary-foreground text-sm backdrop-blur-sm md:left-full md:ml-4 md:translate-x-0">
+              New
+            </span>
+            <h1 className="bg-gradient-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text font-bold text-3xl text-transparent tracking-tight md:text-5xl dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
+              Simple, transparent pricing
+            </h1>
+          </div>
           <p className="max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
             Start with a free trial, then upgrade to Pro for full access with
             generous usage limits included.

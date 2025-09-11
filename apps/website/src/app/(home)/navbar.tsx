@@ -70,7 +70,12 @@ export function Navbar() {
         </div>
         <div className="flex flex-1 flex-col items-start justify-start sm:flex-row sm:items-center">
           <NavbarButton href="/">Home</NavbarButton>
-          <NavbarButton href="/pricing">Pricing</NavbarButton>
+          <NavbarButton href="/pricing">
+            <span>Pricing</span>
+            <span className="ml-1 rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground text-xs">
+              New
+            </span>
+          </NavbarButton>
           <NavbarButton href="/docs">Docs</NavbarButton>
           <NavbarButton href="/news">News</NavbarButton>
         </div>
