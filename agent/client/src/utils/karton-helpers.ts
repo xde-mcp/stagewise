@@ -1,23 +1,8 @@
-import type { KartonContract, ChatMessage } from '@stagewise/karton-contract';
+import type { KartonContract } from '@stagewise/karton-contract';
 import type { KartonServer } from '@stagewise/karton/server';
 import type { ToolCallProcessingResult } from './tool-call-utils.js';
-import type { InferUIMessageChunk, ToolUIPart } from 'ai';
+import type { ToolUIPart } from 'ai';
 import { randomUUID } from 'node:crypto';
-
-/**
- * Checks if a message with the given ID exists in the active chat
- * @param karton - The Karton server instance containing chat state
- * @param messageId - The unique identifier of the message to check
- * @returns True if the message exists in the active chat, false otherwise
- */
-function messageExists(
-  karton: KartonServer<KartonContract>,
-  messageId: string,
-): boolean {
-  return karton.state.chats[karton.state.activeChatId!]!.messages.some(
-    (m) => m.id === messageId,
-  );
-}
 
 /**
  * Creates a new chat with a timestamped title and sets it as the active chat
@@ -42,119 +27,6 @@ export function createAndActivateNewChat(karton: KartonServer<KartonContract>) {
     draft.activeChatId = chatId;
   });
   return chatId;
-}
-
-/**
- * Appends text content to a message, creating the message if it doesn't exist
- * or creating/appending to a text part at the specified index
- * @param karton - The Karton server instance to modify
- * @param messageId - The unique identifier of the message to append to
- * @param delta - The text content to append
- * @param partIndex - The index of the message part to append to
- */
-export function appendTextDeltaToMessage(
-  karton: KartonServer<KartonContract>,
-  messageId: string,
-  delta: string,
-  partIndex: number,
-) {
-  // If the message doesn't exist, create it
-  if (!messageExists(karton, messageId)) {
-    karton.setState((draft) => {
-      draft.chats[karton.state.activeChatId!]!.messages.push({
-        role: 'assistant',
-        id: messageId,
-        parts: [{ type: 'text', text: delta }],
-        metadata: {
-          createdAt: new Date(),
-        },
-      });
-    });
-  } else {
-    // If the message exists, create a text part or append to the existing one
-    karton.setState((draft) => {
-      const message = draft.chats[karton.state.activeChatId!]!.messages.find(
-        (m) => m.id === messageId,
-      )!;
-
-      // Create a new part if it's a new one
-      if (message.parts.length <= partIndex) {
-        message.parts.push({ type: 'text', text: delta });
-        return;
-      }
-
-      const textPart = message.parts[partIndex];
-      if (!textPart || textPart.type !== 'text') {
-        return;
-      }
-
-      // If the text part exists, append the delta to it
-      textPart.text += delta;
-    });
-  }
-}
-
-/**
- * Appends tool input information to a message, creating the message if it doesn't exist
- * or updating the tool part at the specified index
- * @param karton - The Karton server instance to modify
- * @param messageId - The unique identifier of the message to append to
- * @param chunk - The tool input chunk containing tool call details
- * @param partIndex - The index of the message part to update
- */
-export function appendToolInputToMessage(
-  karton: KartonServer<KartonContract>,
-  messageId: string,
-  chunk: Extract<
-    InferUIMessageChunk<ChatMessage>,
-    { type: 'tool-input-available' }
-  >,
-  partIndex: number,
-) {
-  karton.setState((draft) => {
-    const message = draft.chats[karton.state.activeChatId!]!.messages.find(
-      (m) => m.id === messageId,
-    );
-
-    if (!message) {
-      // If the message doesn't exist, create it
-      draft.chats[karton.state.activeChatId!]!.messages.push({
-        role: 'assistant',
-        id: messageId,
-        parts: [
-          {
-            type: `tool-${chunk.toolName}` as any,
-            state: 'input-available',
-            input: chunk.input,
-            toolCallId: chunk.toolCallId,
-          } satisfies ToolUIPart,
-        ],
-        metadata: {
-          createdAt: new Date(),
-        },
-      });
-    } else if (partIndex >= message.parts.length) {
-      // If the current part index is greater than the number of parts, create a new one
-      message.parts.push({
-        type: `tool-${chunk.toolName}` as any,
-        toolCallId: chunk.toolCallId,
-        state: 'input-available',
-        input: chunk.input,
-      } satisfies ToolUIPart);
-    } else {
-      // If the message has parts, append to the existing one
-      const part = message.parts[partIndex];
-      if (!part) return; // this should never happen
-
-      if (
-        part.type === 'dynamic-tool' ||
-        part.type === `tool-${chunk.toolName}`
-      ) {
-        (part as ToolUIPart).state = 'input-available';
-        (part as ToolUIPart).input = chunk.input;
-      }
-    }
-  });
 }
 
 /**

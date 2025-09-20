@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { isAbortError } from './utils/is-abort-error.js';
 import { isAuthenticationError } from './utils/is-authentication-error.js';
 import {
@@ -7,13 +6,16 @@ import {
   type ChatMessage,
   AgentErrorType,
 } from '@stagewise/karton-contract';
-import { createAnthropic } from '@ai-sdk/anthropic';
+import {
+  type AnthropicProviderOptions,
+  createAnthropic,
+} from '@ai-sdk/anthropic';
 import {
   cliTools,
   cliToolsWithoutExecute,
   type UITools,
 } from '@stagewise/agent-tools';
-import { streamText, generateId } from 'ai';
+import { streamText, generateId, readUIMessageStream } from 'ai';
 import { XMLPrompts } from '@stagewise/agent-prompts';
 import {
   createKartonServer,
@@ -37,14 +39,12 @@ import {
 import { getProjectInfo } from '@stagewise/agent-prompt-snippets';
 import { getProjectPath } from '@stagewise/agent-prompt-snippets';
 import {
-  appendTextDeltaToMessage,
   attachToolOutputToMessage,
   createAndActivateNewChat,
-  appendToolInputToMessage,
   findPendingToolCalls,
 } from './utils/karton-helpers.js';
 import { isInsufficientCreditsError } from './utils/is-insufficient-credits-error.js';
-import type { InferUIMessageChunk, ToolUIPart, UIMessage } from 'ai';
+import type { AsyncIterableStream, InferUIMessageChunk, ToolUIPart } from 'ai';
 import { uiMessagesToModelMessages } from './utils/ui-messages-to-model-messages.js';
 import {
   processParallelToolCalls,
@@ -511,8 +511,13 @@ export class Agent {
         model: this.litellm('claude-sonnet-4-20250514'),
         abortSignal: this.abortController.signal,
         temperature: 0.7,
-        maxOutputTokens: 64000,
+        maxOutputTokens: 10000,
         maxRetries: 0,
+        providerOptions: {
+          anthropic: {
+            thinking: { type: 'enabled', budgetTokens: 10000 },
+          } satisfies AnthropicProviderOptions,
+        },
         messages: [systemPrompt, ...uiMessagesToModelMessages(history ?? [])],
         onError: async (error) => {
           if (isAbortError(error.error)) {
@@ -639,7 +644,7 @@ export class Agent {
 
       const uiMessages = stream.toUIMessageStream({
         generateMessageId: generateId,
-      });
+      }) as AsyncIterableStream<InferUIMessageChunk<ChatMessage>>;
 
       await this.parseUiStream(uiMessages, (messageId) => {
         this.lastMessageId = messageId;
@@ -666,43 +671,39 @@ export class Agent {
   }
 
   private async parseUiStream(
-    uiStream: AsyncIterable<
-      InferUIMessageChunk<UIMessage<unknown, any, UITools>>
-    >,
+    uiStream: ReadableStream<InferUIMessageChunk<ChatMessage>>,
     onNewMessage?: (messageId: string) => void,
   ) {
-    let messageId = '';
-    let partIndex = -1;
-    for await (const value of uiStream) {
-      switch (value.type) {
-        case 'start':
-          messageId = value.messageId ?? randomUUID();
-          partIndex++;
-          // Reset auth retry count on successful message stream start
-          onNewMessage?.(messageId);
-          continue;
-        case 'text-start':
-          continue;
-        case 'text-delta':
-          appendTextDeltaToMessage(
-            this.karton!,
-            messageId,
-            value.delta,
-            partIndex,
+    for await (const uiMessage of readUIMessageStream<ChatMessage>({
+      stream: uiStream,
+    })) {
+      const messageExists =
+        this.karton?.state.activeChatId &&
+        this.karton.state.chats[this.karton.state.activeChatId]?.messages.find(
+          (m) => m.id === uiMessage.id,
+        );
+      const uiMessageWithMetadata: ChatMessage = {
+        ...uiMessage,
+        metadata: { ...(uiMessage.metadata ?? {}), createdAt: new Date() },
+      };
+
+      if (messageExists) {
+        this.karton!.setState((draft) => {
+          draft.chats[draft.activeChatId!]!.messages = draft.chats[
+            draft.activeChatId!
+          ]!.messages.map((m) =>
+            m.id === uiMessage.id
+              ? (uiMessageWithMetadata as ChatMessage)
+              : (m as any),
           );
-          continue;
-        case 'tool-input-start':
-          partIndex++;
-          continue;
-        case 'tool-input-delta':
-        case 'tool-input-error':
-          break; // Skipped for now
-        case 'tool-input-available':
-          appendToolInputToMessage(this.karton!, messageId, value, partIndex);
-          continue;
-        case 'tool-output-available':
-          // Should not happen - we append the output and this message
-          continue;
+        });
+      } else {
+        onNewMessage?.(uiMessage.id);
+        this.karton!.setState((draft) => {
+          draft.chats[draft.activeChatId!]!.messages.push(
+            uiMessageWithMetadata as any,
+          );
+        });
       }
     }
   }
