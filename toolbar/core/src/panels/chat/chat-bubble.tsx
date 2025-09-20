@@ -73,6 +73,21 @@ export function ChatBubble({
   const isWorking = useKartonState((s) => s.isWorking);
   const { setChatInput } = useChatState();
   const [hasCodeChanges, setHasCodeChanges] = useState(false);
+  const isEmptyMessage = useMemo(() => {
+    if (
+      msg.parts
+        .map((part) => part.type)
+        .some((type) => type === 'dynamic-tool' || type.startsWith('tool-'))
+    )
+      return false;
+
+    return msg.parts.every(
+      (part) =>
+        (part.type !== 'text' && part.type !== 'reasoning') ||
+        ((part.type === 'text' || part.type === 'reasoning') &&
+          part.text.trim() === ''),
+    );
+  }, [msg.parts]);
 
   useEffect(() => {
     if (
@@ -145,6 +160,8 @@ export function ChatBubble({
     // TODO: restore selected elements
   }, [activeChatId, setChatInput, undoToolCallsUntilLatestUserMessage]);
 
+  if (isEmptyMessage) return null; // Message parts start long before the message is sent - bubble should only show after the first chunk is received
+
   return (
     <div className="flex flex-col gap-1">
       <div
@@ -191,6 +208,7 @@ export function ChatBubble({
                     />
                   );
                 case 'reasoning':
+                  if (part.text.trim() === '') return null; // Sometimes, empty reasoning parts are returned
                   return (
                     <ReasoningPartItem
                       key={`content_part_${index.toString()}`}
