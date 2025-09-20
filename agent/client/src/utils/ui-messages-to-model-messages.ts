@@ -17,6 +17,12 @@ export function uiMessagesToModelMessages(
         );
         break;
       case 'assistant': {
+        if (
+          message.parts.some((part) => part.type === 'reasoning') &&
+          !message.parts.some((part) => part.type === 'text')
+        )
+          continue; // skip assistant messages with only reasoning parts
+
         // Create a new message with cleaned tool outputs
         const cleanedMessage = {
           ...message,
