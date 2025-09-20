@@ -74,9 +74,8 @@ export function Footer() {
       </div>
       <div className="mt-8 flex flex-col items-center justify-between pt-8 md:flex-row dark:border-zinc-800">
         <p className="max-w-lg text-xs text-zinc-500 dark:text-zinc-400">
-          stagewise® is a registered trademark of stagewise GmbH
-          and protected in the EU by the European Union Intellectual Property
-          Office (EUIPO).
+          stagewise® is a registered trademark of stagewise GmbH and protected
+          in the EU by the European Union Intellectual Property Office (EUIPO).
           <br />
           Unauthorized use is prohibited.
         </p>
