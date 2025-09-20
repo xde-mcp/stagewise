@@ -44,7 +44,7 @@ import {
   findPendingToolCalls,
 } from './utils/karton-helpers.js';
 import { isInsufficientCreditsError } from './utils/is-insufficient-credits-error.js';
-import type { InferUIMessageChunk, ToolUIPart, UIMessage } from 'ai';
+import type { AsyncIterableStream, InferUIMessageChunk, ToolUIPart } from 'ai';
 import { uiMessagesToModelMessages } from './utils/ui-messages-to-model-messages.js';
 import {
   processParallelToolCalls,
@@ -644,7 +644,7 @@ export class Agent {
 
       const uiMessages = stream.toUIMessageStream({
         generateMessageId: generateId,
-      });
+      }) as AsyncIterableStream<InferUIMessageChunk<ChatMessage>>;
 
       await this.parseUiStream(uiMessages, (messageId) => {
         this.lastMessageId = messageId;
@@ -671,18 +671,18 @@ export class Agent {
   }
 
   private async parseUiStream(
-    uiStream: ReadableStream<
-      InferUIMessageChunk<UIMessage<unknown, any, UITools>>
-    >,
+    uiStream: ReadableStream<InferUIMessageChunk<ChatMessage>>,
     onNewMessage?: (messageId: string) => void,
   ) {
-    for await (const uiMessage of readUIMessageStream({ stream: uiStream })) {
+    for await (const uiMessage of readUIMessageStream<ChatMessage>({
+      stream: uiStream,
+    })) {
       const messageExists =
         this.karton?.state.activeChatId &&
         this.karton.state.chats[this.karton.state.activeChatId]?.messages.find(
           (m) => m.id === uiMessage.id,
         );
-      const uiMessageWithMetadata = {
+      const uiMessageWithMetadata: ChatMessage = {
         ...uiMessage,
         metadata: { ...(uiMessage.metadata ?? {}), createdAt: new Date() },
       };

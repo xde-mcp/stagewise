@@ -77,7 +77,12 @@ export function ChatBubble({
     if (
       msg.parts
         .map((part) => part.type)
-        .some((type) => type === 'dynamic-tool' || type.startsWith('tool-'))
+        .some(
+          (type) =>
+            type === 'dynamic-tool' ||
+            type.startsWith('tool-') ||
+            type === 'file',
+        )
     )
       return false;
 
