@@ -1,5 +1,11 @@
 # @stagewise/toolbar
 
+## 0.15.0
+
+### Minor Changes
+
+- c0c92f5: Add reasoning capabilities to the agent.
+
 ## 0.14.0
 
 ### Minor Changes
