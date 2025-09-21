@@ -18,8 +18,9 @@ export function uiMessagesToModelMessages(
         break;
       case 'assistant': {
         if (
-          message.parts.some((part) => part.type === 'reasoning') &&
-          !message.parts.some((part) => part.type === 'text')
+          message.parts.every(
+            (part) => part.type === 'reasoning' || part.type === 'step-start',
+          )
         )
           continue; // skip assistant messages with only reasoning parts
 
