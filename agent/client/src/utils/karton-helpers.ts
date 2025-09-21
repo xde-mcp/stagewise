@@ -58,8 +58,10 @@ export function attachToolOutputToMessage(
 
       if (result.success) {
         toolPart.state = 'output-available';
+        toolPart.input = toolPart.input ?? {};
         toolPart.output = result.result;
       } else {
+        toolPart.input = toolPart.input ?? {};
         toolPart.state = 'output-error';
         toolPart.errorText = result.error?.message;
       }
@@ -102,7 +104,11 @@ export function findPendingToolCalls(
 
       // Only consider tool calls with 'input-available' state as pending
       // Other states like 'output-available' or 'output-error' are terminal
-      if (toolPart.state === 'input-available' && 'toolCallId' in part) {
+      if (
+        (toolPart.state === 'input-available' ||
+          toolPart.state === 'input-streaming') &&
+        'toolCallId' in part
+      ) {
         pendingToolCalls.push({
           toolCallId: toolPart.toolCallId,
         });
