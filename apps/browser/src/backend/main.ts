@@ -484,8 +484,19 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     // Check each chat for pending edits changes
     for (const [chatId, chat] of Object.entries(agentChat.chats)) {
       const pendingEdits = chat.pendingEdits ?? [];
-      // Create a simple snapshot key to detect changes (stringify paths)
-      const snapshotKey = pendingEdits.map((e) => e.path).join(',');
+      // Create a snapshot key that detects ANY content changes, not just path changes.
+      // Include path + simple content hash (length + sample chars) for fast but reliable comparison.
+      const hashContent = (s: string | null | undefined): string => {
+        if (!s) return '0';
+        // Use length + first/last 8 chars + middle char for a quick fingerprint
+        const mid = Math.floor(s.length / 2);
+        return `${s.length}:${s.slice(0, 8)}:${s.slice(-8)}:${s[mid] ?? ''}`;
+      };
+      const snapshotKey = pendingEdits
+        .map(
+          (e) => `${e.path}|${hashContent(e.before)}|${hashContent(e.after)}`,
+        )
+        .join('||');
       const previousKey = previousPendingEditsSnapshot[chatId] ?? '';
 
       if (snapshotKey !== previousKey) {
