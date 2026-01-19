@@ -72,6 +72,9 @@ interface ChatContext {
   selectedElements: SelectedElement[];
   removeSelectedElement: (elementId: string) => void;
 
+  // Restoration (for early abort)
+  restoreMessage: (message: ChatMessage) => void;
+
   // UI state
   isSending: boolean;
 }
@@ -86,6 +89,7 @@ const ChatHistoryContext = createContext<ChatContext>({
   clearFileAttachments: () => {},
   selectedElements: [],
   removeSelectedElement: () => {},
+  restoreMessage: () => {},
   isSending: false,
 });
 
@@ -136,6 +140,9 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       removeSelectedElementProc(elementId, MESSAGE_ID);
     },
     [removeSelectedElementProc],
+  );
+  const restoreSelectedElementsProc = useKartonProcedure(
+    (p) => p.browser.contextSelection.restoreElements,
   );
 
   // Watch for pending element screenshots and auto-add as file attachments (for 'main')
@@ -288,6 +295,46 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
     selectedElements,
   ]);
 
+  /**
+   * Restore a message to the chat input (used when early-aborting an agent call).
+   * Restores: text input, file attachments (from data URLs), and selected elements.
+   */
+  const restoreMessage = useCallback(
+    (message: ChatMessage) => {
+      // Extract text from message parts
+      const textPart = message.parts.find((p) => p.type === 'text');
+      if (textPart && textPart.type === 'text') {
+        setChatInput(textPart.text);
+      }
+
+      // Restore file attachments from file parts (convert data URLs back to Files)
+      const fileParts = message.parts.filter((p) => p.type === 'file');
+      fileParts.forEach((part) => {
+        if (part.type === 'file' && part.url) {
+          try {
+            const file = dataUrlToFile(part.url, part.filename || 'attachment');
+            const id = generateId();
+            const url = URL.createObjectURL(file);
+            setFileAttachments((prev) => [...prev, { id, file, url }]);
+          } catch (e) {
+            console.warn('[ChatState] Failed to restore file attachment:', e);
+          }
+        }
+      });
+
+      // Restore selected elements from metadata
+      // The metadata stores elements with compatible structure to SelectedElement
+      const elementsToRestore = message.metadata?.selectedPreviewElements;
+      if (elementsToRestore && elementsToRestore.length > 0) {
+        restoreSelectedElementsProc(
+          elementsToRestore as SelectedElement[],
+          MESSAGE_ID,
+        );
+      }
+    },
+    [restoreSelectedElementsProc],
+  );
+
   const value: ChatContext = useMemo(
     () => ({
       chatInput,
@@ -299,6 +346,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       clearFileAttachments,
       selectedElements,
       removeSelectedElement,
+      restoreMessage,
       isSending,
     }),
     [
@@ -310,6 +358,7 @@ export const ChatStateProvider = ({ children }: ChatStateProviderProps) => {
       clearFileAttachments,
       selectedElements,
       removeSelectedElement,
+      restoreMessage,
       isSending,
     ],
   );

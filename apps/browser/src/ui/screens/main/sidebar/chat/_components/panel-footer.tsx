@@ -68,9 +68,12 @@ export function ChatPanelFooter() {
   const isConnected = useKartonConnected();
   const reconnectState = useKartonReconnectState();
 
-  const abortAgent = useCallback(() => {
-    stopAgent();
-  }, [stopAgent]);
+  const abortAgent = useCallback(async () => {
+    const result = await stopAgent();
+    // If early abort conditions were met, restore the user message to the input
+    if (result.restored && result.userMessage)
+      chatState.restoreMessage(result.userMessage);
+  }, [stopAgent, chatState]);
 
   const activeChat = useMemo(() => {
     return activeChatId && chats ? chats[activeChatId] : null;

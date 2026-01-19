@@ -1,5 +1,6 @@
 import { BaseWindow, app, ipcMain, nativeTheme } from 'electron';
 import path from 'node:path';
+import type { SelectedElement } from '@shared/karton-contracts/ui';
 import { getHotkeyDefinitionForEvent } from '@shared/hotkeys';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -499,6 +500,7 @@ export class WindowLayoutService extends DisposableService {
     );
     this.uiController.on('removeElement', this.handleRemoveElement);
     this.uiController.on('clearElements', this.handleClearElements);
+    this.uiController.on('restoreElements', this.handleRestoreElements);
     this.uiController.on(
       'clearPendingScreenshots',
       this.handleClearPendingScreenshots,
@@ -1347,6 +1349,13 @@ export class WindowLayoutService extends DisposableService {
 
   private handleClearElements = (messageId: string) => {
     this.chatStateController?.clearElements(messageId);
+  };
+
+  private handleRestoreElements = (
+    elements: SelectedElement[],
+    messageId: string,
+  ) => {
+    this.chatStateController?.restoreElements(elements, messageId);
   };
 
   private handleClearPendingScreenshots = (messageId: string) => {

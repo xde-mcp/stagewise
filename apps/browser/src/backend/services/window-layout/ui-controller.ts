@@ -8,6 +8,7 @@ import { KartonService } from '../karton';
 import type { SerializableKeyboardEvent } from '@shared/karton-contracts/web-contents-preload';
 import type { ColorScheme } from '@shared/karton-contracts/ui';
 import type { PageTransition } from '@shared/karton-contracts/pages-api/types';
+import type { SelectedElement } from '@shared/selected-elements';
 import { fileURLToPath } from 'node:url';
 import { canBrowserHandleUrl } from './protocol-utils';
 
@@ -55,6 +56,7 @@ export interface UIControllerEventMap {
   selectHoveredElement: [];
   removeElement: [elementId: string, messageId: string];
   clearElements: [messageId: string];
+  restoreElements: [elements: SelectedElement[], messageId: string];
   clearPendingScreenshots: [messageId: string];
   scrollToElement: [tabId: string, backendNodeId: number, frameId: string];
   checkFrameValidity: [
@@ -369,6 +371,16 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
       'browser.contextSelection.clearElements',
       async (_callingClientId: string, messageId: string) => {
         this.emit('clearElements', messageId);
+      },
+    );
+    this.uiKarton.registerServerProcedureHandler(
+      'browser.contextSelection.restoreElements',
+      async (
+        _callingClientId: string,
+        elements: SelectedElement[],
+        messageId: string,
+      ) => {
+        this.emit('restoreElements', elements, messageId);
       },
     );
     this.uiKarton.registerServerProcedureHandler(

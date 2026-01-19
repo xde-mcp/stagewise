@@ -67,6 +67,19 @@ export class ChatStateController {
   }
 
   /**
+   * Restore selected elements directly (bulk restore).
+   * Used when restoring an aborted message to the chat input.
+   * @param elements The elements to restore
+   * @param messageId The message ID to restore elements to ('main' for main input)
+   */
+  public restoreElements(elements: SelectedElement[], messageId: string): void {
+    this.uiKarton.setState((draft) => {
+      draft.browser.selectedElementsByMessageId[messageId] = [...elements];
+    });
+    this.broadcastSelectionUpdate(messageId);
+  }
+
+  /**
    * Get the current list of selected elements for a specific message ID.
    * @param messageId The message ID to get elements for
    * @returns Array of selected elements for the given message ID

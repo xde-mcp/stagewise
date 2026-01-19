@@ -611,7 +611,13 @@ export type KartonContract = {
       delete: (chatId: string) => Promise<void>;
       sendUserMessage: (message: ChatMessage) => Promise<void>;
       retrySendingUserMessage: () => Promise<void>;
-      abortAgentCall: () => Promise<void>;
+      /** Abort the current agent call. Returns restoration info if early abort conditions are met. */
+      abortAgentCall: () => Promise<{
+        /** Whether the user message was restored (chat reverted to pre-message state) */
+        restored: boolean;
+        /** The user message to repopulate in the input (only present if restored is true) */
+        userMessage?: ChatMessage;
+      }>;
       approveToolCall: (toolCallId: string) => Promise<void>;
       rejectToolCall: (toolCallId: string) => Promise<void>;
       submitUserInteractionToolInput: (
@@ -744,6 +750,11 @@ export type KartonContract = {
         removeElement: (elementId: string, messageId: string) => Promise<void>;
         clearElements: (messageId: string) => Promise<void>; // Removes all elements from selection for a specific message ID
         clearPendingScreenshots: (messageId: string) => Promise<void>; // Clears pending element screenshots for a specific message ID after UI has picked them up
+        /** Restore selected elements directly (used when restoring aborted message to input) */
+        restoreElements: (
+          elements: SelectedElement[],
+          messageId: string,
+        ) => Promise<void>;
       };
       scrollToElement: (
         tabId: string,

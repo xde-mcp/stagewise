@@ -147,6 +147,14 @@ export class AgentService {
   /** Files modified per chat - used to collect LSP diagnostics */
   private modifiedFilesPerChat: Map<ChatId, Set<string>> = new Map();
 
+  // Current turn state tracking for early abort detection
+  /** Whether any tool has produced a result in the current turn */
+  private currentTurnHasToolResult = false;
+  /** Total text content length generated in the current turn (excluding reasoning) */
+  private currentTurnTextLength = 0;
+  /** Whether the agent is currently in thinking/reasoning mode */
+  private currentTurnIsThinking = false;
+
   private constructor(
     logger: Logger,
     telemetryService: TelemetryService,
@@ -833,9 +841,54 @@ export class AgentService {
     this.logger.debug('[AgentService] Initialized');
   }
 
-  private abortAgentCall() {
+  private abortAgentCall(): {
+    restored: boolean;
+    userMessage?: ChatMessage;
+  } {
     const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
-    if (!activeChatId) return;
+    if (!activeChatId) return { restored: false };
+
+    // Check if this is an early abort (should restore user message to input)
+    // Early abort conditions:
+    // 1. Agent is still thinking and no tool has produced a result yet, OR
+    // 2. No tool has produced a result AND less than 15 response characters generated
+    const isEarlyAbort =
+      (this.currentTurnIsThinking && !this.currentTurnHasToolResult) ||
+      (!this.currentTurnHasToolResult && this.currentTurnTextLength < 15);
+
+    let restoredMessage: ChatMessage | undefined;
+
+    if (isEarlyAbort) {
+      // Find the last user message to restore
+      const chat = this.uiKarton.state.agentChat?.chats[activeChatId];
+      const messages = chat?.messages ?? [];
+
+      // Find the last user message
+      let lastUserMessageIndex = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'user') {
+          lastUserMessageIndex = i;
+          break;
+        }
+      }
+
+      if (lastUserMessageIndex !== -1) {
+        // Store the user message for restoration
+        restoredMessage = messages[lastUserMessageIndex] as ChatMessage;
+
+        // Remove the user message and any messages after it (partial assistant response)
+        this.uiKarton.setState((draft) => {
+          const chat = draft.agentChat?.chats[activeChatId];
+          if (chat)
+            chat.messages = messages.slice(0, lastUserMessageIndex) as any;
+        });
+
+        this.logger.debug(
+          '[AgentService] Early abort: restoring user message to input',
+          { messageId: restoredMessage.id },
+        );
+      }
+    }
 
     this.abortController.abort();
     this.abortController = new AbortController();
@@ -849,6 +902,16 @@ export class AgentService {
       },
       { once: true },
     );
+
+    // Reset turn tracking variables
+    this.currentTurnHasToolResult = false;
+    this.currentTurnTextLength = 0;
+    this.currentTurnIsThinking = false;
+
+    return {
+      restored: !!restoredMessage,
+      userMessage: restoredMessage,
+    };
   }
 
   private registerProcedureHandlers() {
@@ -962,7 +1025,7 @@ export class AgentService {
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.abortAgentCall',
         async (_callingClientId: string) => {
-          this.abortAgentCall();
+          return this.abortAgentCall();
         },
       );
 
@@ -1313,6 +1376,14 @@ export class AgentService {
         ? { isUserMessage: true as const, message: lastMessage }
         : { isUserMessage: false as const, message: lastMessage };
 
+      // Reset turn tracking when starting a new user message turn
+      // (not on recursive calls after tool execution)
+      if (isUserMessage) {
+        this.currentTurnHasToolResult = false;
+        this.currentTurnTextLength = 0;
+        this.currentTurnIsThinking = false;
+      }
+
       // Capture the current abort signal before any async operations
       // This ensures we can detect if abort was called during async operations
       const signalBeforeAsyncOps = this.abortController.signal;
@@ -1502,6 +1573,8 @@ export class AgentService {
                 [cleanResult],
                 this.lastMessageId!,
               );
+              // Mark that a tool result has been received in this turn
+              this.currentTurnHasToolResult = true;
               this.telemetryService.capture('agent-tool-call-completed', {
                 chat_id: chatId,
                 message_id: this.lastMessageId!,
@@ -1682,6 +1755,19 @@ export class AgentService {
           thinkingState.currentStartTime = null;
         }
       }
+
+      // Track current turn state for early abort detection
+      // Check if agent is currently in thinking mode (has streaming reasoning part)
+      this.currentTurnIsThinking = reasoningParts.some(
+        (p) => p.type === 'reasoning' && p.state === 'streaming',
+      );
+
+      // Calculate total text content length (excluding reasoning parts)
+      const textParts = uiMessage.parts.filter((p) => p.type === 'text');
+      this.currentTurnTextLength = textParts.reduce(
+        (total, part) => total + (part.type === 'text' ? part.text.length : 0),
+        0,
+      );
 
       const chat = this.uiKarton.state.agentChat?.chats[activeChatId];
       const existingMessage = chat?.messages.find((m) => m.id === uiMessage.id);
