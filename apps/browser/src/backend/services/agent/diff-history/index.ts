@@ -122,22 +122,19 @@ export class DiffHistoryService extends DisposableService {
         // Check if file is already being tracked in current snapshot (created by agent)
         const currentFiles = this.history[this.currentIndex]?.files ?? {};
         const isAlreadyTracked = Object.hasOwn(currentFiles, file);
+        const existsInInitialSnapshot = !!this.history[0].files[file];
 
-        if (!this.history[0].files[file] && !isAlreadyTracked) {
+        if (!existsInInitialSnapshot && !isAlreadyTracked) {
           // File doesn't exist in initial snapshot AND not already tracked
           // This means it's an existing file being edited for the first time
           this.history[0].files[file] = files[file];
-        } else if (this.history[0].files[file]) {
+        } else if (existsInInitialSnapshot) {
           // File exists - check if disk content differs from computed baseline
           // This handles cases where user reverted changes externally (e.g., git checkout)
           const baseline = this.getComputedBaseline(this.currentIndex);
           if (baseline[file] !== files[file]) {
             // External change detected - push a new snapshot to record the change
             // This preserves undo history while correctly updating the baseline
-            const currentFiles =
-              this.currentIndex >= 0
-                ? this.history[this.currentIndex].files
-                : {};
             const newFiles = { ...currentFiles, [file]: files[file] };
             // Mark the file as accepted so it becomes the new baseline
             this.pushSnapshot('USER_SAVE', newFiles, [file]);
@@ -153,6 +150,37 @@ export class DiffHistoryService extends DisposableService {
    * 2. The File Watcher detects a user save on a managed file.
    * 3. We load the initial state of the project.
    */
+  /**
+   * Check if a file exists in the computed baseline but was deleted externally.
+   * If so, record the deletion by pushing a snapshot that accepts the file's removal.
+   * This ensures the baseline is updated when a user deletes an accepted file externally.
+   *
+   * @param path - Absolute path of the file to check
+   */
+  public recordExternalDeletionIfNeeded(path: string): void {
+    if (this.currentIndex < 0 || this.history.length === 0) return;
+
+    const baseline = this.getComputedBaseline(this.currentIndex);
+
+    // If file exists in baseline, it was externally deleted - record this
+    if (Object.hasOwn(baseline, path)) {
+      this.logDebug(
+        `[DiffHistory] File ${path} was externally deleted. Updating baseline.`,
+      );
+
+      // Get current files and remove this file (it was deleted)
+      const currentFiles =
+        this.currentIndex >= 0 ? this.history[this.currentIndex].files : {};
+      const newFiles = { ...currentFiles };
+      delete newFiles[path];
+
+      // Push a snapshot that accepts the deletion (file removed from baseline)
+      // We pass [path] as acceptedPaths - getComputedBaseline will see the file
+      // is in acceptedPaths but NOT in files, and will delete it from baseline
+      this.pushSnapshot('USER_SAVE', newFiles, [path]);
+    }
+  }
+
   /**
    * Convenience method for agent file edits that handles merging with current state.
    * Use this when the agent modifies a single file and you want to preserve other tracked files.

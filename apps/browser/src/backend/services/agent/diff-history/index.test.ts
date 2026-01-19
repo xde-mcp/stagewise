@@ -1810,6 +1810,131 @@ describe('DiffHistoryService', () => {
       });
     });
 
+    describe('external file deletion after acceptance', () => {
+      it('recordExternalDeletionIfNeeded updates baseline when file was externally deleted', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const existingFile = path.join(tempDir, 'existing.txt');
+        const filePath = path.join(tempDir, 'externally-deleted.txt');
+
+        // Need an existing file for initial snapshot (to initialize history)
+        await createTempFile(existingFile, 'existing content');
+        service.addInitialFileSnapshotIfNeeded({
+          [existingFile]: 'existing content',
+        });
+
+        // Step 1: Agent creates a new file (wasn't in initial snapshot)
+        await createTempFile(filePath, 'agent created content');
+        service.pushAgentFileEdit(filePath, 'agent created content');
+
+        // Verify diff shows new file (before is null)
+        let diff = service.getDiffState();
+        expect(diff).toHaveLength(1);
+        expect(diff[0].before).toBeNull();
+        expect(diff[0].after).toBe('agent created content');
+
+        // Step 2: User accepts the file creation - file is now in baseline
+        service.acceptPendingChanges();
+        expect(service.getDiffState()).toEqual([]);
+
+        // Step 3: User externally deletes the file (e.g., rm command, git checkout)
+        await fs.unlink(filePath);
+        expect(await fileExists(filePath)).toBe(false);
+
+        // Step 4: Agent creates file again with new content
+        // This is where recordExternalDeletionIfNeeded is called
+        service.recordExternalDeletionIfNeeded(filePath);
+
+        // The method should have detected that file exists in baseline but was deleted
+        // and updated the baseline to reflect the deletion
+
+        // Now push the new file edit
+        await createTempFile(filePath, 'recreated content');
+        service.pushAgentFileEdit(filePath, 'recreated content');
+
+        // Step 5: Verify diff shows file creation (+1), not modification (-1, +1)
+        diff = service.getDiffState();
+        expect(diff).toHaveLength(1);
+        expect(diff[0].before).toBeNull(); // File is "new" relative to updated baseline
+        expect(diff[0].after).toBe('recreated content');
+      });
+
+      it('recordExternalDeletionIfNeeded does nothing for files not in baseline', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const existingFile = path.join(tempDir, 'existing.txt');
+        const newFile = path.join(tempDir, 'truly-new.txt');
+
+        await createTempFile(existingFile, 'existing content');
+        service.addInitialFileSnapshotIfNeeded({
+          [existingFile]: 'existing content',
+        });
+
+        // recordExternalDeletionIfNeeded should do nothing for a file
+        // that was never in the baseline
+        service.recordExternalDeletionIfNeeded(newFile);
+
+        // Now create the new file - it should still show as new
+        await createTempFile(newFile, 'new content');
+        service.pushAgentFileEdit(newFile, 'new content');
+
+        const diff = service.getDiffState();
+        const newFileDiff = diff.find((d) => d.path === newFile);
+        expect(newFileDiff?.before).toBeNull();
+        expect(newFileDiff?.after).toBe('new content');
+      });
+
+      it('handles external deletion during pending changes correctly', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const filePath = path.join(tempDir, 'external-delete-pending.txt');
+        await createTempFile(filePath, 'original');
+
+        service.addInitialFileSnapshotIfNeeded({ [filePath]: 'original' });
+
+        // Agent modifies file
+        service.pushAgentFileEdit(filePath, 'agent modified');
+
+        // Accept changes - baseline is now 'agent modified'
+        service.acceptPendingChanges();
+
+        // User externally deletes the file
+        await fs.unlink(filePath);
+
+        // Record the external deletion
+        service.recordExternalDeletionIfNeeded(filePath);
+
+        // Agent recreates with different content
+        await createTempFile(filePath, 'brand new content');
+        service.pushAgentFileEdit(filePath, 'brand new content');
+
+        // Should show as new file creation, not modification
+        const diff = service.getDiffState();
+        expect(diff).toHaveLength(1);
+        expect(diff[0].before).toBeNull();
+        expect(diff[0].after).toBe('brand new content');
+
+        // Rejecting should delete the file (since baseline has no file)
+        const operations = service.rejectPendingChanges();
+        expect(operations.filesToDelete).toContain(filePath);
+      });
+    });
+
     describe('file deletion and restoration', () => {
       it('agent deletes existing file, user rejects, file is restored', async () => {
         mockKarton = createMockKartonService({

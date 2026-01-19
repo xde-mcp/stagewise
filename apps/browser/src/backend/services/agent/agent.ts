@@ -1457,23 +1457,31 @@ export class AgentService {
                   result.result.hiddenFromLLM.diff.path,
                 );
                 if (!absolutePath) return;
+                const beforeContent = result.result.hiddenFromLLM.diff.before;
+                const afterContent = result.result.hiddenFromLLM.diff.after;
                 // Always ensure an initial snapshot exists.
                 // For existing files: add original content to initial snapshot
                 // For new files: create empty initial snapshot (file won't be in it)
                 // This ensures AGENT_EDIT is never history[0], so baseline != current
-                if (result.result.hiddenFromLLM.diff.before !== null) {
+                if (beforeContent !== null) {
                   this.diffHistoryService?.addInitialFileSnapshotIfNeeded({
-                    [absolutePath]: result.result.hiddenFromLLM.diff.before,
+                    [absolutePath]: beforeContent,
                   });
                 } else {
                   // New file - ensure initial snapshot exists but don't include this file
+                  // Also handle case where file was externally deleted after being accepted
                   this.diffHistoryService?.addInitialFileSnapshotIfNeeded({});
+                  // Check if file exists in baseline but was deleted externally
+                  // If so, record the deletion to update the baseline
+                  this.diffHistoryService?.recordExternalDeletionIfNeeded(
+                    absolutePath,
+                  );
                 }
                 // Use pushAgentFileEdit which handles merging with current state
                 // Pass null for deletions, content for creates/updates
                 this.diffHistoryService?.pushAgentFileEdit(
                   absolutePath,
-                  result.result.hiddenFromLLM.diff.after ?? null,
+                  afterContent ?? null,
                 );
               }
               // Strip 'nonSerializableMetadata' from result, attach the rest to the tool output
