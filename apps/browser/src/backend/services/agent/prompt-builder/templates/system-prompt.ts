@@ -1,4 +1,5 @@
 import type { SystemModelMessage } from 'ai';
+import { readAgentsMd } from '../utils/read-agents-md.js';
 import type { KartonContract, TabState } from '@shared/karton-contracts/ui';
 import xml from 'xml';
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
@@ -33,6 +34,10 @@ export async function getSystemPrompt(
     ? await readStagewiseMd(stagewiseMdPath)
     : null;
 
+  const agentsMdContent = clientRuntime
+    ? await readAgentsMd(clientRuntime)
+    : null;
+
   const agentAccessPath = clientRuntime
     ? clientRuntime.fileSystem.getCurrentWorkingDirectory()
     : '';
@@ -55,7 +60,8 @@ export async function getSystemPrompt(
   ${dontDos}
   ${clientRuntime ? await workspaceInformation(kartonState, clientRuntime, !!stagewiseMdContent) : ''}
   ${await getBrowserInformation(kartonState)}
-  ${stagewiseMdContent ? `\n${stagewiseMdContent}` : getStagewiseMdNotice()}
+  ${stagewiseMd(stagewiseMdContent)}
+  ${agentsMd(agentsMdContent)}
   ${currentGoal(kartonState, projectMode)}
   ${diagnosticsSection}
   `
@@ -775,6 +781,52 @@ Without it, [STAGE] relies on real-time file inspection and the basic workspace 
 The file will either be generated automatically on project load, or when [STAGE] initiates a new generation of it through a tool call.
       `.trim(),
     },
+  });
+};
+
+/**
+ * Returns the STAGEWISE.md section for the system prompt.
+ * If content exists, wraps it with a descriptive preface.
+ * If no content, returns the notice explaining the file hasn't been generated.
+ */
+const stagewiseMd = (stagewiseMdContent: string | null) => {
+  if (stagewiseMdContent === null) {
+    return getStagewiseMdNotice();
+  }
+  return xml({
+    'stagewise-md': [
+      {
+        _attr: {
+          description:
+            'Project context file (STAGEWISE.md) containing curated, semantic information about the project structure, UI frameworks, styling conventions, and component patterns. Use this to understand how to write code that fits the project.',
+        },
+      },
+      {
+        _cdata: stagewiseMdContent,
+      },
+    ],
+  });
+};
+
+/**
+ * Returns the AGENTS.md section for the system prompt.
+ * AGENTS.md files contain workspace-specific coding guidelines, available scripts,
+ * build commands, testing instructions, and other conventions.
+ */
+const agentsMd = (agentsMdContent: string | null) => {
+  if (agentsMdContent === null) return '';
+  return xml({
+    'agents-md': [
+      {
+        _attr: {
+          description:
+            'Workspace-specific coding guidelines from AGENTS.md file(s). Contains project rules, available scripts (build, test, lint commands), commit conventions, and other workspace-specific instructions that [STAGE] MUST follow when making changes.',
+        },
+      },
+      {
+        _cdata: agentsMdContent,
+      },
+    ],
   });
 };
 
