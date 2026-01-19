@@ -12,6 +12,7 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from '@stagewise/stage-ui/components/collapsible';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { CodeBlock } from '@/components/ui/code-block';
 import { StreamingCodeBlock } from '@/components/ui/streaming-code-block';
@@ -144,20 +145,26 @@ export const ExecuteConsoleScriptToolPart = ({
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
-                  <div
-                    className={cn(
-                      'scrollbar-hover-only',
-                      capMaxHeight
-                        ? 'max-h-28 overflow-auto'
-                        : 'overflow-y-hidden',
-                    )}
-                  >
-                    <CodeBlock
-                      code={part.input.script}
-                      language="javascript"
-                      hideActionButtons
-                    />
-                  </div>
+                  {capMaxHeight ? (
+                    <OverlayScrollbar
+                      className="max-h-28"
+                      options={{ overflow: { x: 'hidden', y: 'scroll' } }}
+                    >
+                      <CodeBlock
+                        code={part.input.script}
+                        language="javascript"
+                        hideActionButtons
+                      />
+                    </OverlayScrollbar>
+                  ) : (
+                    <div className="overflow-y-hidden">
+                      <CodeBlock
+                        code={part.input.script}
+                        language="javascript"
+                        hideActionButtons
+                      />
+                    </div>
+                  )}
                 </CollapsibleContent>
               </Collapsible>
               {formattedResult && (
@@ -181,20 +188,26 @@ export const ExecuteConsoleScriptToolPart = ({
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="duration-0!">
-                    <div
-                      className={cn(
-                        'scrollbar-hover-only',
-                        capMaxHeight
-                          ? 'max-h-28 overflow-auto'
-                          : 'overflow-y-hidden',
-                      )}
-                    >
-                      <CodeBlock
-                        code={formattedResult}
-                        language="json"
-                        hideActionButtons
-                      />
-                    </div>
+                    {capMaxHeight ? (
+                      <OverlayScrollbar
+                        className="max-h-28"
+                        options={{ overflow: { x: 'hidden', y: 'scroll' } }}
+                      >
+                        <CodeBlock
+                          code={formattedResult}
+                          language="json"
+                          hideActionButtons
+                        />
+                      </OverlayScrollbar>
+                    ) : (
+                      <div className="overflow-y-hidden">
+                        <CodeBlock
+                          code={formattedResult}
+                          language="json"
+                          hideActionButtons
+                        />
+                      </div>
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
               )}

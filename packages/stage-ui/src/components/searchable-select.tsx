@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '../lib/utils';
+import { OverlayScrollbar } from './overlay-scrollbar';
 
 type SearchableSelectSize = 'xs' | 'sm' | 'md';
 export type SearchableSelectTriggerVariant = 'ghost' | 'secondary';
@@ -364,7 +365,7 @@ export const SearchableSelect = ({
                   No results
                 </div>
               )}
-              <div className="scrollbar-hover-only flex max-h-48 flex-col gap-0.5 overflow-y-auto">
+              <OverlayScrollbar className="flex max-h-48 flex-col gap-0.5">
                 {groupedFilteredItems.map(
                   ({ group, items: groupItems }, groupIndex) => (
                     <div key={group ?? `ungrouped-${groupIndex}`}>
@@ -453,7 +454,7 @@ export const SearchableSelect = ({
                     </div>
                   ),
                 )}
-              </div>
+              </OverlayScrollbar>
               <SelectBase.ScrollDownArrow />
             </SelectBase.Popup>
 

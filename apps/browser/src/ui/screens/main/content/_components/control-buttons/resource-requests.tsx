@@ -5,6 +5,7 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import {
   IconConnection2FillDuo18,
   IconCameraFillDuo18,
@@ -621,7 +622,7 @@ export function ResourceRequestsControlButton({ tabId }: { tabId: string }) {
         onMouseLeave={handlePopoverMouseLeave}
       >
         <PopoverTitle>Permission Requests</PopoverTitle>
-        <div className="scrollbar-subtle scrollbar-hover-only flex max-h-64 w-full flex-col divide-y divide-border-subtle overflow-y-auto px-1">
+        <OverlayScrollbar className="flex max-h-64 w-full flex-col divide-y divide-border-subtle px-1">
           {permissionRequests.length === 0 ? (
             <div className="flex items-center justify-center py-3">
               <span className="text-muted-foreground text-sm">
@@ -644,7 +645,7 @@ export function ResourceRequestsControlButton({ tabId }: { tabId: string }) {
                 />
               ))
           )}
-        </div>
+        </OverlayScrollbar>
       </PopoverContent>
     </Popover>
   );

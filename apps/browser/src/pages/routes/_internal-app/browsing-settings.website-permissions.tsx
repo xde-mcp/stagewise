@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { Select } from '@stagewise/stage-ui/components/select';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { produceWithPatches, enablePatches } from 'immer';
@@ -199,14 +200,14 @@ function Page() {
         </div>
 
         {/* Content */}
-        <div className="scrollbar-subtle flex-1 overflow-y-auto p-6">
+        <OverlayScrollbar className="flex-1 p-6">
           <div className="mx-auto max-w-3xl">
             <p className="text-muted-foreground">
               No website selected. Please select a website from the Browsing
               Settings page.
             </p>
           </div>
-        </div>
+        </OverlayScrollbar>
       </div>
     );
   }
@@ -233,7 +234,7 @@ function Page() {
       </div>
 
       {/* Content */}
-      <div className="scrollbar-subtle flex-1 overflow-y-auto p-6">
+      <OverlayScrollbar className="flex-1 p-6">
         <div className="mx-auto max-w-3xl space-y-6">
           {/* Summary */}
           <div className="rounded-lg border border-border/30 bg-surface-1/50 p-4">
@@ -303,7 +304,7 @@ function Page() {
             </div>
           </section>
         </div>
-      </div>
+      </OverlayScrollbar>
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { Outlet } from '@tanstack/react-router';
 import { buttonVariants } from '@stagewise/stage-ui/components/button';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 
 export const Route = createFileRoute('/_internal-app')({
   component: RouteComponent,
@@ -29,9 +30,9 @@ function RouteComponent() {
     <div className="flex h-screen w-screen items-center justify-center bg-app-background p-3">
       <div className="flex h-full w-full flex-row items-start justify-start gap-6">
         <Sidebar />
-        <div className="scrollbar-subtle h-full flex-1 overflow-y-auto rounded-lg bg-background ring-1 ring-derived-strong">
+        <OverlayScrollbar className="h-full flex-1 rounded-lg bg-background ring-1 ring-derived-strong">
           <Outlet />
-        </div>
+        </OverlayScrollbar>
       </div>
     </div>
   );

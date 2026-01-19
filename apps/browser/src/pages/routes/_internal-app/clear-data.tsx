@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { useKartonProcedure } from '@/hooks/use-karton';
 import { Loader2Icon } from 'lucide-react';
 
@@ -220,7 +221,7 @@ function Page() {
       </div>
 
       {/* Content */}
-      <div className="scrollbar-subtle flex-1 overflow-y-auto p-6">
+      <OverlayScrollbar className="flex-1 p-6">
         <div className="mx-auto max-w-3xl space-y-8">
           {/* Data Selection Section */}
           <section className="space-y-4">
@@ -306,7 +307,7 @@ function Page() {
             </div>
           )}
         </div>
-      </div>
+      </OverlayScrollbar>
     </div>
   );
 }

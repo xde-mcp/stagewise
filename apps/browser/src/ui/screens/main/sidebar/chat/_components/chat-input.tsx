@@ -223,7 +223,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             onBlur={onBlur}
             disabled={disabled}
             className={cn(
-              'scrollbar-subtle relative z-10 mt-0 h-full w-full resize-none overflow-visible rounded-none border-none text-foreground text-sm outline-none ring-0 transition-all duration-300 ease-out placeholder:text-muted-foreground/70 focus:outline-none disabled:bg-transparent',
+              'relative z-10 mt-0 h-full w-full resize-none overflow-visible rounded-none border-none text-foreground text-sm outline-none ring-0 transition-all duration-300 ease-out placeholder:text-muted-foreground/70 focus:outline-none disabled:bg-transparent',
             )}
             placeholder={
               placeholder ??

@@ -28,6 +28,7 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 
 export const Route = createFileRoute('/diff-review/$chatId')({
   component: Page,
@@ -154,7 +155,7 @@ const FileDiffItem: FC<{
 function Page() {
   const { chatId } = Route.useParams();
   const isConnected = useKartonConnected();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
 
   // Subscribe to real-time state updates for pending edits
   const pendingEditsFromState = useKartonState(
@@ -397,9 +398,11 @@ function Page() {
       </div>
 
       {/* Content - File diffs */}
-      <div
-        ref={scrollContainerRef}
-        className="scrollbar-subtle flex-1 overflow-y-auto p-6"
+      <OverlayScrollbar
+        onViewportRef={(el) => {
+          scrollContainerRef.current = el;
+        }}
+        className="flex-1 p-6"
       >
         <div className="mx-auto max-w-4xl space-y-6">
           {formattedEdits.map((edit) => (
@@ -411,7 +414,7 @@ function Page() {
             />
           ))}
         </div>
-      </div>
+      </OverlayScrollbar>
     </div>
   );
 }

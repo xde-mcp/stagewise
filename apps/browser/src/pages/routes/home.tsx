@@ -22,6 +22,7 @@ import { IconPlusFill18 } from 'nucleo-ui-fill-18';
 import TimeAgo from 'react-timeago';
 import { cn } from '@/utils';
 import { LogoWithText } from '@ui/components/ui/logo-with-text';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 
 export const Route = createFileRoute('/home')({
   component: HomePage,
@@ -544,7 +545,7 @@ function ConnectWorkspaceBanner() {
                   </Button>
                 )}
               </div>
-              <div className="scrollbar-subtle flex max-h-60 w-full flex-col items-start gap-2 overflow-y-auto">
+              <OverlayScrollbar className="flex max-h-60 w-full flex-col items-start gap-2">
                 {sortedRecentlyOpenedWorkspaces.map((workspace) => (
                   <RecentlyOpenedWorkspaceItem
                     key={workspace.path}
@@ -554,7 +555,7 @@ function ConnectWorkspaceBanner() {
                     }}
                   />
                 ))}
-              </div>
+              </OverlayScrollbar>
               <Button
                 variant={'ghost'}
                 size="sm"

@@ -5,6 +5,7 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { IconCloudDownloadFill18 } from 'nucleo-ui-fill-18';
 import {
   Popover,
@@ -407,7 +408,7 @@ export function DownloadsControlButton() {
             Show all <IconArrowRight className="size-3" />
           </a>
         </div>
-        <div className="scrollbar-subtle mt-2 max-h-60 overflow-y-auto">
+        <OverlayScrollbar className="mt-2 max-h-60">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <DownloadIcon className="mb-2 size-8 opacity-40" />
@@ -431,7 +432,7 @@ export function DownloadsControlButton() {
               </Fragment>
             ))
           )}
-        </div>
+        </OverlayScrollbar>
       </PopoverContent>
     </Popover>
   );

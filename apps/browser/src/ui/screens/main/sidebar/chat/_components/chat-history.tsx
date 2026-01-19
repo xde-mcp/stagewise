@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventListener } from '@/hooks/use-event-listener';
-import { useScrollbarGutterWidth } from '@/hooks/use-scrollbar-gutter-width';
 import { Button } from '@stagewise/stage-ui/components/button';
+import {
+  OverlayScrollbar,
+  type OverlayScrollbarRef,
+} from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { MessageUser } from './message-user';
 import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
@@ -17,32 +20,41 @@ import { IconXmark } from 'nucleo-micro-bold';
 import { isEmptyAssistantMessage } from './message-utils';
 
 export const ChatHistory = () => {
-  // Detect scrollbar gutter width for padding adjustment
-  const scrollbarGutterWidth = useScrollbarGutterWidth();
-
   const wasAtBottomRef = useRef(true);
   const isScrollingProgrammaticallyRef = useRef(false);
   const forceScrollOnNextUpdateRef = useRef(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const scrollbarRef = useRef<OverlayScrollbarRef>(null);
   const [containerHeight, setContainerHeight] = useState(0);
   const [lastUserMessageHeight, setLastUserMessageHeight] = useState(0);
   const lastUserMessageRef = useRef<HTMLDivElement | null>(null);
   const lastUserMessageResizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  // Track section height using ResizeObserver
+  // Track viewport height using ResizeObserver
   useEffect(() => {
-    const container = ref.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerHeight(entry.contentRect.height);
+    // Wait for the overlay scrollbar to initialize and get the viewport
+    const checkViewport = () => {
+      const viewport = scrollbarRef.current?.getViewport();
+      if (!viewport) {
+        // Retry after a short delay if viewport isn't ready yet
+        requestAnimationFrame(checkViewport);
+        return;
       }
-    });
 
-    resizeObserver.observe(container);
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setContainerHeight(entry.contentRect.height);
+        }
+      });
 
-    return () => resizeObserver.disconnect();
+      resizeObserver.observe(viewport);
+
+      return () => resizeObserver.disconnect();
+    };
+
+    const cleanup = checkViewport();
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+    };
   }, []);
 
   // Callback ref for the last user message
@@ -110,43 +122,43 @@ export const ChatHistory = () => {
   }, [activeChatId, chats]);
 
   // Force scroll to the very bottom
-  const scrollToBottom = () => {
-    const container = (ref as React.RefObject<HTMLDivElement>)?.current;
-    if (!container) return;
+  const scrollToBottom = useCallback(() => {
+    const viewport = scrollbarRef.current?.getViewport();
+    if (!viewport) return;
 
     // Use setTimeout to ensure DOM has updated
     setTimeout(() => {
       isScrollingProgrammaticallyRef.current = true;
-      container.scrollTop = container.scrollHeight;
+      viewport.scrollTop = viewport.scrollHeight;
       // Reset after scroll event has been processed
       requestAnimationFrame(() => {
         isScrollingProgrammaticallyRef.current = false;
       });
     }, 0);
-  };
+  }, []);
 
   // Check if user is at the bottom of the scroll container
-  const checkIfAtBottom = () => {
-    const container = (ref as React.RefObject<HTMLDivElement>)?.current;
-    if (!container) return true;
+  const checkIfAtBottom = useCallback(() => {
+    const viewport = scrollbarRef.current?.getViewport();
+    if (!viewport) return true;
 
     // Use a more generous threshold to account for sub-pixel differences
     const threshold = 10;
     return (
-      container.scrollTop + container.clientHeight >=
-      container.scrollHeight - threshold
+      viewport.scrollTop + viewport.clientHeight >=
+      viewport.scrollHeight - threshold
     );
-  };
+  }, []);
 
   // Handle scroll events to track user scroll position
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     // Ignore programmatic scrolls - only track user-initiated scrolls
     if (isScrollingProgrammaticallyRef.current) {
       return;
     }
     const isAtBottom = checkIfAtBottom();
     wasAtBottomRef.current = isAtBottom;
-  };
+  }, [checkIfAtBottom]);
 
   // Auto-scroll to bottom when content changes, but only if user was at bottom
   // or if a message was just sent (forceScrollOnNextUpdateRef)
@@ -182,14 +194,14 @@ export const ChatHistory = () => {
   // This makes it look like the container grew/shrank at the bottom
   const handleFileDiffCardHeightChanged = useCallback(
     (e: CustomEvent<{ delta: number; height: number }>) => {
-      const container = ref.current;
-      if (!container) return;
+      const viewport = scrollbarRef.current?.getViewport();
+      if (!viewport) return;
 
       const { delta } = e.detail;
       if (delta !== 0) {
         // Adjust scroll by the delta to keep content visually in place
         isScrollingProgrammaticallyRef.current = true;
-        container.scrollTop += delta;
+        viewport.scrollTop += delta;
         requestAnimationFrame(() => {
           isScrollingProgrammaticallyRef.current = false;
         });
@@ -270,31 +282,21 @@ export const ChatHistory = () => {
     return false;
   }, [isWorking, renderedMessages]);
 
-  /* We're adding a bg color on hover because there's a brower bug
-     that prevents auto scroll-capturing if we don't do this.
-     The onMouseEnter methods is also in place to help with another heuristic to get the browser to capture scroll in this element on hover. */
-
-  // Calculate right padding to account for scrollbar gutter
-  // When scrollbarGutterWidth > 0 (classic scrollbars), reduce right padding
-  // so that paddingRight + gutterWidth = 16px (same as left padding)
-  const basePadding = 16; // px-4 = 16px
-  const rightPadding = Math.max(0, basePadding - scrollbarGutterWidth);
-
   return (
-    <section
-      ref={ref}
+    <OverlayScrollbar
+      ref={scrollbarRef}
+      element="section"
       aria-label="Agent message display"
       className={cn(
-        'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_4px,black_100%)] pointer-events-auto block h-full min-h-[inherit] overflow-y-auto overscroll-contain text-foreground text-sm focus-within:outline-none focus:outline-none',
-        'scrollbar-hover-only',
-        renderedMessages.length === 0 && 'mb-1 h-max overflow-y-hidden',
+        'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_4px,black_100%)] pointer-events-auto block h-full min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
+        'px-4 pb-[calc(1rem+var(--file-diff-card-height,0px))]',
+        renderedMessages.length === 0 && 'mb-1 h-max',
       )}
-      style={{
-        paddingLeft: basePadding,
-        paddingRight: rightPadding,
-        paddingBottom: `calc(1rem + var(--file-diff-card-height, 0px))`,
-        scrollbarGutter: 'stable',
-      }}
+      options={
+        renderedMessages.length === 0
+          ? { overflow: { x: 'hidden', y: 'hidden' } }
+          : undefined
+      }
       onScroll={handleScroll}
     >
       {renderedMessages.map((message, index) => {
@@ -385,7 +387,7 @@ export const ChatHistory = () => {
           ))}
         </div>
       )}
-    </section>
+    </OverlayScrollbar>
   );
 };
 

@@ -1,9 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
+import {
+  OverlayScrollbar,
+  type OverlayScrollbarRef,
+} from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { cn } from '@/utils';
 import { ChevronDownIcon } from 'lucide-react';
 import { useIsContainerScrollable } from '@/hooks/use-is-container-scrollable';
@@ -35,13 +39,19 @@ export const ToolPartUI = ({
     controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
   const setExpanded = controlledSetExpanded ?? setInternalExpanded;
 
-  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const scrollbarRef = useRef<OverlayScrollbarRef>(null);
+  const viewportRef = useRef<HTMLElement | null>(null);
   const contentWrapperRef = useRef<HTMLDivElement>(null);
   const isUserScrolledRef = useRef(false);
 
-  // Use the hook for scroll state detection
+  // Callback to receive viewport ref from OverlayScrollbar
+  const handleViewportRef = useCallback((viewport: HTMLElement | null) => {
+    viewportRef.current = viewport;
+  }, []);
+
+  // Use the hook for scroll state detection (using viewport ref)
   const { canScrollUp, canScrollDown, canScrollLeft, canScrollRight } =
-    useIsContainerScrollable(contentScrollRef);
+    useIsContainerScrollable(viewportRef as React.RefObject<HTMLElement>);
 
   // Binary fade distances based on scroll state
   const FADE_DISTANCE = 16;
@@ -51,51 +61,51 @@ export const ToolPartUI = ({
   const rightFade = canScrollRight ? FADE_DISTANCE : 0;
 
   // Check if user is at bottom of scroll container
-  const isAtBottom = (element: HTMLElement): boolean => {
+  const isAtBottom = useCallback((element: HTMLElement): boolean => {
     const threshold = 10;
     return (
       element.scrollHeight - element.scrollTop - element.clientHeight <=
       threshold
     );
-  };
+  }, []);
+
+  // Handle scroll events from OverlayScrollbar
+  const handleScroll = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (viewport) {
+      isUserScrolledRef.current = !isAtBottom(viewport);
+    }
+  }, [isAtBottom]);
 
   // Track user scroll position and scroll to bottom on initial expansion
   useEffect(() => {
-    const container = contentScrollRef.current;
-    if (!container || !expanded) return;
+    const viewport = viewportRef.current;
+    if (!viewport || !expanded) return;
 
     // Only scroll to bottom on initial expansion
     requestAnimationFrame(() => {
-      if (container) {
-        container.scrollTop = container.scrollHeight;
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
         isUserScrolledRef.current = false;
       }
     });
-
-    const handleScroll = () => {
-      isUserScrolledRef.current = !isAtBottom(container);
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-    };
   }, [expanded]);
 
   // Auto-scroll to bottom when content changes (if user hasn't scrolled away)
   useEffect(() => {
-    const container = contentScrollRef.current;
+    const viewport = viewportRef.current;
     const contentWrapper = contentWrapperRef.current;
 
-    if (!container || !contentWrapper || !expanded) return;
+    if (!viewport || !contentWrapper || !expanded) return;
 
     const shouldAutoScroll = () => !isUserScrolledRef.current;
 
     const scrollToBottom = () => {
       if (shouldAutoScroll()) {
         requestAnimationFrame(() => {
-          if (container) {
-            container.scrollTop = container.scrollHeight;
+          const v = viewportRef.current;
+          if (v) {
+            v.scrollTop = v.scrollHeight;
           }
         });
       }
@@ -195,19 +205,14 @@ export const ToolPartUI = ({
             )}
           >
             <div
-              ref={contentScrollRef}
               className={cn(
-                'scrollbar-hover-only mask-alpha overscroll-contain py-0.5',
+                'mask-alpha',
                 showBorder ? 'max-h-32' : 'max-h-none',
                 contentFooter && 'mb-6',
-                contentClassName,
               )}
               style={
                 {
                   ...getMaskStyle(),
-                  overflowY: 'auto',
-                  overflowX: 'auto',
-                  contain: 'layout',
                   maskImage: `
                     linear-gradient(to right, transparent 0px, black var(--left-fade), black calc(100% - var(--right-fade)), transparent 100%),
                     linear-gradient(to bottom, transparent 0px, black var(--top-fade), black calc(100% - var(--bottom-fade)), transparent 100%)
@@ -221,7 +226,17 @@ export const ToolPartUI = ({
                 } as React.CSSProperties
               }
             >
-              <div ref={contentWrapperRef}>{content}</div>
+              <OverlayScrollbar
+                ref={scrollbarRef}
+                className={cn('py-0.5', contentClassName)}
+                options={{
+                  overflow: { x: 'scroll', y: 'scroll' },
+                }}
+                onScroll={handleScroll}
+                onViewportRef={handleViewportRef}
+              >
+                <div ref={contentWrapperRef}>{content}</div>
+              </OverlayScrollbar>
             </div>
             {contentFooter && (
               <div

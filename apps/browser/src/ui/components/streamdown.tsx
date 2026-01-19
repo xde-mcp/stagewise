@@ -16,6 +16,7 @@ import {
 } from 'react';
 import { cn, IDE_SELECTION_ITEMS } from '@/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { CopyCheckIcon, CopyIcon, ExternalLinkIcon } from 'lucide-react';
 import type { BundledLanguage } from 'shiki';
 import type { ExtraProps } from 'react-markdown';
@@ -172,7 +173,10 @@ const CodeComponent = ({
         )}
       </div>
       {language === 'mermaid' ? (
-        <div className="scrollbar-hover-only max-h-96 overflow-auto overscroll-contain p-2">
+        <OverlayScrollbar
+          className="max-h-96 overscroll-contain p-2"
+          options={{ overflow: { x: 'scroll', y: 'scroll' } }}
+        >
           <Mermaid
             chart={code}
             config={{
@@ -180,12 +184,12 @@ const CodeComponent = ({
             }}
             className="size-max min-h-full min-w-full"
           />
-        </div>
+        </OverlayScrollbar>
       ) : (
-        <div
+        <OverlayScrollbar
           data-code-block-container
           data-language={language}
-          className="scrollbar-hover-only w-full overflow-y-auto overflow-x-hidden overscroll-contain"
+          className="w-full overscroll-contain"
         >
           <CodeBlock
             code={code}
@@ -194,7 +198,7 @@ const CodeComponent = ({
             language={language}
             hideActionButtons={isStreaming}
           />
-        </div>
+        </OverlayScrollbar>
       )}
     </div>
   );

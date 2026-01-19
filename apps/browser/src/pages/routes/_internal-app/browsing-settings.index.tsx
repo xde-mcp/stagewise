@@ -7,6 +7,7 @@ import {
 } from '@stagewise/stage-ui/components/radio';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import {
   Dialog,
   DialogContent,
@@ -716,7 +717,7 @@ function Page() {
       </div>
 
       {/* Content */}
-      <div className="scrollbar-subtle flex-1 overflow-y-auto p-6">
+      <OverlayScrollbar className="flex-1 p-6">
         <div className="mx-auto max-w-3xl space-y-8">
           {/* General Section */}
           <section className="space-y-6">
@@ -757,7 +758,7 @@ function Page() {
             </div>
           </section>
         </div>
-      </div>
+      </OverlayScrollbar>
     </div>
   );
 }

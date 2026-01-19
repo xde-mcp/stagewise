@@ -1,6 +1,7 @@
 import { Select as SelectBase } from '@base-ui/react/select';
 import * as React from 'react';
 import { cn } from '../lib/utils';
+import { OverlayScrollbar } from './overlay-scrollbar';
 import {
   IconCheckFill18,
   IconChevronDownFill18,
@@ -520,61 +521,65 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
               <IconChevronUpFill18 className="size-3" />
             </SelectBase.ScrollUpArrow>
 
-            <SelectBase.List className="scrollbar-hover-only flex max-h-48 flex-col gap-0.5 overflow-y-auto">
-              {groupedItems.map(({ group, items: groupItems }, groupIndex) => (
-                <React.Fragment key={group ?? `ungrouped-${groupIndex}`}>
-                  {group && (
-                    <div className="sticky top-0 shrink-0 bg-background px-2 py-1 font-normal text-muted-foreground/60 text-xs">
-                      {group}
-                    </div>
-                  )}
-                  {groupItems.map((item, itemIndex) => {
-                    if (isSeparator(item)) {
-                      return (
-                        <SelectBase.Separator
-                          // biome-ignore lint/suspicious/noArrayIndexKey: <we need to use the index to ensure the separator is unique>
-                          key={`separator-${groupIndex}-${itemIndex}`}
-                          className="my-1 h-px shrink-0 bg-border-subtle"
-                        />
-                      );
-                    }
+            <OverlayScrollbar className="max-h-48">
+              <SelectBase.List className="flex flex-col gap-0.5">
+                {groupedItems.map(
+                  ({ group, items: groupItems }, groupIndex) => (
+                    <React.Fragment key={group ?? `ungrouped-${groupIndex}`}>
+                      {group && (
+                        <div className="sticky top-0 shrink-0 bg-background px-2 py-1 font-normal text-muted-foreground/l25 text-xs dark:text-muted-foreground/l-18">
+                          {group}
+                        </div>
+                      )}
+                      {groupItems.map((item, itemIndex) => {
+                        if (isSeparator(item)) {
+                          return (
+                            <SelectBase.Separator
+                              // biome-ignore lint/suspicious/noArrayIndexKey: <we need to use the index to ensure the separator is unique>
+                              key={`separator-${groupIndex}-${itemIndex}`}
+                              className="my-1 h-px shrink-0 bg-border-subtle"
+                            />
+                          );
+                        }
 
-                    const hasDescription = !!item.description;
+                        const hasDescription = !!item.description;
 
-                    return (
-                      <SelectBase.Item
-                        key={String(item.value)}
-                        value={item.value as any}
-                        disabled={item.disabled}
-                        className={cn(
-                          'grid w-full min-w-24 shrink-0 cursor-default select-none gap-2 rounded-md outline-none',
-                          'grid-cols-[0.75rem_1fr]',
-                          'text-foreground transition-colors duration-150 ease-out',
-                          'hover:bg-surface-1 data-[highlighted]:bg-surface-1',
-                          'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-                          hasDescription ? 'items-start' : 'items-center',
-                          sizes.item[size],
-                          itemClassName,
-                        )}
-                      >
-                        <SelectBase.ItemIndicator
-                          className={cn(
-                            'col-start-1 shrink-0',
-                            hasDescription && 'mt-0.5',
-                          )}
-                        >
-                          <IconCheckFill18 className="size-full text-muted-foreground" />
-                        </SelectBase.ItemIndicator>
+                        return (
+                          <SelectBase.Item
+                            key={String(item.value)}
+                            value={item.value as any}
+                            disabled={item.disabled}
+                            className={cn(
+                              'grid w-full min-w-24 shrink-0 cursor-default select-none gap-2 rounded-md outline-none',
+                              'grid-cols-[0.75rem_1fr]',
+                              'text-foreground transition-colors duration-150 ease-out',
+                              'hover:bg-surface-1 data-[highlighted]:bg-surface-1',
+                              'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+                              hasDescription ? 'items-start' : 'items-center',
+                              sizes.item[size],
+                              itemClassName,
+                            )}
+                          >
+                            <SelectBase.ItemIndicator
+                              className={cn(
+                                'col-start-1 shrink-0',
+                                hasDescription && 'mt-0.5',
+                              )}
+                            >
+                              <IconCheckFill18 className="size-full text-muted-foreground" />
+                            </SelectBase.ItemIndicator>
 
-                        <SelectBase.ItemText className="col-start-2">
-                          {renderItemContent(item)}
-                        </SelectBase.ItemText>
-                      </SelectBase.Item>
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-            </SelectBase.List>
+                            <SelectBase.ItemText className="col-start-2">
+                              {renderItemContent(item)}
+                            </SelectBase.ItemText>
+                          </SelectBase.Item>
+                        );
+                      })}
+                    </React.Fragment>
+                  ),
+                )}
+              </SelectBase.List>
+            </OverlayScrollbar>
 
             <SelectBase.ScrollDownArrow className="-ml-1 bottom-0 z-1 flex h-5 w-full shrink-0 items-center justify-center rounded-b-md bg-background text-muted-foreground">
               <IconChevronDownFill18 className="size-3" />

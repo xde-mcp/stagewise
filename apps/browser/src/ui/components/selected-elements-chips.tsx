@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import {
   PreviewCard,
   PreviewCardContent,
@@ -265,7 +266,7 @@ function SelectedElementChip({
         <p className="font-medium text-foreground text-sm">
           Element information
         </p>
-        <div className="scrollbar-hover-only flex max-h-[35vh] max-w-72 flex-col gap-2.5 overflow-y-auto overflow-x-hidden *:shrink-0">
+        <OverlayScrollbar className="flex max-h-[35vh] max-w-72 flex-col gap-2.5 *:shrink-0">
           <div className="flex flex-col items-stretch justify-start">
             <p className="font-medium text-foreground text-xs">XPath</p>
             <div className="w-full break-all font-mono text-2xs text-muted-foreground">
@@ -407,7 +408,7 @@ function SelectedElementChip({
                 </div>
               </div>
             )}
-        </div>
+        </OverlayScrollbar>
       </PreviewCardContent>
     </PreviewCard>
   );
