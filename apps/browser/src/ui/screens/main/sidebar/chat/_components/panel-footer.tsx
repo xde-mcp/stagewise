@@ -1,6 +1,6 @@
 import { StatusCard } from './footer-status-card';
 import { useChatState } from '@/hooks/use-chat-state';
-import { cn } from '@/utils';
+import { cn, extractImageUrlFromDragData, imageUrlToFile } from '@/utils';
 import { HotkeyActions } from '@shared/hotkeys';
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
@@ -261,7 +261,11 @@ export function ChatPanelFooter() {
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current++;
-    if (e.dataTransfer.types.includes('Files')) {
+    // Accept Files (from file system) OR text/uri-list (from web pages - images/links)
+    if (
+      e.dataTransfer.types.includes('Files') ||
+      e.dataTransfer.types.includes('text/uri-list')
+    ) {
       setIsDragOver(true);
     }
   }, []);
@@ -281,17 +285,32 @@ export function ChatPanelFooter() {
   }, []);
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       dragCounterRef.current = 0;
       setIsDragOver(false);
 
-      // Process dropped files
       const files = Array.from(e.dataTransfer.files);
-      files.forEach((file) => {
-        chatState.addFileAttachment(file);
-      });
+
+      // Process dropped files from file system
+      if (files.length > 0) {
+        files.forEach((file) => {
+          chatState.addFileAttachment(file);
+        });
+        chatInputRef.current?.focus();
+        return;
+      }
+
+      // Handle URL-based drops (images from web pages)
+      const htmlData = e.dataTransfer.getData('text/html');
+      const uriList = e.dataTransfer.getData('text/uri-list');
+      const imageUrl = extractImageUrlFromDragData(htmlData, uriList);
+
+      if (imageUrl) {
+        const file = await imageUrlToFile(imageUrl);
+        if (file) chatState.addFileAttachment(file);
+      }
 
       // Focus the input
       chatInputRef.current?.focus();

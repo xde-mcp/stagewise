@@ -863,3 +863,73 @@ export const getIDEFileUrl = (
 
   return url;
 };
+
+/**
+ * Extract an image URL from drag-and-drop data transfer.
+ * Handles both data URLs (e.g., from Google Images) and regular image URLs.
+ *
+ * @param htmlData - The HTML content from dataTransfer.getData('text/html')
+ * @param uriList - The URI from dataTransfer.getData('text/uri-list')
+ * @returns The extracted image URL, or null if no image URL found
+ */
+export function extractImageUrlFromDragData(
+  htmlData: string | null,
+  uriList: string | null,
+): string | null {
+  let imageUrl: string | null = null;
+
+  if (htmlData) {
+    // Check for data URL in img src (e.g., from Google Images)
+    const dataUrlMatch = htmlData.match(/src=["'](data:image\/[^"']+)["']/i);
+    if (dataUrlMatch) imageUrl = dataUrlMatch[1];
+    // Check for regular img src URL
+    else {
+      const imgSrcMatch = htmlData.match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (imgSrcMatch) imageUrl = imgSrcMatch[1];
+    }
+  }
+
+  // Fall back to uri-list if no image found in HTML
+  if (!imageUrl && uriList) {
+    const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?|$)/i;
+    if (imageExtensions.test(uriList)) imageUrl = uriList;
+  }
+
+  return imageUrl;
+}
+
+/**
+ * Convert an image URL (either data URL or external URL) to a File object.
+ *
+ * @param imageUrl - The image URL to convert (data URL or http(s) URL)
+ * @returns A File object, or null if conversion failed
+ */
+export async function imageUrlToFile(imageUrl: string): Promise<File | null> {
+  try {
+    if (imageUrl.startsWith('data:')) {
+      // Convert data URL to File
+      const arr = imageUrl.split(',');
+      const mimeMatch = arr[0]?.match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+      const bstr = atob(arr[1] ?? '');
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+
+      const ext = mime.split('/')[1] || 'png';
+      return new File([u8arr], `dropped-image.${ext}`, { type: mime });
+    } else {
+      // Fetch external image URL
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+      const blob = await response.blob();
+      // Extract filename from URL or use default
+      const urlPath = new URL(imageUrl).pathname;
+      const filename = urlPath.split('/').pop() || 'dropped-image.png';
+      return new File([blob], filename, { type: blob.type || 'image/png' });
+    }
+  } catch (err) {
+    console.warn('Failed to convert image URL to file:', err);
+    return null;
+  }
+}

@@ -9,7 +9,7 @@ import {
   useKartonConnected,
   useKartonState,
 } from '@/hooks/use-karton';
-import { cn } from '@/utils';
+import { cn, extractImageUrlFromDragData, imageUrlToFile } from '@/utils';
 
 export function ChatPanel() {
   const posthog = usePostHog();
@@ -45,7 +45,11 @@ export function ChatPanel() {
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current++;
-    if (e.dataTransfer.types.includes('Files')) {
+    // Accept Files (from file system) OR text/uri-list (from web pages - images/links)
+    if (
+      e.dataTransfer.types.includes('Files') ||
+      e.dataTransfer.types.includes('text/uri-list')
+    ) {
       setIsDragOver(true);
     }
   }, []);
@@ -65,7 +69,7 @@ export function ChatPanel() {
   }, []);
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       dragCounterRef.current = 0;
@@ -73,19 +77,42 @@ export function ChatPanel() {
 
       const files = Array.from(e.dataTransfer.files);
 
-      // Route files to active input (editing message or main chat)
-      addFilesToActiveInput(files, (droppedFiles) => {
-        // Fallback: add to main chat input
-        droppedFiles.forEach((file) => {
+      // Process dropped files from file system
+      if (files.length > 0) {
+        // Route files to active input (editing message or main chat)
+        addFilesToActiveInput(files, (droppedFiles) => {
+          // Fallback: add to main chat input
+          droppedFiles.forEach((file) => {
+            chatState.addFileAttachment(file);
+            posthog.capture('agent_file_uploaded', {
+              file_type: file.type,
+              method: 'chat_drop_zone',
+            });
+          });
+          // Focus the input field
+          inputRef.current?.focus();
+        });
+        return;
+      }
+
+      // Handle URL-based drops (images from web pages)
+      const htmlData = e.dataTransfer.getData('text/html');
+      const uriList = e.dataTransfer.getData('text/uri-list');
+      const imageUrl = extractImageUrlFromDragData(htmlData, uriList);
+
+      if (imageUrl) {
+        const file = await imageUrlToFile(imageUrl);
+        if (file) {
           chatState.addFileAttachment(file);
           posthog.capture('agent_file_uploaded', {
             file_type: file.type,
-            method: 'chat_drop_zone',
+            method: 'chat_drop_zone_url',
           });
-        });
-        // Focus the input field
-        inputRef.current?.focus();
-      });
+        }
+      }
+
+      // Focus the input field
+      inputRef.current?.focus();
     },
     [chatState, addFilesToActiveInput],
   );

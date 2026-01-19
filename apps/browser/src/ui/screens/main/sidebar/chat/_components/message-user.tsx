@@ -1,4 +1,10 @@
-import { cn, fileToDataUrl, isAnthropicSupportedFile } from '@/utils';
+import {
+  cn,
+  fileToDataUrl,
+  isAnthropicSupportedFile,
+  extractImageUrlFromDragData,
+  imageUrlToFile,
+} from '@/utils';
 import type {
   ChatMessage,
   TextUIPart,
@@ -449,16 +455,32 @@ export const MessageUser = memo(
 
     // Handle drop events in edit mode to prevent bubbling to ChatPanel
     const handleEditDrop = useCallback(
-      (e: React.DragEvent) => {
+      async (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
         editDragCounterRef.current = 0;
         setIsEditDragOver(false);
 
         const files = Array.from(e.dataTransfer.files);
-        files.forEach((file) => {
-          handleAddFileAttachment(file);
-        });
+
+        // Process dropped files from file system
+        if (files.length > 0) {
+          files.forEach((file) => {
+            handleAddFileAttachment(file);
+          });
+          chatInputRef.current?.focus();
+          return;
+        }
+
+        // Handle URL-based drops (images from web pages)
+        const htmlData = e.dataTransfer.getData('text/html');
+        const uriList = e.dataTransfer.getData('text/uri-list');
+        const imageUrl = extractImageUrlFromDragData(htmlData, uriList);
+
+        if (imageUrl) {
+          const file = await imageUrlToFile(imageUrl);
+          if (file) handleAddFileAttachment(file);
+        }
 
         // Focus the input
         chatInputRef.current?.focus();
@@ -475,7 +497,11 @@ export const MessageUser = memo(
       e.preventDefault();
       e.stopPropagation();
       editDragCounterRef.current++;
-      if (e.dataTransfer.types.includes('Files')) {
+      // Accept Files (from file system) OR text/uri-list (from web pages - images/links)
+      if (
+        e.dataTransfer.types.includes('Files') ||
+        e.dataTransfer.types.includes('text/uri-list')
+      ) {
         setIsEditDragOver(true);
       }
     }, []);
