@@ -405,7 +405,7 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
       const hasDescription = !!item.description;
 
       return (
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col">
           <div
             className={cn(
               'flex min-w-0 flex-row items-center gap-2',
@@ -420,7 +420,7 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
             )}
           </div>
           {hasDescription && (
-            <span className="truncate text-muted-foreground text-xs leading-normal">
+            <span className="truncate text-subtle-foreground text-xs leading-normal">
               {item.description}
             </span>
           )}
@@ -460,13 +460,13 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
             'inline-flex max-w-full cursor-pointer items-center justify-between rounded-lg p-0',
             'shadow-none transition-colors',
             'focus-visible:-outline-offset-2 focus-visible:outline-1 focus-visible:outline-muted-foreground/35',
-            'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+            'data-disabled:pointer-events-none data-disabled:opacity-50',
             triggerVariants[triggerVariant],
             sizes.trigger[size],
             triggerClassName,
           )}
         >
-          <SelectBase.Value className="truncate data-[placeholder]:text-muted-foreground">
+          <SelectBase.Value className="truncate data-placeholder:text-muted-foreground">
             {(val) => {
               if (
                 val === null ||

@@ -373,7 +373,7 @@ export const SearchableSelect = ({
                   ({ group, items: groupItems }, groupIndex) => (
                     <div key={group ?? `ungrouped-${groupIndex}`}>
                       {group && (
-                        <div className="shrink-0 px-2 py-1 font-normal text-muted-foreground/60 text-xs">
+                        <div className="shrink-0 px-2 py-1 font-normal text-subtle-foreground text-xs">
                           {group}
                         </div>
                       )}

@@ -78,7 +78,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
           label: (
             <span className="flex w-full items-center gap-2">
               <span className="truncate">{chat.title}</span>
-              <span className="shrink-0 text-muted-foreground/60">
+              <span className="shrink-0 text-subtle-foreground text-xs">
                 <TimeAgo
                   date={chat.createdAt}
                   formatter={minimalFormatter}

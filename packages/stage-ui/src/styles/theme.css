@@ -7,6 +7,7 @@
   --color-background: var(--color-base-50);
   --color-foreground: var(--color-base-900);
   --color-muted-foreground: var(--color-base-500);
+  --color-subtle-foreground: var(--color-base-350);
 
   --color-surface-1: var(--color-base-100);
   --color-surface-2: var(--color-base-150);
@@ -53,6 +54,7 @@
     --color-background: var(--color-base-800);
     --color-foreground: var(--color-base-200);
     --color-muted-foreground: var(--color-base-350);
+    --color-subtle-foreground: var(--color-base-450);
 
     --color-primary-foreground: var(--color-primary-400);
     --color-primary-solid: var(--color-primary-500);
