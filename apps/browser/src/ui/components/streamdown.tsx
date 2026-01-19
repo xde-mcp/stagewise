@@ -157,7 +157,6 @@ const CodeComponent = ({
     <div
       className={cn(
         'group relative my-2 flex h-auto flex-col gap-1 rounded-lg border border-border-subtle px-2 pt-0.5 pb-2',
-        language === 'mermaid' ? 'max-h-96' : 'max-h-64',
         className,
       )}
       data-streamdown={language === 'mermaid' ? 'mermaid-block' : 'code-block'}
@@ -174,7 +173,7 @@ const CodeComponent = ({
       </div>
       {language === 'mermaid' ? (
         <OverlayScrollbar
-          className="max-h-96 overscroll-contain p-2"
+          className="overscroll-contain p-2"
           options={{ overflow: { x: 'scroll', y: 'scroll' } }}
         >
           <Mermaid

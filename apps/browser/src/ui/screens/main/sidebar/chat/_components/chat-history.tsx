@@ -179,6 +179,32 @@ export const ChatHistory = () => {
     wasAtBottomRef.current = true;
   }, []);
 
+  // Use MutationObserver to catch DOM changes that happen after state updates
+  // This ensures we scroll to bottom even when React renders content asynchronously
+  useEffect(() => {
+    const viewport = scrollbarRef.current?.getViewport();
+    if (!viewport) return;
+
+    const scrollToBottomIfNeeded = () => {
+      if (wasAtBottomRef.current || forceScrollOnNextUpdateRef.current)
+        scrollToBottom();
+    };
+
+    const observer = new MutationObserver(() => {
+      scrollToBottomIfNeeded();
+    });
+
+    observer.observe(viewport, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [scrollToBottom]);
+
   // Force scroll to bottom when user sends a message
   // We set a flag here instead of scrolling immediately because the message
   // hasn't been added to state yet (sendMessage is async). The actual scroll

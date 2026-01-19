@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -40,14 +40,18 @@ export const ToolPartUI = ({
   const setExpanded = controlledSetExpanded ?? setInternalExpanded;
 
   const scrollbarRef = useRef<OverlayScrollbarRef>(null);
-  const viewportRef = useRef<HTMLElement | null>(null);
+  const [viewport, setViewport] = useState<HTMLElement | null>(null);
   const contentWrapperRef = useRef<HTMLDivElement>(null);
   const isUserScrolledRef = useRef(false);
+  const isScrollingProgrammaticallyRef = useRef(false);
 
   // Callback to receive viewport ref from OverlayScrollbar
-  const handleViewportRef = useCallback((viewport: HTMLElement | null) => {
-    viewportRef.current = viewport;
+  const handleViewportRef = useCallback((vp: HTMLElement | null) => {
+    setViewport(vp);
   }, []);
+
+  // Create a ref-like object for useIsContainerScrollable hook
+  const viewportRef = useMemo(() => ({ current: viewport }), [viewport]);
 
   // Use the hook for scroll state detection (using viewport ref)
   const { canScrollUp, canScrollDown, canScrollLeft, canScrollRight } =
@@ -71,29 +75,33 @@ export const ToolPartUI = ({
 
   // Handle scroll events from OverlayScrollbar
   const handleScroll = useCallback(() => {
-    const viewport = viewportRef.current;
+    // Ignore programmatic scrolls - only track user-initiated scrolls
+    if (isScrollingProgrammaticallyRef.current) return;
+
     if (viewport) {
       isUserScrolledRef.current = !isAtBottom(viewport);
     }
-  }, [isAtBottom]);
+  }, [isAtBottom, viewport]);
 
   // Track user scroll position and scroll to bottom on initial expansion
   useEffect(() => {
-    const viewport = viewportRef.current;
     if (!viewport || !expanded) return;
 
     // Only scroll to bottom on initial expansion
+    isScrollingProgrammaticallyRef.current = true;
     requestAnimationFrame(() => {
       if (viewport) {
         viewport.scrollTop = viewport.scrollHeight;
         isUserScrolledRef.current = false;
       }
+      requestAnimationFrame(() => {
+        isScrollingProgrammaticallyRef.current = false;
+      });
     });
-  }, [expanded]);
+  }, [expanded, viewport]);
 
   // Auto-scroll to bottom when content changes (if user hasn't scrolled away)
   useEffect(() => {
-    const viewport = viewportRef.current;
     const contentWrapper = contentWrapperRef.current;
 
     if (!viewport || !contentWrapper || !expanded) return;
@@ -102,11 +110,15 @@ export const ToolPartUI = ({
 
     const scrollToBottom = () => {
       if (shouldAutoScroll()) {
+        isScrollingProgrammaticallyRef.current = true;
         requestAnimationFrame(() => {
-          const v = viewportRef.current;
-          if (v) {
-            v.scrollTop = v.scrollHeight;
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
           }
+          // Reset after scroll event has been processed
+          requestAnimationFrame(() => {
+            isScrollingProgrammaticallyRef.current = false;
+          });
         });
       }
     };
@@ -129,7 +141,7 @@ export const ToolPartUI = ({
     return () => {
       observer.disconnect();
     };
-  }, [expanded]);
+  }, [expanded, viewport]);
 
   // Generate inline style for mask with CSS custom properties
   const getMaskStyle = (): React.CSSProperties =>
