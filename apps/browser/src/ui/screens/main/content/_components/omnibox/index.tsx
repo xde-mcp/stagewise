@@ -80,6 +80,11 @@ export const Omnibox = ({
     if (details.reason === 'escape-key') {
       inputRef.current?.blur();
     }
+
+    if (!open) {
+      // We should clear stale suggestions for the omnibox if it's not shown anyway
+      resetSuggestions();
+    }
   }, []);
 
   const onSubmit = useCallback(
@@ -100,16 +105,12 @@ export const Omnibox = ({
     undefined,
   );
 
-  const onOpenChange = useCallback(
-    (open: boolean) => {
-      setIsOmniboxOpen(open);
-      if (!open) {
-        inputRef.current?.blur();
-        resetSuggestions();
-      }
-    },
-    [resetSuggestions],
-  );
+  const onOpenChange = useCallback((open: boolean) => {
+    setIsOmniboxOpen(open);
+    if (!open) {
+      inputRef.current?.blur();
+    }
+  }, []);
 
   const showDefaultBrowserInfo = false; // TODO
 
@@ -126,7 +127,8 @@ export const Omnibox = ({
         highlightItemOnHover
         submitOnItemClick
         modal
-        autoHighlight={true}
+        autoHighlight="always"
+        keepHighlight={true}
         mode="inline"
       >
         <div className="flex-1">
