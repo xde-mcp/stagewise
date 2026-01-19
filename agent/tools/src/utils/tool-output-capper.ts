@@ -8,7 +8,7 @@
 
 export interface CapToolOutputOptions {
   /** Maximum size in bytes for the serialized output */
-  maxBytes: number;
+  maxBytes?: number;
   /** Message to append when results are truncated */
   truncationMessage?: string;
   /** Maximum number of items to return (for arrays) */
@@ -74,9 +74,10 @@ function countItems(value: unknown): number {
  */
 export function capToolOutput<T>(
   output: T,
-  options: CapToolOutputOptions,
+  options?: CapToolOutputOptions,
 ): CappedToolOutput<T> {
-  const { maxBytes, maxItems } = options;
+  // Default to 100KB if maxBytes is not specified
+  const { maxBytes = 100 * 1024, maxItems } = options || {};
 
   // Calculate original size and item count
   const originalSize = calculateJsonByteSize(output);

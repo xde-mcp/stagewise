@@ -32,6 +32,8 @@ import {
   readConsoleLogsTool,
 } from './browser-runtime/read-console-logs.js';
 
+export { capToolOutput } from './utils/tool-output-capper.js';
+
 export type BrowserRuntime = {
   executeScript: (script: string, tabId: string) => Promise<string>;
   getConsoleLogs: (
