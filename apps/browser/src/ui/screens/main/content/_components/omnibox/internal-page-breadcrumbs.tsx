@@ -4,7 +4,6 @@ import { Logo } from '@/components/ui/logo';
 
 interface InternalPageBreadcrumbsProps {
   url: string;
-  onFocusInput: () => void;
 }
 
 // Format segment text: capitalize and split camelCase/kebab-case
@@ -43,10 +42,7 @@ function formatSegmentText(segment: string): string {
     .join(' ');
 }
 
-export function InternalPageBreadcrumbs({
-  url,
-  onFocusInput,
-}: InternalPageBreadcrumbsProps) {
+export function InternalPageBreadcrumbs({ url }: InternalPageBreadcrumbsProps) {
   // Parse pathname segments from stagewise://internal/ URL
   const pathnameSegments = useMemo(() => {
     try {
@@ -60,11 +56,8 @@ export function InternalPageBreadcrumbs({
   }, [url]);
 
   return (
-    <div
-      onClick={onFocusInput}
-      className="-ml-2 flex h-8 w-full cursor-pointer flex-row items-center gap-1.5 overflow-hidden"
-    >
-      <div className="flex h-6 shrink-0 items-center justify-center gap-1 rounded-full bg-primary/10 px-2 py-0.5">
+    <div className="pointer-events-none absolute inset-0 flex size-full flex-row items-center gap-1.5 overflow-hidden px-1">
+      <div className="flex h-6 shrink-0 items-center justify-center gap-1 rounded-full bg-primary-solid/10 px-2 py-0.5">
         <Logo className="size-3 text-primary-foreground" color="current" />
         <span className="font-medium text-primary-foreground text-xs">
           stagewise
