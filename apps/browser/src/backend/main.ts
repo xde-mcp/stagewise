@@ -613,6 +613,11 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   workspaceService.registerWorkspaceChangeListener((event) => {
     switch (event.type) {
       case 'loaded': {
+        // Implicitly accept pending edits and reset history from previous workspace
+        // This preserves file changes while clearing invalid undo history
+        agentService.acceptAllPendingEdits();
+        agentService.resetDiffHistory();
+
         const accessPath = event.selectedPath;
         const clientRuntime = new ClientRuntimeNode({
           workingDirectory: accessPath,
@@ -627,6 +632,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         break;
       }
       case 'unloaded':
+        // Implicitly accept pending edits and reset history
+        agentService.acceptAllPendingEdits();
+        agentService.resetDiffHistory();
         agentService.setClientRuntime(null);
         break;
     }

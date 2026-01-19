@@ -2191,4 +2191,12 @@ export class AgentService {
       ]),
     );
   }
+
+  /**
+   * Resets the diff history. Call acceptAllPendingEdits() first to clear UI state.
+   * Used when workspace changes to prevent operations on invalid paths.
+   */
+  public resetDiffHistory(): void {
+    this.diffHistoryService?.reset();
+  }
 }

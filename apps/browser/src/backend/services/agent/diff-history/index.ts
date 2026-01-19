@@ -488,6 +488,25 @@ export class DiffHistoryService extends DisposableService {
   }
 
   /**
+   * Resets the diff history completely.
+   * Call this when workspace changes to prevent invalid path operations.
+   * Note: Call acceptPendingChanges() before this to clear pending UI state.
+   */
+  public reset(): void {
+    // Stop watching all files
+    if (this.watcher) this.watcher.unwatch([...this.currentlyWatchedFiles]);
+
+    this.currentlyWatchedFiles.clear();
+
+    // Clear all history
+    this.history.length = 0;
+    this.currentIndex = -1;
+    this.filesLockedByAgent.clear();
+
+    this.logDebug('History reset due to workspace change');
+  }
+
+  /**
    * Constructs the "Baseline" state by replaying history and applying
    * only the changes that were marked as 'acceptedPaths'.
    */

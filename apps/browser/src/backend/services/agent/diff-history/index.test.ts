@@ -2275,6 +2275,186 @@ describe('DiffHistoryService', () => {
       });
     });
 
+    describe('reset for workspace change', () => {
+      it('reset() clears all history and pending edits', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const file1 = path.join(tempDir, 'reset-test-1.txt');
+        const file2 = path.join(tempDir, 'reset-test-2.txt');
+        await createTempFile(file1, 'original1');
+        await createTempFile(file2, 'original2');
+
+        // Build up some history
+        service.addInitialFileSnapshotIfNeeded({
+          [file1]: 'original1',
+          [file2]: 'original2',
+        });
+        service.pushAgentFileEdit(file1, 'modified1');
+        service.pushAgentFileEdit(file2, 'modified2');
+
+        // Verify pending edits exist
+        expect(service.getDiffState()).toHaveLength(2);
+
+        // Reset the service
+        service.reset();
+
+        // History should be empty
+        expect(service.getDiffState()).toEqual([]);
+
+        // Session diff should also be empty
+        expect(service.getSessionDiffState()).toEqual([]);
+      });
+
+      it('reset() allows fresh history after workspace change', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const oldFile = path.join(tempDir, 'old-workspace-file.txt');
+        await createTempFile(oldFile, 'old content');
+
+        // Simulate old workspace activity
+        service.addInitialFileSnapshotIfNeeded({ [oldFile]: 'old content' });
+        service.pushAgentFileEdit(oldFile, 'old modified');
+
+        // Reset (simulating workspace change)
+        service.reset();
+
+        // Now simulate new workspace activity
+        const newFile = path.join(tempDir, 'new-workspace-file.txt');
+        await createTempFile(newFile, 'new content');
+
+        service.addInitialFileSnapshotIfNeeded({ [newFile]: 'new content' });
+        service.pushAgentFileEdit(newFile, 'new modified');
+
+        // Only new workspace file should be in diff
+        const diff = service.getDiffState();
+        expect(diff).toHaveLength(1);
+        expect(diff[0].path).toBe(newFile);
+        expect(diff[0].before).toBe('new content');
+        expect(diff[0].after).toBe('new modified');
+
+        // Old file should NOT appear in diff
+        expect(diff.some((d) => d.path === oldFile)).toBe(false);
+      });
+
+      it('reset() stops watching files from previous workspace', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const watchedFile = path.join(tempDir, 'watched-before-reset.txt');
+        await createTempFile(watchedFile, 'original');
+
+        // Set up file watching
+        service.addInitialFileSnapshotIfNeeded({ [watchedFile]: 'original' });
+        service.pushAgentFileEdit(watchedFile, 'modified');
+
+        await waitForFs(200); // Allow watcher to initialize
+
+        // Reset the service
+        service.reset();
+
+        // External edit after reset should NOT be tracked
+        // (watcher should be stopped)
+        await fs.writeFile(watchedFile, 'external edit after reset', 'utf8');
+
+        await waitForFs(500);
+
+        // Diff should be empty (no history, no watching)
+        expect(service.getDiffState()).toEqual([]);
+      });
+
+      it('reset() works correctly with acceptPendingChanges() before it', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const filePath = path.join(tempDir, 'accept-then-reset.txt');
+        await createTempFile(filePath, 'original');
+
+        service.addInitialFileSnapshotIfNeeded({ [filePath]: 'original' });
+        service.pushAgentFileEdit(filePath, 'modified');
+
+        // Accept pending changes (this is what happens before workspace switch)
+        service.acceptPendingChanges();
+
+        // Verify accepted
+        expect(service.getDiffState()).toEqual([]);
+
+        // Reset
+        service.reset();
+
+        // After reset, a fresh initial snapshot can be created
+        const newFile = path.join(tempDir, 'new-after-accept-reset.txt');
+        await createTempFile(newFile, 'fresh content');
+
+        service.addInitialFileSnapshotIfNeeded({ [newFile]: 'fresh content' });
+        service.pushAgentFileEdit(newFile, 'fresh modified');
+
+        const diff = service.getDiffState();
+        expect(diff).toHaveLength(1);
+        expect(diff[0].path).toBe(newFile);
+      });
+
+      it('reset() clears file locks', async () => {
+        mockKarton = createMockKartonService({
+          chatId: 'chat-1',
+          userMessageIds: ['msg-1'],
+        });
+
+        service = await DiffHistoryService.create(logger, mockKarton);
+
+        const filePath = path.join(tempDir, 'locked-file.txt');
+        await createTempFile(filePath, 'original');
+
+        service.addInitialFileSnapshotIfNeeded({ [filePath]: 'original' });
+        service.pushAgentFileEdit(filePath, 'modified');
+
+        // Lock a file (simulating agent write in progress)
+        service.lockFileForAgent(filePath);
+
+        // Reset should clear the lock
+        service.reset();
+
+        // After reset, set up new file and verify watcher works
+        // (lock should be cleared so watcher events are not ignored)
+        service.addInitialFileSnapshotIfNeeded({ [filePath]: 'original' });
+        service.pushAgentFileEdit(filePath, 'new modified');
+
+        await waitForFs(200);
+
+        // External write should be detected (lock was cleared)
+        await fs.writeFile(filePath, 'external after reset', 'utf8');
+
+        await waitFor(
+          () => {
+            const diff = service.getDiffState();
+            return diff.some((d) => d.after === 'external after reset');
+          },
+          3000,
+          100,
+        );
+
+        const diff = service.getDiffState();
+        expect(diff.some((d) => d.after === 'external after reset')).toBe(true);
+      });
+    });
+
     describe('boundary conditions', () => {
       it('handles very long file paths', async () => {
         mockKarton = createMockKartonService({
