@@ -23,11 +23,11 @@ export const Route = createFileRoute('/_internal-app/agent-settings')({
 /** IDE options with Cursor first, then alphabetical */
 const IDE_OPTIONS: { value: OpenFilesInIde; label: string }[] = [
   { value: 'cursor', label: 'Cursor' },
-  { value: 'kiro', label: 'Kiro' },
-  { value: 'trae', label: 'Trae' },
-  { value: 'vscode', label: 'VS Code' },
-  { value: 'windsurf', label: 'Windsurf' },
   { value: 'zed', label: 'Zed' },
+  { value: 'vscode', label: 'VS Code' },
+  { value: 'kiro', label: 'Kiro' },
+  { value: 'windsurf', label: 'Windsurf' },
+  { value: 'trae', label: 'Trae' },
   { value: 'other', label: 'Other' },
 ];
 
