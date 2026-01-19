@@ -6,9 +6,11 @@ import { Tab } from './tab';
 export function SortableTab({
   tabState,
   activateBottomLeftCornerRadius,
+  isActive,
 }: {
   tabState: TabState;
   activateBottomLeftCornerRadius: boolean;
+  isActive: boolean;
 }) {
   const {
     attributes,
@@ -31,7 +33,13 @@ export function SortableTab({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-state={isActive ? 'active' : 'inactive'}
+      {...attributes}
+      {...listeners}
+    >
       <Tab
         tabState={tabState}
         activateBottomLeftCornerRadius={activateBottomLeftCornerRadius}

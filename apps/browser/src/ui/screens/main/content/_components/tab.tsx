@@ -98,13 +98,12 @@ export function Tab({
   return (
     <WithTabPreviewCard tabState={tabState} activeTabId={activeTabId}>
       <div
-        data-state={isActive ? 'active' : 'inactive'}
         className={cn(
           '@container w-full px-2',
           isActive
             ? 'relative h-8'
             : cn(
-                'mb-0.75 flex h-7.25 items-center gap-2 self-start rounded-[8.5px] py-1 transition-colors hover:bg-surface-2 has-[+[data-state="active"]]:rounded-br-md dark:hover:bg-base-850 [[data-state="active"]+&]:rounded-bl-md',
+                'mb-0.75 flex h-7.25 items-center gap-2 self-start rounded-[8.5px] py-1 transition-colors hover:bg-surface-2 dark:hover:bg-base-850 [[data-state="active"]+[data-state="inactive"]_&]:rounded-bl-md [[data-state="inactive"]:has(+_[data-state="active"])_&]:rounded-br-md',
                 isDragging && 'bg-surface-2 dark:bg-base-850',
                 shouldShowRightSeparator &&
                   'after:-right-[2px] after:absolute after:h-4 after:border-surface-2 after:border-r after:content-[""]',

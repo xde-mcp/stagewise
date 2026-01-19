@@ -359,6 +359,7 @@ export function TabsContainer({
                   activateBottomLeftCornerRadius={
                     activateBottomLeftCornerRadius
                   }
+                  isActive={tab.id === activeTabId}
                 />
               );
             })}
