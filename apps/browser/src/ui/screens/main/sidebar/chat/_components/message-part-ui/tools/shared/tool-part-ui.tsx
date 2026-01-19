@@ -240,7 +240,7 @@ export const ToolPartUI = ({
             >
               <OverlayScrollbar
                 ref={scrollbarRef}
-                className={cn('py-0.5', contentClassName)}
+                contentClassName={cn('py-0.5', contentClassName)}
                 options={{
                   overflow: { x: 'scroll', y: 'scroll' },
                 }}

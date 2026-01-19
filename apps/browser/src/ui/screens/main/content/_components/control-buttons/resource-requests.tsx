@@ -622,7 +622,10 @@ export function ResourceRequestsControlButton({ tabId }: { tabId: string }) {
         onMouseLeave={handlePopoverMouseLeave}
       >
         <PopoverTitle>Permission Requests</PopoverTitle>
-        <OverlayScrollbar className="flex max-h-64 w-full flex-col divide-y divide-border-subtle px-1">
+        <OverlayScrollbar
+          className="max-h-64 w-full"
+          contentClassName="flex flex-col divide-y divide-border-subtle px-1"
+        >
           {permissionRequests.length === 0 ? (
             <div className="flex items-center justify-center py-3">
               <span className="text-muted-foreground text-sm">

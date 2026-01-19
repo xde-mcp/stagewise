@@ -365,7 +365,10 @@ export const SearchableSelect = ({
                   No results
                 </div>
               )}
-              <OverlayScrollbar className="flex max-h-48 flex-col gap-0.5">
+              <OverlayScrollbar
+                className="max-h-48"
+                contentClassName="flex flex-col gap-0.5"
+              >
                 {groupedFilteredItems.map(
                   ({ group, items: groupItems }, groupIndex) => (
                     <div key={group ?? `ungrouped-${groupIndex}`}>

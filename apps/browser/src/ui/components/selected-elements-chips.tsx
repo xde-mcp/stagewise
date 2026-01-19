@@ -266,7 +266,10 @@ function SelectedElementChip({
         <p className="font-medium text-foreground text-sm">
           Element information
         </p>
-        <OverlayScrollbar className="flex max-h-[35vh] max-w-72 flex-col gap-2.5 *:shrink-0">
+        <OverlayScrollbar
+          className="max-h-[35vh] max-w-72"
+          contentClassName="flex flex-col gap-2.5 *:shrink-0"
+        >
           <div className="flex flex-col items-stretch justify-start">
             <p className="font-medium text-foreground text-xs">XPath</p>
             <div className="w-full break-all font-mono text-2xs text-muted-foreground">

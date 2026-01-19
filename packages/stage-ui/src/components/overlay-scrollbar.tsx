@@ -33,8 +33,14 @@ export interface OverlayScrollbarRef {
 export interface OverlayScrollbarProps {
   /** Content to render inside the scrollable area */
   children: React.ReactNode;
-  /** CSS class name */
+  /** CSS class name for the host element (outer wrapper) */
   className?: string;
+  /**
+   * CSS class name for the content wrapper inside the scrollable area.
+   * Use this for layout classes like flex-col, gap-*, etc. that need to
+   * apply directly to the container of your children.
+   */
+  contentClassName?: string;
   /** Inline styles */
   style?: React.CSSProperties;
   /** Custom OverlayScrollbars options (merged with defaults) */
@@ -88,8 +94,14 @@ const defaultOptions: PartialOptions = {
  * // Check if at bottom
  * const atBottom = scrollbarRef.current?.isAtBottom(10);
  *
- * <OverlayScrollbar ref={scrollbarRef} className="h-full">
- *   {content}
+ * // Use className for the outer host element (sizing, positioning)
+ * // Use contentClassName for layout of children (flex, gap, etc.)
+ * <OverlayScrollbar
+ *   ref={scrollbarRef}
+ *   className="max-h-60 w-full"
+ *   contentClassName="flex flex-col gap-2"
+ * >
+ *   {items.map(item => <Item key={item.id} />)}
  * </OverlayScrollbar>
  * ```
  */
@@ -100,6 +112,7 @@ export const OverlayScrollbar = forwardRef<
   {
     children,
     className,
+    contentClassName,
     style,
     options,
     onScroll,
@@ -196,6 +209,13 @@ export const OverlayScrollbar = forwardRef<
     [getViewport, scrollTo, scrollToBottom, isAtBottom],
   );
 
+  // Wrap children in a div with contentClassName if provided
+  const content = contentClassName ? (
+    <div className={contentClassName}>{children}</div>
+  ) : (
+    children
+  );
+
   return (
     <OverlayScrollbarsComponent
       ref={osRef}
@@ -211,7 +231,7 @@ export const OverlayScrollbar = forwardRef<
       style={style}
       aria-label={ariaLabel}
     >
-      {children}
+      {content}
     </OverlayScrollbarsComponent>
   );
 });

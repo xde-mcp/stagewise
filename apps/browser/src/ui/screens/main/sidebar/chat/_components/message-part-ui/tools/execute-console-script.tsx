@@ -188,26 +188,16 @@ export const ExecuteConsoleScriptToolPart = ({
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="duration-0!">
-                    {capMaxHeight ? (
-                      <OverlayScrollbar
-                        className="max-h-28"
-                        options={{ overflow: { x: 'hidden', y: 'scroll' } }}
-                      >
-                        <CodeBlock
-                          code={formattedResult}
-                          language="json"
-                          hideActionButtons
-                        />
-                      </OverlayScrollbar>
-                    ) : (
-                      <div className="overflow-y-hidden">
-                        <CodeBlock
-                          code={formattedResult}
-                          language="json"
-                          hideActionButtons
-                        />
-                      </div>
-                    )}
+                    <OverlayScrollbar
+                      className={cn('max-h-24')}
+                      options={{ overflow: { x: 'hidden', y: 'scroll' } }}
+                    >
+                      <CodeBlock
+                        code={formattedResult}
+                        language="json"
+                        hideActionButtons
+                      />
+                    </OverlayScrollbar>
                   </CollapsibleContent>
                 </Collapsible>
               )}

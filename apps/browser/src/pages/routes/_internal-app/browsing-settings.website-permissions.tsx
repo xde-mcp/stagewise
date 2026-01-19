@@ -200,7 +200,7 @@ function Page() {
         </div>
 
         {/* Content */}
-        <OverlayScrollbar className="flex-1 p-6">
+        <OverlayScrollbar className="flex-1" contentClassName="p-6">
           <div className="mx-auto max-w-3xl">
             <p className="text-muted-foreground">
               No website selected. Please select a website from the Browsing
@@ -234,7 +234,7 @@ function Page() {
       </div>
 
       {/* Content */}
-      <OverlayScrollbar className="flex-1 p-6">
+      <OverlayScrollbar className="flex-1" contentClassName="p-6">
         <div className="mx-auto max-w-3xl space-y-6">
           {/* Summary */}
           <div className="rounded-lg border border-border/30 bg-surface-1/50 p-4">

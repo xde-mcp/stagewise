@@ -402,7 +402,8 @@ function Page() {
         onViewportRef={(el) => {
           scrollContainerRef.current = el;
         }}
-        className="flex-1 p-6"
+        className="flex-1"
+        contentClassName="p-6"
       >
         <div className="mx-auto max-w-4xl space-y-6">
           {formattedEdits.map((edit) => (

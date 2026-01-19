@@ -545,7 +545,10 @@ function ConnectWorkspaceBanner() {
                   </Button>
                 )}
               </div>
-              <OverlayScrollbar className="flex max-h-60 w-full flex-col items-start gap-2">
+              <OverlayScrollbar
+                className="max-h-60 w-full"
+                contentClassName="flex w-full flex-col items-start gap-2"
+              >
                 {sortedRecentlyOpenedWorkspaces.map((workspace) => (
                   <RecentlyOpenedWorkspaceItem
                     key={workspace.path}
