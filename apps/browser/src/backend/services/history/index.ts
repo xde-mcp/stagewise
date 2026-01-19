@@ -852,4 +852,123 @@ export class HistoryService {
   async vacuum(): Promise<void> {
     await this.dbDriver.execute('VACUUM');
   }
+
+  // =================================================================
+  //  D. OMNIBOX SUGGESTIONS API
+  // =================================================================
+
+  /**
+   * Query history entries for omnibox suggestions.
+   * Case-insensitive contains search on URL and title, sorted by recency and URL length.
+   * All words must match (AND logic) with %LIKE% pattern.
+   * Limits results to max N per host.
+   */
+  async queryHistoryForOmnibox(options: {
+    text: string;
+    limit?: number;
+    maxPerHost?: number;
+  }): Promise<
+    {
+      url: string;
+      title: string;
+      visitCount: number;
+      lastVisitTime: Date;
+    }[]
+  > {
+    const { text, limit = 5, maxPerHost = 2 } = options;
+
+    // Split into words and create %LIKE% patterns for each
+    const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      return [];
+    }
+
+    // Build conditions: each word must match in URL OR title (AND between words)
+    const wordConditions = words.map((word) => {
+      const pattern = `%${word}%`;
+      return or(
+        sql`LOWER(${schema.urls.url}) LIKE ${pattern}`,
+        sql`LOWER(${schema.urls.title}) LIKE ${pattern}`,
+      );
+    });
+
+    // Fetch more rows than needed to apply per-host filtering
+    const results = await this.db
+      .select({
+        url: schema.urls.url,
+        title: schema.urls.title,
+        visitCount: schema.urls.visitCount,
+        lastVisitTime: schema.urls.lastVisitTime,
+      })
+      .from(schema.urls)
+      .where(and(eq(schema.urls.hidden, false), ...wordConditions))
+      .orderBy(desc(schema.urls.lastVisitTime), sql`LENGTH(${schema.urls.url})`)
+      .limit(limit * 10); // Fetch extra to allow for per-host filtering
+
+    // Apply max-per-host filtering
+    const hostCounts = new Map<string, number>();
+    const filtered: typeof results = [];
+
+    for (const row of results) {
+      if (!row.url) continue;
+
+      // Extract hostname, falling back to the URL itself on parse errors
+      let hostname: string;
+      try {
+        hostname = new URL(row.url).hostname;
+      } catch {
+        hostname = row.url;
+      }
+
+      const count = hostCounts.get(hostname) || 0;
+      if (count < maxPerHost) {
+        hostCounts.set(hostname, count + 1);
+        filtered.push(row);
+        if (filtered.length >= limit) break;
+      }
+    }
+
+    return filtered.map((row) => ({
+      url: row.url || '',
+      title: row.title || '',
+      visitCount: row.visitCount,
+      lastVisitTime: fromWebKitTimestamp(row.lastVisitTime),
+    }));
+  }
+
+  /**
+   * Query search terms for omnibox suggestions.
+   * Case-insensitive %LIKE% search on normalized term.
+   * All words must match (AND logic).
+   */
+  async querySearchTermsForOmnibox(
+    text: string,
+    limit = 5,
+  ): Promise<{ term: string; keywordId: number }[]> {
+    // Split into words and create %LIKE% patterns for each
+    const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      return [];
+    }
+
+    // Build conditions: each word must match in normalizedTerm (AND between words)
+    const wordConditions = words.map((word) => {
+      const pattern = `%${word}%`;
+      return like(schema.keywordSearchTerms.normalizedTerm, pattern);
+    });
+
+    const results = await this.db
+      .selectDistinct({
+        term: schema.keywordSearchTerms.term,
+        keywordId: schema.keywordSearchTerms.keywordId,
+      })
+      .from(schema.keywordSearchTerms)
+      .where(and(...wordConditions))
+      .limit(limit);
+
+    return results.map((row) => ({
+      term: row.term,
+      keywordId: row.keywordId,
+    }));
+  }
 }

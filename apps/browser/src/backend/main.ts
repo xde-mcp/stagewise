@@ -31,6 +31,7 @@ import {
   type DownloadSpeedDataPoint,
 } from '@shared/karton-contracts/pages-api/types';
 import type { DownloadSummary } from '@shared/karton-contracts/ui';
+import { OmniboxSuggestionsService } from './services/omnibox-suggestions';
 import { ensureRipgrepInstalled } from '@stagewise/agent-runtime-node';
 import { shell } from 'electron';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
@@ -445,6 +446,15 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         };
       }
     },
+  );
+
+  // Create OmniboxSuggestionsService for omnibox autocomplete
+  const _omniboxSuggestionsService = await OmniboxSuggestionsService.create(
+    logger,
+    uiKarton,
+    historyService,
+    webDataService,
+    faviconService,
   );
 
   // Set the markDownloadsSeen handler for pages-api contract

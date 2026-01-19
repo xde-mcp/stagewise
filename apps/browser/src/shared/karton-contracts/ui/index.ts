@@ -441,6 +441,24 @@ export type HistoryEntry = {
   lastVisitedAt: Date;
 };
 
+/** Suggestions returned by getOmniboxSuggestions */
+export type OmniboxSuggestions = {
+  /** History entries matching the input */
+  historyEntries: {
+    url: string;
+    title: string;
+    visitCount: number;
+    lastVisitTime: Date;
+    faviconUrl: string | null;
+  }[];
+  /** Previous search terms matching the input */
+  searchTerms: {
+    term: string;
+    /** The search engine keyword used (if available) */
+    keyword?: string;
+  }[];
+};
+
 export type AppState = {
   internalData: {
     posthog?: {
@@ -843,6 +861,8 @@ export type KartonContract = {
       /** Update user preferences by applying Immer patches */
       update: (patches: Patch[]) => Promise<void>;
     };
+    /** Get omnibox suggestions based on input (history entries and search terms) */
+    getOmniboxSuggestions: (input: string) => Promise<OmniboxSuggestions>;
   };
 };
 

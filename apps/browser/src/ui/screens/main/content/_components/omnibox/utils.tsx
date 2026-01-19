@@ -1,11 +1,19 @@
-import { type ReactNode, useMemo } from 'react';
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from 'react';
 import type { SearchEngine } from '@shared/karton-contracts/ui/shared-types';
-
+import type { OmniboxSuggestions } from '@shared/karton-contracts/ui';
 import {
   IconMagnifierFill18,
   IconRefreshAnticlockwiseFill18,
 } from 'nucleo-ui-fill-18';
 import { IconGlobe3Fill18 } from 'nucleo-ui-fill-18';
+import { useKartonProcedure } from '@/hooks/use-karton';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 /**
  * Determines if the input is a URL or search query, and returns the appropriate URL.
@@ -109,8 +117,30 @@ export function useOmniboxSuggestions(
   defaultEngineId: number,
   searchEngineId?: number,
   searchEngineKeyword?: string,
-): OmniboxSuggestionGroup[] {
-  return useMemo(() => {
+): {
+  groups: OmniboxSuggestionGroup[];
+  resetSuggestions: () => void;
+} {
+  const getSuggestions = useKartonProcedure((p) => p.getOmniboxSuggestions);
+
+  const [suggestions, setSuggestions] = useState<OmniboxSuggestions | null>(
+    null,
+  );
+
+  const debouncedInput = useDebouncedValue(input, 150);
+
+  useEffect(() => {
+    getSuggestions(debouncedInput).then((suggestions) => {
+      setSuggestions(suggestions);
+    });
+  }, [debouncedInput]);
+  useEffect(() => {});
+
+  const resetSuggestions = useCallback(() => {
+    setSuggestions(null);
+  }, []);
+
+  const groups = useMemo(() => {
     if (input.trim() === '') {
       return [];
     }
@@ -159,8 +189,8 @@ export function useOmniboxSuggestions(
               items: [
                 {
                   type: 'page-nav-suggestion' as const,
-                  value: getSimplePageNavUrl(input.trim()),
-                  label: input.trim(),
+                  value: getSimplePageNavUrl(input),
+                  label: input,
                   suggestionLabel: (
                     <span>
                       Open <strong>{input.trim()}</strong>
@@ -180,8 +210,8 @@ export function useOmniboxSuggestions(
               items: [
                 {
                   type: 'search-suggestion' as const,
-                  value: getSearchUrl(input.trim(), engine),
-                  label: input.trim(),
+                  value: getSearchUrl(input, engine),
+                  label: input,
                   suggestionLabel: (
                     <span className="text-muted-foreground">
                       Search for "
@@ -203,44 +233,49 @@ export function useOmniboxSuggestions(
             },
           ]
         : []),
-      ...(dummy && engine
-        ? [
-            {
-              label: 'Recent searches',
-              items: [
-                {
-                  type: 'past-search' as const,
-                  value: getSearchUrl('old search term', engine),
-                  label: 'old search term',
-                  suggestionLabel: <strong>old search term</strong>,
-                  suggestionIcon: (
-                    <IconMagnifierFill18 className="size-4 text-muted-foreground" />
-                  ),
-                },
-              ],
-            },
-          ]
-        : []),
       ...(dummy
         ? [
             {
               label: 'Recent pages',
-              items: [
-                {
+              items:
+                suggestions?.historyEntries.map((entry) => ({
                   type: 'past-page' as const,
-                  value: 'https://www.oldpage.com',
-                  label: 'www.oldpage.com',
-                  suggestionLabel: <strong>www.oldpage.com</strong>,
-                  suggestionIcon: (
-                    <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
+                  value: entry.url,
+                  label: entry.url,
+                  suggestionLabel: (
+                    <span className="truncate">
+                      <strong>{entry.title}</strong>{' '}
+                      <span className="text-muted-foreground">{entry.url}</span>
+                    </span>
                   ),
-                },
-              ],
+                  suggestionIcon:
+                    entry.faviconUrl?.length > 0 ? (
+                      <img src={entry.faviconUrl} alt="" className="size-4" />
+                    ) : (
+                      <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
+                    ),
+                })) ?? [],
+            },
+          ]
+        : []),
+      ...(dummy && engine
+        ? [
+            {
+              label: 'Recent searches',
+              items:
+                suggestions?.searchTerms.map((entry) => ({
+                  type: 'past-search' as const,
+                  value: getSearchUrl(entry.term, engine),
+                  label: entry.term,
+                  suggestionLabel: <strong>{entry.term}</strong>,
+                  suggestionIcon: (
+                    <IconMagnifierFill18 className="size-4 text-muted-foreground" />
+                  ),
+                })) ?? [],
             },
           ]
         : []),
     ];
-
     return items;
   }, [
     currentUrl,
@@ -249,7 +284,13 @@ export function useOmniboxSuggestions(
     defaultEngineId,
     searchEngineId,
     searchEngineKeyword,
+    suggestions,
   ]);
+
+  return {
+    groups,
+    resetSuggestions,
+  };
 }
 
 function getSimplePageNavUrl(input: string): string {
