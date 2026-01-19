@@ -244,7 +244,9 @@ export function useOmniboxSuggestions(
                   label: entry.url,
                   suggestionLabel: (
                     <span className="truncate">
-                      <strong>{entry.title}</strong>{' '}
+                      <strong className="max-w-1/2 truncate">
+                        {entry.title}
+                      </strong>{' '}
                       <span className="text-muted-foreground">{entry.url}</span>
                     </span>
                   ),

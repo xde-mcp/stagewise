@@ -17,46 +17,18 @@ export const WebContentsBoundsSyncer = () => {
   } | null>(null);
   const lastInteractiveRef = useRef<boolean | null>(null);
   const requestRef = useRef<number | null>(null);
-  const isHoveringRef = useRef(false);
+  const lastMousePosRef = useRef<{ x: number; y: number } | null>(null);
 
   useLayoutEffect(() => {
-    const handleMouseEnter = (e: MouseEvent) => {
-      if (e.target instanceof Element) {
-        // Check if element is a per-tab preview container
-        if (e.target.id.startsWith('dev-app-preview-container-')) {
-          isHoveringRef.current = true;
-        } else if (isHoveringRef.current) {
-          isHoveringRef.current = false;
-        }
-      }
+    // Just track mouse position - the RAF loop will handle hover detection
+    const handleMouseMove = (e: MouseEvent) => {
+      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
     };
 
-    const handleFocusChange = (e: FocusEvent) => {
-      if (e.target instanceof Element) {
-        // Check if element is a per-tab preview container
-        if (e.target.id.startsWith('dev-app-preview-container-')) {
-          isHoveringRef.current = true;
-        } else if (isHoveringRef.current) {
-          isHoveringRef.current = false;
-        }
-      }
-    };
-
-    document.addEventListener('mouseenter', handleMouseEnter, {
-      capture: true,
-    });
-
-    document.addEventListener('focusin', handleFocusChange, {
-      capture: true,
-    });
+    document.addEventListener('mousemove', handleMouseMove);
 
     return () => {
-      document.removeEventListener('mouseenter', handleMouseEnter, {
-        capture: true,
-      });
-      document.removeEventListener('focusin', handleFocusChange, {
-        capture: true,
-      });
+      document.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
 
@@ -106,8 +78,20 @@ export const WebContentsBoundsSyncer = () => {
           lastBoundsRef.current = newBounds;
         }
 
-        // Check interactivity
-        const isHovering = isHoveringRef.current;
+        // Check hover state using elementFromPoint (respects z-order)
+        // This handles: tab switches, window focus, popups over content area
+        let isHovering = false;
+        if (lastMousePosRef.current) {
+          const { x, y } = lastMousePosRef.current;
+          const elementAtPoint = document.elementFromPoint(x, y);
+          if (elementAtPoint) {
+            const hoverContainer = elementAtPoint.closest(
+              '[id^="dev-app-preview-container-"]',
+            );
+            isHovering = hoverContainer !== null;
+          }
+        }
+
         if (lastInteractiveRef.current !== isHovering) {
           void movePanelToForeground(
             isHovering ? 'tab-content' : 'stagewise-ui',
@@ -122,8 +106,11 @@ export const WebContentsBoundsSyncer = () => {
   }, [activeTabId, updateBounds, movePanelToForeground]);
 
   useLayoutEffect(() => {
-    // Reset last bounds when tab changes to force an update
+    // Reset state when tab changes to force an update
+    // The RAF loop will re-evaluate hover state using lastMousePosRef
     lastBoundsRef.current = null;
+    lastInteractiveRef.current = null;
+
     requestRef.current = requestAnimationFrame(check);
 
     return () => {
