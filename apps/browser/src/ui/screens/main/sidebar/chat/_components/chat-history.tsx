@@ -316,8 +316,9 @@ export const ChatHistory = () => {
       className={cn(
         'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_4px,black_100%)] pointer-events-auto block h-full min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
         renderedMessages.length === 0 && 'mb-1 h-max',
+        'pb-[calc(1rem+var(--file-diff-card-height,0px))]',
       )}
-      contentClassName="px-4 pb-[calc(1rem+var(--file-diff-card-height,0px))]"
+      contentClassName="px-4"
       options={
         renderedMessages.length === 0
           ? { overflow: { x: 'hidden', y: 'hidden' } }
