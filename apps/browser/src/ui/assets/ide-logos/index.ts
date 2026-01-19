@@ -5,7 +5,7 @@ import WindsurfLogo from './windsurf.png';
 import ZedLogo from './zed.png';
 import KiroLogo from './kiro.png';
 import FileIcon from './file.png';
-import type { IDE_SELECTION_ITEMS } from '@/utils';
+import type { IDE_SELECTION_ITEMS } from '@ui/utils';
 
 /**
  * Mapping of IDE identifiers to their logo image URLs (inlined as data URIs by Vite)

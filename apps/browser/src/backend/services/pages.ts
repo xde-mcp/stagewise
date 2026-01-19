@@ -17,6 +17,7 @@ import type { FileDiffResult } from '@shared/karton-contracts/pages-api/types';
 import type {
   UserPreferences,
   Patch,
+  GlobalConfig,
 } from '@shared/karton-contracts/ui/shared-types';
 import type { HistoryService } from './history';
 import type { FaviconService } from './favicon';
@@ -89,6 +90,7 @@ export class PagesService extends DisposableService {
     tabId: string,
     origin: string,
   ) => Promise<void>;
+  private setGlobalConfigHandler?: (config: GlobalConfig) => Promise<void>;
 
   private constructor(
     logger: Logger,
@@ -998,6 +1000,19 @@ export class PagesService extends DisposableService {
         await this.trustCertificateAndReloadHandler(tabId, origin);
       },
     );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'setGlobalConfig',
+      async (_callingClientId: string, config: GlobalConfig): Promise<void> => {
+        if (!this.setGlobalConfigHandler) {
+          this.logger.warn(
+            '[PagesService] setGlobalConfig called but no handler is set',
+          );
+          return;
+        }
+        await this.setGlobalConfigHandler(config);
+      },
+    );
   }
 
   /**
@@ -1163,6 +1178,26 @@ export class PagesService extends DisposableService {
   }
 
   /**
+   * Set the handler for setting global config.
+   * This should be called by main.ts to wire up to GlobalConfigService.
+   */
+  public registerGlobalConfigHandler(
+    handler: (config: GlobalConfig) => Promise<void>,
+  ): void {
+    this.setGlobalConfigHandler = handler;
+  }
+
+  /**
+   * Sync global config state to the Pages API Karton state.
+   * Called by main.ts when global config changes.
+   */
+  public syncGlobalConfigState(config: GlobalConfig): void {
+    this.kartonServer.setState((draft) => {
+      draft.globalConfig = config;
+    });
+  }
+
+  /**
    * Sync preferences state to the Pages API Karton state.
    * Called by PreferencesService when preferences change.
    */
@@ -1295,6 +1330,7 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('setHasSeenOnboardingFlow');
     this.kartonServer.removeServerProcedureHandler('openWorkspace');
     this.kartonServer.removeServerProcedureHandler('trustCertificateAndReload');
+    this.kartonServer.removeServerProcedureHandler('setGlobalConfig');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');

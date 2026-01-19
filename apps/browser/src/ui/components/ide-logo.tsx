@@ -1,4 +1,4 @@
-import { IDE_LOGOS } from '@/assets/ide-logos';
+import { IDE_LOGOS } from '@ui/assets/ide-logos';
 import { FileIcon } from 'lucide-react';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';

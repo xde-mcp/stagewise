@@ -18,7 +18,7 @@ import type {
   StoredExperienceData,
   WorkspaceStatus,
 } from './types';
-import type { UserPreferences, Patch } from '../ui/shared-types';
+import type { UserPreferences, Patch, GlobalConfig } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
 
 export type PagesApiState = {
@@ -28,6 +28,8 @@ export type PagesApiState = {
   pendingEditsByChat: Record<string, FileDiffResult[]>;
   /** User preferences (read-only sync) */
   preferences: UserPreferences;
+  /** Global config (read-only sync, updated via setGlobalConfig procedure) */
+  globalConfig: GlobalConfig;
   /** Available search engines from Web Data database */
   searchEngines: SearchEngine[];
   /** Home page state (for stagewise://internal/home) */
@@ -117,6 +119,8 @@ export type PagesApiContract = {
      * The whitelist is cleared when the tab is closed.
      */
     trustCertificateAndReload: (tabId: string, origin: string) => Promise<void>;
+    /** Set the global config (e.g., preferred IDE for opening files) */
+    setGlobalConfig: (config: GlobalConfig) => Promise<void>;
   };
 };
 
@@ -124,6 +128,10 @@ export const defaultState: PagesApiState = {
   activeDownloads: {},
   pendingEditsByChat: {},
   preferences: defaultUserPreferences,
+  globalConfig: {
+    telemetryLevel: 'full',
+    openFilesInIde: 'other',
+  },
   searchEngines: [],
   homePage: {
     storedExperienceData: {

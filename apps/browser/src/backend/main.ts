@@ -547,6 +547,19 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     uiKarton,
   );
 
+  // Sync global config to pages API state
+  pagesService.syncGlobalConfigState(globalConfigService.get());
+
+  // Register handler for pages API to update global config
+  pagesService.registerGlobalConfigHandler(async (config) => {
+    await globalConfigService.set(config);
+  });
+
+  // Keep pages API state in sync when global config changes
+  globalConfigService.addConfigUpdatedListener((newConfig) => {
+    pagesService.syncGlobalConfigState(newConfig);
+  });
+
   const telemetryService = new TelemetryService(
     identifierService,
     preferencesService,
