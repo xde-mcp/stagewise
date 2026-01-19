@@ -305,7 +305,7 @@ export class TabErrorHandler {
     frameProcessId: number,
     frameRoutingId: number,
   ): void {
-    const isSafety = isSafetyRelevantError(errorCode);
+    const isSafety = isSafetyRelevantError(errorCode, failedUrl);
 
     if (isSafety) {
       // Safety-relevant subframe errors navigate full page with subresource URL

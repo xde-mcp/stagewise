@@ -158,15 +158,18 @@ function getErrorCategory(errorCode: number): ErrorCategory {
  *
  * Uses classifyError internally to ensure consistent categorization.
  */
-export function isSafetyRelevantError(errorCode: number): boolean {
-  return classifyError(errorCode).isSafetyRelevant;
+export function isSafetyRelevantError(errorCode: number, url: string): boolean {
+  return classifyError(errorCode, url).isSafetyRelevant;
 }
 
 /**
  * Classify an error code and provide user-friendly information.
  * Uses getErrorCategory() as the single source of truth for categorization.
  */
-export function classifyError(errorCode: number): ErrorClassification {
+export function classifyError(
+  errorCode: number,
+  url: string,
+): ErrorClassification {
   const category = getErrorCategory(errorCode);
 
   switch (category) {
@@ -217,7 +220,7 @@ export function classifyError(errorCode: number): ErrorClassification {
         category,
         isDangerous: false,
         userFriendlyTitle: 'Page Load Failed',
-        userFriendlyMessage: getProtocolErrorMessage(errorCode),
+        userFriendlyMessage: getProtocolErrorMessage(errorCode, url),
       };
 
     case 'security':
@@ -492,10 +495,10 @@ function getDnsErrorMessage(errorCode: number): string {
 /**
  * Get user-friendly message for protocol/URL errors
  */
-function getProtocolErrorMessage(errorCode: number): string {
+function getProtocolErrorMessage(errorCode: number, url: string): string {
   switch (errorCode) {
     case -300: // INVALID_URL
-      return 'The URL is not valid.';
+      return `The URL "${url}" is not valid.`;
     case -301: // DISALLOWED_URL_SCHEME
       return 'The URL scheme is not allowed.';
     case -302: // UNKNOWN_URL_SCHEME

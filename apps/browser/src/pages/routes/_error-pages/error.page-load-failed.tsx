@@ -131,7 +131,7 @@ type PageLoadErrorSearch = {
 export const Route = createFileRoute('/_error-pages/error/page-load-failed')({
   component: RouteComponent,
   validateSearch: (search: Record<string, unknown>): PageLoadErrorSearch => {
-    if (!search.errorUrl || !search.errorCode || !search.tabId) {
+    if (!search.errorCode || !search.tabId) {
       throw new Error('Invalid search parameters');
     }
 
@@ -140,7 +140,10 @@ export const Route = createFileRoute('/_error-pages/error/page-load-failed')({
     }
 
     return {
-      errorUrl: search.errorUrl as string,
+      errorUrl: (search.errorUrl &&
+      (search.errorUrl as string).trim().length > 0
+        ? search.errorUrl
+        : '(empty)') as string,
       subresourceUrl: search.subresourceUrl as string | undefined,
       errorCode: Number(search.errorCode),
       errorMessage: search.errorMessage as string | undefined,
@@ -160,7 +163,7 @@ function RouteComponent() {
     (p) => p.trustCertificateAndReload,
   );
 
-  const classification = classifyError(errorCode);
+  const classification = classifyError(errorCode, errorUrl);
   const errorName = getErrorName(errorCode);
 
   // Build title and message from classification
@@ -190,7 +193,7 @@ function RouteComponent() {
     classification.category,
     handleTrustCertificate,
   );
-  const linkActions = getErrorLinkActions(errorCode);
+  const linkActions = getErrorLinkActions(errorCode, errorUrl);
 
   return (
     <main className="flex size-full min-h-screen min-w-screen flex-col items-center justify-center bg-background pb-32">
@@ -265,8 +268,9 @@ const getErrorButtonActions = (
  */
 const getErrorLinkActions = (
   errorCode: number,
+  errorUrl: string,
 ): Required<ErrorDisplayProps['linkActions']> => {
-  const classification = classifyError(errorCode);
+  const classification = classifyError(errorCode, errorUrl);
   const links: ErrorDisplayProps['linkActions'] = [];
 
   // Add context-specific help links based on error category
