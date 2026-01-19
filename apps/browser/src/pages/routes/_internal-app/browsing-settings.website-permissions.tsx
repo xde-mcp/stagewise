@@ -21,16 +21,13 @@ export const Route = createFileRoute(
   validateSearch: (search: Record<string, unknown>) => ({
     host: (search.host as string) || '',
   }),
-  head: ({ search }) => {
-    const host = search?.host;
-    return {
-      meta: [
-        {
-          title: host ? `Website permissions: ${host}` : 'Website Permissions',
-        },
-      ],
-    };
-  },
+  head: () => ({
+    meta: [
+      {
+        title: 'Website Permissions',
+      },
+    ],
+  }),
 });
 
 /** Human-readable labels for permission types */
