@@ -62,6 +62,7 @@ const ERROR_PAGE_PATH = '/error/page-load-failed';
  * - Hook into did-fail-load and certificate-error events
  * - Navigate to error pages for main frame errors
  * - Navigate subframes to error pages for non-safety subframe errors
+ * - Silently block subframe certificate errors (matching Chrome behavior)
  * - Track original failed URL for reload behavior
  * - Provide navigation offsets to skip error pages during back/forward
  */
@@ -244,9 +245,12 @@ export class TabErrorHandler {
     if (isMainFrame) {
       this.handleMainFrameError(errorCode, errorMessage, url);
     } else {
-      // Subframe certificate errors are treated as safety-relevant
-      // Navigate full page to error with subresource URL
-      this.handleMainFrameError(errorCode, errorMessage, url, url);
+      // Subframe certificate errors are silently blocked (callback(false) above)
+      // Following Chrome's behavior: sub-frame cert errors should NOT navigate
+      // the main frame to an error page - the iframe content is simply not loaded
+      this.logger.debug(
+        `[TabErrorHandler] Subframe certificate error silently blocked: ${url}`,
+      );
     }
   }
 

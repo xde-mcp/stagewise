@@ -65,7 +65,9 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
       </div>
       <div className="mb-4 flex flex-col items-stretch justify-center gap-2">
         <h1 className="font-medium text-2xl text-foreground">{props.title}</h1>
-        <p className="text-base text-muted-foreground">{props.message}</p>
+        <p className="whitespace-pre-line break-all text-base text-muted-foreground">
+          {props.message}
+        </p>
       </div>
       {(props.errorCode || props.errorName) && (
         <span className="font-mono text-muted-foreground text-sm">
