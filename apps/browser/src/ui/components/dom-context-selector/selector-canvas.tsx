@@ -83,6 +83,7 @@ export function DOMContextSelector() {
       {contextSelectionActive && (
         <div
           className={cn('pointer-events-auto absolute inset-0 z-50 size-full')}
+          data-element-selector-overlay
           onMouseDown={handleOverlayMouseDown}
           onClick={handleOverlayClick}
           onFocus={(e) => e.preventDefault()}
@@ -93,6 +94,7 @@ export function DOMContextSelector() {
       {contextSelectionActive && viewportSize && (
         <div
           id="element-selector-element-canvas"
+          data-element-selector-overlay
           className="pointer-events-auto absolute z-50 cursor-copy"
           style={{
             top: `${viewportSize.top}px`,

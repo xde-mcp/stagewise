@@ -85,10 +85,19 @@ export const WebContentsBoundsSyncer = () => {
           const { x, y } = lastMousePosRef.current;
           const elementAtPoint = document.elementFromPoint(x, y);
           if (elementAtPoint) {
-            const hoverContainer = elementAtPoint.closest(
-              '[id^="dev-app-preview-container-"]',
-            );
-            isHovering = hoverContainer !== null;
+            // Check if hovering over element selector overlay - if so, keep UI on top
+            // so that DOMContextSelector can receive mouse events for element selection
+            const isElementSelectorOverlay =
+              elementAtPoint.hasAttribute('data-element-selector-overlay') ||
+              elementAtPoint.closest('[data-element-selector-overlay]') !==
+                null;
+
+            if (!isElementSelectorOverlay) {
+              const hoverContainer = elementAtPoint.closest(
+                '[id^="dev-app-preview-container-"]',
+              );
+              isHovering = hoverContainer !== null;
+            }
           }
         }
 
