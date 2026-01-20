@@ -75,14 +75,18 @@ export class OmniboxSuggestionsService extends DisposableService {
   /**
    * Get omnibox suggestions based on the input string.
    * Queries both history entries and previous search terms.
+   * When input is empty, returns most visited pages and frequent searches as defaults.
    *
    * @param input - The user's input in the omnibox
    * @returns Suggestions including matching history entries and search terms
    */
   public async getSuggestions(input: string): Promise<OmniboxSuggestions> {
     const trimmed = input.trim();
+
+    // When input is empty, return default suggestions
     if (!trimmed) {
-      return { historyEntries: [], searchTerms: [] };
+      const defaults = await this.getDefaultSuggestions();
+      return defaults;
     }
 
     // Run queries in parallel for performance
@@ -139,6 +143,50 @@ export class OmniboxSuggestionsService extends DisposableService {
         faviconUrl: faviconMap.get(h.url) ?? null,
       })),
       searchTerms: deduplicatedSearchTerms.map((s) => ({
+        term: s.term,
+        keyword: keywordMap.get(s.keywordId),
+      })),
+    };
+  }
+
+  /**
+   * Get default suggestions when omnibox input is empty.
+   * Returns most visited pages (within last 500 navigations, max 2 per host,
+   * sorted by visit count then URL length) and frequent search terms.
+   */
+  private async getDefaultSuggestions(): Promise<OmniboxSuggestions> {
+    // Run queries in parallel for performance
+    const [mostVisitedResults, frequentSearchResults] = await Promise.all([
+      this.historyService.getMostVisitedPagesForOmnibox({
+        navigationLimit: 500,
+        resultLimit: 4,
+        maxPerHost: 2,
+      }),
+      this.historyService.getFrequentSearchTermsForOmnibox({
+        dayWindow: 7,
+        minOccurrences: 2,
+        limit: 3,
+      }),
+    ]);
+
+    // Get favicons for history URLs
+    const faviconMap = await this.faviconService.getFaviconsForUrls(
+      mostVisitedResults.map((h) => h.url),
+    );
+
+    // Get keyword hostnames for search terms
+    const keywords = await this.webDataService.getAllKeywords();
+    const keywordMap = new Map(keywords.map((k) => [k.id, k.keyword]));
+
+    return {
+      historyEntries: mostVisitedResults.map((h) => ({
+        url: h.url,
+        title: h.title,
+        visitCount: h.visitCount,
+        lastVisitTime: h.lastVisitTime,
+        faviconUrl: faviconMap.get(h.url) ?? null,
+      })),
+      searchTerms: frequentSearchResults.map((s) => ({
         term: s.term,
         keyword: keywordMap.get(s.keywordId),
       })),

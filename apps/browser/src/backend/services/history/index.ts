@@ -971,4 +971,154 @@ export class HistoryService {
       keywordId: row.keywordId,
     }));
   }
+
+  /**
+   * Get most visited pages within the last N navigations for omnibox defaults.
+   * Returns max 2 URLs per host, sorted by visit count (descending) then URL length (ascending).
+   */
+  async getMostVisitedPagesForOmnibox(options?: {
+    navigationLimit?: number;
+    resultLimit?: number;
+    maxPerHost?: number;
+  }): Promise<
+    {
+      url: string;
+      title: string;
+      visitCount: number;
+      lastVisitTime: Date;
+    }[]
+  > {
+    const {
+      navigationLimit = 500,
+      resultLimit = 8,
+      maxPerHost = 2,
+    } = options ?? {};
+
+    // Get the last N visits and count occurrences per URL within that window
+    const recentVisits = await this.db
+      .select({
+        urlId: schema.visits.url,
+        visitCount: sql<number>`COUNT(*)`.as('visit_count'),
+        lastVisitTime: sql<bigint>`MAX(${schema.visits.visitTime})`.as(
+          'last_visit_time',
+        ),
+      })
+      .from(schema.visits)
+      .groupBy(schema.visits.url)
+      .orderBy(desc(sql`MAX(${schema.visits.visitTime})`))
+      .limit(navigationLimit);
+
+    if (recentVisits.length === 0) {
+      return [];
+    }
+
+    // Get URL details for these visits
+    const urlIds = recentVisits.map((v) => v.urlId);
+    const urlDetails = await this.db
+      .select({
+        id: schema.urls.id,
+        url: schema.urls.url,
+        title: schema.urls.title,
+      })
+      .from(schema.urls)
+      .where(
+        and(eq(schema.urls.hidden, false), inArray(schema.urls.id, urlIds)),
+      );
+
+    // Create a map for quick lookup
+    const urlMap = new Map(urlDetails.map((u) => [u.id, u]));
+
+    // Combine and sort by visit count (desc), then URL length (asc)
+    const combined = recentVisits
+      .filter((v) => urlMap.has(v.urlId))
+      .map((v) => {
+        const urlInfo = urlMap.get(v.urlId)!;
+        return {
+          url: urlInfo.url || '',
+          title: urlInfo.title || '',
+          visitCount: Number(v.visitCount),
+          lastVisitTime: v.lastVisitTime,
+        };
+      })
+      .sort((a, b) => {
+        // Primary: visit count descending
+        if (b.visitCount !== a.visitCount) {
+          return b.visitCount - a.visitCount;
+        }
+        // Secondary: URL length ascending
+        return a.url.length - b.url.length;
+      });
+
+    // Apply max-per-host filtering
+    const hostCounts = new Map<string, number>();
+    const filtered: typeof combined = [];
+
+    for (const row of combined) {
+      if (!row.url) continue;
+
+      let hostname: string;
+      try {
+        hostname = new URL(row.url).hostname;
+      } catch {
+        hostname = row.url;
+      }
+
+      const count = hostCounts.get(hostname) || 0;
+      if (count < maxPerHost) {
+        hostCounts.set(hostname, count + 1);
+        filtered.push(row);
+        if (filtered.length >= resultLimit) break;
+      }
+    }
+
+    return filtered.map((row) => ({
+      url: row.url,
+      title: row.title,
+      visitCount: row.visitCount,
+      lastVisitTime: fromWebKitTimestamp(row.lastVisitTime),
+    }));
+  }
+
+  /**
+   * Get frequently searched terms (searched multiple times within a time window).
+   * Returns search terms that have been used more than once.
+   */
+  async getFrequentSearchTermsForOmnibox(options?: {
+    dayWindow?: number;
+    minOccurrences?: number;
+    limit?: number;
+  }): Promise<{ term: string; keywordId: number; occurrences: number }[]> {
+    const { dayWindow = 7, minOccurrences = 2, limit = 5 } = options ?? {};
+
+    // Calculate the cutoff timestamp
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - dayWindow);
+    const cutoffTimestamp = toWebKitTimestamp(cutoffDate);
+
+    // Query search terms joined with urls to filter by recent visits
+    // Group by normalized term and count occurrences
+    const results = await this.db
+      .select({
+        term: schema.keywordSearchTerms.term,
+        normalizedTerm: schema.keywordSearchTerms.normalizedTerm,
+        keywordId: schema.keywordSearchTerms.keywordId,
+        occurrences: sql<number>`COUNT(*)`.as('occurrences'),
+      })
+      .from(schema.keywordSearchTerms)
+      .innerJoin(
+        schema.urls,
+        eq(schema.keywordSearchTerms.urlId, schema.urls.id),
+      )
+      .where(gte(schema.urls.lastVisitTime, cutoffTimestamp))
+      .groupBy(schema.keywordSearchTerms.normalizedTerm)
+      .having(sql`COUNT(*) >= ${minOccurrences}`)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(limit);
+
+    return results.map((row) => ({
+      term: row.term,
+      keywordId: row.keywordId,
+      occurrences: Number(row.occurrences),
+    }));
+  }
 }

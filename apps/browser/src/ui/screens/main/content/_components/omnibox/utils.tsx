@@ -108,6 +108,7 @@ export type OmniboxSuggestionItem = {
   label?: string; // The value to be displayed in the input (may be different from the value for searches) (base-ui default key)
   suggestionLabel?: string | ReactNode; // The label to be displayed in the suggestion
   suggestionIcon?: ReactNode; // The icon to be displayed in the suggestion
+  unselectable?: boolean; // If true, don't show hover/highlight styles and ignore clicks etc.
 };
 
 export function useOmniboxSuggestions(
@@ -129,27 +130,28 @@ export function useOmniboxSuggestions(
 
   const debouncedInput = useDebouncedValue(input, 150);
 
+  // Fetch suggestions when debounced input changes
   useEffect(() => {
+    console.log(
+      `[useOmniboxSuggestions] Fetching suggestions for: "${debouncedInput}"`,
+    );
     getSuggestions(debouncedInput).then((suggestions) => {
+      console.log(
+        `[useOmniboxSuggestions] Received ${suggestions.historyEntries.length} history entries, ${suggestions.searchTerms.length} search terms for input: "${debouncedInput}"`,
+      );
       setSuggestions(suggestions);
     });
   }, [debouncedInput]);
-  useEffect(() => {});
 
   const resetSuggestions = useCallback(() => {
     setSuggestions(null);
   }, []);
 
   const groups = useMemo(() => {
-    if (input.trim() === '') {
-      return [];
-    }
-
-    const inputType = categorizeUrlInput(input);
+    const isEmptyInput = input.trim() === '';
+    const inputType = isEmptyInput ? 'search' : categorizeUrlInput(input);
 
     const changed = currentUrl !== input;
-
-    const dummy = true;
 
     const engine = (() => {
       if (searchEngineKeyword) {
@@ -163,6 +165,69 @@ export function useOmniboxSuggestions(
         return searchEngines.find((e) => e.id === defaultEngineId);
       }
     })();
+
+    // When input is empty, only show default suggestions (most visited & frequent searches)
+    if (isEmptyInput) {
+      const items: OmniboxSuggestionGroup[] = [
+        {
+          items: [
+            {
+              type: 'search-suggestion' as const,
+              value: '',
+              label: '',
+              suggestionLabel: (
+                <span className="text-muted-foreground">
+                  Search or enter a URL
+                </span>
+              ),
+              suggestionIcon: (
+                <IconMagnifierFill18 className="size-4 text-muted-foreground" />
+              ),
+              unselectable: true,
+            },
+          ],
+        },
+        {
+          label: 'Most visited',
+          items:
+            suggestions?.historyEntries.map((entry) => ({
+              type: 'past-page' as const,
+              value: entry.url,
+              label: entry.url,
+              suggestionLabel: (
+                <span className="truncate">
+                  <strong className="max-w-1/2 truncate">{entry.title}</strong>{' '}
+                  <span className="text-muted-foreground">{entry.url}</span>
+                </span>
+              ),
+              suggestionIcon:
+                entry.faviconUrl?.length > 0 ? (
+                  <img src={entry.faviconUrl} alt="" className="size-4" />
+                ) : (
+                  <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
+                ),
+            })) ?? [],
+        },
+        ...(engine
+          ? [
+              {
+                label: 'Frequent searches',
+                items:
+                  suggestions?.searchTerms.map((entry) => ({
+                    type: 'past-search' as const,
+                    value: getSearchUrl(entry.term, engine),
+                    label: entry.term,
+                    suggestionLabel: <strong>{entry.term}</strong>,
+                    suggestionIcon: (
+                      <IconMagnifierFill18 className="size-4 text-muted-foreground" />
+                    ),
+                  })) ?? [],
+              },
+            ]
+          : []),
+      ];
+      return items;
+    }
 
     const items: OmniboxSuggestionGroup[] = [
       ...(!changed && currentUrl && currentUrl.length > 0
@@ -233,34 +298,28 @@ export function useOmniboxSuggestions(
             },
           ]
         : []),
-      ...(dummy
-        ? [
-            {
-              label: 'Recent pages',
-              items:
-                suggestions?.historyEntries.map((entry) => ({
-                  type: 'past-page' as const,
-                  value: entry.url,
-                  label: entry.url,
-                  suggestionLabel: (
-                    <span className="truncate">
-                      <strong className="max-w-1/2 truncate">
-                        {entry.title}
-                      </strong>{' '}
-                      <span className="text-muted-foreground">{entry.url}</span>
-                    </span>
-                  ),
-                  suggestionIcon:
-                    entry.faviconUrl?.length > 0 ? (
-                      <img src={entry.faviconUrl} alt="" className="size-4" />
-                    ) : (
-                      <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
-                    ),
-                })) ?? [],
-            },
-          ]
-        : []),
-      ...(dummy && engine
+      {
+        label: 'Recent pages',
+        items:
+          suggestions?.historyEntries.map((entry) => ({
+            type: 'past-page' as const,
+            value: entry.url,
+            label: entry.url,
+            suggestionLabel: (
+              <span className="truncate">
+                <strong className="max-w-1/2 truncate">{entry.title}</strong>{' '}
+                <span className="text-muted-foreground">{entry.url}</span>
+              </span>
+            ),
+            suggestionIcon:
+              entry.faviconUrl?.length > 0 ? (
+                <img src={entry.faviconUrl} alt="" className="size-4" />
+              ) : (
+                <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
+              ),
+          })) ?? [],
+      },
+      ...(engine
         ? [
             {
               label: 'Recent searches',
