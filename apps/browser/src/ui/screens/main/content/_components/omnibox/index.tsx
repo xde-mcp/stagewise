@@ -70,6 +70,11 @@ export const Omnibox = ({
     }
   }, [displayedTabUrl, tab?.isLoading]);
 
+  // Close omnibox when the active tab changes
+  useEffect(() => {
+    setIsOmniboxOpen(false);
+  }, [tabId]);
+
   const { groups: suggestionGroups, resetSuggestions } = useOmniboxSuggestions(
     displayedTabUrl,
     inputValue,
