@@ -10,7 +10,7 @@ import type { DragHandleProps } from './types';
 import type { WidgetId } from '@shared/karton-contracts/ui/shared-types';
 import { usePanelSettings } from '../hooks';
 
-const MIN_PANEL_HEIGHT = 8 * 4;
+const MIN_PANEL_HEIGHT = 20 * 4;
 const MAX_PANEL_HEIGHT = 2000;
 
 export type PanelContainerProps = {
@@ -251,7 +251,7 @@ export function PanelContainer(props: PanelContainerProps) {
       {isOpen && (
         <div className="group/resize flex min-w-0 flex-1 flex-col">
           {/* Title row - sits next to the icon */}
-          <h3 className="shrink-0 p-2 pb-0 font-medium text-muted-foreground text-sm">
+          <h3 className="shrink-0 p-2 pb-2 font-medium text-muted-foreground text-sm">
             {props.title ?? props.ariaLabel}
           </h3>
           {/* Resizable content area */}

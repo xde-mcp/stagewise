@@ -26,6 +26,7 @@ import { FaviconService } from './services/favicon';
 import { WebDataService } from './services/webdata';
 import { DownloadsService } from './services/download-manager';
 import { AutoUpdateService } from './services/auto-update';
+import { DevToolAPIService } from './services/dev-tool-api';
 import {
   DownloadState,
   type DownloadSpeedDataPoint,
@@ -604,6 +605,13 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   // Start remaining services that are irrelevant to non-regular operation of the app.
   const filePickerService = await FilePickerService.create(logger, uiKarton);
+
+  // DevToolAPIService handles devtools-related functionality and state
+  const _devToolAPIService = await DevToolAPIService.create(
+    logger,
+    uiKarton,
+    windowLayoutService,
+  );
 
   // URIHandlerService registers the app as the default protocol client for stagewise://
   // URL handling is done in main.ts via setupUrlHandlers() and handleCommandLineUrls()

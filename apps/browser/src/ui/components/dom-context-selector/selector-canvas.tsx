@@ -1,11 +1,12 @@
-import {
-  type MouseEventHandler,
-  useCallback,
-  type WheelEventHandler,
-} from 'react';
-import { cn } from '@/utils';
+import { useEffect, useRef } from 'react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useOverlayAccess, type AccessHandle } from '@/contexts';
 
+/**
+ * DOMContextSelector uses the unified overlay system to capture mouse events
+ * when element selection mode is active. It requests exclusive access to
+ * prevent other tools from interfering.
+ */
 export function DOMContextSelector() {
   const contextSelectionActive = useKartonState(
     (s) => s.browser.contextSelectionMode,
@@ -25,90 +26,99 @@ export function DOMContextSelector() {
     (p) => p.browser.contextSelection.selectHoveredElement,
   );
 
-  const handleSelectorMouseMove = useCallback<
-    MouseEventHandler<HTMLDivElement>
-  >(
-    (event) => {
-      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-      const x = Math.floor(event.clientX - rect.left);
-      const y = Math.floor(event.clientY - rect.top);
+  const { requestAccess, releaseAccess, overlayRef } = useOverlayAccess();
+  const handleRef = useRef<AccessHandle | null>(null);
 
-      setMouseCoordinates(x, y);
-    },
-    [setMouseCoordinates],
-  );
+  // Request exclusive access when context selection becomes active
+  useEffect(() => {
+    if (contextSelectionActive && viewportSize) {
+      // Request exclusive access
+      const handle = requestAccess({
+        exclusive: true,
+        cursor: 'copy',
+        handlers: {
+          mousemove: (e) => {
+            const overlay = overlayRef.current;
+            if (!overlay || !viewportSize) return;
 
-  const handleSelectorMouseWheel = useCallback<
-    WheelEventHandler<HTMLDivElement>
-  >(
-    (event) => {
-      passthroughWheelEvent({
-        type: 'wheel',
-        x: event.clientX,
-        y: event.clientY,
-        deltaX: event.deltaX,
-        deltaY: event.deltaY,
+            const overlayRect = overlay.getBoundingClientRect();
+            const rawX = e.originalEvent.clientX - overlayRect.left;
+            const rawY = e.originalEvent.clientY - overlayRect.top;
+
+            // Adjust coordinates relative to the viewport position within the overlay
+            const x = Math.floor(rawX - viewportSize.left);
+            const y = Math.floor(rawY - viewportSize.top);
+
+            // Only send coordinates if within viewport bounds
+            if (
+              x >= 0 &&
+              y >= 0 &&
+              x < viewportSize.width &&
+              y < viewportSize.height
+            ) {
+              setMouseCoordinates(x, y);
+            }
+          },
+          mouseleave: () => {
+            clearMouseCoordinates();
+          },
+          wheel: (e) => {
+            const overlay = overlayRef.current;
+            if (!overlay) return;
+
+            const wheelEvent = e.originalEvent as React.WheelEvent;
+            passthroughWheelEvent({
+              type: 'wheel',
+              x: wheelEvent.clientX,
+              y: wheelEvent.clientY,
+              deltaX: wheelEvent.deltaX,
+              deltaY: wheelEvent.deltaY,
+            });
+          },
+          click: (e) => {
+            selectHoveredElement();
+            e.stopPropagation();
+          },
+          mousedown: (e) => {
+            // Prevent focus switching
+            e.originalEvent.preventDefault();
+            e.stopPropagation();
+          },
+        },
       });
-    },
-    [passthroughWheelEvent],
-  );
 
-  const handleSelectorMouseClick = useCallback<
-    MouseEventHandler<HTMLDivElement>
-  >(() => {
-    selectHoveredElement();
-  }, [selectHoveredElement]);
+      if (handle) {
+        handleRef.current = handle;
+      }
+    } else {
+      // Release when context selection becomes inactive
+      if (handleRef.current) {
+        releaseAccess(handleRef.current);
+        handleRef.current = null;
+      }
+    }
+  }, [
+    contextSelectionActive,
+    viewportSize,
+    requestAccess,
+    releaseAccess,
+    overlayRef,
+    setMouseCoordinates,
+    clearMouseCoordinates,
+    passthroughWheelEvent,
+    selectHoveredElement,
+  ]);
 
-  const handleOverlayMouseDown = useCallback<MouseEventHandler<HTMLDivElement>>(
-    (e) => {
-      // Prevent focus switching to the tab by preventing default behavior
-      e.preventDefault();
-      e.stopPropagation();
-    },
-    [],
-  );
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (handleRef.current) {
+        releaseAccess(handleRef.current);
+        handleRef.current = null;
+      }
+    };
+  }, [releaseAccess]);
 
-  const handleOverlayClick = useCallback<MouseEventHandler<HTMLDivElement>>(
-    (e) => {
-      // Prevent focus switching to the tab
-      e.preventDefault();
-      e.stopPropagation();
-    },
-    [],
-  );
-
-  return (
-    <>
-      {/* Full-tab overlay to prevent focus switching */}
-      {contextSelectionActive && (
-        <div
-          className={cn('pointer-events-auto absolute inset-0 z-50 size-full')}
-          data-element-selector-overlay
-          onMouseDown={handleOverlayMouseDown}
-          onClick={handleOverlayClick}
-          onFocus={(e) => e.preventDefault()}
-        />
-      )}
-
-      {/* Size-adapting selection box */}
-      {contextSelectionActive && viewportSize && (
-        <div
-          id="element-selector-element-canvas"
-          data-element-selector-overlay
-          className="pointer-events-auto absolute z-50 cursor-copy"
-          style={{
-            top: `${viewportSize.top}px`,
-            left: `${viewportSize.left}px`,
-            width: `${viewportSize.width}px`,
-            height: `${viewportSize.height}px`,
-          }}
-          onMouseMove={handleSelectorMouseMove}
-          onMouseLeave={() => clearMouseCoordinates()}
-          onWheel={handleSelectorMouseWheel}
-          onClick={handleSelectorMouseClick}
-          onMouseDown={(e) => e.preventDefault()}
-        />
-      )}
-    </>
-  );
+  // This component no longer renders its own overlay - it uses the unified system
+  return null;
 }

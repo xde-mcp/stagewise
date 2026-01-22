@@ -760,6 +760,32 @@ export type KartonContract = {
           open: (tabId?: string) => Promise<void>;
           close: (tabId?: string) => Promise<void>;
         };
+        /**
+         * Capture a screenshot of a tab using the Chrome DevTools Protocol.
+         * Returns base64-encoded image data (without data URL prefix).
+         */
+        getScreenshot: (options?: {
+          /** The tab ID to capture. If not provided, uses the active tab. */
+          tabId?: string;
+          /** Image format (default: 'png') */
+          format?: 'png' | 'jpeg' | 'webp';
+          /** Image quality (0-100) for jpeg/webp formats (default: 80) */
+          quality?: number;
+          /** Capture the full page (scrollable area) instead of just the viewport */
+          fullPage?: boolean;
+          /** Clip area to capture (in CSS pixels) */
+          clip?: {
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+          };
+        }) => Promise<{
+          success: boolean;
+          /** Base64-encoded image data (without data URL prefix) */
+          data?: string;
+          error?: string;
+        }>;
       };
       setAudioMuted: (muted: boolean, tabId?: string) => Promise<void>;
       toggleAudioMuted: (tabId?: string) => Promise<void>;

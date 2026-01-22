@@ -30,6 +30,8 @@ import { SearchBar } from './control-buttons/search-bar';
 import { ResourceRequestsControlButton } from './control-buttons/resource-requests';
 import { DownloadsControlButton } from './control-buttons/downloads';
 import { DOMContextSelector } from '@/components/dom-context-selector/selector-canvas';
+import { WebContentsOverlay } from '@/components/web-contents-overlay';
+import { WebContentsOverlayProvider } from '@/contexts';
 import { BasicAuthDialog } from './basic-auth-dialog';
 import { DevToolbar, useHasOpenPanel, useToolbarWidth } from './dev-toolbar';
 
@@ -171,67 +173,72 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
             <TooltipContent side="bottom">Open developer tools</TooltipContent>
           </Tooltip>
         </div>
-        {/* Content area */}
-        <ResizablePanelGroup
-          direction="horizontal"
-          className={cn(
-            'overflow-visible! size-full rounded-lg p-2',
-            tab?.devTools.open && 'pr-0',
-          )}
-          onLayout={handlePanelLayoutChange}
-        >
-          {/* Web content panel */}
-          <ResizablePanel
-            order={1}
-            defaultSize={100}
-            className="overflow-visible!"
+        {/* Content area - wrapped with WebContentsOverlayProvider for overlay access */}
+        <WebContentsOverlayProvider>
+          <ResizablePanelGroup
+            direction="horizontal"
+            className={cn(
+              'overflow-visible! size-full rounded-lg p-2',
+              tab?.devTools.open && 'pr-0',
+            )}
+            onLayout={handlePanelLayoutChange}
           >
-            <div className="flex size-full flex-col items-center justify-center overflow-hidden rounded-sm shadow-[0_0_6px_0_rgba(0,0,0,0.08),0_-6px_48px_-24px_rgba(0,0,0,0.15)] ring-1 ring-border-subtle">
-              <div
-                ref={devAppPreviewContainerRef}
-                id={`dev-app-preview-container-${tabId}`}
-                className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg"
-              >
-                {isActive && !isInternalPage && <DOMContextSelector />}
-                {isActive && tab?.authenticationRequest && (
-                  <BasicAuthDialog
-                    request={tab.authenticationRequest}
-                    container={devAppPreviewContainerRef}
+            {/* Web content panel */}
+            <ResizablePanel
+              order={1}
+              defaultSize={100}
+              className="overflow-visible!"
+            >
+              <div className="flex size-full flex-col items-center justify-center overflow-hidden rounded-[3.5px] ring-1 ring-derived-subtle">
+                <div
+                  ref={devAppPreviewContainerRef}
+                  id={`dev-app-preview-container-${tabId}`}
+                  className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg"
+                >
+                  {/* Unified web contents overlay for devtools and DOM selection */}
+                  {isActive && !isInternalPage && <WebContentsOverlay />}
+                  {/* DOM context selector - uses the unified overlay via hook */}
+                  {isActive && !isInternalPage && <DOMContextSelector />}
+                  {isActive && tab?.authenticationRequest && (
+                    <BasicAuthDialog
+                      request={tab.authenticationRequest}
+                      container={devAppPreviewContainerRef}
+                    />
+                  )}
+                </div>
+              </div>
+            </ResizablePanel>
+
+            {/* Dev toolbar */}
+            {tab?.devTools.open && (
+              <>
+                {hasOpenPanel && (
+                  <ResizableHandle
+                    className="ml-1"
+                    onPointerUp={handlePointerUp}
                   />
                 )}
-              </div>
-            </div>
-          </ResizablePanel>
-
-          {/* Dev toolbar */}
-          {tab?.devTools.open && (
-            <>
-              {hasOpenPanel && (
-                <ResizableHandle
-                  className="ml-1"
-                  onPointerUp={handlePointerUp}
-                />
-              )}
-              <ResizablePanel
-                ref={toolbarPanelRef}
-                order={2}
-                defaultSize={
-                  hasOpenPanel
-                    ? (localToolbarSize ?? persistedToolbarWidth ?? 25)
-                    : 0
-                }
-                minSize={0}
-                maxSize={100}
-                className={cn(
-                  'overflow-visible! min-w-fit max-w-fit',
-                  hasOpenPanel ? 'min-w-64 max-w-1/2' : '',
-                )}
-              >
-                <DevToolbar tab={tab} />
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
+                <ResizablePanel
+                  ref={toolbarPanelRef}
+                  order={2}
+                  defaultSize={
+                    hasOpenPanel
+                      ? (localToolbarSize ?? persistedToolbarWidth ?? 25)
+                      : 0
+                  }
+                  minSize={0}
+                  maxSize={100}
+                  className={cn(
+                    'overflow-visible! min-w-fit max-w-fit',
+                    hasOpenPanel ? 'min-w-64 max-w-1/2' : '',
+                  )}
+                >
+                  <DevToolbar tab={tab} />
+                </ResizablePanel>
+              </>
+            )}
+          </ResizablePanelGroup>
+        </WebContentsOverlayProvider>
       </div>
     );
   },

@@ -486,15 +486,7 @@ export class WindowLayoutService extends DisposableService {
     this.uiController.on('goto', this.handleGoto);
     this.uiController.on('goBack', this.handleGoBack);
     this.uiController.on('goForward', this.handleGoForward);
-    this.uiController.on('toggleDevTools', this.handleToggleDevTools);
-    this.uiController.on('openDevTools', this.handleOpenDevTools);
-    this.uiController.on('closeDevTools', this.handleCloseDevTools);
-    this.uiController.on(
-      'toggleChromeDevTools',
-      this.handleToggleChromeDevTools,
-    );
-    this.uiController.on('openChromeDevTools', this.handleOpenChromeDevTools);
-    this.uiController.on('closeChromeDevTools', this.handleCloseChromeDevTools);
+    // DevTools events are handled by DevToolAPIService
     this.uiController.on('setAudioMuted', this.handleSetAudioMuted);
     this.uiController.on('toggleAudioMuted', this.handleToggleAudioMuted);
     this.uiController.on('setColorScheme', this.handleSetColorScheme);
@@ -582,6 +574,20 @@ export class WindowLayoutService extends DisposableService {
   private get activeTab(): TabController | undefined {
     if (!this.activeTabId) return undefined;
     return this.tabs[this.activeTabId];
+  }
+
+  /**
+   * Get a tab by ID, or the active tab if no ID is provided.
+   * Used by services like DevToolAPIService to access tabs.
+   *
+   * @param tabId - Optional tab ID. If not provided, returns the active tab.
+   * @returns The TabController instance or undefined if not found
+   */
+  public getTab(tabId?: string): TabController | undefined {
+    if (tabId) {
+      return this.tabs[tabId];
+    }
+    return this.activeTab;
   }
 
   private handleCreateTab = async (
@@ -1191,47 +1197,7 @@ export class WindowLayoutService extends DisposableService {
     tab?.goForward();
   };
 
-  private handleToggleDevTools = async (tabId?: string) => {
-    this.logger.debug(
-      `[WindowLayoutService] handleToggleDevTools called with tabId: ${tabId}`,
-    );
-    const tab = tabId ? this.tabs[tabId] : this.activeTab;
-    tab?.toggleDevTools();
-  };
-
-  private handleOpenDevTools = async (tabId?: string) => {
-    this.logger.debug(
-      `[WindowLayoutService] handleOpenDevTools called with tabId: ${tabId}`,
-    );
-    const tab = tabId ? this.tabs[tabId] : this.activeTab;
-    tab?.openDevTools();
-  };
-
-  private handleCloseDevTools = async (tabId?: string) => {
-    this.logger.debug(
-      `[WindowLayoutService] handleCloseDevTools called with tabId: ${tabId}`,
-    );
-    const tab = tabId ? this.tabs[tabId] : this.activeTab;
-    tab?.closeDevTools();
-  };
-
-  private handleToggleChromeDevTools = async (tabId?: string) => {
-    this.logger.debug(
-      `[WindowLayoutService] handleToggleDevTools called with tabId: ${tabId}`,
-    );
-    const tab = tabId ? this.tabs[tabId] : this.activeTab;
-    tab?.toggleChromeDevTools();
-  };
-
-  private handleOpenChromeDevTools = async (tabId?: string) => {
-    const tab = tabId ? this.tabs[tabId] : this.activeTab;
-    tab?.openChromeDevTools();
-  };
-
-  private handleCloseChromeDevTools = async (tabId?: string) => {
-    const tab = tabId ? this.tabs[tabId] : this.activeTab;
-    tab?.closeChromeDevTools();
-  };
+  // DevTools handlers are now in DevToolAPIService
 
   private handleSetAudioMuted = async (muted: boolean, tabId?: string) => {
     const tab = tabId ? this.tabs[tabId] : this.activeTab;
