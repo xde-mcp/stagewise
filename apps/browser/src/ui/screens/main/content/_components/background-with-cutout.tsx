@@ -25,78 +25,64 @@ export function BackgroundWithCutout({
     const parentElement = parentRef.current;
     if (!parentElement) return;
 
-    let resizeObserver: ResizeObserver | null = null;
-    let targetElement: HTMLElement | null = null;
+    let animationFrameId: number | null = null;
+    let lastBounds: typeof bounds = null;
 
-    const updateBounds = () => {
+    // Check if bounds have changed
+    const boundsEqual = (a: typeof bounds, b: typeof bounds): boolean => {
+      if (a === null && b === null) return true;
+      if (a === null || b === null) return false;
+      return (
+        a.x === b.x &&
+        a.y === b.y &&
+        a.width === b.width &&
+        a.height === b.height &&
+        a.parentWidth === b.parentWidth &&
+        a.parentHeight === b.parentHeight
+      );
+    };
+
+    const checkBounds = () => {
       const target = document.getElementById(targetElementId);
       const parent = parentRef.current;
 
       if (!target || !parent) {
-        setBounds(null);
+        if (lastBounds !== null) {
+          lastBounds = null;
+          setBounds(null);
+        }
+        animationFrameId = requestAnimationFrame(checkBounds);
         return;
       }
 
       const targetRect = target.getBoundingClientRect();
       const parentRect = parent.getBoundingClientRect();
 
-      setBounds({
+      const newBounds = {
         x: targetRect.x - parentRect.x,
         y: targetRect.y - parentRect.y,
         width: targetRect.width,
         height: targetRect.height,
         parentWidth: parentRect.width,
         parentHeight: parentRect.height,
-      });
-    };
+      };
 
-    const setupObservers = () => {
-      targetElement = document.getElementById(targetElementId);
-
-      if (!targetElement) {
-        setBounds(null);
-        return;
+      // Only update state if bounds actually changed
+      if (!boundsEqual(newBounds, lastBounds)) {
+        lastBounds = newBounds;
+        setBounds(newBounds);
       }
 
-      updateBounds();
-
-      // Setup ResizeObserver for the target element
-      resizeObserver = new ResizeObserver(updateBounds);
-      resizeObserver.observe(targetElement);
-      resizeObserver.observe(parentElement);
+      animationFrameId = requestAnimationFrame(checkBounds);
     };
 
-    // Initial setup
-    setupObservers();
-
-    // Watch for the target element being added/removed from the DOM
-    const mutationObserver = new MutationObserver(() => {
-      const currentTarget = document.getElementById(targetElementId);
-
-      // If element appeared and we don't have observers set up
-      if (currentTarget && !resizeObserver) setupObservers();
-      // If element disappeared and we have observers
-      else if (!currentTarget && resizeObserver) {
-        resizeObserver.disconnect();
-        resizeObserver = null;
-        targetElement = null;
-        setBounds(null);
-      }
-    });
-
-    // Observe the entire document body for changes
-    mutationObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    window.addEventListener('resize', updateBounds);
+    // Start the animation frame loop
+    animationFrameId = requestAnimationFrame(checkBounds);
 
     return () => {
-      mutationObserver.disconnect();
-      if (resizeObserver) resizeObserver.disconnect();
-
-      window.removeEventListener('resize', updateBounds);
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
   }, [targetElementId]);
 
