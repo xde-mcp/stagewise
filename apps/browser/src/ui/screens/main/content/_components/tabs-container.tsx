@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AgentPreviewBadge } from './agent-preview-badge';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { IconBrush2Fill18 } from 'nucleo-ui-fill-18';
+import { IconBrush2FillDuo18 } from 'nucleo-ui-fill-duo-18';
 import {
   Tooltip,
   TooltipContent,
@@ -375,7 +375,7 @@ export function TabsContainer({
                 <span className="mr-1 text-muted-foreground text-xs opacity-0 group-hover:opacity-100">
                   ⌘ ↑ W
                 </span>
-                <IconBrush2Fill18 className="size-3.5" />
+                <IconBrush2FillDuo18 className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

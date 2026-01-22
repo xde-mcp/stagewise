@@ -23,6 +23,8 @@ import type {
   HostPermissionException,
   DefaultPermissionSettings,
   HostPermissionOverrides,
+  WidgetId,
+  DevToolbarOriginSettings,
 } from './shared-types';
 import {
   defaultUserPreferences,
@@ -97,6 +99,9 @@ export type {
   HostPermissionOverrides,
 };
 export { PermissionSetting, configurablePermissionTypes };
+
+// Dev toolbar types
+export type { WidgetId, DevToolbarOriginSettings };
 
 export type History = ChatMessage[];
 
@@ -413,7 +418,10 @@ export type TabState = {
     canGoBack: boolean;
     canGoForward: boolean;
   };
-  devToolsOpen: boolean;
+  devTools: {
+    open: boolean;
+    chromeOpen: boolean;
+  };
   screenshot: string | null; // Data URL of the tab screenshot
   search: {
     text: string;
@@ -602,6 +610,9 @@ export type AppState = {
 
   // Available search engines (synced from WebDataService via PreferencesService)
   searchEngines: SearchEngine[];
+
+  // Current system theme (light or dark) based on OS preference
+  systemTheme: 'light' | 'dark';
 };
 
 export type AuthStatus =
@@ -740,9 +751,16 @@ export type KartonContract = {
       ) => Promise<void>;
       goBack: (tabId?: string) => Promise<void>;
       goForward: (tabId?: string) => Promise<void>;
-      toggleDevTools: (tabId?: string) => Promise<void>;
-      openDevTools: (tabId?: string) => Promise<void>;
-      closeDevTools: (tabId?: string) => Promise<void>;
+      devTools: {
+        toggle: (tabId?: string) => Promise<void>;
+        open: (tabId?: string) => Promise<void>;
+        close: (tabId?: string) => Promise<void>;
+        chrome: {
+          toggle: (tabId?: string) => Promise<void>;
+          open: (tabId?: string) => Promise<void>;
+          close: (tabId?: string) => Promise<void>;
+        };
+      };
       setAudioMuted: (muted: boolean, tabId?: string) => Promise<void>;
       toggleAudioMuted: (tabId?: string) => Promise<void>;
       setColorScheme: (scheme: ColorScheme, tabId?: string) => Promise<void>;
@@ -853,6 +871,19 @@ export type KartonContract = {
       /** Update user preferences by applying Immer patches */
       update: (patches: Patch[]) => Promise<void>;
     };
+    devToolbar: {
+      /** Update the global widget order */
+      updateWidgetOrder: (order: WidgetId[]) => Promise<void>;
+      /** Update settings for a specific origin */
+      updateOriginSettings: (
+        origin: string,
+        settings: Partial<Omit<DevToolbarOriginSettings, 'lastAccessedAt'>>,
+      ) => Promise<void>;
+      /** Get or create settings for an origin (creates from last used origin if new) */
+      getOrCreateOriginSettings: (
+        origin: string,
+      ) => Promise<DevToolbarOriginSettings>;
+    };
     /** Get omnibox suggestions based on input (history entries and search terms) */
     getOmniboxSuggestions: (input: string) => Promise<OmniboxSuggestions>;
   };
@@ -919,4 +950,5 @@ export const defaultState: KartonContract['state'] = {
   },
   preferences: defaultUserPreferences,
   searchEngines: [],
+  systemTheme: 'light', // Will be set correctly by backend on init
 };

@@ -35,19 +35,28 @@ export const TooltipTrigger = ({
 export const TooltipContent = ({
   children,
   side = 'top',
+  align = 'center',
+  alignOffset = 0,
+  sideOffset = 2,
 }: {
   children: React.ReactNode;
   side?: 'top' | 'bottom' | 'left' | 'right';
+  align?: 'start' | 'center' | 'end';
+  alignOffset?: number;
+  sideOffset?: number;
 }) => {
   return (
     <BaseTooltip.Portal>
       <BaseTooltip.Positioner
-        sideOffset={2}
-        alignOffset={2}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
         side={side}
+        align={align}
         className="z-50"
       >
-        <BaseTooltip.Popup className="rounded-md bg-background px-1.5 py-0.5 text-foreground text-xs shadow-md ring-1 ring-border-subtle">
+        <BaseTooltip.Popup
+          className={`origin-(--transform-origin) rounded-md bg-background px-1.5 py-0.5 text-foreground text-xs shadow-md ring-1 ring-border-subtle transition-[transform,scale,opacity] duration-150 ease-out data-ending-style:scale-90 data-starting-style:scale-90 data-ending-style:opacity-0 data-starting-style:opacity-0`}
+        >
           {children}
         </BaseTooltip.Popup>
       </BaseTooltip.Positioner>

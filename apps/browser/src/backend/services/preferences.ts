@@ -5,10 +5,14 @@ import type { PagesService } from './pages';
 import {
   type UserPreferences,
   type ConfigurablePermissionType,
+  type WidgetId,
+  type DevToolbarOriginSettings,
   userPreferencesSchema,
   defaultUserPreferences,
   PermissionSetting,
   configurablePermissionTypes,
+  DEFAULT_WIDGET_ORDER,
+  DEV_TOOLBAR_MAX_ORIGINS,
 } from '@shared/karton-contracts/ui/shared-types';
 import { readPersistedData, writePersistedData } from '../utils/persisted-data';
 import { DisposableService } from './disposable';
@@ -142,6 +146,108 @@ export class PreferencesService extends DisposableService {
       'preferences.update',
       async (_callingClientId: string, patches: Patch[]) => {
         await this.update(patches);
+      },
+    );
+
+    // Dev toolbar procedures
+    this.uiKarton.registerServerProcedureHandler(
+      'devToolbar.updateWidgetOrder',
+      async (_callingClientId: string, order: WidgetId[]) => {
+        this.logger.debug('[PreferencesService] Updating widget order', {
+          order,
+        });
+        const patches: Patch[] = [
+          {
+            op: 'replace',
+            path: ['devToolbar', 'widgetOrder'],
+            value: order,
+          },
+        ];
+        await this.update(patches);
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'devToolbar.updateOriginSettings',
+      async (
+        _callingClientId: string,
+        origin: string,
+        settings: Partial<Omit<DevToolbarOriginSettings, 'lastAccessedAt'>>,
+      ) => {
+        this.logger.debug('[PreferencesService] Updating origin settings', {
+          origin,
+          settings,
+        });
+
+        // Ensure origin exists first
+        if (!this.preferences.devToolbar?.originSettings?.[origin]) {
+          await this.getOrCreateOriginSettings(origin);
+        }
+
+        // Build patches for each setting that was provided
+        const patches: Patch[] = [];
+
+        if (settings.panelOpenStates !== undefined) {
+          for (const [widgetId, isOpen] of Object.entries(
+            settings.panelOpenStates,
+          )) {
+            patches.push({
+              op: 'add',
+              path: [
+                'devToolbar',
+                'originSettings',
+                origin,
+                'panelOpenStates',
+                widgetId,
+              ],
+              value: isOpen,
+            });
+          }
+        }
+
+        if (settings.panelHeights !== undefined) {
+          for (const [widgetId, height] of Object.entries(
+            settings.panelHeights,
+          )) {
+            patches.push({
+              op: 'add',
+              path: [
+                'devToolbar',
+                'originSettings',
+                origin,
+                'panelHeights',
+                widgetId,
+              ],
+              value: height,
+            });
+          }
+        }
+
+        if (settings.toolbarWidth !== undefined) {
+          patches.push({
+            op: 'replace',
+            path: ['devToolbar', 'originSettings', origin, 'toolbarWidth'],
+            value: settings.toolbarWidth,
+          });
+        }
+
+        // Update lastAccessedAt
+        patches.push({
+          op: 'replace',
+          path: ['devToolbar', 'originSettings', origin, 'lastAccessedAt'],
+          value: Date.now(),
+        });
+
+        if (patches.length > 0) {
+          await this.update(patches);
+        }
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'devToolbar.getOrCreateOriginSettings',
+      async (_callingClientId: string, origin: string) => {
+        return this.getOrCreateOriginSettings(origin);
       },
     );
 
@@ -375,6 +481,142 @@ export class PreferencesService extends DisposableService {
     );
   }
 
+  // ===========================================================================
+  // Dev Toolbar Helper Methods
+  // ===========================================================================
+
+  /**
+   * Merges stored widget order with defaults:
+   * - Keeps existing widgets in user's order
+   * - Adds new widgets at their default position
+   * - Removes widgets that no longer exist
+   */
+  private mergeWidgetOrder(storedOrder: WidgetId[]): WidgetId[] {
+    const result: WidgetId[] = [];
+    const storedSet = new Set(storedOrder);
+    const defaultSet = new Set(DEFAULT_WIDGET_ORDER);
+
+    // Keep existing widgets in user's order (if they still exist)
+    for (const id of storedOrder) {
+      if (defaultSet.has(id)) {
+        result.push(id);
+      }
+    }
+
+    // Add new widgets at their default position
+    for (let i = 0; i < DEFAULT_WIDGET_ORDER.length; i++) {
+      const id = DEFAULT_WIDGET_ORDER[i];
+      if (!storedSet.has(id)) {
+        // Find the position to insert: after the last existing item that comes before it in defaults
+        let insertIndex = result.length;
+        for (let j = i - 1; j >= 0; j--) {
+          const prevInDefault = DEFAULT_WIDGET_ORDER[j];
+          const prevIndex = result.indexOf(prevInDefault);
+          if (prevIndex !== -1) {
+            insertIndex = prevIndex + 1;
+            break;
+          }
+        }
+        result.splice(insertIndex, 0, id);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get the dev toolbar widget order, merging with defaults.
+   */
+  public getDevToolbarWidgetOrder(): WidgetId[] {
+    const stored =
+      this.preferences.devToolbar?.widgetOrder ?? DEFAULT_WIDGET_ORDER;
+    return this.mergeWidgetOrder(stored);
+  }
+
+  /**
+   * Get or create origin settings for a specific origin.
+   * If the origin doesn't exist, creates settings from the last used origin.
+   * Handles LRU eviction if there are too many origins.
+   */
+  public async getOrCreateOriginSettings(
+    origin: string,
+  ): Promise<DevToolbarOriginSettings> {
+    this.assertNotDisposed();
+
+    const existingSettings =
+      this.preferences.devToolbar?.originSettings?.[origin];
+
+    if (existingSettings) {
+      // Update lastAccessedAt and lastUsedOrigin
+      const patches: Patch[] = [
+        {
+          op: 'replace',
+          path: ['devToolbar', 'originSettings', origin, 'lastAccessedAt'],
+          value: Date.now(),
+        },
+        {
+          op: 'replace',
+          path: ['devToolbar', 'lastUsedOrigin'],
+          value: origin,
+        },
+      ];
+      await this.update(patches);
+      return { ...existingSettings, lastAccessedAt: Date.now() };
+    }
+
+    // Create new settings from last used origin or defaults
+    const lastUsedOrigin = this.preferences.devToolbar?.lastUsedOrigin;
+    const lastUsedSettings = lastUsedOrigin
+      ? this.preferences.devToolbar?.originSettings?.[lastUsedOrigin]
+      : null;
+
+    const newSettings: DevToolbarOriginSettings = {
+      panelOpenStates: lastUsedSettings?.panelOpenStates
+        ? { ...lastUsedSettings.panelOpenStates }
+        : {},
+      panelHeights: lastUsedSettings?.panelHeights
+        ? { ...lastUsedSettings.panelHeights }
+        : {},
+      toolbarWidth: lastUsedSettings?.toolbarWidth ?? null,
+      lastAccessedAt: Date.now(),
+    };
+
+    // Check if we need to evict old origins
+    const currentOrigins = Object.entries(
+      this.preferences.devToolbar?.originSettings ?? {},
+    );
+    if (currentOrigins.length >= DEV_TOOLBAR_MAX_ORIGINS) {
+      // Find and remove the oldest origin
+      const sorted = currentOrigins.sort(
+        (a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt,
+      );
+      const oldestOrigin = sorted[0][0];
+      await this.update([
+        {
+          op: 'remove',
+          path: ['devToolbar', 'originSettings', oldestOrigin],
+        },
+      ]);
+    }
+
+    // Add the new origin settings
+    const patches: Patch[] = [
+      {
+        op: 'add',
+        path: ['devToolbar', 'originSettings', origin],
+        value: newSettings,
+      },
+      {
+        op: 'replace',
+        path: ['devToolbar', 'lastUsedOrigin'],
+        value: origin,
+      },
+    ];
+    await this.update(patches);
+
+    return newSettings;
+  }
+
   private notifyListeners(
     newPrefs: UserPreferences,
     oldPrefs: UserPreferences,
@@ -395,6 +637,15 @@ export class PreferencesService extends DisposableService {
     this.logger.debug('[PreferencesService] Tearing down...');
     if (this.uiKarton) {
       this.uiKarton.removeServerProcedureHandler('preferences.update');
+      this.uiKarton.removeServerProcedureHandler(
+        'devToolbar.updateWidgetOrder',
+      );
+      this.uiKarton.removeServerProcedureHandler(
+        'devToolbar.updateOriginSettings',
+      );
+      this.uiKarton.removeServerProcedureHandler(
+        'devToolbar.getOrCreateOriginSettings',
+      );
     }
     this.listeners = [];
     this.logger.debug('[PreferencesService] Teardown complete');

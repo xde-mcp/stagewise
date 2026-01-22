@@ -40,7 +40,7 @@ export function CoreHotkeyBindings({
   const goForward = useKartonProcedure((p) => p.browser.goForward);
   const reload = useKartonProcedure((p) => p.browser.reload);
   const goto = useKartonProcedure((p) => p.browser.goto);
-  const toggleDevTools = useKartonProcedure((p) => p.browser.toggleDevTools);
+  const toggleDevTools = useKartonProcedure((p) => p.browser.devTools.toggle);
   const setZoomPercentage = useKartonProcedure(
     (p) => p.browser.setZoomPercentage,
   );

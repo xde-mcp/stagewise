@@ -72,7 +72,10 @@ export interface TabState {
     canGoBack: boolean;
     canGoForward: boolean;
   };
-  devToolsOpen: boolean;
+  devTools: {
+    open: boolean;
+    chromeOpen: boolean;
+  };
   screenshot: string | null; // Data URL of the tab screenshot
   search: {
     text: string;
@@ -435,7 +438,10 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
         canGoBack: false,
         canGoForward: false,
       },
-      devToolsOpen: false,
+      devTools: {
+        open: false,
+        chromeOpen: false,
+      },
       faviconUrls: [],
       screenshot: null,
       search: null,
@@ -702,15 +708,42 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     }
   }
 
+  public toggleDevTools() {
+    this.updateState({
+      devTools: {
+        open: !this.currentState.devTools.open,
+        chromeOpen: this.currentState.devTools.chromeOpen,
+      },
+    });
+  }
+
   public openDevTools() {
-    this.webContentsView.webContents.openDevTools();
+    this.updateState({
+      devTools: {
+        open: true,
+        chromeOpen: this.currentState.devTools.chromeOpen,
+      },
+    });
   }
 
   public closeDevTools() {
+    this.updateState({
+      devTools: {
+        open: false,
+        chromeOpen: this.currentState.devTools.chromeOpen,
+      },
+    });
+  }
+
+  public openChromeDevTools() {
+    this.webContentsView.webContents.openDevTools();
+  }
+
+  public closeChromeDevTools() {
     this.webContentsView.webContents.closeDevTools();
   }
 
-  public toggleDevTools() {
+  public toggleChromeDevTools() {
     this.webContentsView.webContents.toggleDevTools();
   }
 
@@ -1407,7 +1440,9 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.on('devtools-closed', async () => {
-      this.updateState({ devToolsOpen: false });
+      this.updateState({
+        devTools: { open: this.currentState.devTools.open, chromeOpen: false },
+      });
       this.detachDevToolsDebugger();
       // Immediately update viewport size when DevTools close
       // to transition back to regular viewport tracking (full size)
@@ -1421,7 +1456,9 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.on('devtools-opened', () => {
-      this.updateState({ devToolsOpen: true });
+      this.updateState({
+        devTools: { open: this.currentState.devTools.open, chromeOpen: true },
+      });
       // Attach debugger after a short delay to ensure devToolsWebContents is ready
       setTimeout(() => {
         this.attachDevToolsDebugger();
@@ -1513,7 +1550,10 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     // Only poll viewport when context selection is active OR DevTools are open
     this.viewportTrackingInterval = setInterval(() => {
       // Only poll if context selection is active or DevTools are open
-      if (this.isContextSelectionActive || this.currentState.devToolsOpen) {
+      if (
+        this.isContextSelectionActive ||
+        this.currentState.devTools.chromeOpen
+      ) {
         this.updateViewportInfo().catch((err) => {
           this.logger.debug(
             `[TabController] Failed to update viewport info: ${err}`,
@@ -1623,7 +1663,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       return;
     }
 
-    const isDevToolsOpen = this.currentState.devToolsOpen;
+    const isDevToolsOpen = this.currentState.devTools.chromeOpen;
 
     // Get visualViewport info from main page (needed for scale and layout in all cases)
     let visualViewport: {

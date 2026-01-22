@@ -123,6 +123,26 @@ export const userPreferencesSchema = z.object({
     }),
   /** Website permission settings (defaults and host-specific overrides) */
   permissions: z.lazy(() => permissionsPreferencesSchema),
+  /** Dev toolbar preferences (widget order and per-origin settings) */
+  devToolbar: z
+    .lazy(() => devToolbarPreferencesSchema)
+    .default({
+      widgetOrder: [
+        'console',
+        'dom-inspector',
+        'color-scheme',
+        'device-emulation',
+        'color-tools',
+        'font-tools',
+        'performance-tools',
+        'accessibility-tools',
+        'image-generation-tools',
+        'network-tools',
+        'chrome-devtools',
+      ],
+      originSettings: {},
+      lastUsedOrigin: null,
+    }),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;
@@ -164,6 +184,25 @@ const defaultPermissionsForUserPrefs = {
   },
 };
 
+/** Default dev toolbar preferences - defined inline to avoid circular reference issues */
+const defaultDevToolbarForUserPrefs: DevToolbarPreferences = {
+  widgetOrder: [
+    'console',
+    'dom-inspector',
+    'color-scheme',
+    'device-emulation',
+    'color-tools',
+    'font-tools',
+    'performance-tools',
+    'accessibility-tools',
+    'image-generation-tools',
+    'network-tools',
+    'chrome-devtools',
+  ],
+  originSettings: {},
+  lastUsedOrigin: null,
+};
+
 export const defaultUserPreferences: UserPreferences = {
   privacy: {
     telemetryLevel: 'anonymous',
@@ -176,6 +215,7 @@ export const defaultUserPreferences: UserPreferences = {
     startupPage: { type: 'home' },
   },
   permissions: defaultPermissionsForUserPrefs,
+  devToolbar: defaultDevToolbarForUserPrefs,
 };
 
 /**
@@ -413,3 +453,64 @@ export const permissionsPreferencesSchema = z
 export type PermissionsPreferences = z.infer<
   typeof permissionsPreferencesSchema
 >;
+
+// ============================================================================
+// Dev Toolbar Preferences
+// ============================================================================
+
+export const widgetIdSchema = z.enum([
+  'console',
+  'dom-inspector',
+  'color-scheme',
+  'device-emulation',
+  'color-tools',
+  'font-tools',
+  'performance-tools',
+  'accessibility-tools',
+  'image-generation-tools',
+  'network-tools',
+  'chrome-devtools',
+]);
+export type WidgetId = z.infer<typeof widgetIdSchema>;
+
+export const DEFAULT_WIDGET_ORDER: WidgetId[] = [
+  'console',
+  'dom-inspector',
+  'color-scheme',
+  'device-emulation',
+  'color-tools',
+  'font-tools',
+  'performance-tools',
+  'accessibility-tools',
+  'image-generation-tools',
+  'network-tools',
+  'chrome-devtools',
+];
+
+export const devToolbarOriginSettingsSchema = z.object({
+  // Use z.string() instead of widgetIdSchema for record keys since panels may only have some widgets configured
+  panelOpenStates: z.record(z.string(), z.boolean()).default({}),
+  panelHeights: z.record(z.string(), z.number()).default({}),
+  toolbarWidth: z.number().nullable().default(null),
+  lastAccessedAt: z.number(),
+});
+export type DevToolbarOriginSettings = z.infer<
+  typeof devToolbarOriginSettingsSchema
+>;
+
+export const DEV_TOOLBAR_MAX_ORIGINS = 100;
+
+export const devToolbarPreferencesSchema = z.object({
+  widgetOrder: z.array(widgetIdSchema).default([...DEFAULT_WIDGET_ORDER]),
+  originSettings: z
+    .record(z.string(), devToolbarOriginSettingsSchema)
+    .default({}),
+  lastUsedOrigin: z.string().nullable().default(null),
+});
+export type DevToolbarPreferences = z.infer<typeof devToolbarPreferencesSchema>;
+
+export const defaultDevToolbarPreferences: DevToolbarPreferences = {
+  widgetOrder: [...DEFAULT_WIDGET_ORDER],
+  originSettings: {},
+  lastUsedOrigin: null,
+};

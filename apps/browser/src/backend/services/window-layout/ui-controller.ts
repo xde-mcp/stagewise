@@ -36,6 +36,9 @@ export interface UIControllerEventMap {
   toggleDevTools: [tabId?: string];
   openDevTools: [tabId?: string];
   closeDevTools: [tabId?: string];
+  toggleChromeDevTools: [tabId?: string];
+  openChromeDevTools: [tabId?: string];
+  closeChromeDevTools: [tabId?: string];
   setAudioMuted: [muted: boolean, tabId?: string];
   toggleAudioMuted: [tabId?: string];
   setColorScheme: [scheme: ColorScheme, tabId?: string];
@@ -279,21 +282,39 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
       },
     );
     this.uiKarton.registerServerProcedureHandler(
-      'browser.toggleDevTools',
+      'browser.devTools.toggle',
       async (_callingClientId: string, tabId?: string) => {
         this.emit('toggleDevTools', tabId);
       },
     );
     this.uiKarton.registerServerProcedureHandler(
-      'browser.openDevTools',
+      'browser.devTools.open',
       async (_callingClientId: string, tabId?: string) => {
         this.emit('openDevTools', tabId);
       },
     );
     this.uiKarton.registerServerProcedureHandler(
-      'browser.closeDevTools',
+      'browser.devTools.close',
       async (_callingClientId: string, tabId?: string) => {
         this.emit('closeDevTools', tabId);
+      },
+    );
+    this.uiKarton.registerServerProcedureHandler(
+      'browser.devTools.chrome.toggle',
+      async (_callingClientId: string, tabId?: string) => {
+        this.emit('toggleChromeDevTools', tabId);
+      },
+    );
+    this.uiKarton.registerServerProcedureHandler(
+      'browser.devTools.chrome.open',
+      async (_callingClientId: string, tabId?: string) => {
+        this.emit('openChromeDevTools', tabId);
+      },
+    );
+    this.uiKarton.registerServerProcedureHandler(
+      'browser.devTools.chrome.close',
+      async (_callingClientId: string, tabId?: string) => {
+        this.emit('closeChromeDevTools', tabId);
       },
     );
     this.uiKarton.registerServerProcedureHandler(
@@ -596,9 +617,13 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     this.uiKarton.removeServerProcedureHandler('browser.goto');
     this.uiKarton.removeServerProcedureHandler('browser.goBack');
     this.uiKarton.removeServerProcedureHandler('browser.goForward');
-    this.uiKarton.removeServerProcedureHandler('browser.toggleDevTools');
-    this.uiKarton.removeServerProcedureHandler('browser.openDevTools');
-    this.uiKarton.removeServerProcedureHandler('browser.closeDevTools');
+    this.uiKarton.removeServerProcedureHandler(
+      'browser.devTools.chrome.toggle',
+    );
+    this.uiKarton.removeServerProcedureHandler('browser.devTools.chrome.open');
+    this.uiKarton.removeServerProcedureHandler('browser.devTools.chrome.close');
+    this.uiKarton.removeServerProcedureHandler('browser.devTools.open');
+    this.uiKarton.removeServerProcedureHandler('browser.devTools.close');
     this.uiKarton.removeServerProcedureHandler('browser.setAudioMuted');
     this.uiKarton.removeServerProcedureHandler('browser.toggleAudioMuted');
     this.uiKarton.removeServerProcedureHandler('browser.setColorScheme');

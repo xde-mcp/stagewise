@@ -253,6 +253,10 @@ export class WindowLayoutService extends DisposableService {
     // Listen for OS theme changes and update window colors accordingly
     nativeTheme.on('updated', () => {
       this.applyThemeColors();
+      // Update the systemTheme in state so UI can react to OS theme changes
+      this.uiKarton.setState((draft) => {
+        draft.systemTheme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+      });
     });
 
     app.on('second-instance', () => {
@@ -277,6 +281,7 @@ export class WindowLayoutService extends DisposableService {
       };
       draft.appInfo.isFullScreen = this.baseWindow?.isFullScreen() ?? false;
       draft.appInfo.otherVersions = { ...process.versions, modules: undefined };
+      draft.systemTheme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
     });
 
     // Initialize ChatStateController
@@ -484,6 +489,12 @@ export class WindowLayoutService extends DisposableService {
     this.uiController.on('toggleDevTools', this.handleToggleDevTools);
     this.uiController.on('openDevTools', this.handleOpenDevTools);
     this.uiController.on('closeDevTools', this.handleCloseDevTools);
+    this.uiController.on(
+      'toggleChromeDevTools',
+      this.handleToggleChromeDevTools,
+    );
+    this.uiController.on('openChromeDevTools', this.handleOpenChromeDevTools);
+    this.uiController.on('closeChromeDevTools', this.handleCloseChromeDevTools);
     this.uiController.on('setAudioMuted', this.handleSetAudioMuted);
     this.uiController.on('toggleAudioMuted', this.handleToggleAudioMuted);
     this.uiController.on('setColorScheme', this.handleSetColorScheme);
@@ -1189,13 +1200,37 @@ export class WindowLayoutService extends DisposableService {
   };
 
   private handleOpenDevTools = async (tabId?: string) => {
+    this.logger.debug(
+      `[WindowLayoutService] handleOpenDevTools called with tabId: ${tabId}`,
+    );
     const tab = tabId ? this.tabs[tabId] : this.activeTab;
     tab?.openDevTools();
   };
 
   private handleCloseDevTools = async (tabId?: string) => {
+    this.logger.debug(
+      `[WindowLayoutService] handleCloseDevTools called with tabId: ${tabId}`,
+    );
     const tab = tabId ? this.tabs[tabId] : this.activeTab;
     tab?.closeDevTools();
+  };
+
+  private handleToggleChromeDevTools = async (tabId?: string) => {
+    this.logger.debug(
+      `[WindowLayoutService] handleToggleDevTools called with tabId: ${tabId}`,
+    );
+    const tab = tabId ? this.tabs[tabId] : this.activeTab;
+    tab?.toggleChromeDevTools();
+  };
+
+  private handleOpenChromeDevTools = async (tabId?: string) => {
+    const tab = tabId ? this.tabs[tabId] : this.activeTab;
+    tab?.openChromeDevTools();
+  };
+
+  private handleCloseChromeDevTools = async (tabId?: string) => {
+    const tab = tabId ? this.tabs[tabId] : this.activeTab;
+    tab?.closeChromeDevTools();
   };
 
   private handleSetAudioMuted = async (muted: boolean, tabId?: string) => {

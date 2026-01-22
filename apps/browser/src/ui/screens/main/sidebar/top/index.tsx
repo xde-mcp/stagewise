@@ -1,6 +1,10 @@
 import { WorkspaceInfoBadge } from './_components/workspace-info';
 import { cn } from '@/utils';
-import { IconHistoryFill18, IconPlusFill18 } from 'nucleo-ui-fill-18';
+import {
+  IconDotsFill18,
+  IconHistoryFill18,
+  IconPlusFill18,
+} from 'nucleo-ui-fill-18';
 import { IconTrash2Outline24 } from 'nucleo-core-outline-24';
 import {
   Tooltip,
@@ -20,6 +24,7 @@ import { useCallback, useMemo } from 'react';
 import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
 import { HotkeyComboText } from '@/components/hotkey-combo-text';
+import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
 
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createChat = useKartonProcedure((p) => p.agentChat.create);
@@ -30,6 +35,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
   const activeChatId = useKartonState((s) => s.agentChat?.activeChatId || null);
   const isWorking = useKartonState((s) => s.agentChat?.isWorking);
+
+  const createTab = useKartonProcedure((p) => p.browser.createTab);
 
   const showChatListButton = useMemo(() => {
     return Object.keys(chats).length > 1;
@@ -150,7 +157,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                   <IconPlusFill18 className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="bottom">
                 <span>
                   Create new chat (
                   <HotkeyComboText action={HotkeyActions.CTRL_N} />)
@@ -180,13 +187,28 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                       <IconHistoryFill18 className="size-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent side="bottom">
                     <span>Show chat history</span>
                   </TooltipContent>
                 </Tooltip>
               )}
             />
           )}
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => {
+                  createTab(SETTINGS_PAGE_URL, true);
+                }}
+                className="app-no-drag"
+              >
+                <IconDotsFill18 className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Settings</TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>

@@ -1,21 +1,29 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
-import type { ColorScheme, TabState } from '@shared/karton-contracts/ui';
+import type { TabState } from '@shared/karton-contracts/ui';
 import { Button } from '@stagewise/stage-ui/components/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { IconSquareCodeFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import {
-  IconMoonFill18,
-  IconBrightnessIncreaseFill18,
-  IconGear2Fill18,
-} from 'nucleo-ui-fill-18';
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+  type ImperativePanelHandle,
+} from '@stagewise/stage-ui/components/resizable';
+import { IconWrenchScrewdriverFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { NavButtons } from './nav-buttons';
-import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
 import { Omnibox, type OmniboxRef } from './omnibox';
 import { ZoomBar } from './control-buttons/zoom-bar';
 import { SearchBar } from './control-buttons/search-bar';
@@ -23,37 +31,7 @@ import { ResourceRequestsControlButton } from './control-buttons/resource-reques
 import { DownloadsControlButton } from './control-buttons/downloads';
 import { DOMContextSelector } from '@/components/dom-context-selector/selector-canvas';
 import { BasicAuthDialog } from './basic-auth-dialog';
-
-const ColorSchemeIcon = ({
-  colorScheme,
-  className,
-}: {
-  colorScheme: ColorScheme;
-  className?: string;
-}) => {
-  switch (colorScheme) {
-    case 'light':
-      return (
-        <IconBrightnessIncreaseFill18
-          className={cn(
-            'size-4.5 text-primary-foreground hover:text-derived-lighter-subtle',
-            className,
-          )}
-        />
-      );
-    case 'dark':
-      return (
-        <IconMoonFill18
-          className={cn(
-            'mb-px ml-px size-4 text-primary-foreground hover:text-derived-lighter-subtle',
-            className,
-          )}
-        />
-      );
-    case 'system':
-      return <IconMoonFill18 className={cn('mb-px ml-px size-4', className)} />;
-  }
-};
+import { DevToolbar, useHasOpenPanel, useToolbarWidth } from './dev-toolbar';
 
 export interface PerTabContentRef {
   focusOmnibox: () => void;
@@ -70,20 +48,61 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
     const tab = useKartonState((s) => s.browser.tabs[tabId]) as
       | TabState
       | undefined;
-
-    const cycleColorScheme = useKartonProcedure(
-      (p) => p.browser.cycleColorScheme,
-    );
-    const toggleDevTools = useKartonProcedure((p) => p.browser.toggleDevTools);
+    const toggleDevTools = useKartonProcedure((p) => p.browser.devTools.toggle);
     const activateSearchBar = useKartonProcedure(
       (p) => p.browser.searchBar.activate,
     );
-    const createTab = useKartonProcedure((p) => p.browser.createTab);
-
     const omniboxRef = useRef<OmniboxRef>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const devAppPreviewContainerRef = useRef<HTMLDivElement>(null);
+
+    const hasOpenPanel = useHasOpenPanel(tab?.url);
+    const { width: persistedToolbarWidth, setWidth: persistToolbarWidth } =
+      useToolbarWidth(tab?.url);
+
+    // Local state for optimistic toolbar width updates
+    const [localToolbarSize, setLocalToolbarSize] = useState<number | null>(
+      null,
+    );
+    const pendingWidthRef = useRef<number | null>(null);
+    const toolbarPanelRef = useRef<ImperativePanelHandle>(null);
+
+    // Sync local state from persisted width on initial load or when persisted changes
+    useEffect(() => {
+      if (persistedToolbarWidth !== null) {
+        setLocalToolbarSize(persistedToolbarWidth);
+      }
+    }, [persistedToolbarWidth]);
+
+    // Resize toolbar panel when hasOpenPanel becomes true and we have a persisted/local size
+    useEffect(() => {
+      if (hasOpenPanel && toolbarPanelRef.current) {
+        const targetSize = localToolbarSize ?? persistedToolbarWidth ?? 25;
+        toolbarPanelRef.current.resize(targetSize);
+      }
+    }, [hasOpenPanel, localToolbarSize, persistedToolbarWidth]);
+
+    // Dispatch a resize event when the panel layout changes
+    // This forces BackgroundWithCutout to recalculate its bounds
+    const handlePanelLayoutChange = useCallback((sizes: number[]) => {
+      window.dispatchEvent(new Event('resize'));
+      // Update local state optimistically during drag
+      // sizes[1] is the toolbar panel size (order={2})
+      if (sizes.length > 1) {
+        const toolbarSize = sizes[1];
+        setLocalToolbarSize(toolbarSize);
+        // Always track the latest size - will be persisted on drag end
+        pendingWidthRef.current = toolbarSize;
+      }
+    }, []);
+
+    // Handle drag end - persist the width when pointer is released
+    const handlePointerUp = useCallback(() => {
+      if (pendingWidthRef.current !== null) {
+        persistToolbarWidth(pendingWidthRef.current);
+      }
+    }, [persistToolbarWidth]);
 
     const isInternalPage = useMemo(() => {
       // Consider a page "internal" if it's a stagewise:// URL or if an error page is displayed
@@ -93,8 +112,6 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
       const isErrorPageDisplayed = tab?.error?.isErrorPageDisplayed ?? false;
       return isInternalUrl || isErrorPageDisplayed;
     }, [tab?.url, tab?.error?.isErrorPageDisplayed]);
-
-    const colorScheme = tab?.colorScheme ?? 'system';
 
     // Expose methods via ref for parent to call
     useImperativeHandle(
@@ -129,32 +146,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
           <SearchBar tabId={tabId} ref={searchInputRef} />
           <ResourceRequestsControlButton tabId={tabId} />
           <DownloadsControlButton />
-          <Tooltip>
-            <TooltipTrigger>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={isInternalPage}
-                onClick={() => {
-                  cycleColorScheme(tabId);
-                }}
-              >
-                <ColorSchemeIcon
-                  colorScheme={colorScheme}
-                  className={cn(isInternalPage ? 'opacity-50' : '')}
-                />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <div>
-                Toggle color scheme
-                <br />
-                <span className="text-muted-foreground/70">
-                  Current: {colorScheme}
-                </span>
-              </div>
-            </TooltipContent>
-          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger>
               <Button
@@ -165,10 +157,10 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
                   toggleDevTools(tabId);
                 }}
               >
-                <IconSquareCodeFillDuo18
+                <IconWrenchScrewdriverFillDuo18
                   className={cn(
                     'size-5',
-                    tab?.devToolsOpen
+                    tab?.devTools.open
                       ? 'text-primary-foreground hover:text-derived-lighter-subtle'
                       : '',
                     isInternalPage ? 'opacity-50' : '',
@@ -178,38 +170,68 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
             </TooltipTrigger>
             <TooltipContent side="bottom">Open developer tools</TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => {
-                  createTab(SETTINGS_PAGE_URL, true);
-                }}
-              >
-                <IconGear2Fill18 className="size-4.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Settings</TooltipContent>
-          </Tooltip>
         </div>
-        <div className="flex size-full flex-col gap-4 rounded-lg p-2">
-          <div className="flex size-full flex-col items-center justify-center overflow-hidden rounded-sm shadow-[0_0_6px_0_rgba(0,0,0,0.08),0_-6px_48px_-24px_rgba(0,0,0,0.15)] ring-1 ring-border-subtle">
-            <div
-              ref={devAppPreviewContainerRef}
-              id={`dev-app-preview-container-${tabId}`}
-              className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg"
-            >
-              {isActive && !isInternalPage && <DOMContextSelector />}
-              {isActive && tab?.authenticationRequest && (
-                <BasicAuthDialog
-                  request={tab.authenticationRequest}
-                  container={devAppPreviewContainerRef}
+        {/* Content area */}
+        <ResizablePanelGroup
+          direction="horizontal"
+          className={cn(
+            'overflow-visible! size-full rounded-lg p-2',
+            tab?.devTools.open && 'pr-0',
+          )}
+          onLayout={handlePanelLayoutChange}
+        >
+          {/* Web content panel */}
+          <ResizablePanel
+            order={1}
+            defaultSize={100}
+            className="overflow-visible!"
+          >
+            <div className="flex size-full flex-col items-center justify-center overflow-hidden rounded-sm shadow-[0_0_6px_0_rgba(0,0,0,0.08),0_-6px_48px_-24px_rgba(0,0,0,0.15)] ring-1 ring-border-subtle">
+              <div
+                ref={devAppPreviewContainerRef}
+                id={`dev-app-preview-container-${tabId}`}
+                className="relative flex size-full flex-col items-center justify-center overflow-hidden rounded-lg"
+              >
+                {isActive && !isInternalPage && <DOMContextSelector />}
+                {isActive && tab?.authenticationRequest && (
+                  <BasicAuthDialog
+                    request={tab.authenticationRequest}
+                    container={devAppPreviewContainerRef}
+                  />
+                )}
+              </div>
+            </div>
+          </ResizablePanel>
+
+          {/* Dev toolbar */}
+          {tab?.devTools.open && (
+            <>
+              {hasOpenPanel && (
+                <ResizableHandle
+                  className="ml-1"
+                  onPointerUp={handlePointerUp}
                 />
               )}
-            </div>
-          </div>
-        </div>
+              <ResizablePanel
+                ref={toolbarPanelRef}
+                order={2}
+                defaultSize={
+                  hasOpenPanel
+                    ? (localToolbarSize ?? persistedToolbarWidth ?? 25)
+                    : 0
+                }
+                minSize={0}
+                maxSize={100}
+                className={cn(
+                  'overflow-visible! min-w-fit max-w-fit',
+                  hasOpenPanel ? 'min-w-64 max-w-1/2' : '',
+                )}
+              >
+                <DevToolbar tab={tab} />
+              </ResizablePanel>
+            </>
+          )}
+        </ResizablePanelGroup>
       </div>
     );
   },

@@ -23,7 +23,9 @@ export const PreviewCardTrigger = ({
 export type PreviewCardContentProps = React.ComponentProps<
   typeof PreviewCardBase.Popup
 > &
-  React.ComponentProps<typeof PreviewCardBase.Positioner>;
+  React.ComponentProps<typeof PreviewCardBase.Positioner> & {
+    container?: HTMLElement;
+  };
 
 export const PreviewCardContent = ({
   children,
@@ -33,12 +35,13 @@ export const PreviewCardContent = ({
   align,
   alignOffset,
   sticky,
+  container,
   ...props
 }: PreviewCardContentProps) => {
   return (
-    <PreviewCardBase.Portal>
+    <PreviewCardBase.Portal container={container}>
       <PreviewCardBase.Backdrop
-        className="pointer-events-auto fixed inset-0 z-40 h-screen w-screen"
+        className="pointer-events-auto absolute inset-0 z-40 size-full"
         onClick={(e) => e.stopPropagation()}
       />
       <PreviewCardBase.Positioner
@@ -54,7 +57,7 @@ export const PreviewCardContent = ({
           onClick={(e) => e.stopPropagation()}
           className={cn(
             'flex max-w-80 flex-col gap-4 p-3',
-            'rounded-lg border border-border-subtle bg-background',
+            'rounded-lg bg-background ring-1 ring-border-subtle',
             'text-foreground shadow-lg',
             'transition-[transform,scale,opacity] duration-150 ease-out',
             'origin-(--transform-origin)',
