@@ -9,6 +9,7 @@ import {
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
 import { useEventListener } from '@/hooks/use-event-listener';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
+import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { MessageUser } from './message-user';
@@ -32,6 +33,17 @@ export const ChatHistory = () => {
     forceEnableAutoScroll,
     isAutoScrollEnabled,
   } = useAutoScroll();
+
+  // Viewport ref for scroll fade mask
+  const [viewport, setViewport] = useState<HTMLElement | null>(null);
+  const viewportRef = useMemo(
+    () => ({ current: viewport }),
+    [viewport],
+  ) as React.RefObject<HTMLElement>;
+  const { maskStyle } = useScrollFadeMask(viewportRef, {
+    axis: 'vertical',
+    fadeDistances: { top: 4, bottom: 0 },
+  });
   const [containerHeight, setContainerHeight] = useState(0);
   const lastUserMessageRef = useRef<HTMLDivElement | null>(null);
   const workingIndicatorRef = useRef<HTMLDivElement | null>(null);
@@ -220,14 +232,16 @@ export const ChatHistory = () => {
   return (
     <OverlayScrollbar
       ref={scrollbarRef}
+      onViewportRef={setViewport}
       element="section"
       aria-label="Agent message display"
       className={cn(
-        'mask-alpha mask-[linear-gradient(to_bottom,transparent_0px,black_4px,black_100%)] pointer-events-auto block h-full text-foreground text-sm focus-within:outline-none focus:outline-none',
+        'mask-alpha pointer-events-auto block h-full text-foreground text-sm focus-within:outline-none focus:outline-none',
         renderedMessages.length > 0 && 'flex-1',
         renderedMessages.length === 0 && 'mb-1 h-max min-h-[inherit]',
         'pb-[calc(1rem+var(--file-diff-card-height,0px))]',
       )}
+      style={maskStyle}
       contentClassName="px-4"
       options={
         renderedMessages.length === 0

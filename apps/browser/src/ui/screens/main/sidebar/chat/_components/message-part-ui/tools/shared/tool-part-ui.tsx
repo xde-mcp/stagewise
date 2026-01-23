@@ -7,7 +7,7 @@ import {
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { cn } from '@/utils';
 import { ChevronDownIcon } from 'lucide-react';
-import { useIsContainerScrollable } from '@/hooks/use-is-container-scrollable';
+import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
 
 export const ToolPartUI = ({
@@ -51,28 +51,17 @@ export const ToolPartUI = ({
     setViewport(vp);
   }, []);
 
-  // Create a ref-like object for useIsContainerScrollable hook
-  const viewportRef = useMemo(() => ({ current: viewport }), [viewport]);
+  // Create a ref-like object for useScrollFadeMask hook
+  const viewportRef = useMemo(
+    () => ({ current: viewport }),
+    [viewport],
+  ) as React.RefObject<HTMLElement>;
 
-  // Use the hook for scroll state detection (using viewport ref)
-  const { canScrollUp, canScrollDown, canScrollLeft, canScrollRight } =
-    useIsContainerScrollable(viewportRef as React.RefObject<HTMLElement>);
-
-  // Binary fade distances based on scroll state
-  const FADE_DISTANCE = 16;
-  const topFade = canScrollUp ? FADE_DISTANCE : 0;
-  const bottomFade = canScrollDown ? FADE_DISTANCE : 0;
-  const leftFade = canScrollLeft ? FADE_DISTANCE : 0;
-  const rightFade = canScrollRight ? FADE_DISTANCE : 0;
-
-  // Generate inline style for mask with CSS custom properties
-  const getMaskStyle = (): React.CSSProperties =>
-    ({
-      '--top-fade': `${topFade}px`,
-      '--bottom-fade': `${bottomFade}px`,
-      '--left-fade': `${leftFade}px`,
-      '--right-fade': `${rightFade}px`,
-    }) as React.CSSProperties;
+  // Use the hook for scroll fade mask (both axes)
+  const { maskStyle } = useScrollFadeMask(viewportRef, {
+    axis: 'both',
+    fadeDistance: 16,
+  });
 
   if (content === undefined) {
     return (
@@ -144,21 +133,7 @@ export const ToolPartUI = ({
                 showBorder ? 'max-h-32' : 'max-h-none',
                 contentFooter && 'mb-6',
               )}
-              style={
-                {
-                  ...getMaskStyle(),
-                  maskImage: `
-                    linear-gradient(to right, transparent 0px, black var(--left-fade), black calc(100% - var(--right-fade)), transparent 100%),
-                    linear-gradient(to bottom, transparent 0px, black var(--top-fade), black calc(100% - var(--bottom-fade)), transparent 100%)
-                  `,
-                  WebkitMaskImage: `
-                    linear-gradient(to right, transparent 0px, black var(--left-fade), black calc(100% - var(--right-fade)), transparent 100%),
-                    linear-gradient(to bottom, transparent 0px, black var(--top-fade), black calc(100% - var(--bottom-fade)), transparent 100%)
-                  `,
-                  maskComposite: 'intersect',
-                  WebkitMaskComposite: 'source-in',
-                } as React.CSSProperties
-              }
+              style={maskStyle}
             >
               <OverlayScrollbar
                 ref={scrollbarRef}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export function useIsContainerScrollable(
-  containerRef: React.RefObject<HTMLElement>,
+  containerRef: React.RefObject<HTMLElement | null>,
 ) {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -13,9 +13,7 @@ export function useIsContainerScrollable(
   // Sync the ref to state - this runs on every render to catch when ref changes
   useEffect(() => {
     const el = containerRef.current;
-    if (el !== element) {
-      setElement(el);
-    }
+    if (el !== element) setElement(el);
   });
 
   const update = useCallback(() => {

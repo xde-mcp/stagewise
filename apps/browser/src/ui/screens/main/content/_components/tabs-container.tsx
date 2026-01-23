@@ -1,7 +1,7 @@
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@/utils';
 import { IconPlus } from 'nucleo-micro-bold';
-import { useIsContainerScrollable } from '@/hooks/use-is-container-scrollable';
+import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AgentPreviewBadge } from './agent-preview-badge';
@@ -92,10 +92,10 @@ export function TabsContainer({
   const platform = useKartonState((s) => s.appInfo.platform);
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { canScrollLeft, canScrollRight } =
-    useIsContainerScrollable(scrollContainerRef);
-  const [leftFadeDistance, setLeftFadeDistance] = useState(0);
-  const [rightFadeDistance, setRightFadeDistance] = useState(0);
+  const { maskStyle } = useScrollFadeMask(scrollContainerRef, {
+    axis: 'horizontal',
+    fadeDistance: 16,
+  });
 
   const reorderTabs = useKartonProcedure((p) => p.browser.reorderTabs);
 
@@ -298,18 +298,6 @@ export function TabsContainer({
     );
   }, [activeTabId, isSidebarCollapsed, optimisticTabIds]);
 
-  useEffect(() => {
-    setLeftFadeDistance(canScrollLeft ? 16 : 0);
-    setRightFadeDistance(canScrollRight ? 16 : 0);
-  }, [canScrollLeft, canScrollRight]);
-
-  // Generate inline style for mask with CSS custom properties
-  const getMaskStyle = (): React.CSSProperties =>
-    ({
-      '--left-fade': `${leftFadeDistance}px`,
-      '--right-fade': `${rightFadeDistance}px`,
-    }) as React.CSSProperties;
-
   return (
     <DndContext
       sensors={sensors}
@@ -339,13 +327,7 @@ export function TabsContainer({
             'mask-alpha scrollbar-none flex flex-row items-start gap-0.75 overflow-x-auto pr-2',
             isSidebarCollapsed ? '-ml-2 pl-2' : '',
           )}
-          style={
-            {
-              ...getMaskStyle(),
-              maskImage: `linear-gradient(to right, transparent 0px, black var(--left-fade), black calc(100% - var(--right-fade)), transparent 100%)`,
-              WebkitMaskImage: `linear-gradient(to right, transparent 0px, black var(--left-fade), black calc(100% - var(--right-fade)), transparent 100%)`,
-            } as React.CSSProperties
-          }
+          style={maskStyle}
         >
           <SortableContext
             items={optimisticTabIds}

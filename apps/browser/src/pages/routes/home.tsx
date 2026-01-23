@@ -21,6 +21,7 @@ import { IconDocFolder, IconCircleQuestion } from 'nucleo-glass';
 import { IconPlusFill18 } from 'nucleo-ui-fill-18';
 import TimeAgo from 'react-timeago';
 import { cn } from '@/utils';
+import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { LogoWithText } from '@ui/components/ui/logo-with-text';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 
@@ -90,10 +91,10 @@ function StartPageWithConnectedWorkspace() {
     (p) => p.getInspirationWebsites,
   );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const [leftFadeDistance, setLeftFadeDistance] = useState(0);
-  const [rightFadeDistance, setRightFadeDistance] = useState(0);
+  const { maskStyle } = useScrollFadeMask(scrollContainerRef, {
+    axis: 'horizontal',
+    fadeDistance: 32,
+  });
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Local state for inspiration websites (fetched on demand)
@@ -138,33 +139,6 @@ function StartPageWithConnectedWorkspace() {
     isLoadingMore,
   ]);
 
-  // Check scroll state
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const updateScrollState = () => {
-      const { scrollLeft, scrollWidth, clientWidth } = container;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
-    };
-
-    updateScrollState();
-    container.addEventListener('scroll', updateScrollState);
-    const resizeObserver = new ResizeObserver(updateScrollState);
-    resizeObserver.observe(container);
-
-    return () => {
-      container.removeEventListener('scroll', updateScrollState);
-      resizeObserver.disconnect();
-    };
-  }, [inspirationWebsites.websites.length]);
-
-  useEffect(() => {
-    setLeftFadeDistance(canScrollLeft ? 32 : 0);
-    setRightFadeDistance(canScrollRight ? 32 : 0);
-  }, [canScrollLeft, canScrollRight]);
-
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -198,12 +172,6 @@ function StartPageWithConnectedWorkspace() {
       seed: inspirationWebsites.seed,
     };
   }, [inspirationWebsites]);
-
-  const getMaskStyle = (): React.CSSProperties =>
-    ({
-      '--left-fade': `${leftFadeDistance}px`,
-      '--right-fade': `${rightFadeDistance}px`,
-    }) as React.CSSProperties;
 
   const handleWebsiteClick = useCallback(
     (url: string, event?: React.MouseEvent) => {
@@ -244,13 +212,7 @@ function StartPageWithConnectedWorkspace() {
           <div
             ref={scrollContainerRef}
             className="mask-alpha scrollbar-none -my-12 flex w-[calc(100%+4rem)] justify-start gap-4 overflow-x-auto px-8 py-12"
-            style={
-              {
-                ...getMaskStyle(),
-                maskImage: `linear-gradient(to right, transparent 0px, black var(--left-fade), black calc(100% - var(--right-fade)), transparent 100%)`,
-                WebkitMaskImage: `linear-gradient(to right, transparent 0px, black var(--left-fade), black calc(100% - var(--right-fade)), transparent 100%)`,
-              } as React.CSSProperties
-            }
+            style={maskStyle}
           >
             {inspirationWebsitesWithScreenshot.websites.map((website) => (
               <DesignInspirationCard
