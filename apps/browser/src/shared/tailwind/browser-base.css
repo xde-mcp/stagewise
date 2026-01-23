@@ -61,7 +61,7 @@
 @layer components {
   .markdown {
     a {
-      @apply text-blue-600 hover:text-blue-700;
+      @apply text-primary-foreground hover:text-hover-derived;
     }
 
     ul {
@@ -73,11 +73,6 @@
       @apply list-decimal;
       @apply ml-4;
     }
-  }
-
-  /* Streamdown table wrapper - subtle scrollbar for markdown tables */
-  [data-streamdown="table-wrapper"] {
-    @apply scrollbar-thin scrollbar-thumb-foreground/15 scrollbar-track-transparent;
   }
 
   /* Make all shapes inside a .seti-icon SVG use the parent text color */

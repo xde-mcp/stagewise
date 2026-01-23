@@ -29,6 +29,14 @@ import {
 import { getTruncatedFileUrl } from '@/utils';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { usePostHog } from 'posthog-js/react';
+import {
+  MemoTable,
+  MemoThead,
+  MemoTbody,
+  MemoTr,
+  MemoTh,
+  MemoTd,
+} from './streamdown-tables';
 
 const LANGUAGE_REGEX = /language-([^\s]+)/;
 
@@ -90,7 +98,7 @@ export const Streamdown = ({
         controls={{
           code: false,
           mermaid: false,
-          table: true,
+          table: false,
         }}
         components={{
           code: MemoCode,
@@ -101,6 +109,12 @@ export const Streamdown = ({
           h4: MemoH4,
           h5: MemoH5,
           h6: MemoH6,
+          table: MemoTable,
+          thead: MemoThead,
+          tbody: MemoTbody,
+          tr: MemoTr,
+          th: MemoTh,
+          td: MemoTd,
         }}
         rehypePlugins={[defaultRehypePlugins.raw!, defaultRehypePlugins.katex!]}
       >
