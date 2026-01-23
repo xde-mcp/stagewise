@@ -9,30 +9,33 @@ import {
 } from 'react';
 
 /**
- * Context for tracking which message is being edited and routing file drops.
+ * Context for tracking which message is being edited and routing drop events.
  * When a message enters edit mode, it registers itself and provides a callback
- * for receiving dropped files. The ChatPanel uses this to route dropped files
+ * for receiving drop events. The ChatPanel uses this to route drops
  * to the correct input (main chat or editing message).
  */
 
-type FileDropHandler = (files: File[]) => void;
+type DropEventHandler = (e: React.DragEvent) => void;
 
 interface MessageEditContext {
   /** The ID of the message currently being edited, or null if none */
   activeEditMessageId: string | null;
-  /** Register this message as being edited and provide a file drop handler */
-  registerEditMode: (messageId: string, onFileDrop: FileDropHandler) => void;
+  /** Register this message as being edited and provide a drop event handler */
+  registerEditMode: (messageId: string, onDrop: DropEventHandler) => void;
   /** Unregister edit mode (call when exiting edit) */
   unregisterEditMode: (messageId: string) => void;
-  /** Add files to the active input (routes to editing message or main chat) */
-  addFilesToActiveInput: (files: File[], fallback: FileDropHandler) => void;
+  /** Forward a drop event to the active input (routes to editing message or main chat) */
+  forwardDropEvent: (e: React.DragEvent) => void;
+  /** Set the main drop event handler (used when no message is being edited) */
+  setMainDropHandler: (handler: DropEventHandler) => void;
 }
 
 const MessageEditStateContext = createContext<MessageEditContext>({
   activeEditMessageId: null,
   registerEditMode: () => {},
   unregisterEditMode: () => {},
-  addFilesToActiveInput: () => {},
+  forwardDropEvent: () => {},
+  setMainDropHandler: () => {},
 });
 
 interface MessageEditStateProviderProps {
@@ -45,50 +48,55 @@ export const MessageEditStateProvider = ({
   const [activeEditMessageId, setActiveEditMessageId] = useState<string | null>(
     null,
   );
-  // Use ref to store the handler to avoid re-renders when it changes
-  const fileDropHandlerRef = useRef<FileDropHandler | null>(null);
+  // Use refs for synchronous access (avoids race conditions with state updater functions)
+  const activeEditMessageIdRef = useRef<string | null>(null);
+  const editDropHandlerRef = useRef<DropEventHandler | null>(null);
+  const mainDropHandlerRef = useRef<DropEventHandler | null>(null);
+
+  const setMainDropHandler = useCallback((handler: DropEventHandler) => {
+    mainDropHandlerRef.current = handler;
+  }, []);
 
   const registerEditMode = useCallback(
-    (messageId: string, onFileDrop: FileDropHandler) => {
+    (messageId: string, onDrop: DropEventHandler) => {
+      // Set refs synchronously first (avoids race with async state updaters)
+      activeEditMessageIdRef.current = messageId;
+      editDropHandlerRef.current = onDrop;
       setActiveEditMessageId(messageId);
-      fileDropHandlerRef.current = onFileDrop;
     },
     [],
   );
 
   const unregisterEditMode = useCallback((messageId: string) => {
-    setActiveEditMessageId((current) => {
-      // Only unregister if this message is the active one
-      if (current === messageId) {
-        fileDropHandlerRef.current = null;
-        return null;
-      }
-      return current;
-    });
+    // Check ref synchronously (not async state updater) to avoid race conditions
+    if (activeEditMessageIdRef.current === messageId) {
+      activeEditMessageIdRef.current = null;
+      editDropHandlerRef.current = null;
+      setActiveEditMessageId(null);
+    }
   }, []);
 
-  const addFilesToActiveInput = useCallback(
-    (files: File[], fallback: FileDropHandler) => {
-      // Route to the editing message
-      if (fileDropHandlerRef.current) fileDropHandlerRef.current(files);
-      // Use fallback (main chat input)
-      else fallback(files);
-    },
-    [],
-  );
+  const forwardDropEvent = useCallback((e: React.DragEvent) => {
+    // Route to the editing message handler
+    if (editDropHandlerRef.current) editDropHandlerRef.current(e);
+    // Use fallback (main chat input)
+    else mainDropHandlerRef.current?.(e);
+  }, []);
 
   const value = useMemo(
     () => ({
       activeEditMessageId,
       registerEditMode,
       unregisterEditMode,
-      addFilesToActiveInput,
+      forwardDropEvent,
+      setMainDropHandler,
     }),
     [
       activeEditMessageId,
       registerEditMode,
       unregisterEditMode,
-      addFilesToActiveInput,
+      forwardDropEvent,
+      setMainDropHandler,
     ],
   );
 

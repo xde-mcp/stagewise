@@ -41,7 +41,7 @@ export interface UIControllerEventMap {
   setColorScheme: [scheme: ColorScheme, tabId?: string];
   cycleColorScheme: [tabId?: string];
   setZoomPercentage: [percentage: number, tabId?: string];
-  setContextSelectionMode: [active: boolean, messageId?: string];
+  setContextSelectionMode: [active: boolean];
   setContextSelectionMouseCoordinates: [x: number, y: number];
   clearContextSelectionMouseCoordinates: [];
   passthroughWheelEvent: [
@@ -54,10 +54,10 @@ export interface UIControllerEventMap {
     },
   ];
   selectHoveredElement: [];
-  removeElement: [elementId: string, messageId: string];
-  clearElements: [messageId: string];
-  restoreElements: [elements: SelectedElement[], messageId: string];
-  clearPendingScreenshots: [messageId: string];
+  removeElement: [elementId: string];
+  clearElements: [];
+  restoreElements: [elements: SelectedElement[]];
+  clearPendingScreenshots: [];
   scrollToElement: [tabId: string, backendNodeId: number, frameId: string];
   checkFrameValidity: [
     tabId: string,
@@ -328,8 +328,8 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     );
     this.uiKarton.registerServerProcedureHandler(
       'browser.contextSelection.setActive',
-      async (_callingClientId: string, active: boolean, messageId?: string) => {
-        this.emit('setContextSelectionMode', active, messageId);
+      async (_callingClientId: string, active: boolean) => {
+        this.emit('setContextSelectionMode', active);
       },
     );
     this.uiKarton.registerServerProcedureHandler(
@@ -359,34 +359,26 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     );
     this.uiKarton.registerServerProcedureHandler(
       'browser.contextSelection.removeElement',
-      async (
-        _callingClientId: string,
-        elementId: string,
-        messageId: string,
-      ) => {
-        this.emit('removeElement', elementId, messageId);
+      async (_callingClientId: string, elementId: string) => {
+        this.emit('removeElement', elementId);
       },
     );
     this.uiKarton.registerServerProcedureHandler(
       'browser.contextSelection.clearElements',
-      async (_callingClientId: string, messageId: string) => {
-        this.emit('clearElements', messageId);
+      async (_callingClientId: string) => {
+        this.emit('clearElements');
       },
     );
     this.uiKarton.registerServerProcedureHandler(
       'browser.contextSelection.restoreElements',
-      async (
-        _callingClientId: string,
-        elements: SelectedElement[],
-        messageId: string,
-      ) => {
-        this.emit('restoreElements', elements, messageId);
+      async (_callingClientId: string, elements: SelectedElement[]) => {
+        this.emit('restoreElements', elements);
       },
     );
     this.uiKarton.registerServerProcedureHandler(
       'browser.contextSelection.clearPendingScreenshots',
-      async (_callingClientId: string, messageId: string) => {
-        this.emit('clearPendingScreenshots', messageId);
+      async (_callingClientId: string) => {
+        this.emit('clearPendingScreenshots');
       },
     );
     this.uiKarton.registerServerProcedureHandler(

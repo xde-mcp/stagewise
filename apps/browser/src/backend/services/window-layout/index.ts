@@ -270,11 +270,10 @@ export class WindowLayoutService extends DisposableService {
         activeTabId: null,
         history: [],
         contextSelectionMode: false,
-        activeSelectionMessageId: null,
-        selectedElementsByMessageId: {},
+        selectedElements: [],
         hoveredElement: null,
         viewportSize: null,
-        pendingElementScreenshotsByMessageId: {},
+        pendingElementScreenshots: [],
       };
       draft.appInfo.isFullScreen = this.baseWindow?.isFullScreen() ?? false;
       draft.appInfo.otherVersions = { ...process.versions, modules: undefined };
@@ -683,20 +682,13 @@ export class WindowLayoutService extends DisposableService {
 
     tab.on('elementSelected', (element) => {
       // Add element to the currently active message ID
-      const messageId =
-        this.uiKarton.state.browser.activeSelectionMessageId ?? 'main';
-      this.chatStateController?.addElement(element, messageId);
+      this.chatStateController?.addElement(element);
     });
 
     tab.on('elementScreenshotCaptured', (screenshot) => {
-      // Add screenshot to pending list for UI to pick up, scoped by active message ID
-      const messageId =
-        this.uiKarton.state.browser.activeSelectionMessageId ?? 'main';
+      // Add screenshot to pending list for UI to pick up
       this.uiKarton.setState((draft) => {
-        if (!draft.browser.pendingElementScreenshotsByMessageId[messageId])
-          draft.browser.pendingElementScreenshotsByMessageId[messageId] = [];
-
-        draft.browser.pendingElementScreenshotsByMessageId[messageId].push({
+        draft.browser.pendingElementScreenshots.push({
           id: randomUUID(),
           elementId: screenshot.elementId,
           dataUrl: screenshot.dataUrl,
@@ -1237,26 +1229,13 @@ export class WindowLayoutService extends DisposableService {
     tab?.setZoomPercentage(percentage);
   };
 
-  private handleSetContextSelectionMode = async (
-    active: boolean,
-    messageId?: string,
-  ) => {
-    const finalMessageId = messageId ?? 'main';
-    const currentMessageId =
-      this.uiKarton.state.browser.activeSelectionMessageId;
+  private handleSetContextSelectionMode = async (active: boolean) => {
     const isAlreadyActive = this.uiKarton.state.browser.contextSelectionMode;
 
-    // If activating for a different message ID while another is active, deactivate first
-    if (
-      active &&
-      isAlreadyActive &&
-      currentMessageId &&
-      currentMessageId !== finalMessageId
-    ) {
+    if (active && isAlreadyActive) {
       // Turn off for the currently active message ID
       this.uiKarton.setState((draft) => {
         draft.browser.contextSelectionMode = false;
-        draft.browser.activeSelectionMessageId = null;
       });
 
       // Brief delay to ensure UI updates
@@ -1277,8 +1256,6 @@ export class WindowLayoutService extends DisposableService {
     }
     this.uiKarton.setState((draft) => {
       draft.browser.contextSelectionMode = active;
-      // Track which message ID is currently selecting (null when inactive)
-      draft.browser.activeSelectionMessageId = active ? finalMessageId : null;
     });
   };
 
@@ -1343,24 +1320,21 @@ export class WindowLayoutService extends DisposableService {
     return false;
   };
 
-  private handleRemoveElement = (elementId: string, messageId: string) => {
-    this.chatStateController?.removeElement(elementId, messageId);
+  private handleRemoveElement = (elementId: string) => {
+    this.chatStateController?.removeElement(elementId);
   };
 
-  private handleClearElements = (messageId: string) => {
-    this.chatStateController?.clearElements(messageId);
+  private handleClearElements = () => {
+    this.chatStateController?.clearElements();
   };
 
-  private handleRestoreElements = (
-    elements: SelectedElement[],
-    messageId: string,
-  ) => {
-    this.chatStateController?.restoreElements(elements, messageId);
+  private handleRestoreElements = (elements: SelectedElement[]) => {
+    this.chatStateController?.restoreElements(elements);
   };
 
-  private handleClearPendingScreenshots = (messageId: string) => {
+  private handleClearPendingScreenshots = () => {
     this.uiKarton.setState((draft) => {
-      draft.browser.pendingElementScreenshotsByMessageId[messageId] = [];
+      draft.browser.pendingElementScreenshots = [];
     });
   };
 

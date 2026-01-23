@@ -9,7 +9,7 @@
  * These defaults ensure tool components (OverwriteFileTool, MultiEditTool) work without errors.
  */
 
-import { useContext, useState, useCallback, useRef } from 'react';
+import { useContext, useCallback, useRef } from 'react';
 import { createContext, type ReactNode, useMemo } from 'react';
 import type { AppState, KartonContract } from '@shared/karton-contracts/ui';
 import { defaultState } from '@shared/karton-contracts/ui';
@@ -179,86 +179,4 @@ export function useChatActions() {
   }, []);
 
   return { setChatInput };
-}
-
-// Mock implementation of useChatState
-export interface FileAttachment {
-  id: string;
-  file: File;
-  url: string;
-}
-
-export function useChatState() {
-  const [chatInput, setChatInput] = useState('');
-  const [selectedElements, setSelectedElements] = useState<any[]>([]);
-  const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
-  const [isContextSelectorActive, setIsContextSelectorActive] = useState(false);
-  const [isSending, _setIsSending] = useState(false);
-
-  const addSelectedElement = useCallback(() => {
-    console.log('[Mock] addSelectedElement called');
-  }, []);
-
-  const removeSelectedElement = useCallback(() => {
-    console.log('[Mock] removeSelectedElement called');
-  }, []);
-
-  const clearSelectedElements = useCallback(() => {
-    setSelectedElements([]);
-  }, []);
-
-  const sendMessage = useCallback(() => {
-    console.log('[Mock] sendMessage called:', chatInput);
-    setChatInput('');
-  }, [chatInput]);
-
-  const addFileAttachment = useCallback(() => {
-    console.log('[Mock] addFileAttachment called');
-  }, []);
-
-  const removeFileAttachment = useCallback(() => {
-    console.log('[Mock] removeFileAttachment called');
-  }, []);
-
-  const clearFileAttachments = useCallback(() => {
-    setFileAttachments([]);
-  }, []);
-
-  const startContextSelector = useCallback(() => {
-    setIsContextSelectorActive(true);
-  }, []);
-
-  const stopContextSelector = useCallback(() => {
-    setIsContextSelectorActive(false);
-  }, []);
-
-  return {
-    chatInput,
-    setChatInput,
-    selectedElements,
-    addSelectedElement,
-    removeSelectedElement,
-    clearSelectedElements,
-    sendMessage,
-    fileAttachments,
-    addFileAttachment,
-    removeFileAttachment,
-    clearFileAttachments,
-    isContextSelectorActive,
-    startContextSelector,
-    stopContextSelector,
-    isSending,
-  };
-}
-
-// Mock implementation of useContextChipHover
-export function useContextChipHover() {
-  const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(
-    null,
-  );
-
-  return {
-    hoveredElement,
-    setHoveredElement,
-  };
 }

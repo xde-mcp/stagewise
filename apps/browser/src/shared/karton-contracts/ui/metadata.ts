@@ -29,6 +29,7 @@ const metadataSchema = z.object({
     })
     .optional(),
   rejectedEdits: z.array(z.string()).optional(),
+  tiptapJsonContent: z.string().optional(),
 });
 
 export type UserMessageMetadata = z.infer<typeof metadataSchema>;

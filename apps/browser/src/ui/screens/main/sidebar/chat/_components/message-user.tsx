@@ -1,10 +1,10 @@
 import {
-  cn,
-  fileToDataUrl,
-  isAnthropicSupportedFile,
-  extractImageUrlFromDragData,
-  imageUrlToFile,
-} from '@/utils';
+  fileUIPartToFileAttachment,
+  fileAttachmentToFileUIPart,
+  selectedElementToAttachmentAttributes,
+  transformTiptapBlobUrls,
+} from '@/utils/attachment-conversions';
+import { cn, collectUserMessageMetadata } from '@/utils';
 import type {
   ChatMessage,
   TextUIPart,
@@ -14,6 +14,10 @@ import { useMemo, useCallback, memo, useState, useRef, useEffect } from 'react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useEventListener } from '@/hooks/use-event-listener';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
+import { MessageElementsProvider } from '@/hooks/use-message-elements';
+import { useFileAttachments } from '@/hooks/use-file-attachments';
+import { useDragDrop } from '@/hooks/use-drag-drop';
+import { useElementSelectionWatcher } from '@/hooks/use-element-selection-watcher';
 import {
   Popover,
   PopoverTrigger,
@@ -24,44 +28,14 @@ import {
   PopoverClose,
 } from '@stagewise/stage-ui/components/popover';
 import { Button } from '@stagewise/stage-ui/components/button';
-import { TextPart } from './message-part-ui/text';
-import { SelectedElementsChips } from '@/components/selected-elements-chips';
-import {
-  FileAttachmentChips,
-  type FileAttachmentData,
-} from '@/components/file-attachment-chips';
 import type { SelectedElement } from '@shared/selected-elements';
 import {
   ChatInput,
   ChatInputActions,
   type ChatInputHandle,
-  type FileAttachment,
 } from './chat-input';
 import { generateId } from 'ai';
-
-// Stable empty arrays to avoid creating new instances in selectors
-const EMPTY_SELECTED_ELEMENTS: SelectedElement[] = [];
-const EMPTY_SCREENSHOTS: {
-  id: string;
-  elementId: string;
-  dataUrl: string;
-}[] = [];
-
-/**
- * Convert a data URL to a File object
- */
-function dataUrlToFile(dataUrl: string, filename: string): File {
-  const arr = dataUrl.split(',');
-  const mimeMatch = arr[0]?.match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-  const bstr = atob(arr[1] ?? '');
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new File([u8arr], filename, { type: mime });
-}
+import type { AttachmentType } from './rich-text';
 
 type UserMessage = ChatMessage & { role: 'user' };
 
@@ -78,7 +52,16 @@ export const MessageUser = memo(
     const chatInputRef = useRef<ChatInputHandle>(null);
     const [isEditing, setIsEditing] = useState(false);
 
-    // Message edit state for file drop routing
+    // File attachments via shared hook
+    const {
+      fileAttachments: editedFileAttachments,
+      addFileAttachment,
+      removeFileAttachment,
+      clearFileAttachments,
+      setFileAttachments: setEditedFileAttachments,
+    } = useFileAttachments({ chatInputRef, insertIntoEditor: true });
+
+    // Message edit state for file drop routing and exposing local elements
     const { registerEditMode, unregisterEditMode } = useMessageEditState();
 
     // Procedures and state
@@ -94,75 +77,53 @@ export const MessageUser = memo(
     const isWorking = useKartonState((s) => s.agentChat?.isWorking || false);
 
     // Use message ID for scoping element selection
-    const editMessageId = msg.id ?? null;
+    const editMessageId = msg.id;
+
+    const [selectedElementsFromEditor, setSelectedElementsFromEditor] =
+      useState<SelectedElement[]>([]);
 
     // Element selector state and procedures
     // Check if THIS input's element selection is active (not just global mode)
     const elementSelectionActive = useKartonState(
-      (s) =>
-        s.browser.contextSelectionMode &&
-        s.browser.activeSelectionMessageId === editMessageId,
+      (s) => s.browser.contextSelectionMode,
     );
-    const selectedElements = useKartonState((s) =>
-      editMessageId
-        ? s.browser.selectedElementsByMessageId[editMessageId] ||
-          EMPTY_SELECTED_ELEMENTS
-        : EMPTY_SELECTED_ELEMENTS,
+    const selectedElementsFromWebcontents = useKartonState(
+      (s) => s.browser.selectedElements,
     );
     const setElementSelectionActiveProc = useKartonProcedure(
       (p) => p.browser.contextSelection.setActive,
     );
     const setElementSelectionActive = useCallback(
       (active: boolean) => {
-        if (editMessageId) {
-          setElementSelectionActiveProc(active, editMessageId);
-        }
+        setElementSelectionActiveProc(active);
       },
-      [setElementSelectionActiveProc, editMessageId],
+      [setElementSelectionActiveProc],
     );
     const clearSelectedElementsProc = useKartonProcedure(
       (p) => p.browser.contextSelection.clearElements,
     );
     const clearSelectedElements = useCallback(() => {
-      if (editMessageId) {
-        clearSelectedElementsProc(editMessageId);
-      }
-    }, [clearSelectedElementsProc, editMessageId]);
-    const removeSelectedElementProc = useKartonProcedure(
+      clearSelectedElementsProc();
+    }, [clearSelectedElementsProc]);
+    const removeSelectedElement = useKartonProcedure(
       (p) => p.browser.contextSelection.removeElement,
-    );
-    const removeSelectedElement = useCallback(
-      (elementId: string) => {
-        if (editMessageId) {
-          removeSelectedElementProc(elementId, editMessageId);
-        }
-      },
-      [removeSelectedElementProc, editMessageId],
     );
 
     // Watch for pending element screenshots and auto-add as file attachments
-    const pendingScreenshots = useKartonState((s) =>
-      editMessageId
-        ? s.browser.pendingElementScreenshotsByMessageId[editMessageId] ||
-          EMPTY_SCREENSHOTS
-        : EMPTY_SCREENSHOTS,
+    const pendingScreenshots = useKartonState(
+      (s) => s.browser.pendingElementScreenshots,
     );
     const clearPendingScreenshotsProc = useKartonProcedure(
       (p) => p.browser.contextSelection.clearPendingScreenshots,
     );
-    // Track which screenshots we've already processed to avoid duplicates
-    const processedScreenshotIds = useRef<Set<string>>(new Set());
 
-    // Edit mode state
+    // Edit mode state with mention IDs
     const [editedText, setEditedText] = useState('');
-    const [editedFileAttachments, setEditedFileAttachments] = useState<
-      FileAttachment[]
-    >([]);
-    // Track selected elements during edit mode (combines original + newly selected)
-    const [editedSelectedElements, setEditedSelectedElements] = useState<
-      SelectedElement[]
-    >([]);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    // Store original content for reverting on cancel
+    const originalTiptapContentRef = useRef<string | null>(null);
+    // Store tiptap content when submit is clicked (before confirmation popover)
+    const pendingTiptapContentRef = useRef<string | null>(null);
 
     // Extract text content from message
     const textContent = useMemo(() => {
@@ -172,25 +133,9 @@ export const MessageUser = memo(
         .join('\n');
     }, [msg.parts]);
 
-    const selectedPreviewElements = useMemo(() => {
-      return msg.metadata?.selectedPreviewElements ?? [];
-    }, [msg.metadata?.selectedPreviewElements]);
-
-    const fileAttachments = useMemo(() => {
-      return msg.parts.filter((part) => part.type === 'file') as FileUIPart[];
+    const fileUIParts = useMemo(() => {
+      return msg.parts.filter((part) => part.type === 'file');
     }, [msg.parts]);
-
-    // Convert FileUIPart[] to FileAttachmentData[] for view mode display
-    const fileAttachmentsData: FileAttachmentData[] = useMemo(
-      () =>
-        fileAttachments.map((filePart, index) => ({
-          id: `${msg.id}-file-${index}`,
-          url: filePart.url,
-          filename: filePart.filename,
-          mediaType: filePart.mediaType,
-        })),
-      [fileAttachments, msg.id],
-    );
 
     // User messages should not be empty in normal usage
     const isEmptyMessage = useMemo(() => {
@@ -204,26 +149,7 @@ export const MessageUser = memo(
     // Can edit when not working and message has an ID
     const canEdit = !isWorking && !!msg.id;
 
-    // Convert FileUIPart to FileAttachment (reconstruct File from data URL)
-    const convertFileUIPartToAttachment = useCallback(
-      async (filePart: FileUIPart): Promise<FileAttachment> => {
-        const response = await fetch(filePart.url);
-        const blob = await response.blob();
-        const file = new File([blob], filePart.filename, {
-          type: filePart.mediaType,
-        });
-        // Create blob URL from the File object (not reuse data URL)
-        const blobUrl = URL.createObjectURL(file);
-        return {
-          id: generateId(),
-          file,
-          url: blobUrl,
-        };
-      },
-      [],
-    );
-
-    // Start editing
+    // Start editing - content is already loaded in TipTap from JSON
     const handleStartEditing = useCallback(async () => {
       if (!canEdit || !editMessageId) return;
 
@@ -234,45 +160,76 @@ export const MessageUser = memo(
         }),
       );
 
-      setEditedText(textContent);
+      // Save original content for reverting on cancel (before any modifications)
+      originalTiptapContentRef.current =
+        chatInputRef.current?.getTiptapJsonContent() ?? null;
 
-      // Initialize edited selected elements with original message's selected elements
-      setEditedSelectedElements(selectedPreviewElements as SelectedElement[]);
+      // Initialize editedText from TipTap's current content (for submit validation)
+      const currentText = chatInputRef.current?.getTextContent() ?? textContent;
+      setEditedText(currentText);
 
-      // Clear Karton state for new element selections (will be merged with editedSelectedElements)
+      msg.metadata?.selectedPreviewElements?.forEach((element) => {
+        setSelectedElementsFromEditor((prev) => [
+          ...prev,
+          element as SelectedElement,
+        ]);
+      });
+
+      // Clear Karton state for new element selections
       clearSelectedElements();
 
       // Convert existing file attachments to FileAttachment format
-      const convertedFiles = await Promise.all(
-        fileAttachments.map(convertFileUIPartToAttachment),
+      const fileAttachments = await Promise.all(
+        fileUIParts.map(fileUIPartToFileAttachment),
       );
-      setEditedFileAttachments(convertedFiles);
+      setEditedFileAttachments(fileAttachments);
 
       setIsEditing(true);
+
+      // Focus the editor
+      chatInputRef.current?.focus();
     }, [
       canEdit,
       editMessageId,
       textContent,
-      fileAttachments,
-      convertFileUIPartToAttachment,
+      fileUIParts,
       clearSelectedElements,
-      selectedPreviewElements,
     ]);
 
     // Cancel editing
     const handleCancelEditing = useCallback(() => {
+      // Check if current content is completely empty by reading directly from the editor
+      // getTextContent() returns text with @mentions (e.g., "@element-id"), so if empty,
+      // there's no text and no attachment mentions in the editor
+      const currentText = chatInputRef.current?.getTextContent() ?? '';
+      const isContentEmpty = currentText.trim().length === 0;
+
+      // Only restore original content if the edited content is completely empty
+      if (isContentEmpty && originalTiptapContentRef.current)
+        chatInputRef.current?.setJsonContent(originalTiptapContentRef.current);
+
+      originalTiptapContentRef.current = null;
+      pendingTiptapContentRef.current = null;
+
       setIsEditing(false);
       setEditedText('');
-      setEditedFileAttachments([]);
-      setEditedSelectedElements([]);
+      clearFileAttachments();
       setIsConfirmOpen(false);
       setElementSelectionActive(false);
       clearSelectedElements();
-    }, [setElementSelectionActive, clearSelectedElements]);
+      setSelectedElementsFromEditor([]);
+    }, [
+      setElementSelectionActive,
+      clearSelectedElements,
+      clearFileAttachments,
+    ]);
 
     // Submit triggers confirmation
     const handleSubmitEdit = useCallback(() => {
       if (editedText.trim().length <= 2) return;
+      // Capture tiptap content now, before the confirmation popover
+      pendingTiptapContentRef.current =
+        chatInputRef.current?.getTiptapJsonContent() ?? null;
       setIsConfirmOpen(true);
     }, [editedText]);
 
@@ -284,32 +241,24 @@ export const MessageUser = memo(
         // First, revert the history
         await undoEditsUntilUserMessage(msg.id, activeChatId);
 
-        // Combine original edited elements with any newly selected elements
-        // Use a Map to dedupe by stagewiseId
-        const allElementsMap = new Map<string, SelectedElement>();
-        editedSelectedElements.forEach((el) =>
-          allElementsMap.set(el.stagewiseId, el),
-        );
-        selectedElements.forEach((el) =>
-          allElementsMap.set(el.stagewiseId, el),
-        );
-        const allSelectedElements = Array.from(allElementsMap.values());
+        const combinedSelectedElements = [
+          ...selectedElementsFromWebcontents,
+          ...selectedElementsFromEditor,
+        ];
 
         // Then send the new message
         // Collect metadata for selected elements
-        const metadata: Record<string, unknown> = {};
-        if (allSelectedElements.length > 0) {
-          metadata.selectedPreviewElements = allSelectedElements;
-        }
+        const metadata = collectUserMessageMetadata(combinedSelectedElements);
 
         // Convert FileAttachments to FileUIParts (convert File to data URL)
         const fileParts: FileUIPart[] = await Promise.all(
-          editedFileAttachments.map(async (attachment) => ({
-            type: 'file' as const,
-            mediaType: attachment.file.type,
-            filename: attachment.file.name,
-            url: await fileToDataUrl(attachment.file),
-          })),
+          editedFileAttachments.map(fileAttachmentToFileUIPart),
+        );
+
+        // Transform blob URLs to data URLs in TipTap content BEFORE clearing attachments
+        // (clearFileAttachments() will revoke blob URLs, making them invalid)
+        const tiptapJsonContent = await transformTiptapBlobUrls(
+          pendingTiptapContentRef.current,
         );
 
         await sendUserMessage({
@@ -319,24 +268,22 @@ export const MessageUser = memo(
           metadata: {
             ...metadata,
             createdAt: new Date(),
+            tiptapJsonContent,
           },
         });
 
-        // Clean up blob URLs (only revoke blob URLs, not data URLs)
-        editedFileAttachments.forEach((f) => {
-          if (f.url.startsWith('blob:')) {
-            URL.revokeObjectURL(f.url);
-          }
-        });
+        // Dispatch event to force scroll to bottom in chat history
+        window.dispatchEvent(new Event('chat-message-sent'));
 
-        // Reset edit state
+        // Reset edit state (clearFileAttachments handles blob URL cleanup)
         setIsEditing(false);
         setEditedText('');
-        setEditedFileAttachments([]);
-        setEditedSelectedElements([]);
+        clearFileAttachments();
         setIsConfirmOpen(false);
         setElementSelectionActive(false);
         clearSelectedElements();
+        setSelectedElementsFromEditor([]);
+        pendingTiptapContentRef.current = null;
       } catch (error) {
         console.warn('Failed to edit message:', error);
       }
@@ -346,182 +293,75 @@ export const MessageUser = memo(
       undoEditsUntilUserMessage,
       sendUserMessage,
       editedText,
-      editedSelectedElements,
-      selectedElements,
+      selectedElementsFromWebcontents,
       editedFileAttachments,
       setElementSelectionActive,
       clearSelectedElements,
+      clearFileAttachments,
     ]);
 
-    // Remove a selected element in edit mode
-    const handleRemoveSelectedElement = useCallback(
-      (elementId: string) => {
-        // Remove from local edited elements state
-        setEditedSelectedElements((prev) =>
-          prev.filter((el) => el.stagewiseId !== elementId),
-        );
-        // Also remove from Karton state (for newly selected elements)
-        removeSelectedElement(elementId);
+    // Handle files pasted in editor
+    const handlePasteFiles = useCallback(
+      (files: File[]) => {
+        files.forEach((file) => {
+          addFileAttachment(file);
+        });
       },
-      [removeSelectedElement],
+      [addFileAttachment],
     );
 
-    // File attachment handlers
-    const handleAddFileAttachment = useCallback((file: File) => {
-      const id = generateId();
-      const url = URL.createObjectURL(file);
-      setEditedFileAttachments((prev) => [...prev, { id, file, url }]);
-    }, []);
-
-    const handleRemoveFileAttachment = useCallback((id: string) => {
-      setEditedFileAttachments((prev) => {
-        const removed = prev.find((f) => f.id === id);
-        if (removed) {
-          // Only revoke blob URLs, not data URLs
-          if (removed.url.startsWith('blob:')) {
-            URL.revokeObjectURL(removed.url);
-          }
+    const handleRemoveAttachment = useCallback(
+      (id: string, type: AttachmentType) => {
+        if (type === 'file') {
+          removeFileAttachment(id);
+        } else if (type === 'element') {
+          removeSelectedElement(id);
+          setSelectedElementsFromEditor((prev) =>
+            prev.filter((el) => el.stagewiseId !== id),
+          );
         }
-        return prev.filter((f) => f.id !== id);
-      });
-    }, []);
+      },
+      [removeFileAttachment, removeSelectedElement],
+    );
 
     // Auto-add pending element screenshots as file attachments during edit mode
     useEffect(() => {
-      if (!isEditing || !editMessageId) return;
       if (pendingScreenshots.length === 0) return;
-
-      // Process new screenshots
-      const newScreenshots = pendingScreenshots.filter(
-        (s) => !processedScreenshotIds.current.has(s.id),
-      );
-
-      if (newScreenshots.length === 0) return;
-
-      // Add each screenshot as a file attachment
-      newScreenshots.forEach((screenshot) => {
-        processedScreenshotIds.current.add(screenshot.id);
-
-        // Convert data URL to File (using JPEG format)
-        const file = dataUrlToFile(
-          screenshot.dataUrl,
-          `element-${screenshot.elementId.slice(0, 8)}.jpg`,
-        );
-
-        // Validate file size before adding
-        const validation = isAnthropicSupportedFile(file);
-        if (!validation.supported) {
-          console.warn(
-            `[MessageUser] Skipping oversized screenshot: ${validation.reason}`,
-          );
-          return;
-        }
-
-        // Add as attachment
-        handleAddFileAttachment(file);
-      });
-
+      // We might auto-add pending element screenshots as file attachments in the future, it's disabled for now
       // Clear processed screenshots from state
-      if (editMessageId) {
-        clearPendingScreenshotsProc(editMessageId);
-      }
-    }, [
-      isEditing,
-      editMessageId,
-      pendingScreenshots,
-      handleAddFileAttachment,
-      clearPendingScreenshotsProc,
-    ]);
+      void clearPendingScreenshotsProc();
+    }, [pendingScreenshots, clearPendingScreenshotsProc]);
+
+    // Watch for selected elements via shared hook
+    useElementSelectionWatcher({
+      isActive: isEditing,
+      onNewElement: useCallback(
+        (element: SelectedElement) => {
+          const attrs = selectedElementToAttachmentAttributes(element);
+          chatInputRef.current?.insertAttachment(attrs);
+        },
+        [chatInputRef],
+      ),
+    });
 
     // Element selector toggle
     const handleToggleElementSelection = useCallback(() => {
       setElementSelectionActive(!elementSelectionActive);
     }, [elementSelectionActive, setElementSelectionActive]);
 
-    // Clear all attachments and elements
-    const handleClearAll = useCallback(() => {
-      // Clear file attachments
-      editedFileAttachments.forEach((f) => URL.revokeObjectURL(f.url));
-      setEditedFileAttachments([]);
-      // Clear edited selected elements (local state)
-      setEditedSelectedElements([]);
-      // Clear newly selected elements from Karton state
-      clearSelectedElements();
-    }, [editedFileAttachments, clearSelectedElements]);
-
-    // Track drag-over state for visual feedback in edit mode
-    const [isEditDragOver, setIsEditDragOver] = useState(false);
-    const editDragCounterRef = useRef(0);
-
-    // Handle drop events in edit mode to prevent bubbling to ChatPanel
-    const handleEditDrop = useCallback(
-      async (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        editDragCounterRef.current = 0;
-        setIsEditDragOver(false);
-
-        const files = Array.from(e.dataTransfer.files);
-
-        // Process dropped files from file system
-        if (files.length > 0) {
-          files.forEach((file) => {
-            handleAddFileAttachment(file);
-          });
-          chatInputRef.current?.focus();
-          return;
-        }
-
-        // Handle URL-based drops (images from web pages)
-        const htmlData = e.dataTransfer.getData('text/html');
-        const uriList = e.dataTransfer.getData('text/uri-list');
-        const imageUrl = extractImageUrlFromDragData(htmlData, uriList);
-
-        if (imageUrl) {
-          const file = await imageUrlToFile(imageUrl);
-          if (file) handleAddFileAttachment(file);
-        }
-
-        // Focus the input
-        chatInputRef.current?.focus();
-      },
-      [handleAddFileAttachment],
-    );
-
-    const handleEditDragOver = useCallback((e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    }, []);
-
-    const handleEditDragEnter = useCallback((e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      editDragCounterRef.current++;
-      // Accept Files (from file system) OR text/uri-list (from web pages - images/links)
-      if (
-        e.dataTransfer.types.includes('Files') ||
-        e.dataTransfer.types.includes('text/uri-list')
-      ) {
-        setIsEditDragOver(true);
-      }
-    }, []);
-
-    const handleEditDragLeave = useCallback((e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      editDragCounterRef.current--;
-      if (editDragCounterRef.current === 0) {
-        setIsEditDragOver(false);
-      }
-    }, []);
+    // Drag and drop via shared hook
+    const { isDragOver: isEditDragOver, handlers: editDragHandlers } =
+      useDragDrop({
+        onFileDrop: addFileAttachment,
+        onDropComplete: () => chatInputRef.current?.focus(),
+      });
 
     // Focus the input when entering edit mode
     useEffect(() => {
-      if (isEditing) {
-        setTimeout(() => {
-          chatInputRef.current?.focus();
-        }, 0);
-      }
+      if (!isEditing) return;
+      setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 0);
     }, [isEditing]);
 
     // Track if input was focused before app lost focus (for restoring on app regain)
@@ -533,8 +373,7 @@ export const MessageUser = memo(
     }, []);
 
     const onEditInputBlur = useCallback(
-      (ev: React.FocusEvent<HTMLTextAreaElement, Element>) => {
-        // Similar logic to panel-footer: keep focus if clicking within chat box or element selector
+      (ev: FocusEvent) => {
         const target = ev.relatedTarget as HTMLElement;
         if (target?.closest('#chat-file-attachment-menu-content')) return;
 
@@ -584,9 +423,7 @@ export const MessageUser = memo(
 
     // Cancel edit when main chat input is focused
     useEventListener('cancel-all-message-edits', () => {
-      if (isEditing) {
-        handleCancelEditing();
-      }
+      if (isEditing) handleCancelEditing();
     });
 
     // Cancel edit when another message starts editing
@@ -599,14 +436,11 @@ export const MessageUser = memo(
       },
     );
 
-    // Register/unregister edit mode for file drop routing
+    // Register/unregister edit mode for drop event routing
     useEffect(() => {
       if (isEditing && editMessageId) {
-        // Register with a callback that handles dropped files
-        registerEditMode(editMessageId, (files) => {
-          files.forEach((file) => handleAddFileAttachment(file));
-          chatInputRef.current?.focus();
-        });
+        // Register the useDragDrop handler so forwarded events get the same processing
+        registerEditMode(editMessageId, editDragHandlers.onDrop);
       }
       return () => {
         if (editMessageId) {
@@ -616,7 +450,7 @@ export const MessageUser = memo(
     }, [
       isEditing,
       editMessageId,
-      handleAddFileAttachment,
+      editDragHandlers.onDrop,
       registerEditMode,
       unregisterEditMode,
     ]);
@@ -635,201 +469,187 @@ export const MessageUser = memo(
       return activeTab?.url?.startsWith('stagewise://internal/') ?? false;
     }, [activeTab?.url]);
 
-    // Combine edited selected elements with newly selected elements for edit mode display
-    // Must be before any early returns to satisfy hooks rules
-    const combinedSelectedElements = useMemo(() => {
-      const elementsMap = new Map<string, SelectedElement>();
-      editedSelectedElements.forEach((el) =>
-        elementsMap.set(el.stagewiseId, el),
-      );
-      selectedElements.forEach((el) => elementsMap.set(el.stagewiseId, el));
-      return Array.from(elementsMap.values());
-    }, [editedSelectedElements, selectedElements]);
+    // Count total attachments for display
+    const totalAttachments =
+      editedFileAttachments.length + selectedElementsFromWebcontents.length;
+
+    // Combine all available elements for the preview card to access
+    // In view mode: from message metadata
+    // In edit mode: from local state + Karton state
+    const allAvailableElements = useMemo(() => {
+      const metadataElements =
+        (msg.metadata?.selectedPreviewElements as SelectedElement[]) ?? [];
+      if (isEditing) {
+        // During editing, combine all sources (deduped by stagewiseId)
+        const combined = [
+          ...metadataElements,
+          ...selectedElementsFromEditor,
+          ...selectedElementsFromWebcontents,
+        ];
+        const seen = new Set<string>();
+        return combined.filter((el) => {
+          if (seen.has(el.stagewiseId)) return false;
+          seen.add(el.stagewiseId);
+          return true;
+        });
+      }
+      // In view mode, just use metadata
+      return metadataElements;
+    }, [
+      msg.metadata?.selectedPreviewElements,
+      isEditing,
+      selectedElementsFromEditor,
+      selectedElementsFromWebcontents,
+    ]);
 
     if (isEmptyMessage && !isLastMessage) return null;
 
-    // Edit mode rendering
-    if (isEditing) {
-      return (
+    // Get TipTap JSON content from message metadata (fallback to undefined for plain text init)
+    const tiptapJsonContent = msg.metadata?.tiptapJsonContent;
+
+    // Unified rendering - always use TipTap, toggle between view/edit modes
+    return (
+      <MessageElementsProvider elements={allAvailableElements}>
         <div
           className={cn('flex w-full flex-col gap-1')}
-          onDrop={handleEditDrop}
-          onDragOver={handleEditDragOver}
-          onDragEnter={handleEditDragEnter}
-          onDragLeave={handleEditDragLeave}
+          onDrop={isEditing ? editDragHandlers.onDropBubble : undefined} // Reset drag state, let event bubble to ChatPanel
+          onDragOver={isEditing ? editDragHandlers.onDragOver : undefined}
+          onDragEnter={isEditing ? editDragHandlers.onDragEnter : undefined}
+          onDragLeave={isEditing ? editDragHandlers.onDragLeave : undefined}
         >
           <div ref={measureRef} className="w-full">
             <div
               className={cn(
                 'mt-2 flex w-full shrink-0 flex-row-reverse items-stretch justify-start gap-1',
+                isEmptyMessage ? 'hidden' : '',
               )}
             >
-              {/* Edit mode container styled like user message */}
+              {/* Container with conditional styling for view/edit modes */}
               <div
                 className={cn(
-                  'message-user-edit-container relative flex w-full flex-row items-stretch gap-1 rounded-md bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] ring-1 ring-derived-strong before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',
-                  isEditDragOver && 'bg-hover-derived!',
+                  'message-user-edit-container relative flex flex-row items-stretch gap-1',
+                  // Edit mode: full width input field style
+                  isEditing &&
+                    'w-full rounded-md bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] ring-1 ring-derived-strong before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',
+                  isEditing && isEditDragOver && 'bg-hover-derived!',
+                  // View mode: bubble style
+                  !isEditing &&
+                    'group group/chat-bubble-user wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
+                  !isEditing &&
+                    canEdit &&
+                    'cursor-pointer hover:bg-hover-derived active:bg-active-derived',
                 )}
+                onClick={!isEditing && canEdit ? handleStartEditing : undefined}
+                role={!isEditing && canEdit ? 'button' : undefined}
+                tabIndex={!isEditing && canEdit ? 0 : undefined}
+                onKeyDown={
+                  !isEditing && canEdit
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleStartEditing();
+                        }
+                      }
+                    : undefined
+                }
               >
                 <ChatInput
                   ref={chatInputRef}
                   value={editedText}
                   onChange={setEditedText}
+                  initialJsonContent={tiptapJsonContent}
                   onSubmit={handleSubmitEdit}
                   onEscape={handleCancelEditing}
-                  placeholder="Edit your message..."
-                  showModelSelect
+                  placeholder={isEditing ? 'Edit your message...' : undefined}
+                  disabled={!isEditing}
+                  showModelSelect={isEditing}
                   onModelChange={() => chatInputRef.current?.focus()}
                   showContextUsageRing={false}
-                  fileAttachments={editedFileAttachments}
-                  onRemoveFileAttachment={handleRemoveFileAttachment}
-                  onAddFileAttachment={handleAddFileAttachment}
-                  selectedElements={combinedSelectedElements}
-                  onRemoveSelectedElement={handleRemoveSelectedElement}
-                  onClearAll={handleClearAll}
+                  attachmentCount={totalAttachments}
                   onFocus={onEditInputFocus}
                   onBlur={onEditInputBlur}
+                  onPasteFiles={handlePasteFiles}
+                  onAttachmentRemoved={handleRemoveAttachment}
                   className="w-full"
                 />
-                <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
-                  {/* ChatInputActions for inline edit mode (never shows stop button) */}
-                  <ChatInputActions
-                    isAgentWorking={false}
-                    hasTextInput={editedText.trim().length > 0}
-                    showElementSelectorButton
-                    elementSelectionActive={elementSelectionActive}
-                    onToggleElementSelection={handleToggleElementSelection}
-                    elementSelectorDisabled={hasOpenedInternalPage}
-                    showImageUploadButton
-                    onAddFileAttachment={handleAddFileAttachment}
-                    canSendMessage={canSendMessage}
-                    onSubmit={handleSubmitEdit}
-                    isActive
-                  />
-                  {/* Popover anchor positioned at the send button */}
-                  <Popover open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-                    <PopoverTrigger>
-                      <span className="pointer-events-none absolute right-0 bottom-0 size-8" />
-                    </PopoverTrigger>
-                    <PopoverContent>
-                      <PopoverTitle>Resend message?</PopoverTitle>
-                      <PopoverDescription>
-                        This will clear the chat history and undo file changes
-                        after this point, then send your edited message.
-                      </PopoverDescription>
-                      <PopoverClose />
-                      <PopoverFooter>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setIsConfirmOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="primary"
-                          size="xs"
-                          onClick={handleConfirmEdit}
-                        >
-                          Resend
-                        </Button>
-                      </PopoverFooter>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                {/* Action buttons - only shown in edit mode */}
+                {isEditing && (
+                  <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
+                    <ChatInputActions
+                      isAgentWorking={false}
+                      hasTextInput={editedText.trim().length > 0}
+                      showElementSelectorButton
+                      elementSelectionActive={elementSelectionActive}
+                      onToggleElementSelection={handleToggleElementSelection}
+                      elementSelectorDisabled={hasOpenedInternalPage}
+                      showImageUploadButton
+                      onAddFileAttachment={addFileAttachment}
+                      canSendMessage={canSendMessage}
+                      onSubmit={handleSubmitEdit}
+                      isActive
+                    />
+                    {/* Popover anchor positioned at the send button */}
+                    <Popover
+                      open={isConfirmOpen}
+                      onOpenChange={setIsConfirmOpen}
+                    >
+                      <PopoverTrigger>
+                        <span className="pointer-events-none absolute right-0 bottom-0 size-8" />
+                      </PopoverTrigger>
+                      <PopoverContent>
+                        <PopoverTitle>Resend message?</PopoverTitle>
+                        <PopoverDescription>
+                          This will clear the chat history and undo file changes
+                          after this point, then send your edited message.
+                        </PopoverDescription>
+                        <PopoverClose />
+                        <PopoverFooter>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => setIsConfirmOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="xs"
+                            onClick={handleConfirmEdit}
+                          >
+                            Resend
+                          </Button>
+                        </PopoverFooter>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
-      );
-    }
-
-    // View mode rendering
-    return (
-      <div className={cn('flex w-full flex-col gap-1')}>
-        {/* measureRef wraps just the content, NOT the min-h element, to avoid circular measurement */}
-        <div ref={measureRef} className="w-full">
-          <div
-            className={cn(
-              'group/chat-bubble mt-2 flex w-full shrink-0 flex-row-reverse items-center justify-start gap-2',
-              isEmptyMessage ? 'hidden' : '',
-            )}
-          >
-            <div
-              className={cn(
-                'group group/chat-bubble-user wrap-break-word relative min-h-8 max-w-xl origin-bottom-right select-text space-y-2 rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
-                canEdit &&
-                  'cursor-pointer hover:bg-hover-derived active:bg-active-derived',
-              )}
-              onClick={canEdit ? handleStartEditing : undefined}
-              role={canEdit ? 'button' : undefined}
-              tabIndex={canEdit ? 0 : undefined}
-              onKeyDown={
-                canEdit
-                  ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleStartEditing();
-                      }
-                    }
-                  : undefined
-              }
-            >
-              {msg.parts.map((part, index) => {
-                const stableKey = `${msg.id}:${part.type}:${index}`;
-
-                if (part.type === 'text') {
-                  if ((part as TextUIPart).text.trim() === '') return null;
-                  return (
-                    <TextPart
-                      key={stableKey}
-                      part={part as TextUIPart}
-                      messageRole="user"
-                    />
-                  );
-                }
-                return null;
-              })}
-
-              {(fileAttachments.length > 0 ||
-                selectedPreviewElements.length > 0) && (
-                <div className="flex flex-row flex-wrap gap-2 pt-2">
-                  {/* View-only file attachment display (no delete callback) */}
-                  <FileAttachmentChips
-                    fileAttachments={fileAttachmentsData}
-                    className="bg-surface-tinted"
-                  />
-                  <SelectedElementsChips
-                    className="bg-surface-tinted"
-                    selectedElements={
-                      selectedPreviewElements as SelectedElement[]
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      </MessageElementsProvider>
     );
   },
   // Custom comparison to prevent re-renders when message object references change
   (prevProps, nextProps) => {
     if (prevProps.message.id !== nextProps.message.id) return false;
     if (prevProps.isLastMessage !== nextProps.isLastMessage) return false;
-    // Check if measureRef presence changed (for height tracking)
     if (!!prevProps.measureRef !== !!nextProps.measureRef) return false;
+    // Check if tiptapJsonContent changed (used for TipTap initialization)
+    if (
+      prevProps.message.metadata?.tiptapJsonContent !==
+      nextProps.message.metadata?.tiptapJsonContent
+    )
+      return false;
     if (prevProps.message.parts.length !== nextProps.message.parts.length)
       return false;
 
-    // Deep compare parts by type and key content
     for (let i = 0; i < prevProps.message.parts.length; i++) {
       const prevPart = prevProps.message.parts[i];
       const nextPart = nextProps.message.parts[i];
       if (!prevPart || !nextPart) return false;
       if (prevPart.type !== nextPart.type) return false;
 
-      // For text parts, compare text and state
       if (prevPart.type === 'text' && nextPart.type === 'text') {
         if (prevPart.text !== nextPart.text) return false;
         if (prevPart.state !== nextPart.state) return false;

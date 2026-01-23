@@ -20,88 +20,71 @@ export class ChatStateController {
   }
 
   /**
-   * Add an element to the selected elements list for a specific message ID.
+   * Add an element to the selected elements list.
    * Prevents duplicates based on stagewiseId.
    * @param element The element to add
-   * @param messageId The message ID to add the element to ('main' for main input, message ID for inline edits)
    */
-  public addElement(element: SelectedElement, messageId: string): void {
+  public addElement(element: SelectedElement): void {
     this.uiKarton.setState((draft) => {
-      // Initialize array for this message ID if it doesn't exist
-      if (!draft.browser.selectedElementsByMessageId[messageId])
-        draft.browser.selectedElementsByMessageId[messageId] = [];
+      if (!draft.browser.selectedElements) draft.browser.selectedElements = [];
 
-      const elements = draft.browser.selectedElementsByMessageId[messageId];
+      const elements = draft.browser.selectedElements;
       // Add if not exists
       if (!elements.some((e) => e.stagewiseId === element.stagewiseId))
         elements.push(element);
     });
-    this.broadcastSelectionUpdate(messageId);
+    this.broadcastSelectionUpdate();
   }
 
   /**
-   * Remove an element from the selected elements list by stagewiseId for a specific message ID.
+   * Remove an element from the selected elements list by stagewiseId.
    * @param elementId The stagewiseId of the element to remove
-   * @param messageId The message ID to remove the element from
    */
-  public removeElement(elementId: string, messageId: string): void {
+  public removeElement(elementId: string): void {
     this.uiKarton.setState((draft) => {
-      if (draft.browser.selectedElementsByMessageId[messageId])
-        draft.browser.selectedElementsByMessageId[messageId] =
-          draft.browser.selectedElementsByMessageId[messageId].filter(
-            (e) => e.stagewiseId !== elementId,
-          );
+      draft.browser.selectedElements = draft.browser.selectedElements.filter(
+        (e) => e.stagewiseId !== elementId,
+      );
     });
-    this.broadcastSelectionUpdate(messageId);
+    this.broadcastSelectionUpdate();
   }
 
   /**
-   * Clear all selected elements for a specific message ID.
-   * @param messageId The message ID to clear elements for
+   * Clear all selected elements.
    */
-  public clearElements(messageId: string): void {
+  public clearElements(): void {
     this.uiKarton.setState((draft) => {
-      draft.browser.selectedElementsByMessageId[messageId] = [];
+      draft.browser.selectedElements = [];
     });
-    this.broadcastSelectionUpdate(messageId);
+    this.broadcastSelectionUpdate();
   }
 
   /**
    * Restore selected elements directly (bulk restore).
-   * Used when restoring an aborted message to the chat input.
    * @param elements The elements to restore
-   * @param messageId The message ID to restore elements to ('main' for main input)
    */
-  public restoreElements(elements: SelectedElement[], messageId: string): void {
+  public restoreElements(elements: SelectedElement[]): void {
     this.uiKarton.setState((draft) => {
-      draft.browser.selectedElementsByMessageId[messageId] = [...elements];
+      draft.browser.selectedElements = [...elements];
     });
-    this.broadcastSelectionUpdate(messageId);
+    this.broadcastSelectionUpdate();
   }
 
   /**
-   * Get the current list of selected elements for a specific message ID.
-   * @param messageId The message ID to get elements for
-   * @returns Array of selected elements for the given message ID
+   * Get the current list of selected elements.
+   * @returns Array of selected elements
    */
-  public getSelectedElements(messageId: string): SelectedElement[] {
-    return (
-      this.uiKarton.state.browser.selectedElementsByMessageId[messageId] ?? []
-    );
+  public getSelectedElements(): SelectedElement[] {
+    return this.uiKarton.state.browser.selectedElements ?? [];
   }
 
   /**
    * Broadcast the current selection to all tabs to update highlights.
-   * For now, broadcasts all selected elements across all message IDs.
-   * This allows elements to be highlighted on the page regardless of which message they belong to.
-   * @param _messageId The message ID whose selection changed (for future optimization)
+   * This allows elements to be highlighted on the page.
    */
-  private broadcastSelectionUpdate(_messageId: string): void {
+  private broadcastSelectionUpdate(): void {
     const state = this.uiKarton.state;
-    // Collect all selected elements from all message IDs
-    const allSelectedElements = Object.values(
-      state.browser.selectedElementsByMessageId,
-    ).flat();
+    const allSelectedElements = state.browser.selectedElements;
 
     Object.values(this.tabs).forEach((tab) => {
       tab.updateContextSelection(allSelectedElements);

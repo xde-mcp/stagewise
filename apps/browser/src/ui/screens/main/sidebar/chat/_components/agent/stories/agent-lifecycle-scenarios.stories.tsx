@@ -86,6 +86,174 @@ export const SimpleResponse: Story = {
 };
 
 /**
+ * 1b. Long Response Auto-Scroll Scenario
+ *
+ * Tests the auto-scroll behavior with a constrained height container.
+ * Short reasoning → Long streaming text response that overflows and triggers auto-scroll.
+ */
+export const LongResponseAutoScroll: Story = {
+  decorators: [
+    // Wrapper decorator to constrain height and show scroll behavior
+    // Uses flex with min-h-0 + h-full to ensure ChatHistory's h-full resolves correctly
+    (Story) => (
+      <div
+        className="flex flex-col overflow-hidden rounded-lg border border-border"
+        style={{ height: '400px' }}
+      >
+        <div className="h-full min-h-0 flex-1">
+          <Story />
+        </div>
+      </div>
+    ),
+    withSimpleResponseScenario,
+  ],
+  parameters: {
+    simpleResponseScenario: {
+      userMessage:
+        'Give me a comprehensive guide to building accessible web applications.',
+      thinkingText:
+        'Let me provide a detailed guide on web accessibility best practices...',
+      thinkingDuration: 1500, // Short thinking time
+      responseText: `# Comprehensive Guide to Building Accessible Web Applications
+
+Accessibility (often abbreviated as a11y) is the practice of making your websites and applications usable by as many people as possible. This includes users with disabilities, users on slow connections, and users with older devices.
+
+## 1. Semantic HTML
+
+The foundation of accessibility starts with semantic HTML. Using the right HTML elements for their intended purpose provides built-in accessibility benefits.
+
+### Headings
+Use heading levels (h1-h6) hierarchically. Don't skip levels—go from h1 to h2, not h1 to h3. Each page should have exactly one h1 that describes the main content.
+
+### Landmarks
+Use semantic landmark elements like \`<header>\`, \`<nav>\`, \`<main>\`, \`<aside>\`, and \`<footer>\`. Screen readers can navigate between these landmarks, making it easier for users to find content.
+
+### Lists
+Use \`<ul>\`, \`<ol>\`, and \`<dl>\` for lists. Screen readers announce the number of items in a list, helping users understand the content structure.
+
+## 2. Keyboard Navigation
+
+All interactive elements must be keyboard accessible. Users should be able to navigate your entire application using only a keyboard.
+
+### Focus Management
+- Ensure all interactive elements can receive focus
+- Use visible focus indicators (don't remove \`outline\` without providing an alternative)
+- Manage focus when opening/closing modals and dialogs
+- Use \`tabindex="0"\` to make non-interactive elements focusable when needed
+- Avoid \`tabindex\` values greater than 0
+
+### Skip Links
+Provide "skip to main content" links at the top of pages so keyboard users can bypass repetitive navigation.
+
+## 3. ARIA (Accessible Rich Internet Applications)
+
+ARIA attributes provide additional context to assistive technologies when semantic HTML alone isn't sufficient.
+
+### Common ARIA Attributes
+- \`aria-label\`: Provides an accessible name for an element
+- \`aria-labelledby\`: References another element that labels this one
+- \`aria-describedby\`: References an element that describes this one
+- \`aria-hidden="true"\`: Hides content from assistive technologies
+- \`aria-live\`: Announces dynamic content changes
+
+### ARIA Roles
+Use roles sparingly—prefer semantic HTML. Common roles include:
+- \`role="button"\` for elements that act as buttons but aren't \`<button>\`
+- \`role="alert"\` for important messages
+- \`role="dialog"\` for modal dialogs
+
+**Remember the first rule of ARIA: Don't use ARIA if you can use semantic HTML instead.**
+
+## 4. Color and Contrast
+
+Visual design significantly impacts accessibility.
+
+### Contrast Ratios
+- Regular text: minimum 4.5:1 contrast ratio
+- Large text (18pt+ or 14pt+ bold): minimum 3:1 contrast ratio
+- UI components and graphics: minimum 3:1 contrast ratio
+
+### Don't Rely on Color Alone
+Never use color as the only way to convey information. Add text labels, icons, or patterns to ensure colorblind users can understand the content.
+
+## 5. Images and Media
+
+All non-text content needs text alternatives.
+
+### Alt Text
+- Provide descriptive alt text for informational images
+- Use empty alt (\`alt=""\`) for decorative images
+- For complex images (charts, diagrams), provide detailed descriptions
+
+### Videos
+- Include captions for all video content
+- Provide audio descriptions for visual-only information
+- Include transcripts for audio content
+
+## 6. Forms
+
+Forms are often the most challenging area for accessibility.
+
+### Labels
+Every form input must have an associated label. Use the \`<label>\` element with the \`for\` attribute matching the input's \`id\`.
+
+### Error Handling
+- Clearly identify errors in form submissions
+- Provide helpful error messages near the relevant fields
+- Use \`aria-invalid\` and \`aria-describedby\` to associate error messages with inputs
+
+### Required Fields
+- Indicate required fields visually and programmatically
+- Use \`aria-required="true"\` or the HTML5 \`required\` attribute
+
+## 7. Testing for Accessibility
+
+Regular testing is essential for maintaining accessibility.
+
+### Automated Testing
+- Use tools like axe, WAVE, or Lighthouse
+- Integrate accessibility checks into your CI/CD pipeline
+- Note: Automated tools catch only about 30-40% of issues
+
+### Manual Testing
+- Navigate your entire app using only a keyboard
+- Test with screen readers (VoiceOver, NVDA, JAWS)
+- Test at various zoom levels (up to 200%)
+- Disable CSS and verify content order makes sense
+
+### User Testing
+- Include users with disabilities in your testing process
+- Conduct usability testing with assistive technologies
+
+## 8. Common Patterns
+
+### Modal Dialogs
+- Trap focus within the modal when open
+- Return focus to the trigger element when closed
+- Close on Escape key press
+- Use \`role="dialog"\` and \`aria-modal="true"\`
+
+### Dropdown Menus
+- Use \`aria-expanded\` to indicate open/closed state
+- Use \`aria-haspopup\` to indicate menu presence
+- Support arrow key navigation within the menu
+
+### Tabs
+- Use \`role="tablist"\`, \`role="tab"\`, and \`role="tabpanel"\`
+- Support arrow key navigation between tabs
+- Use \`aria-selected\` to indicate the active tab
+
+## Conclusion
+
+Building accessible applications benefits everyone, not just users with disabilities. It improves SEO, mobile usability, and overall user experience. Start with semantic HTML, test regularly, and continuously improve. Accessibility is not a one-time task but an ongoing commitment to inclusive design.
+
+Remember: The web is for everyone. Let's build it that way.`,
+    },
+    mockKartonState: baseState,
+  },
+};
+
+/**
  * 2. File Reading Scenario
  *
  * Agent explores code by reading a file.

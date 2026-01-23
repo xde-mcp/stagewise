@@ -1,4 +1,3 @@
-import { ChatStateProvider } from '@/hooks/use-chat-state';
 import { MessageEditStateProvider } from '@/hooks/use-message-edit-state';
 import type { ReactNode } from 'react';
 import { KartonProvider } from '@/hooks/use-karton';
@@ -11,11 +10,9 @@ export function ContextProviders({ children }: { children?: ReactNode }) {
     <TooltipProvider>
       <KartonProvider>
         <PostHogProvider>
-          <ChatStateProvider>
-            <MessageEditStateProvider>
-              <TabStateUIProvider>{children}</TabStateUIProvider>
-            </MessageEditStateProvider>
-          </ChatStateProvider>
+          <MessageEditStateProvider>
+            <TabStateUIProvider>{children}</TabStateUIProvider>
+          </MessageEditStateProvider>
         </PostHogProvider>
       </KartonProvider>
     </TooltipProvider>

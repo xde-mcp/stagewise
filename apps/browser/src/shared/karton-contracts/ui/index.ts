@@ -566,10 +566,8 @@ export type AppState = {
     activeTabId: string | null;
     history: HistoryEntry[];
     contextSelectionMode: boolean;
-    // Track which message ID is currently selecting elements (null = none active)
-    activeSelectionMessageId: string | null;
-    // Selected elements scoped by message ID ('main' for main input, message ID for inline edits)
-    selectedElementsByMessageId: Record<string, SelectedElement[]>;
+    // Selected elements
+    selectedElements: SelectedElement[];
     hoveredElement: SelectedElement | null;
     viewportSize: {
       top: number;
@@ -579,14 +577,11 @@ export type AppState = {
       scale: number;
     } | null;
     // Screenshots of selected elements to be auto-attached to chat, scoped by message ID
-    pendingElementScreenshotsByMessageId: Record<
-      string,
-      {
-        id: string; // Unique ID for this screenshot
-        elementId: string; // stagewiseId of the element
-        dataUrl: string; // Base64 data URL of the screenshot
-      }[]
-    >;
+    pendingElementScreenshots: {
+      id: string; // Unique ID for this screenshot
+      elementId: string; // stagewiseId of the element
+      dataUrl: string; // Base64 data URL of the screenshot
+    }[];
   };
 
   // Downloads state for the control button
@@ -754,7 +749,7 @@ export type KartonContract = {
       cycleColorScheme: (tabId?: string) => Promise<void>;
       setZoomPercentage: (percentage: number, tabId?: string) => Promise<void>;
       contextSelection: {
-        setActive: (active: boolean, messageId?: string) => Promise<void>;
+        setActive: (active: boolean) => Promise<void>;
         setMouseCoordinates: (x: number, y: number) => Promise<void>; // Used by the client to communicate where the mouse is currently located. Will be forwarded to the tab to check which element is at that point.
         clearMouseCoordinates: () => Promise<void>; // Clears the mouse position to stop hit testing when mouse leaves the selector bounds
         passthroughWheelEvent: (event: {
@@ -765,14 +760,11 @@ export type KartonContract = {
           deltaY: number;
         }) => Promise<void>; // Used by the client to pass through wheel events to the tab.
         selectHoveredElement: () => Promise<void>; // If the user triggers the element to actually be selected as context, this will trigger a storage operation on the server side.
-        removeElement: (elementId: string, messageId: string) => Promise<void>;
-        clearElements: (messageId: string) => Promise<void>; // Removes all elements from selection for a specific message ID
-        clearPendingScreenshots: (messageId: string) => Promise<void>; // Clears pending element screenshots for a specific message ID after UI has picked them up
+        removeElement: (elementId: string) => Promise<void>;
+        clearElements: () => Promise<void>; // Removes all elements from selection
+        clearPendingScreenshots: () => Promise<void>; // Clears pending element screenshots after UI has picked them up
         /** Restore selected elements directly (used when restoring aborted message to input) */
-        restoreElements: (
-          elements: SelectedElement[],
-          messageId: string,
-        ) => Promise<void>;
+        restoreElements: (elements: SelectedElement[]) => Promise<void>;
       };
       scrollToElement: (
         tabId: string,
@@ -914,11 +906,10 @@ export const defaultState: KartonContract['state'] = {
     activeTabId: null,
     history: [],
     contextSelectionMode: false,
-    activeSelectionMessageId: null,
-    selectedElementsByMessageId: {},
+    selectedElements: [],
     hoveredElement: null,
     viewportSize: null,
-    pendingElementScreenshotsByMessageId: {},
+    pendingElementScreenshots: [],
   },
   downloads: {
     items: [],

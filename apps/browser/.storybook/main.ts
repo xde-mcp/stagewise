@@ -42,6 +42,10 @@ const config: StorybookConfig = {
           },
           // Catch relative imports (safety net)
           {
+            find: /^\.\/use-karton$/,
+            replacement: path.resolve(__dirname, './mocks/mock-hooks.tsx'),
+          },
+          {
             find: /src\/hooks\/use-karton$/,
             replacement: path.resolve(__dirname, './mocks/mock-hooks.tsx'),
           },

@@ -125,7 +125,7 @@ const CodeComponent = ({
     return (
       <code
         className={cn(
-          'rounded bg-muted-foreground/5 px-1.5 py-0.5 font-mono text-sm',
+          'rounded bg-muted-foreground/5 px-1.5 py-0.5 font-mono text-xs',
           className,
         )}
         data-streamdown="inline-code"

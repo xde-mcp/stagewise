@@ -311,7 +311,7 @@ export const CodeBlock = memo(
     code,
     language,
     className,
-    preClassName = 'flex flex-row font-mono text-xs w-full',
+    preClassName = 'flex flex-row font-mono text-xs w-full select-text',
     hideActionButtons,
     compactDiff,
     theme = defaultCodeBlockTheme,
