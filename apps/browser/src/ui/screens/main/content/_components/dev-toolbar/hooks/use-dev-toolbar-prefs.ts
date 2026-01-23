@@ -154,7 +154,6 @@ export function usePanelSettings(
   const { origin, settings, updateSettings } = useOriginSettings(tabUrl);
 
   const isOpen = settings?.panelOpenStates?.[widgetId] ?? false;
-  const height = settings?.panelHeights?.[widgetId] ?? null;
 
   const setOpen = useCallback(
     (open: boolean) => {
@@ -166,21 +165,9 @@ export function usePanelSettings(
     [origin, widgetId, updateSettings],
   );
 
-  const setHeight = useCallback(
-    (newHeight: number) => {
-      if (!origin) return;
-      updateSettings({
-        panelHeights: { [widgetId]: newHeight },
-      });
-    },
-    [origin, widgetId, updateSettings],
-  );
-
   return {
     isOpen,
-    height,
     setOpen,
-    setHeight,
     hasOrigin: !!origin,
   };
 }

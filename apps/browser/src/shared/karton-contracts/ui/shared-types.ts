@@ -490,7 +490,6 @@ export const DEFAULT_WIDGET_ORDER: WidgetId[] = [
 export const devToolbarOriginSettingsSchema = z.object({
   // Use z.string() instead of widgetIdSchema for record keys since panels may only have some widgets configured
   panelOpenStates: z.record(z.string(), z.boolean()).default({}),
-  panelHeights: z.record(z.string(), z.number()).default({}),
   toolbarWidth: z.number().nullable().default(null),
   lastAccessedAt: z.number(),
 });

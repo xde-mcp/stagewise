@@ -1,4 +1,13 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useLayoutEffect,
+} from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import {
   PreviewCard,
@@ -10,8 +19,32 @@ import type { DragHandleProps } from './types';
 import type { WidgetId } from '@shared/karton-contracts/ui/shared-types';
 import { usePanelSettings } from '../hooks';
 
-const MIN_PANEL_HEIGHT = 20 * 4;
-const MAX_PANEL_HEIGHT = 2000;
+/**
+ * Context for widgets to control their panel state.
+ */
+interface PanelControlContextValue {
+  /** Open the panel (switch from hover to pinned state) */
+  openPanel: () => void;
+  /** Whether the panel is currently open (pinned) */
+  isOpen: boolean;
+}
+
+const PanelControlContext = createContext<PanelControlContextValue | null>(
+  null,
+);
+
+/**
+ * Hook for widgets to control their panel state.
+ * Call `openPanel()` to switch from hover preview to fully opened state.
+ */
+export function usePanelControl(): PanelControlContextValue {
+  const context = useContext(PanelControlContext);
+  if (!context) {
+    // Return a no-op if not in a panel context (e.g., when panel is already open)
+    return { openPanel: () => {}, isOpen: true };
+  }
+  return context;
+}
 
 export type PanelContainerProps = {
   id: WidgetId;
@@ -29,41 +62,33 @@ export type PanelContainerProps = {
 
 export function PanelContainer(props: PanelContainerProps) {
   // Persisted state via Karton
-  const {
-    isOpen,
-    height: persistedHeight,
-    setOpen,
-    setHeight,
-  } = usePanelSettings(props.id, props.tabUrl);
+  const { isOpen, setOpen } = usePanelSettings(props.id, props.tabUrl);
 
   // Local state for hover preview (not persisted)
   const [isHovered, setIsHovered] = useState(false);
 
-  // Local state for panel height during session (synced with persisted on change)
-  const [panelHeight, setPanelHeight] = useState<number | null>(
-    persistedHeight,
-  );
-  const [contentHeight, setContentHeight] = useState<number | null>(null);
-  const [isResizing, setIsResizing] = useState(false);
+  // State for portal outlet containers - using state instead of refs
+  // so React re-renders when outlets mount/unmount
+  const [hoverOutlet, setHoverOutlet] = useState<HTMLDivElement | null>(null);
+  const [openOutlet, setOpenOutlet] = useState<HTMLDivElement | null>(null);
+
+  // Ref for the content wrapper - this div gets moved between outlets
   const contentRef = useRef<HTMLDivElement>(null);
-  const startYRef = useRef(0);
-  const startHeightRef = useRef(0);
-  // Track if we've initialized the height for this panel open session
-  const hasInitializedHeightRef = useRef(false);
 
-  // Sync persisted height to local state when it changes (from other tabs or initial load)
-  useEffect(() => {
-    if (persistedHeight !== null && !isResizing) {
-      setPanelHeight(persistedHeight);
-    }
-  }, [persistedHeight, isResizing]);
+  // Move the content wrapper to the appropriate outlet when it changes
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
 
-  // Reset initialization flag when panel closes
-  useEffect(() => {
-    if (!isOpen) {
-      hasInitializedHeightRef.current = false;
+    // Prefer hover outlet when available, fall back to open outlet
+    const targetOutlet = hoverOutlet ?? openOutlet;
+    if (!targetOutlet) return;
+
+    // Only move if not already in the target
+    if (content.parentElement !== targetOutlet) {
+      targetOutlet.appendChild(content);
     }
-  }, [isOpen]);
+  }, [hoverOutlet, openOutlet]);
 
   // Derive the combined state for callbacks
   const state: 'hovered' | 'open' | 'closed' = isOpen
@@ -72,221 +97,102 @@ export function PanelContainer(props: PanelContainerProps) {
       ? 'hovered'
       : 'closed';
 
-  // Measure content height and initialize panel height when panel opens (once per open)
-  useEffect(() => {
-    if (isOpen && contentRef.current && !hasInitializedHeightRef.current) {
-      hasInitializedHeightRef.current = true;
-
-      // Measure natural height without constraint
-      const element = contentRef.current;
-      const naturalHeight = element.scrollHeight;
-      setContentHeight(naturalHeight);
-
-      // Initialize panel height if not set from persistence
-      if (panelHeight === null) {
-        const maxInitialHeight = window.innerHeight * 0.5;
-        const initialHeight = Math.max(
-          MIN_PANEL_HEIGHT,
-          Math.min(naturalHeight, maxInitialHeight),
-        );
-        setPanelHeight(initialHeight);
-        setHeight(initialHeight);
-      }
-    }
-    // Only run when isOpen changes to true - NOT when panelHeight changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
-
-  // Dynamically update content height when content reflows (e.g., due to width changes)
-  useEffect(() => {
-    if (!isOpen || !contentRef.current) return;
-
-    const element = contentRef.current;
-
-    const updateContentHeight = () => {
-      // Temporarily remove height constraint to measure natural height
-      const currentHeight = element.style.height;
-      element.style.height = 'auto';
-      const naturalHeight = element.scrollHeight;
-      element.style.height = currentHeight;
-      setContentHeight(naturalHeight);
-    };
-
-    const resizeObserver = new ResizeObserver(() => {
-      // Use requestAnimationFrame to avoid layout thrashing
-      requestAnimationFrame(updateContentHeight);
-    });
-
-    resizeObserver.observe(element);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [isOpen]);
-
   // Notify parent of state changes
   useEffect(() => {
     props.onStateChange?.(state);
   }, [state, props.onStateChange]);
 
-  // Calculate max height: content height or MAX_PANEL_HEIGHT, whichever is smaller
-  const maxHeight =
-    contentHeight !== null
-      ? Math.min(contentHeight, MAX_PANEL_HEIGHT)
-      : MAX_PANEL_HEIGHT;
-
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      setIsResizing(true);
-      startYRef.current = e.clientY;
-      startHeightRef.current = panelHeight ?? MIN_PANEL_HEIGHT;
-
-      // Use the contentRef element directly for immediate visual feedback
-      const contentElement = contentRef.current;
-
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        const deltaY = moveEvent.clientY - startYRef.current;
-        const effectiveMaxHeight =
-          contentHeight !== null
-            ? Math.min(contentHeight, MAX_PANEL_HEIGHT)
-            : MAX_PANEL_HEIGHT;
-        const newHeight = Math.max(
-          MIN_PANEL_HEIGHT,
-          Math.min(effectiveMaxHeight, startHeightRef.current + deltaY),
-        );
-
-        // Update DOM directly for smooth resizing (no React re-render during drag)
-        if (contentElement) {
-          contentElement.style.height = `${newHeight}px`;
-        }
-      };
-
-      const handleMouseUp = (upEvent: MouseEvent) => {
-        // Calculate final height
-        const deltaY = upEvent.clientY - startYRef.current;
-        const effectiveMaxHeight =
-          contentHeight !== null
-            ? Math.min(contentHeight, MAX_PANEL_HEIGHT)
-            : MAX_PANEL_HEIGHT;
-        const finalHeight = Math.max(
-          MIN_PANEL_HEIGHT,
-          Math.min(effectiveMaxHeight, startHeightRef.current + deltaY),
-        );
-
-        // Update React state and persist
-        setPanelHeight(finalHeight);
-        setHeight(finalHeight);
-        setIsResizing(false);
-
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    },
-    [panelHeight, contentHeight, setHeight],
-  );
-
   const handleButtonClick = useCallback(() => {
     setOpen(!isOpen);
   }, [isOpen, setOpen]);
 
-  const panelContent = (
-    <PanelPreviewContent title={props.title ?? props.ariaLabel}>
-      {props.children}
-    </PanelPreviewContent>
+  // Handle hover state changes from PreviewCard
+  const handleHoverChange = useCallback(
+    (open: boolean) => {
+      // Only update hover state if not already open (pinned)
+      if (isOpen) return;
+      setIsHovered(open);
+    },
+    [isOpen],
+  );
+
+  // Context value for widgets to control panel state
+  const panelControlValue = useMemo<PanelControlContextValue>(
+    () => ({
+      openPanel: () => setOpen(true),
+      isOpen,
+    }),
+    [setOpen, isOpen],
   );
 
   return (
     <div
       className={cn(
-        'relative mt-0 flex shrink-0 flex-row-reverse items-start justify-start gap-0 rounded-lg ring-1 ring-transparent',
+        'relative mt-0 flex shrink-0 flex-col items-stretch justify-start gap-0 rounded-lg ring-1 ring-transparent',
         isOpen && 'w-full bg-surface-1 ring-derived',
       )}
     >
-      <PreviewCard
-        onOpenChange={(open) => {
-          // Only update hover state if not already open (pinned)
-          if (!isOpen) {
-            setIsHovered(open);
-          }
-        }}
-        open={(isOpen || isHovered) && !props.isDragging}
-      >
-        <PreviewCardTrigger delay={10} closeDelay={10}>
-          <Button
-            variant="ghost"
-            size="icon-md"
-            aria-label={props.ariaLabel}
-            className={cn(
-              'z-10 shrink-0',
-              state !== 'closed'
-                ? 'text-primary-foreground hover:text-primary-foreground!'
-                : 'text-foreground',
-              props.isDragging && 'cursor-grabbing',
-              props.triggerClassName,
-            )}
-            disabled={props.disabled}
-            onClick={handleButtonClick}
-            {...props.dragHandleProps?.attributes}
-            {...props.dragHandleProps?.listeners}
-          >
-            {props.icon}
-          </Button>
-        </PreviewCardTrigger>
+      <div className="flex flex-row-reverse items-start justify-between">
+        <PreviewCard
+          onOpenChange={handleHoverChange}
+          open={(isOpen || isHovered) && !props.isDragging}
+        >
+          <PreviewCardTrigger delay={10} closeDelay={10}>
+            <Button
+              variant="ghost"
+              size="icon-md"
+              aria-label={props.ariaLabel}
+              className={cn(
+                'z-10 shrink-0',
+                state !== 'closed'
+                  ? 'text-primary-foreground hover:text-primary-foreground!'
+                  : 'text-foreground',
+                props.isDragging && 'cursor-grabbing',
+                props.triggerClassName,
+              )}
+              disabled={props.disabled}
+              onClick={handleButtonClick}
+              {...props.dragHandleProps?.attributes}
+              {...props.dragHandleProps?.listeners}
+            >
+              {props.icon}
+            </Button>
+          </PreviewCardTrigger>
 
-        {!isOpen && (
-          <PreviewCardContent
-            side="left"
-            sideOffset={0}
-            align="start"
-            className="max-h-[50vh] p-2"
-          >
-            {panelContent}
-          </PreviewCardContent>
-        )}
-      </PreviewCard>
-      {isOpen && (
-        <div className="group/resize flex min-w-0 flex-1 flex-col">
-          {/* Title row - sits next to the icon */}
-          <h3 className="shrink-0 p-2 pb-2 font-medium text-muted-foreground text-sm">
+          {!isOpen && (
+            <PreviewCardContent
+              side="left"
+              sideOffset={0}
+              align="start"
+              className="max-h-[50vh] min-w-56 p-2"
+            >
+              <PanelPreviewContent title={props.title ?? props.ariaLabel}>
+                {/* Portal outlet for hover state */}
+                <div ref={setHoverOutlet} />
+              </PanelPreviewContent>
+            </PreviewCardContent>
+          )}
+        </PreviewCard>
+        {isOpen && (
+          <h3 className="flex-1 p-2 pt-2.5 pb-2 font-medium text-muted-foreground text-sm">
             {props.title ?? props.ariaLabel}
           </h3>
-          {/* Resizable content area */}
-          <div
-            ref={contentRef}
-            className="scrollbar-thin overflow-y-auto px-2"
-            style={{
-              height: panelHeight !== null ? `${panelHeight}px` : 'auto',
-              maxHeight: `${maxHeight}px`,
-              minHeight: `${MIN_PANEL_HEIGHT}px`,
-            }}
-          >
-            {props.children}
-          </div>
-          {/* Resize handle - only visible on hover or when resizing */}
-          <div
-            className={cn(
-              'flex h-2 cursor-ns-resize items-center justify-center rounded-b-lg transition-colors',
-              isResizing
-                ? 'bg-primary/20'
-                : 'opacity-0 group-hover/resize:opacity-100 group-hover/resize:hover:bg-muted/50',
-            )}
-            onMouseDown={handleResizeStart}
-          >
-            <div
-              className={cn(
-                'h-0.5 w-8 rounded-full transition-colors',
-                isResizing
-                  ? 'bg-primary'
-                  : 'bg-muted-foreground/30 group-hover/resize:hover:bg-muted-foreground/50',
-              )}
-            />
-          </div>
+        )}
+      </div>
+      <div className={cn('flex min-w-0 flex-1 flex-col', !isOpen && 'hidden')}>
+        {/* Content area */}
+        <div className="scrollbar-thin max-h-[50vh] overflow-y-auto px-2 pb-2">
+          {/* Portal outlet for open state */}
+          <div ref={setOpenOutlet} />
         </div>
-      )}
+      </div>
+
+      {/* Content wrapper - moved between outlets via DOM manipulation */}
+      <div ref={contentRef} className="contents">
+        <PanelControlContext.Provider value={panelControlValue}>
+          {props.children}
+        </PanelControlContext.Provider>
+      </div>
     </div>
   );
 }

@@ -205,24 +205,6 @@ export class PreferencesService extends DisposableService {
           }
         }
 
-        if (settings.panelHeights !== undefined) {
-          for (const [widgetId, height] of Object.entries(
-            settings.panelHeights,
-          )) {
-            patches.push({
-              op: 'add',
-              path: [
-                'devToolbar',
-                'originSettings',
-                origin,
-                'panelHeights',
-                widgetId,
-              ],
-              value: height,
-            });
-          }
-        }
-
         if (settings.toolbarWidth !== undefined) {
           patches.push({
             op: 'replace',
@@ -573,9 +555,6 @@ export class PreferencesService extends DisposableService {
     const newSettings: DevToolbarOriginSettings = {
       panelOpenStates: lastUsedSettings?.panelOpenStates
         ? { ...lastUsedSettings.panelOpenStates }
-        : {},
-      panelHeights: lastUsedSettings?.panelHeights
-        ? { ...lastUsedSettings.panelHeights }
         : {},
       toolbarWidth: lastUsedSettings?.toolbarWidth ?? null,
       lastAccessedAt: Date.now(),

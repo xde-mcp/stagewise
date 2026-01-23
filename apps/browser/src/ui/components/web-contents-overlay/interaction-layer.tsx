@@ -11,7 +11,8 @@ import {
  * and dispatches them to registered handlers in LIFO order.
  */
 export function InteractionLayer() {
-  const { overlayRef, _registrationsRef } = useWebContentsOverlay();
+  const { overlayRef, _registrationsRef, _removePendingRegistrations } =
+    useWebContentsOverlay();
 
   const registrations = _registrationsRef.current;
   const hasRegistrations = registrations.length > 0;
@@ -20,13 +21,14 @@ export function InteractionLayer() {
   const cursor =
     [...registrations].reverse().find((r) => r.cursor)?.cursor ?? 'default';
 
-  // Helper to dispatch events
+  // Helper to dispatch events (only to active registrations, not pending removal)
   const dispatch = useCallback(
     (
       eventType: WebContentsOverlayEventType,
       event: MouseEvent<HTMLDivElement> | WheelEvent<HTMLDivElement>,
     ) => {
-      dispatchOverlayEvent(_registrationsRef.current, eventType, event);
+      const active = _registrationsRef.current.filter((r) => !r.pendingRemoval);
+      dispatchOverlayEvent(active, eventType, event);
     },
     [_registrationsRef],
   );
@@ -68,8 +70,10 @@ export function InteractionLayer() {
     (event: MouseEvent<HTMLDivElement>) => {
       dispatch('mouseleave', event);
       dispatch('pointerleave', event);
+      // Remove any registrations that were soft-released (pending removal)
+      _removePendingRegistrations();
     },
-    [dispatch],
+    [dispatch, _removePendingRegistrations],
   );
 
   const handleMouseEnter = useCallback(

@@ -1,7 +1,7 @@
 export { ToggleButton } from './toggle-button';
 export type { ToggleButtonProps } from './toggle-button';
 
-export { PanelContainer } from './panel-container';
+export { PanelContainer, usePanelControl } from './panel-container';
 export type { PanelContainerProps } from './panel-container';
 
 export { SortableWrapper } from './sortable-wrapper';

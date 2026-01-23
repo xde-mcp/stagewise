@@ -21,7 +21,7 @@
   --font-sans: stagewise-builtin-geist, -apple-system, BlinkMacSystemFont,
               "Segoe UI", "Ubuntu", "Roboto", "Noto Sans", "Cantarell",
               "Helvetica Neue", "Inter", Arial, sans-serif;
-  --font-mono: Menlo, stagewise-builtin-geist-mono, ui-monospace, "SF Mono",
+  --font-mono: stagewise-builtin-geist-mono, Menlo,ui-monospace, "SF Mono",
               "Segoe UI Mono", "Ubuntu Mono", "Roboto Mono", "Noto Mono",
               "Liberation Mono", "Inter Mono", Consolas, monospace;
   --text-2xs: 0.625rem;

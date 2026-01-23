@@ -31,7 +31,7 @@ export const CollapsibleTrigger = ({
         props.className,
       )}
     >
-      {children}
+      <div className="flex flex-1 flex-row items-center gap-1">{children}</div>
       <ChevronDownIcon className="size-3 transition-transform group-data-[state=open]:rotate-180" />
     </CollapsibleBase.Trigger>
   );
@@ -51,7 +51,7 @@ export const CollapsibleContent = ({
     <CollapsibleBase.Panel
       {...props}
       className={cn(
-        'flex h-(--collapsible-panel-height) flex-col overflow-hidden px-2 text-foreground text-sm transition-[height] duration-50 ease-in-out data-ending-style:h-0! data-starting-style:h-0!',
+        'flex h-(--collapsible-panel-height) flex-col overflow-hidden px-2 text-foreground text-sm transition-all duration-150 ease-out data-ending-style:h-0! data-starting-style:h-0! data-ending-style:opacity-0! data-starting-style:opacity-0!',
         props.className,
       )}
     >

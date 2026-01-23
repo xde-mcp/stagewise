@@ -36,6 +36,12 @@ export interface WebContentsOverlayContextValue {
   /** Release a previously granted access handle */
   releaseAccess: (handle: AccessHandle) => void;
 
+  /**
+   * Soft release - keeps the overlay active for z-order but stops dispatching
+   * events. The registration will be fully removed when mouse leaves overlay.
+   */
+  softReleaseAccess: (handle: AccessHandle) => void;
+
   /** True if non-exclusive access can be granted (no exclusive holder) */
   canGetAccess: boolean;
 
@@ -47,6 +53,9 @@ export interface WebContentsOverlayContextValue {
 
   /** Internal: force update function to re-render on registration changes */
   _forceUpdate: () => void;
+
+  /** Internal: remove all pending removal registrations (called on mouse leave) */
+  _removePendingRegistrations: () => void;
 }
 
 const WebContentsOverlayContext =
@@ -108,10 +117,18 @@ export function WebContentsOverlayProvider({
         forceUpdate();
       };
 
+      const softRelease = () => {
+        registrationsRef.current = registrationsRef.current.map((r) =>
+          r.id === id ? { ...r, pendingRemoval: true } : r,
+        );
+        forceUpdate();
+      };
+
       return {
         id,
         isExclusive: exclusive,
         release,
+        softRelease,
       };
     },
     [forceUpdate],
@@ -127,6 +144,26 @@ export function WebContentsOverlayProvider({
     [forceUpdate],
   );
 
+  const softReleaseAccess = useCallback(
+    (handle: AccessHandle) => {
+      registrationsRef.current = registrationsRef.current.map((r) =>
+        r.id === handle.id ? { ...r, pendingRemoval: true } : r,
+      );
+      forceUpdate();
+    },
+    [forceUpdate],
+  );
+
+  const removePendingRegistrations = useCallback(() => {
+    const hadPending = registrationsRef.current.some((r) => r.pendingRemoval);
+    if (hadPending) {
+      registrationsRef.current = registrationsRef.current.filter(
+        (r) => !r.pendingRemoval,
+      );
+      forceUpdate();
+    }
+  }, [forceUpdate]);
+
   // Derived state for access availability
   const registrations = registrationsRef.current;
   const hasExclusive = registrations.some((r) => r.isExclusive);
@@ -139,17 +176,21 @@ export function WebContentsOverlayProvider({
       overlayRef,
       requestAccess,
       releaseAccess,
+      softReleaseAccess,
       canGetAccess,
       canGetExclusiveAccess,
       _registrationsRef: registrationsRef,
       _forceUpdate: forceUpdate,
+      _removePendingRegistrations: removePendingRegistrations,
     }),
     [
       requestAccess,
       releaseAccess,
+      softReleaseAccess,
       canGetAccess,
       canGetExclusiveAccess,
       forceUpdate,
+      removePendingRegistrations,
     ],
   );
 

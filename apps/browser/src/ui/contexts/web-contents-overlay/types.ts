@@ -55,6 +55,13 @@ export interface AccessHandle {
   isExclusive: boolean;
   /** Release this handle's access */
   release: () => void;
+  /**
+   * Soft release - keeps the overlay "active" for z-order purposes but stops
+   * dispatching events. The registration will be fully removed when the mouse
+   * leaves the overlay area. Useful for preventing z-order changes after an
+   * interaction completes.
+   */
+  softRelease: () => void;
 }
 
 /**
@@ -67,4 +74,9 @@ export interface Registration {
   handlers: Partial<
     Record<WebContentsOverlayEventType, (e: OverlayEvent) => void>
   >;
+  /**
+   * When true, this registration keeps the overlay active for z-order but
+   * doesn't dispatch events. It will be removed on mouse leave.
+   */
+  pendingRemoval?: boolean;
 }
