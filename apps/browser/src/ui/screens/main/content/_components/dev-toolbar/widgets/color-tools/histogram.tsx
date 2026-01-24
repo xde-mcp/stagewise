@@ -1,4 +1,4 @@
-import { IconChartFill18 } from 'nucleo-ui-fill-18';
+import { IconChartHistogramFill18 } from 'nucleo-ui-fill-18';
 import {
   Collapsible,
   CollapsibleContent,
@@ -206,7 +206,7 @@ export function ColorHistogram({ tabId, getScreenshot }: HistogramProps) {
       onOpenChange={handleOpenChange}
     >
       <CollapsibleTrigger size="condensed">
-        <IconChartFill18 className="inline size-3.5" /> Histogram
+        <IconChartHistogramFill18 className="size-3.5" /> Histogram
       </CollapsibleTrigger>
       <CollapsibleContent className="border-derived-subtle border-t p-2">
         {/* Tab Switcher */}

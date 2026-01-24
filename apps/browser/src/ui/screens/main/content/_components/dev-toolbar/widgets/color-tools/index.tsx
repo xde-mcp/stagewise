@@ -5,6 +5,7 @@ import { useKartonProcedure } from '@/hooks/use-karton';
 
 import { ColorPicker } from './color-picker';
 import { ColorHistogram } from './histogram';
+import { DominantColors } from './dominant-colors';
 
 export function ColorToolsWidget({ tab, sortableProps }: WidgetProps) {
   const { isDragging, dragHandleProps } = sortableProps;
@@ -24,6 +25,7 @@ export function ColorToolsWidget({ tab, sortableProps }: WidgetProps) {
       isDragging={isDragging}
     >
       <ColorPicker tabId={tab.id} getScreenshot={getScreenshot} />
+      <DominantColors tabId={tab.id} getScreenshot={getScreenshot} />
       <ColorHistogram tabId={tab.id} getScreenshot={getScreenshot} />
     </PanelContainer>
   );
