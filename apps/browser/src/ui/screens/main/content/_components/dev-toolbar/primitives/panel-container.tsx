@@ -188,7 +188,7 @@ export function PanelContainer(props: PanelContainerProps) {
       </div>
 
       {/* Content wrapper - moved between outlets via DOM manipulation */}
-      <div ref={contentRef} className="contents">
+      <div ref={contentRef} className="flex flex-col items-stretch gap-2">
         <PanelControlContext.Provider value={panelControlValue}>
           {props.children}
         </PanelControlContext.Provider>
@@ -209,7 +209,7 @@ function PanelPreviewContent({
       <h3 className="shrink-0 font-regular text-muted-foreground text-xs">
         {title}
       </h3>
-      <div className="scrollbar-thin flex-1 overflow-y-auto text-foreground">
+      <div className="scrollbar-thin flex flex-1 flex-col items-stretch gap-2 overflow-y-auto text-foreground">
         {children}
       </div>
     </div>
