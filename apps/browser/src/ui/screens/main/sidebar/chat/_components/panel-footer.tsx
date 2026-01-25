@@ -327,6 +327,8 @@ export function ChatPanelFooter() {
       ) {
         // State 2: Sidebar open, element selection OFF, *not* on the start page → activate element selection
         startContextSelector();
+        // Ensure keyboard focus is on stagewise-ui so ESC key works
+        await togglePanelKeyboardFocus('stagewise-ui');
       } else {
         // State 3: Sidebar open AND element selection ON → close sidebar
         window.dispatchEvent(new Event('sidebar-chat-panel-closed'));
@@ -369,13 +371,20 @@ export function ChatPanelFooter() {
     startContextSelector();
   });
 
-  const handleToggleElementSelection = useCallback(() => {
+  const handleToggleElementSelection = useCallback(async () => {
     if (elementSelectionActive) stopContextSelector();
     else {
       setChatInputActive(true);
       startContextSelector();
+      // Ensure keyboard focus is on stagewise-ui so ESC key works
+      await togglePanelKeyboardFocus('stagewise-ui');
     }
-  }, [elementSelectionActive, startContextSelector, stopContextSelector]);
+  }, [
+    elementSelectionActive,
+    startContextSelector,
+    stopContextSelector,
+    togglePanelKeyboardFocus,
+  ]);
 
   /**
    * Add a file attachment and insert a mention into the editor

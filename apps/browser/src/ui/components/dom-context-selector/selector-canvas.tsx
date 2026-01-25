@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useOverlayAccess, type AccessHandle } from '@/contexts';
+import { useEventListener } from '@/hooks/use-event-listener';
 
 /**
  * DOMContextSelector uses the unified overlay system to capture mouse events
@@ -24,6 +25,9 @@ export function DOMContextSelector() {
   );
   const selectHoveredElement = useKartonProcedure(
     (p) => p.browser.contextSelection.selectHoveredElement,
+  );
+  const setContextSelectionActive = useKartonProcedure(
+    (p) => p.browser.contextSelection.setActive,
   );
 
   const { requestAccess, releaseAccess, overlayRef } = useOverlayAccess();
@@ -118,6 +122,21 @@ export function DOMContextSelector() {
       }
     };
   }, [releaseAccess]);
+
+  // Cancel selection on ESC key
+  // Use capture phase to run before other ESC handlers
+  const handleEscapeKey = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && contextSelectionActive) {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextSelectionActive(false);
+      }
+    },
+    [contextSelectionActive, setContextSelectionActive],
+  );
+
+  useEventListener('keydown', handleEscapeKey, { capture: true });
 
   // This component no longer renders its own overlay - it uses the unified system
   return null;

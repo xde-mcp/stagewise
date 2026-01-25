@@ -9,6 +9,7 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useEventListener } from '@/hooks/use-event-listener';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
 import {
@@ -432,16 +433,19 @@ export function ColorPicker({ tabId, getScreenshot }: ColorPickerProps) {
   }, [releaseAccess]);
 
   // Cancel picking on escape key
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isArmed) {
+  // Use capture phase to run before base-ui's ESC handling (which closes the preview card)
+  const handleEscapeKey = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isArmed) {
+        e.preventDefault();
+        e.stopPropagation();
         cancelPicking();
       }
-    };
+    },
+    [isArmed, cancelPicking],
+  );
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isArmed, cancelPicking]);
+  useEventListener('keydown', handleEscapeKey, { capture: true });
 
   // Continuously refresh screenshot while armed to keep color data accurate
   useEffect(() => {
