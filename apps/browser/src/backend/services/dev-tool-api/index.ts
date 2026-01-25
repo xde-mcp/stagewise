@@ -254,7 +254,7 @@ export class DevToolAPIService extends DisposableService {
   ): Promise<GetScreenshotResult> {
     const tabId = options?.tabId;
     const format = options?.format ?? 'png';
-    const quality = options?.quality ?? 80;
+    const quality = options?.quality ?? 100;
     const fullPage = options?.fullPage ?? false;
     const clip = options?.clip;
 
