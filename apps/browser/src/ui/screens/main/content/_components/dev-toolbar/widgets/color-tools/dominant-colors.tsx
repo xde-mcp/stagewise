@@ -571,7 +571,7 @@ export function DominantColors({ tabId, getScreenshot }: DominantColorsProps) {
                 return (
                   <div
                     key={`${color.hex}-${index}`}
-                    className="flex h-7 items-center justify-center gap-0.5 rounded font-mono text-xs"
+                    className="flex h-7 items-center justify-center gap-0.5 rounded border border-derived-strong font-mono text-xs"
                     style={{ backgroundColor: color.hex }}
                   >
                     <span
