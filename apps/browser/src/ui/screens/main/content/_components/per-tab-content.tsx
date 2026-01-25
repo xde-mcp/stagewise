@@ -34,6 +34,8 @@ import { WebContentsOverlay } from '@/components/web-contents-overlay';
 import { WebContentsOverlayProvider } from '@/contexts';
 import { BasicAuthDialog } from './basic-auth-dialog';
 import { DevToolbar, useHasOpenPanel, useToolbarWidth } from './dev-toolbar';
+import { HotkeyComboText } from '@/components/hotkey-combo-text';
+import { HotkeyActions } from '@shared/hotkeys';
 
 export interface PerTabContentRef {
   focusOmnibox: () => void;
@@ -170,7 +172,10 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
                 />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Open developer tools</TooltipContent>
+            <TooltipContent side="bottom">
+              {tab?.devTools.open ? 'Close' : 'Open'} developer tools (
+              <HotkeyComboText action={HotkeyActions.CMD_OPTION_I} />)
+            </TooltipContent>
           </Tooltip>
         </div>
         {/* Content area - wrapped with WebContentsOverlayProvider for overlay access */}
