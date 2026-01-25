@@ -80,6 +80,11 @@ export function DevToolbar({ tab }: DevToolbarProps) {
         <SortableContext items={order} strategy={verticalListSortingStrategy}>
           {order.map((widgetId) => {
             const Widget = widgetRegistry[widgetId];
+
+            if (!Widget) {
+              return null;
+            }
+
             return (
               <SortableWrapper key={widgetId} id={widgetId}>
                 {(sortableProps) => (

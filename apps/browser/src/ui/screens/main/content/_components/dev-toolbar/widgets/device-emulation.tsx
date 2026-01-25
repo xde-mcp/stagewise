@@ -15,9 +15,7 @@ export function DeviceEmulationWidget({ tab, sortableProps }: WidgetProps) {
       dragHandleProps={dragHandleProps}
       isDragging={isDragging}
     >
-      Hello world!
-      <br />
-      We can do all kinds of stuff here!
+      Device emulation coming soon. Use Chrome devtools for now.
     </PanelContainer>
   );
 }
