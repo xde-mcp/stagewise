@@ -68,7 +68,7 @@ export function DevToolbar({ tab }: DevToolbarProps) {
   return (
     <div
       className={cn(
-        'scrollbar-thin scrollbar-hover-only flex h-full max-h-full min-h-0 w-full flex-1 shrink-0 flex-col items-end justify-start gap-2 overflow-y-auto px-1 *:shrink-0',
+        'scrollbar-thin scrollbar-hover-only flex h-full max-h-full min-h-0 w-full flex-1 shrink-0 flex-col items-end justify-start gap-2 overflow-y-auto px-1 py-1 *:shrink-0',
       )}
     >
       <DndContext
