@@ -8,11 +8,7 @@ export function SidebarChatSection() {
     (s) => s.userAccount?.status === 'authenticated',
   );
   return (
-    <div
-      className={cn(
-        'size-full rounded-lg bg-background group-data-[collapsed=true]:hidden',
-      )}
-    >
+    <div className={cn('size-full group-data-[collapsed=true]:hidden')}>
       {signedIn ? <ChatPanel /> : <NotSignedIn />}
     </div>
   );

@@ -242,7 +242,7 @@ export const ChatHistory = () => {
         'pb-[calc(1rem+var(--file-diff-card-height,0px))]',
       )}
       style={maskStyle}
-      contentClassName="px-4"
+      contentClassName="px-2.5"
       options={
         renderedMessages.length === 0
           ? { overflow: { x: 'hidden', y: 'hidden' } }

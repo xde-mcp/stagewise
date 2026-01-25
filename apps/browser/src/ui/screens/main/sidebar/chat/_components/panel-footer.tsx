@@ -460,7 +460,7 @@ export function ChatPanelFooter() {
   });
 
   return (
-    <footer className="z-20 flex flex-col items-stretch gap-1 px-2">
+    <footer className="z-20 flex flex-col items-stretch gap-1 px-1">
       <div
         className={cn(
           'relative flex flex-row items-stretch gap-1 rounded-md bg-background p-2 shadow-elevation-1 ring-1 ring-derived-strong transition-colors before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',

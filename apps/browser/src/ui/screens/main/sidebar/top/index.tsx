@@ -133,8 +133,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   return (
     <div
       className={cn(
-        'app-drag flex h-8 max-h-8 min-h-8 flex-row items-center justify-start gap-2 group-data-[collapsed=true]:hidden',
-        platform === 'darwin' && !isFullScreen ? 'ml-18' : 'ml-0',
+        'app-drag flex h-7 flex-row items-center justify-start gap-2 border-border-subtle border-b group-data-[collapsed=true]:hidden',
+        platform === 'darwin' && !isFullScreen ? 'pl-18' : 'ml-0',
       )}
     >
       {!isCollapsed && <WorkspaceInfoBadge />}

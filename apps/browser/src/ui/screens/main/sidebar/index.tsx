@@ -81,7 +81,7 @@ export function Sidebar() {
         if (size > 0 && !isCollapsed) previousSizeRef.current = size;
       }}
       data-collapsed={isCollapsed}
-      className="@container group overflow-visible! flex h-full flex-col items-stretch justify-between gap-3 data-[collapsed=false]:min-w-64 data-[collapsed=false]:max-w-2xl data-[collapsed=true]:max-w-0"
+      className="@container group overflow-visible! flex h-full flex-col items-stretch justify-between gap-3 rounded-lg bg-background p-1 data-[collapsed=false]:min-w-64 data-[collapsed=false]:max-w-2xl data-[collapsed=true]:max-w-0"
     >
       <SidebarTopSection isCollapsed={isCollapsed} />
       {/* Chat area */}
