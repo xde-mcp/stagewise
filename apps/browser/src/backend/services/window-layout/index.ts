@@ -192,7 +192,7 @@ export class WindowLayoutService extends DisposableService {
             },
           }
         : {}),
-      trafficLightPosition: { x: 15, y: 15 },
+      trafficLightPosition: { x: 14, y: 14 },
       backgroundMaterial: 'mica',
       backgroundColor: initialTheme.background,
       transparent: process.platform === 'darwin', // Only make transparent on macOS since we get graphic bugs without that

@@ -133,7 +133,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   return (
     <div
       className={cn(
-        'app-drag flex h-7 flex-row items-center justify-start gap-2 border-border-subtle border-b group-data-[collapsed=true]:hidden',
+        'app-drag flex h-7 flex-row items-center justify-start gap-2 border-border-subtle border-b pb-1 group-data-[collapsed=true]:hidden',
         platform === 'darwin' && !isFullScreen ? 'pl-18' : 'ml-0',
       )}
     >
@@ -146,7 +146,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
               <TooltipTrigger>
                 <Button
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon-xs"
                   className="shrink-0"
                   disabled={isWorking}
                   onClick={() => void createChatAndFocus()}
@@ -177,7 +177,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                     <Button
                       {...triggerProps}
                       variant="ghost"
-                      size="icon-sm"
+                      size="icon-xs"
                       className="app-no-drag shrink-0"
                       disabled={isWorking}
                     >
@@ -195,7 +195,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             <TooltipTrigger>
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="icon-xs"
                 onClick={() => {
                   createTab(SETTINGS_PAGE_URL, true);
                 }}
