@@ -142,7 +142,7 @@ export class WindowLayoutService extends DisposableService {
     // Connect preferences service for checking stored permission settings
     permissionRegistry.setPreferencesService(this.preferencesService);
 
-    this.uiController = new UIController(this.logger);
+    this.uiController = await UIController.create(this.logger);
     this.uiController.setCheckFrameValidityHandler(
       this.handleCheckFrameValidity.bind(this),
     );

@@ -1,4 +1,4 @@
-import { WebContentsView, shell } from 'electron';
+import { WebContentsView, shell, session, app } from 'electron';
 import { domCodeToElectronKeyCode } from '../../utils/dom-code-to-electron-key-code';
 import path from 'node:path';
 import contextMenu from 'electron-context-menu';
@@ -11,6 +11,58 @@ import type { PageTransition } from '@shared/karton-contracts/pages-api/types';
 import type { SelectedElement } from '@shared/selected-elements';
 import { fileURLToPath } from 'node:url';
 import { canBrowserHandleUrl } from './protocol-utils';
+import {
+  default as installExtension,
+  REACT_DEVELOPER_TOOLS,
+} from 'electron-devtools-installer';
+
+const UI_SESSION_PARTITION = 'persist:stagewise-ui';
+
+/**
+ * Installs React DevTools extension on the UI session.
+ * Must be called before creating any WebContentsView that uses the UI session.
+ */
+async function installReactDevToolsOnUISession(logger: Logger): Promise<void> {
+  if (app.isPackaged) return; // Don't install in production
+
+  try {
+    // Get the UI session (creates it if it doesn't exist)
+    const uiSession = session.fromPartition(UI_SESSION_PARTITION);
+
+    // First, use electron-devtools-installer to download/cache the extension
+    // This returns extension info including the path
+    const extensionInfo = await installExtension(REACT_DEVELOPER_TOOLS, {
+      loadExtensionOptions: { allowFileAccess: true },
+      forceDownload: false,
+    });
+
+    // Now load the extension explicitly on the UI session
+    // electron-devtools-installer loads on defaultSession, but we need it on UI session
+    const extensionPath =
+      typeof extensionInfo === 'object' && extensionInfo.path
+        ? extensionInfo.path
+        : null;
+    if (!extensionPath) {
+      logger.warn(
+        '[UIController] Could not determine React DevTools extension path',
+      );
+      return;
+    }
+
+    // Load extension on the UI session specifically
+    const loadedExtension = await uiSession.extensions.loadExtension(
+      extensionPath,
+      {
+        allowFileAccess: true,
+      },
+    );
+    logger.debug(
+      `[UIController] Loaded React DevTools on UI session: ${loadedExtension.name}`,
+    );
+  } catch (err) {
+    logger.warn('[UIController] Failed to install React DevTools:', err);
+  }
+}
 
 // These are injected by the build system
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -104,7 +156,22 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     frameId: string,
   ) => Promise<boolean>;
 
-  constructor(logger: Logger) {
+  /**
+   * Creates a new UIController instance with React DevTools installed.
+   * This must be used instead of the constructor to ensure DevTools are loaded
+   * on the session before the WebContentsView is created.
+   */
+  public static async create(logger: Logger): Promise<UIController> {
+    // Install React DevTools on the UI session BEFORE creating the WebContentsView
+    await installReactDevToolsOnUISession(logger);
+    return new UIController(logger);
+  }
+
+  /**
+   * Creates a new UIController instance.
+   * Use the static `create()` method instead of calling this directly.
+   */
+  private constructor(logger: Logger) {
     super();
     this.logger = logger;
     this.uiKarton = new KartonService(logger);
@@ -115,7 +182,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
           path.dirname(fileURLToPath(import.meta.url)),
           'ui-preload/index.js',
         ),
-        partition: 'persist:stagewise-ui',
+        partition: UI_SESSION_PARTITION,
       },
     });
 
