@@ -145,11 +145,16 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
         {/* Control Bar */}
         <div className={cn('flex w-full shrink-0 items-center gap-2 p-2 pb-0')}>
           <NavButtons tabId={tabId} tab={tab} />
-          <Omnibox ref={omniboxRef} tabId={tabId} tab={tab} />
+          <Omnibox
+            ref={omniboxRef}
+            tabId={tabId}
+            tab={tab}
+            isActive={isActive}
+          />
           <ZoomBar tabId={tabId} />
           <SearchBar tabId={tabId} ref={searchInputRef} />
-          <ResourceRequestsControlButton tabId={tabId} />
-          <DownloadsControlButton />
+          <ResourceRequestsControlButton tabId={tabId} isActive={isActive} />
+          <DownloadsControlButton isActive={isActive} />
 
           <Tooltip>
             <TooltipTrigger>

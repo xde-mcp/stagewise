@@ -25,10 +25,12 @@ export interface OmniboxRef {
 export const Omnibox = ({
   tabId,
   tab,
+  isActive,
   ref,
 }: {
   tabId: string;
   tab: TabState | undefined;
+  isActive: boolean;
   ref: Ref<OmniboxRef>;
 }) => {
   const displayedTabUrl =
@@ -70,10 +72,12 @@ export const Omnibox = ({
     }
   }, [displayedTabUrl, tab?.isLoading]);
 
-  // Close omnibox when the active tab changes
+  // Close omnibox when the active tab changes or when this tab becomes inactive
   useEffect(() => {
-    setIsOmniboxOpen(false);
-  }, [tabId]);
+    if (!isActive) {
+      setIsOmniboxOpen(false);
+    }
+  }, [tabId, isActive]);
 
   const { groups: suggestionGroups, resetSuggestions } = useOmniboxSuggestions(
     displayedTabUrl,

@@ -1,4 +1,4 @@
-import { Fragment, useState, useMemo, useCallback } from 'react';
+import { Fragment, useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Tooltip,
   TooltipTrigger,
@@ -289,7 +289,7 @@ function DownloadItemRow({
   );
 }
 
-export function DownloadsControlButton() {
+export function DownloadsControlButton({ isActive }: { isActive: boolean }) {
   const downloads = useKartonState((state) => state.downloads);
   const markSeen = useKartonProcedure((p) => p.downloads.markSeen);
   const pauseDownload = useKartonProcedure((p) => p.downloads.pause);
@@ -301,6 +301,13 @@ export function DownloadsControlButton() {
 
   const [isOpen, setIsOpen] = useState(false);
   const { items, activeCount, hasUnseenDownloads, lastSeenAt } = downloads;
+
+  // Close popover when tab becomes inactive
+  useEffect(() => {
+    if (!isActive) {
+      setIsOpen(false);
+    }
+  }, [isActive]);
 
   // CMD/CTRL+J hotkey to show downloads
   const handleShowDownloads = useCallback(() => {
@@ -366,7 +373,7 @@ export function DownloadsControlButton() {
   const handleDelete = (id: number) => void deleteDownload(id);
 
   return (
-    <Popover open={true} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <Tooltip>
         <TooltipTrigger>
           <PopoverTrigger>

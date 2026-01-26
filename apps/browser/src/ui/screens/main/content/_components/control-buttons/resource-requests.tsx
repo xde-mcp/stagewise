@@ -414,7 +414,13 @@ function PermissionRequestRow({
 // Main Component
 // ============================================================================
 
-export function ResourceRequestsControlButton({ tabId }: { tabId: string }) {
+export function ResourceRequestsControlButton({
+  tabId,
+  isActive,
+}: {
+  tabId: string;
+  isActive: boolean;
+}) {
   const permissionRequests = useKartonState(
     (s) => s.browser.tabs[tabId]?.permissionRequests ?? [],
   );
@@ -452,12 +458,12 @@ export function ResourceRequestsControlButton({ tabId }: { tabId: string }) {
   const URGENT_TIMEOUT_MS = 5000;
   const AUTO_DISMISS_TIMEOUT_MS = 10000;
 
-  // Close popover when all requests are handled
+  // Close popover when all requests are handled or when tab becomes inactive
   useEffect(() => {
-    if (permissionRequests.length === 0) {
+    if (permissionRequests.length === 0 || !isActive) {
       setIsOpen(false);
     }
-  }, [permissionRequests.length]);
+  }, [permissionRequests.length, isActive]);
 
   // Set urgent state and auto-open popover when new requests arrive
   useEffect(() => {
