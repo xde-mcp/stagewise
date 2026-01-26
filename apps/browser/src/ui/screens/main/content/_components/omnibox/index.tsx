@@ -130,6 +130,14 @@ export const Omnibox = ({
     [inputValue],
   );
 
+  const onInputFocus = useCallback(() => {
+    // Select all text when the input is focused (e.g., by clicking on it)
+    // Use setTimeout to ensure selection happens after the focus event completes
+    setTimeout(() => {
+      inputRef.current?.select();
+    }, 0);
+  }, []);
+
   const showDefaultBrowserInfo = false; // TODO
 
   return (
@@ -153,6 +161,7 @@ export const Omnibox = ({
           <Autocomplete.Input
             ref={inputRef}
             placeholder="Search or type a URL"
+            onFocus={onInputFocus}
             className={cn(
               'h-8 w-full flex-1 rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent transition-all duration-150 ease-out hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong',
               shouldShowBreadcrumbs && !isOmniboxOpen && 'text-transparent',
