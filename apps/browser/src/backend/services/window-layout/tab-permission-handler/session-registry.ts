@@ -26,6 +26,11 @@ const AUTO_GRANTED_PERMISSIONS = new Set([
 
   // Window management - generally safe, not commonly exposed to users
   'window-management',
+
+  // Clipboard write - auto-granted like Chrome does
+  // User gesture is enforced by Chromium at the web platform level
+  'clipboard-write',
+  'clipboard-sanitized-write', // Chromium internal variant
 ]);
 
 /**
