@@ -34,12 +34,14 @@ export { ImageAttachment } from './nodes/image-attachment';
 export { ElementAttachment } from './nodes/element-attachment';
 export { TextClipAttachment } from './nodes/text-clip-attachment';
 
-// Node view component
+// Node view components (used by TipTap and view-only renderer)
 export { AttachmentNodeView } from './base-attachment-fallback-view';
+export { ElementAttachmentView } from './nodes/element-attachment-view';
+export { ImageAttachmentView } from './nodes/image-attachment-view';
+export { TextClipAttachmentView } from './nodes/text-clip-attachment-view';
 
 // View utilities for building custom NodeView components
 export {
-  useEditorEditable,
   truncateLabel,
   BadgeContainer,
   AttachmentBadge,

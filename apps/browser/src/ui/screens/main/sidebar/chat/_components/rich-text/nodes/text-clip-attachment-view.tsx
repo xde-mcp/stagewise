@@ -1,5 +1,3 @@
-import type { NodeViewProps } from '@tiptap/react';
-import { NodeViewWrapper } from '@tiptap/react';
 import {
   ClipboardPaste,
   CopyCheckIcon,
@@ -15,13 +13,12 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
-import type { TextClipAttachmentAttrs } from '../types';
-import { useEditorEditable, BadgeContainer } from '../view-utils';
-import {
-  PreviewCard,
-  PreviewCardContent,
-  PreviewCardTrigger,
-} from '@stagewise/stage-ui/components/preview-card';
+import { PreviewCardContent } from '@stagewise/stage-ui/components/preview-card';
+import type {
+  TextClipAttachmentAttrs,
+  AttachmentNodeViewProps,
+} from '../types';
+import { BadgeContainer, AttachmentBadgeWrapper } from '../view-utils';
 
 /**
  * Truncates text content for display in the badge.
@@ -33,9 +30,9 @@ function truncateContent(content: string, maxLength = 15): string {
 }
 
 /**
- * Preview component showing a truncated view of the text content.
+ * Preview content component showing text content with copy functionality.
  */
-function TextPreview({ content }: { content: string }) {
+function TextPreviewContent({ content }: { content: string }) {
   const [hasCopied, setHasCopied] = useState(false);
   const copyResetTimeoutRef = useRef<number | null>(null);
 
@@ -58,7 +55,7 @@ function TextPreview({ content }: { content: string }) {
   }, [content]);
 
   return (
-    <>
+    <PreviewCardContent className="gap-2.5">
       <span
         role="button"
         tabIndex={-1}
@@ -87,7 +84,7 @@ function TextPreview({ content }: { content: string }) {
           {displayContent}
         </p>
       </div>
-    </>
+    </PreviewCardContent>
   );
 }
 
@@ -98,14 +95,9 @@ function TextPreview({ content }: { content: string }) {
  * - Expand button to resolve/convert back to plain text
  * - Delete button to remove the attachment
  */
-export function TextClipAttachmentView({
-  node,
-  deleteNode,
-  selected,
-  editor,
-}: NodeViewProps) {
-  const attrs = node.attrs as TextClipAttachmentAttrs;
-  const isEditable = useEditorEditable(editor);
+export function TextClipAttachmentView(props: AttachmentNodeViewProps) {
+  const attrs = props.node.attrs as TextClipAttachmentAttrs;
+  const isEditable = !('viewOnly' in props);
 
   const displayLabel = useMemo(
     () => truncateContent(attrs.content),
@@ -114,18 +106,18 @@ export function TextClipAttachmentView({
 
   const handleExpand = useCallback(() => {
     // Use the resolveTextClip command defined in the extension
-    (
-      editor.commands as { resolveTextClip?: (id: string) => boolean }
-    ).resolveTextClip?.(attrs.id);
-  }, [editor, attrs.id]);
+    ('editor' in props && 'resolveTextClip' in props.editor.commands
+      ? props.editor.commands.resolveTextClip
+      : undefined)?.(attrs.id);
+  }, [props, attrs.id]);
 
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      deleteNode();
+      'deleteNode' in props ? props.deleteNode() : undefined;
     },
-    [deleteNode],
+    [props],
   );
 
   const handleExpandClick = useCallback(
@@ -137,8 +129,9 @@ export function TextClipAttachmentView({
     [handleExpand],
   );
 
+  // Custom badge with expand button (unique to text-clip)
   const badge = (
-    <BadgeContainer selected={selected}>
+    <BadgeContainer selected={props.selected}>
       {/* Icon container - shows clipboard icon normally, X on hover when editable */}
       {isEditable ? (
         <span
@@ -160,7 +153,7 @@ export function TextClipAttachmentView({
           <XIcon className="absolute inset-0 size-3 text-error opacity-0 transition-opacity group-hover/badge:opacity-100" />
         </span>
       ) : (
-        <ClipboardPaste className="size-3 shrink-0" />
+        <ClipboardPaste className="size-3" />
       )}
 
       {/* Label - gets gradient mask on hover when editable to allow expand button overlay */}
@@ -198,14 +191,15 @@ export function TextClipAttachmentView({
     </BadgeContainer>
   );
 
+  // Preview content for the hover card
+  const previewContent = <TextPreviewContent content={attrs.content} />;
+
   return (
-    <NodeViewWrapper as="span" className="inline">
-      <PreviewCard>
-        <PreviewCardTrigger>{badge}</PreviewCardTrigger>
-        <PreviewCardContent className="gap-2.5">
-          <TextPreview content={attrs.content} />
-        </PreviewCardContent>
-      </PreviewCard>
-    </NodeViewWrapper>
+    <AttachmentBadgeWrapper
+      viewOnly={!isEditable}
+      previewContent={previewContent}
+    >
+      {badge}
+    </AttachmentBadgeWrapper>
   );
 }

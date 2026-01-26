@@ -1,7 +1,7 @@
-import { NodeViewWrapper, type Editor } from '@tiptap/react';
+import { NodeViewWrapper } from '@tiptap/react';
 import { PreviewCard as PreviewCardBase } from '@base-ui/react/preview-card';
 import { XIcon } from 'lucide-react';
-import { useState, useEffect, useCallback, forwardRef } from 'react';
+import { useCallback, forwardRef } from 'react';
 import { cn } from '@/utils';
 import { PreviewCard } from '@stagewise/stage-ui/components/preview-card';
 import { buttonVariants } from '@stagewise/stage-ui/components/button';
@@ -10,34 +10,6 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
-
-/**
- * Hook to reactively track the editor's editable state.
- * The editor.isEditable property doesn't trigger re-renders on its own,
- * so this hook listens for editor events to sync the state.
- */
-export function useEditorEditable(editor: Editor): boolean {
-  const [isEditable, setIsEditable] = useState(editor.isEditable);
-
-  useEffect(() => {
-    const updateEditable = () => setIsEditable(editor.isEditable);
-
-    // Listen for editor updates that might change editable state
-    editor.on('update', updateEditable);
-    // Also check on transaction in case setEditable is called without content change
-    editor.on('transaction', updateEditable);
-
-    // Sync initial state
-    setIsEditable(editor.isEditable);
-
-    return () => {
-      editor.off('update', updateEditable);
-      editor.off('transaction', updateEditable);
-    };
-  }, [editor]);
-
-  return isEditable;
-}
 
 /**
  * Truncates a label for display, preserving file extensions.
@@ -177,6 +149,25 @@ export interface AttachmentBadgeWrapperProps {
   previewContent?: React.ReactNode;
   /** Optional tooltip content shown on hover, only shown if previewContent is not provided */
   tooltipContent?: React.ReactNode;
+  /** Optional viw-only mode, will return a span instead of a NodeViewWrapper */
+  viewOnly?: boolean;
+}
+
+function Wrapper({
+  viewOnly,
+  children,
+}: {
+  viewOnly: boolean;
+  children: React.ReactNode;
+}) {
+  if (viewOnly) {
+    return <span className="inline">{children}</span>;
+  }
+  return (
+    <NodeViewWrapper as="span" className="inline">
+      {children}
+    </NodeViewWrapper>
+  );
 }
 
 /**
@@ -187,9 +178,10 @@ export function AttachmentBadgeWrapper({
   children,
   previewContent,
   tooltipContent,
+  viewOnly,
 }: AttachmentBadgeWrapperProps) {
   return (
-    <NodeViewWrapper as="span" className="inline">
+    <Wrapper viewOnly={viewOnly}>
       {previewContent ? (
         <PreviewCard>
           <PreviewCardBase.Trigger
@@ -205,6 +197,6 @@ export function AttachmentBadgeWrapper({
           <TooltipContent>{tooltipContent}</TooltipContent>
         </Tooltip>
       )}
-    </NodeViewWrapper>
+    </Wrapper>
   );
 }

@@ -1,3 +1,13 @@
+import type { NodeViewProps } from '@tiptap/react';
+
+type ViewOnlyProps = {
+  viewOnly: true;
+  selected: boolean;
+  node: { attrs: { readonly [attr: string]: any } };
+};
+
+export type AttachmentNodeViewProps = NodeViewProps | ViewOnlyProps;
+
 /**
  * Base attributes shared by all attachment types.
  */

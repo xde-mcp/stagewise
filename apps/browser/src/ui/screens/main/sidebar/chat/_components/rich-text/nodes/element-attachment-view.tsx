@@ -1,4 +1,3 @@
-import type { NodeViewProps } from '@tiptap/react';
 import { ChevronLeft, SquareDashedMousePointer } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { usePostHog } from 'posthog-js/react';
@@ -18,9 +17,8 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { IdeLogo } from '@/components/ide-logo';
 import { IconOpenExternalOutline18 } from 'nucleo-ui-outline-18';
-import type { ElementAttachmentAttrs } from '../types';
+import type { ElementAttachmentAttrs, AttachmentNodeViewProps } from '../types';
 import {
-  useEditorEditable,
   truncateLabel,
   AttachmentBadge,
   AttachmentBadgeWrapper,
@@ -372,15 +370,10 @@ function ElementPreviewContent({
  * Displays the element with a selector icon and shows a preview card
  * with element details on hover.
  */
-export function ElementAttachmentView({
-  node,
-  deleteNode,
-  selected,
-  editor,
-}: NodeViewProps) {
-  const attrs = node.attrs as ElementAttachmentAttrs;
+export function ElementAttachmentView(props: AttachmentNodeViewProps) {
+  const attrs = props.node.attrs as ElementAttachmentAttrs;
 
-  const isEditable = useEditorEditable(editor);
+  const isEditable = !('viewOnly' in props);
 
   const displayLabel = useMemo(
     () => truncateLabel(attrs.label, attrs.id),
@@ -392,13 +385,18 @@ export function ElementAttachmentView({
   const previewContent = <ElementPreviewContent selectedElementId={attrs.id} />;
 
   return (
-    <AttachmentBadgeWrapper previewContent={previewContent}>
+    <AttachmentBadgeWrapper
+      viewOnly={!isEditable}
+      previewContent={previewContent}
+    >
       <AttachmentBadge
         icon={icon}
         label={displayLabel}
-        selected={selected}
+        selected={props.selected}
         isEditable={isEditable}
-        onDelete={deleteNode}
+        onDelete={() =>
+          'deleteNode' in props ? props.deleteNode() : undefined
+        }
       />
     </AttachmentBadgeWrapper>
   );

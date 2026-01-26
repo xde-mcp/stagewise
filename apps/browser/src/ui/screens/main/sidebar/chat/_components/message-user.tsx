@@ -34,6 +34,7 @@ import {
   ChatInputActions,
   type ChatInputHandle,
 } from './chat-input';
+import { ChatInputViewOnly } from './chat-input-view-only';
 import { generateId } from 'ai';
 import type { AttachmentType } from './rich-text';
 
@@ -149,7 +150,12 @@ export const MessageUser = memo(
     // Can edit when not working and message has an ID
     const canEdit = !isWorking && !!msg.id;
 
-    // Start editing - content is already loaded in TipTap from JSON
+    // Get TipTap JSON content from message metadata
+    const tiptapJsonContent = msg.metadata?.tiptapJsonContent as
+      | string
+      | undefined;
+
+    // Start editing - initialize the editor with message content
     const handleStartEditing = useCallback(async () => {
       if (!canEdit || !editMessageId) return;
 
@@ -160,13 +166,12 @@ export const MessageUser = memo(
         }),
       );
 
-      // Save original content for reverting on cancel (before any modifications)
-      originalTiptapContentRef.current =
-        chatInputRef.current?.getTiptapJsonContent() ?? null;
+      // Save original content for reverting on cancel
+      // Use the message metadata directly since we don't have an editor in view mode
+      originalTiptapContentRef.current = tiptapJsonContent ?? null;
 
-      // Initialize editedText from TipTap's current content (for submit validation)
-      const currentText = chatInputRef.current?.getTextContent() ?? textContent;
-      setEditedText(currentText);
+      // Initialize editedText from message text content
+      setEditedText(textContent);
 
       msg.metadata?.selectedPreviewElements?.forEach((element) => {
         setSelectedElementsFromEditor((prev) => [
@@ -186,12 +191,13 @@ export const MessageUser = memo(
 
       setIsEditing(true);
 
-      // Focus the editor
-      chatInputRef.current?.focus();
+      // Focus the editor (will be available after state update triggers re-render)
+      setTimeout(() => chatInputRef.current?.focus(), 0);
     }, [
       canEdit,
       editMessageId,
       textContent,
+      tiptapJsonContent,
       fileUIParts,
       clearSelectedElements,
     ]);
@@ -504,10 +510,7 @@ export const MessageUser = memo(
 
     if (isEmptyMessage && !isLastMessage) return null;
 
-    // Get TipTap JSON content from message metadata (fallback to undefined for plain text init)
-    const tiptapJsonContent = msg.metadata?.tiptapJsonContent;
-
-    // Unified rendering - always use TipTap, toggle between view/edit modes
+    // Conditional rendering: view-only mode uses lightweight renderer, edit mode uses full TipTap
     return (
       <MessageElementsProvider elements={allAvailableElements}>
         <div
@@ -553,75 +556,86 @@ export const MessageUser = memo(
                     : undefined
                 }
               >
-                <ChatInput
-                  ref={chatInputRef}
-                  value={editedText}
-                  onChange={setEditedText}
-                  initialJsonContent={tiptapJsonContent}
-                  onSubmit={handleSubmitEdit}
-                  onEscape={handleCancelEditing}
-                  placeholder={isEditing ? 'Edit your message...' : undefined}
-                  disabled={!isEditing}
-                  showModelSelect={isEditing}
-                  onModelChange={() => chatInputRef.current?.focus()}
-                  showContextUsageRing={false}
-                  attachmentCount={totalAttachments}
-                  onFocus={onEditInputFocus}
-                  onBlur={onEditInputBlur}
-                  onPasteFiles={handlePasteFiles}
-                  onAttachmentRemoved={handleRemoveAttachment}
-                  className="w-full"
-                />
-                {/* Action buttons - only shown in edit mode */}
+                {/* View mode: lightweight static renderer */}
+                {!isEditing && (
+                  <ChatInputViewOnly
+                    tiptapJsonContent={tiptapJsonContent}
+                    textContent={textContent}
+                    className="w-full"
+                  />
+                )}
+                {/* Edit mode: full TipTap editor */}
                 {isEditing && (
-                  <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
-                    <ChatInputActions
-                      isAgentWorking={false}
-                      hasTextInput={editedText.trim().length > 0}
-                      showElementSelectorButton
-                      elementSelectionActive={elementSelectionActive}
-                      onToggleElementSelection={handleToggleElementSelection}
-                      elementSelectorDisabled={hasOpenedInternalPage}
-                      showImageUploadButton
-                      onAddFileAttachment={addFileAttachment}
-                      canSendMessage={canSendMessage}
+                  <>
+                    <ChatInput
+                      ref={chatInputRef}
+                      value={editedText}
+                      onChange={setEditedText}
+                      initialJsonContent={tiptapJsonContent}
                       onSubmit={handleSubmitEdit}
-                      isActive
+                      onEscape={handleCancelEditing}
+                      placeholder="Edit your message..."
+                      showModelSelect
+                      onModelChange={() => chatInputRef.current?.focus()}
+                      showContextUsageRing={false}
+                      attachmentCount={totalAttachments}
+                      onFocus={onEditInputFocus}
+                      onBlur={onEditInputBlur}
+                      onPasteFiles={handlePasteFiles}
+                      onAttachmentRemoved={handleRemoveAttachment}
+                      className="w-full"
                     />
-                    {/* Popover anchor positioned at the send button */}
-                    <Popover
-                      open={isConfirmOpen}
-                      onOpenChange={setIsConfirmOpen}
-                    >
-                      <PopoverTrigger>
-                        <span className="pointer-events-none absolute right-0 bottom-0 size-8" />
-                      </PopoverTrigger>
-                      <PopoverContent>
-                        <PopoverTitle>Resend message?</PopoverTitle>
-                        <PopoverDescription>
-                          This will clear the chat history and undo file changes
-                          after this point, then send your edited message.
-                        </PopoverDescription>
-                        <PopoverClose />
-                        <PopoverFooter>
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() => setIsConfirmOpen(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="xs"
-                            onClick={handleConfirmEdit}
-                          >
-                            Resend
-                          </Button>
-                        </PopoverFooter>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                    {/* Action buttons */}
+                    <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
+                      <ChatInputActions
+                        isAgentWorking={false}
+                        hasTextInput={editedText.trim().length > 0}
+                        showElementSelectorButton
+                        elementSelectionActive={elementSelectionActive}
+                        onToggleElementSelection={handleToggleElementSelection}
+                        elementSelectorDisabled={hasOpenedInternalPage}
+                        showImageUploadButton
+                        onAddFileAttachment={addFileAttachment}
+                        canSendMessage={canSendMessage}
+                        onSubmit={handleSubmitEdit}
+                        isActive
+                      />
+                      {/* Popover anchor positioned at the send button */}
+                      <Popover
+                        open={isConfirmOpen}
+                        onOpenChange={setIsConfirmOpen}
+                      >
+                        <PopoverTrigger>
+                          <span className="pointer-events-none absolute right-0 bottom-0 size-8" />
+                        </PopoverTrigger>
+                        <PopoverContent>
+                          <PopoverTitle>Resend message?</PopoverTitle>
+                          <PopoverDescription>
+                            This will clear the chat history and undo file
+                            changes after this point, then send your edited
+                            message.
+                          </PopoverDescription>
+                          <PopoverClose />
+                          <PopoverFooter>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => setIsConfirmOpen(false)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="xs"
+                              onClick={handleConfirmEdit}
+                            >
+                              Resend
+                            </Button>
+                          </PopoverFooter>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

@@ -1,27 +1,20 @@
-import type { NodeViewProps } from '@tiptap/react';
 import { useMemo } from 'react';
-import { PreviewCardContent } from '@stagewise/stage-ui/components/preview-card';
-import type { ImageAttachmentAttrs } from '../types';
+import type { ImageAttachmentAttrs, AttachmentNodeViewProps } from '../types';
 import {
-  useEditorEditable,
   truncateLabel,
   AttachmentBadge,
   AttachmentBadgeWrapper,
 } from '../view-utils';
+import { PreviewCardContent } from '@stagewise/stage-ui/components/preview-card';
 
 /**
  * Custom NodeView for image attachments.
  * Displays a thumbnail icon and shows a larger preview on hover.
  */
-export function ImageAttachmentView({
-  node,
-  deleteNode,
-  selected,
-  editor,
-}: NodeViewProps) {
-  const attrs = node.attrs as ImageAttachmentAttrs;
+export function ImageAttachmentView(props: AttachmentNodeViewProps) {
+  const attrs = props.node.attrs as ImageAttachmentAttrs;
 
-  const isEditable = useEditorEditable(editor);
+  const isEditable = !('viewOnly' in props);
 
   const displayLabel = useMemo(
     () => truncateLabel(attrs.label, attrs.id),
@@ -54,13 +47,18 @@ export function ImageAttachmentView({
   );
 
   return (
-    <AttachmentBadgeWrapper previewContent={previewContent}>
+    <AttachmentBadgeWrapper
+      viewOnly={!isEditable}
+      previewContent={previewContent}
+    >
       <AttachmentBadge
         icon={icon}
         label={displayLabel}
-        selected={selected}
+        selected={props.selected}
         isEditable={isEditable}
-        onDelete={deleteNode}
+        onDelete={() =>
+          'deleteNode' in props ? props.deleteNode() : undefined
+        }
       />
     </AttachmentBadgeWrapper>
   );

@@ -1,12 +1,11 @@
-import type { NodeViewProps } from '@tiptap/react';
 import { FileIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import {
-  useEditorEditable,
   truncateLabel,
   AttachmentBadge,
   AttachmentBadgeWrapper,
 } from './view-utils';
+import type { AttachmentNodeViewProps } from './types';
 
 /**
  * AttachmentNodeView is the default view component for attachment nodes.
@@ -20,15 +19,10 @@ import {
  * Note: Node deletion notifications are handled at the ProseMirror plugin level
  * in base-attachment-node.ts, not here. This component is purely presentational.
  */
-export function AttachmentNodeView({
-  node,
-  deleteNode,
-  selected,
-  editor,
-}: NodeViewProps) {
-  const attrs = node.attrs;
+export function AttachmentNodeView(props: AttachmentNodeViewProps) {
+  const attrs = props.node.attrs;
 
-  const isEditable = useEditorEditable(editor);
+  const isEditable = !('viewOnly' in props);
 
   const displayLabel = useMemo(
     () => truncateLabel(attrs.label, attrs.id),
@@ -44,13 +38,18 @@ export function AttachmentNodeView({
   }, [attrs.label]);
 
   return (
-    <AttachmentBadgeWrapper tooltipContent={previewContent}>
+    <AttachmentBadgeWrapper
+      viewOnly={!isEditable}
+      tooltipContent={previewContent}
+    >
       <AttachmentBadge
         icon={typeIcon}
         label={displayLabel}
-        selected={selected}
+        selected={props.selected}
         isEditable={isEditable}
-        onDelete={deleteNode}
+        onDelete={() =>
+          'deleteNode' in props ? props.deleteNode() : undefined
+        }
       />
     </AttachmentBadgeWrapper>
   );
