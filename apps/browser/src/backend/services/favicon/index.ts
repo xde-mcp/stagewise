@@ -8,7 +8,9 @@ import { createClient } from '@libsql/client';
 import { net } from 'electron';
 import { toWebKitTimestamp } from '../chrome-db-utils';
 import type { FaviconBitmapResult } from '@shared/karton-contracts/pages-api/types';
-import startScript from './start-script.sql?raw';
+import initSql from './schema.sql?raw';
+import { migrateDatabase } from '@/utils/migrate-database';
+import { registry, schemaVersion } from './migrations';
 
 // Icon types matching Chrome
 export const IconType = {
@@ -58,8 +60,18 @@ export class FaviconService {
 
   private async initialize(): Promise<void> {
     this.logger.debug('[FaviconService] Initializing...');
-    await this.dbDriver.executeMultiple(startScript);
-    this.logger.debug('[FaviconService] Initialized');
+    try {
+      await migrateDatabase({
+        db: this.db,
+        client: this.dbDriver,
+        registry,
+        initSql,
+        schemaVersion,
+      });
+      this.logger.debug('[FaviconService] Initialized');
+    } catch (e) {
+      this.logger.error('[FaviconService] Failed to initialize', { error: e });
+    }
   }
 
   public teardown(): void {

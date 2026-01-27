@@ -4,24 +4,15 @@ import {
   text,
   blob,
   index,
-  primaryKey,
 } from 'drizzle-orm/sqlite-core';
 import { bigintTimestamp } from '../chrome-db-utils';
+import { metaTable } from '@/utils/migrate-database/types';
 
 // -------------------------------------------------------------------
 // Chrome Favicons Database Schema
 // -------------------------------------------------------------------
 
-export const meta = sqliteTable(
-  'meta',
-  {
-    key: text('key').notNull().unique(),
-    value: text('value'),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.key] }),
-  }),
-);
+export const meta = metaTable;
 
 // Icon types (Chrome's enum):
 // 1 = FAVICON (default)
@@ -35,9 +26,7 @@ export const favicons = sqliteTable(
     url: text('url').notNull(),
     iconType: integer('icon_type').default(1).notNull(),
   },
-  (table) => ({
-    urlIndex: index('favicons_url').on(table.url),
-  }),
+  (table) => [index('favicons_url').on(table.url)],
 );
 
 export const faviconBitmaps = sqliteTable(
@@ -51,9 +40,7 @@ export const faviconBitmaps = sqliteTable(
     height: integer('height').default(0).notNull(),
     lastRequested: bigintTimestamp('last_requested').default(0n).notNull(),
   },
-  (table) => ({
-    iconIdIndex: index('favicon_bitmaps_icon_id').on(table.iconId),
-  }),
+  (table) => [index('favicon_bitmaps_icon_id').on(table.iconId)],
 );
 
 // Page URL types (Chrome's enum):
@@ -67,8 +54,8 @@ export const iconMapping = sqliteTable(
     iconId: integer('icon_id'),
     pageUrlType: integer('page_url_type').default(0).notNull(),
   },
-  (table) => ({
-    pageUrlIndex: index('icon_mapping_page_url_idx').on(table.pageUrl),
-    iconIdIndex: index('icon_mapping_icon_id_idx').on(table.iconId),
-  }),
+  (table) => [
+    index('icon_mapping_page_url_idx').on(table.pageUrl),
+    index('icon_mapping_icon_id_idx').on(table.iconId),
+  ],
 );

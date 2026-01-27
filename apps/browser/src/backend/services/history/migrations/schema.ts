@@ -1,3 +1,4 @@
+import { metaTable } from '../../../utils/migrate-database/types';
 import {
   sqliteTable,
   integer,
@@ -8,22 +9,13 @@ import {
   primaryKey,
 } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import { bigintTimestamp, sqliteBoolean } from '../chrome-db-utils';
+import { bigintTimestamp, sqliteBoolean } from '../../chrome-db-utils';
 
 // -------------------------------------------------------------------
 // 1. Core History Tables
 // -------------------------------------------------------------------
 
-export const meta = sqliteTable(
-  'meta',
-  {
-    key: text('key').notNull().unique(),
-    value: text('value'),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.key] }),
-  }),
-);
+export const meta = metaTable;
 
 export const urls = sqliteTable(
   'urls',
@@ -36,9 +28,7 @@ export const urls = sqliteTable(
     lastVisitTime: bigintTimestamp('last_visit_time').notNull(),
     hidden: sqliteBoolean('hidden').default(false).notNull(),
   },
-  (table) => ({
-    urlIndex: index('urls_url_index').on(table.url),
-  }),
+  (table) => [index('urls_url_index').on(table.url)],
 );
 
 export const visits = sqliteTable(
@@ -69,14 +59,12 @@ export const visits = sqliteTable(
     visitedLinkId: integer('visited_link_id').default(0).notNull(),
     appId: text('app_id'),
   },
-  (table) => ({
-    urlIndex: index('visits_url_index').on(table.url),
-    fromIndex: index('visits_from_index').on(table.fromVisit),
-    timeIndex: index('visits_time_index').on(table.visitTime),
-    originatorIdIndex: index('visits_originator_id_index').on(
-      table.originatorVisitId,
-    ),
-  }),
+  (table) => [
+    index('visits_url_index').on(table.url),
+    index('visits_from_index').on(table.fromVisit),
+    index('visits_time_index').on(table.visitTime),
+    index('visits_originator_id_index').on(table.originatorVisitId),
+  ],
 );
 
 export const visitSource = sqliteTable('visit_source', {
@@ -93,13 +81,13 @@ export const visitedLinks = sqliteTable(
     frameUrl: text('frame_url').notNull(),
     visitCount: integer('visit_count').default(0).notNull(),
   },
-  (table) => ({
-    visitedLinksIndex: index('visited_links_index').on(
+  (table) => [
+    index('visited_links_index').on(
       table.linkUrlId,
       table.topLevelUrl,
       table.frameUrl,
     ),
-  }),
+  ],
 );
 
 // -------------------------------------------------------------------
@@ -144,9 +132,7 @@ export const downloadsUrlChains = sqliteTable(
     chainIndex: integer('chain_index').notNull(),
     url: text('url').notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.id, table.chainIndex] }),
-  }),
+  (table) => [primaryKey({ columns: [table.id, table.chainIndex] })],
 );
 
 export const downloadsSlices = sqliteTable(
@@ -157,9 +143,7 @@ export const downloadsSlices = sqliteTable(
     receivedBytes: integer('received_bytes').notNull(),
     finished: sqliteBoolean('finished').default(false).notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.downloadId, table.offset] }),
-  }),
+  (table) => [primaryKey({ columns: [table.downloadId, table.offset] })],
 );
 
 // -------------------------------------------------------------------
@@ -174,14 +158,14 @@ export const keywordSearchTerms = sqliteTable(
     term: text('term').notNull(),
     normalizedTerm: text('normalized_term').notNull(),
   },
-  (table) => ({
-    index1: index('keyword_search_terms_index1').on(
+  (table) => [
+    index('keyword_search_terms_index1').on(
       table.keywordId,
       table.normalizedTerm,
     ),
-    index2: index('keyword_search_terms_index2').on(table.urlId),
-    index3: index('keyword_search_terms_index3').on(table.term),
-  }),
+    index('keyword_search_terms_index2').on(table.urlId),
+    index('keyword_search_terms_index3').on(table.term),
+  ],
 );
 
 // -------------------------------------------------------------------
@@ -195,10 +179,10 @@ export const segments = sqliteTable(
     name: text('name'),
     urlId: integer('url_id').notNull(),
   },
-  (table) => ({
-    nameIndex: index('segments_name').on(table.name),
-    urlIdIndex: index('segments_url_id').on(table.urlId),
-  }),
+  (table) => [
+    index('segments_name').on(table.name),
+    index('segments_url_id').on(table.urlId),
+  ],
 );
 
 export const segmentUsage = sqliteTable(
@@ -209,13 +193,13 @@ export const segmentUsage = sqliteTable(
     timeSlot: integer('time_slot').notNull(),
     visitCount: integer('visit_count').default(0).notNull(),
   },
-  (table) => ({
-    timeSlotSegIdIndex: index('segment_usage_time_slot_segment_id').on(
+  (table) => [
+    index('segment_usage_time_slot_segment_id').on(
       table.timeSlot,
       table.segmentId,
     ),
-    usageSegIdIndex: index('segments_usage_seg_id').on(table.segmentId),
-  }),
+    index('segments_usage_seg_id').on(table.segmentId),
+  ],
 );
 
 // -------------------------------------------------------------------
@@ -248,10 +232,10 @@ export const clustersAndVisits = sqliteTable(
     urlForDisplay: text('url_for_display').notNull(),
     interactionState: integer('interaction_state').default(0).notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.clusterId, table.visitId] }),
-    clustersForVisitIndex: index('clusters_for_visit').on(table.visitId),
-  }),
+  (table) => [
+    primaryKey({ columns: [table.clusterId, table.visitId] }),
+    index('clusters_for_visit').on(table.visitId),
+  ],
 );
 
 export const clusterKeywords = sqliteTable(
@@ -263,11 +247,7 @@ export const clusterKeywords = sqliteTable(
     score: numeric('score').notNull(),
     collections: text('collections').notNull(),
   },
-  (table) => ({
-    clusterIdIndex: index('cluster_keywords_cluster_id_index').on(
-      table.clusterId,
-    ),
-  }),
+  (table) => [index('cluster_keywords_cluster_id_index').on(table.clusterId)],
 );
 
 export const clusterVisitDuplicates = sqliteTable(
@@ -276,9 +256,7 @@ export const clusterVisitDuplicates = sqliteTable(
     visitId: integer('visit_id').notNull(),
     duplicateVisitId: integer('duplicate_visit_id').notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.visitId, table.duplicateVisitId] }),
-  }),
+  (table) => [primaryKey({ columns: [table.visitId, table.duplicateVisitId] })],
 );
 
 export const contentAnnotations = sqliteTable('content_annotations', {

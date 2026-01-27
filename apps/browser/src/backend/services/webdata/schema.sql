@@ -1,4 +1,4 @@
-/* Chrome-compatible Web Data database schema */
+-- VERSION: 1
 
 CREATE TABLE IF NOT EXISTS meta(
   key LONGVARCHAR NOT NULL UNIQUE PRIMARY KEY,

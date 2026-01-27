@@ -1,11 +1,13 @@
 import type { Logger } from '../logger';
+import { registry, schemaVersion } from './migrations';
+import { migrateDatabase } from '../../utils/migrate-database';
 import { eq, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { drizzle } from 'drizzle-orm/libsql';
 import type { GlobalDataPathService } from '../global-data-path';
 import path from 'node:path';
 import { createClient } from '@libsql/client';
-import startScript from './start-script.sql?raw';
+import initSql from './schema.sql?raw';
 import type { SearchEngine } from '@shared/karton-contracts/ui/shared-types';
 
 /**
@@ -64,8 +66,18 @@ export class WebDataService {
 
   private async initialize(): Promise<void> {
     this.logger.debug('[WebDataService] Initializing...');
-    await this.dbDriver.executeMultiple(startScript);
-    this.logger.debug('[WebDataService] Initialized');
+    try {
+      await migrateDatabase({
+        db: this.db,
+        client: this.dbDriver,
+        registry,
+        initSql,
+        schemaVersion,
+      });
+      this.logger.debug('[WebDataService] Initialized');
+    } catch (e) {
+      this.logger.error('[WebDataService] Failed to initialize', { error: e });
+    }
   }
 
   public teardown(): void {

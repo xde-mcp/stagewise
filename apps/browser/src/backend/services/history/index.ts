@@ -14,7 +14,7 @@ import {
   type InferSelectModel,
   type SQL,
 } from 'drizzle-orm';
-import * as schema from './schema';
+import * as schema from './migrations/schema';
 import { drizzle } from 'drizzle-orm/libsql';
 import type { GlobalDataPathService } from '../global-data-path';
 import path from 'node:path';
@@ -27,7 +27,9 @@ import {
   type DownloadsFilter,
 } from '@shared/karton-contracts/pages-api/types';
 import { toWebKitTimestamp, fromWebKitTimestamp } from '../chrome-db-utils';
-import startScript from './start-script.sql?raw';
+import initSql from './schema.sql?raw';
+import { migrateDatabase } from '@/utils/migrate-database';
+import { registry, schemaVersion } from './migrations';
 import type { WebDataService } from '../webdata';
 
 // Internal result type without favicon (added by PagesService)
@@ -99,10 +101,18 @@ export class HistoryService {
 
   private async initialize(): Promise<void> {
     this.logger.debug('[HistoryService] Initializing...');
-
-    await this.dbDriver.executeMultiple(startScript);
-
-    this.logger.debug('[HistoryService] Initialized');
+    try {
+      await migrateDatabase({
+        db: this.db,
+        client: this.dbDriver,
+        registry,
+        initSql,
+        schemaVersion,
+      });
+      this.logger.debug('[HistoryService] Initialized');
+    } catch (e) {
+      this.logger.error('[HistoryService] Failed to initialize', { error: e });
+    }
   }
 
   /**

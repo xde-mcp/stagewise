@@ -1,4 +1,4 @@
-/* Manually managed SQL Script for schema creation since drizzle doesn't offer this. We should simply extend this file step by step with migration steps. */
+-- VERSION: 1
 
 -- Core History Tables
 CREATE TABLE IF NOT EXISTS meta(key LONGVARCHAR NOT NULL UNIQUE PRIMARY KEY, value LONGVARCHAR);

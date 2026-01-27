@@ -4,23 +4,14 @@ import {
   text,
   blob,
   index,
-  primaryKey,
 } from 'drizzle-orm/sqlite-core';
+import { metaTable } from '../../utils/migrate-database/types';
 
 // -------------------------------------------------------------------
 // Chrome Web Data Database Schema - Keywords Table
 // -------------------------------------------------------------------
 
-export const meta = sqliteTable(
-  'meta',
-  {
-    key: text('key').notNull().unique(),
-    value: text('value'),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.key] }),
-  }),
-);
+export const meta = metaTable;
 
 // Keywords table - stores search engine definitions
 // This matches Chrome's exact schema from the Web Data database
@@ -56,7 +47,5 @@ export const keywords = sqliteTable(
     featuredByPolicy: integer('featured_by_policy').default(0),
     urlHash: blob('url_hash'),
   },
-  (table) => ({
-    keywordIndex: index('keywords_keyword_index').on(table.keyword),
-  }),
+  (table) => [index('keywords_keyword_index').on(table.keyword)],
 );
