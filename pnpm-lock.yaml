@@ -214,6 +214,9 @@ importers:
       immer:
         specifier: ^10.2.0
         version: 10.2.0
+      react-virtuoso:
+        specifier: ^4.18.1
+        version: 4.18.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@ai-sdk/anthropic':
         specifier: 3.0.7
@@ -476,6 +479,9 @@ importers:
       react:
         specifier: ^19.1.0
         version: 19.2.3
+      react-devtools-electron:
+        specifier: ^4.7.0
+        version: 4.7.0(electron@39.2.7)
       react-dom:
         specifier: ^19.1.0
         version: 19.2.3(react@19.2.3)
@@ -8643,6 +8649,11 @@ packages:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
     hasBin: true
 
+  react-devtools-electron@4.7.0:
+    resolution: {integrity: sha512-/B1Hc0GbZw1CDRvC5hl2sEH0Mry2VY6FEEryyDoDO5lcMgFKt2FKmu2Hwf9RLERWKsuclcYOrIOuRbk2neh9dQ==}
+    peerDependencies:
+      electron: '>= 5'
+
   react-docgen-typescript@2.4.0:
     resolution: {integrity: sha512-ZtAp5XTO5HRzQctjPU0ybY0RRCQO19X/8fxn3w7y2VVTUbGHDKULPTL4ky3vB05euSgG5NpALhEhDPvQ56wvXg==}
     peerDependencies:
@@ -8757,6 +8768,12 @@ packages:
     peerDependenciesMeta:
       react-dom:
         optional: true
+
+  react-virtuoso@4.18.1:
+    resolution: {integrity: sha512-KF474cDwaSb9+SJ380xruBB4P+yGWcVkcu26HtMqYNMTYlYbrNy8vqMkE+GpAApPPufJqgOLMoWMFG/3pJMXUA==}
+    peerDependencies:
+      react: '>=16 || >=17 || >= 18 || >= 19'
+      react-dom: '>=16 || >=17 || >= 18 || >=19'
 
   react-window-infinite-loader@2.0.0:
     resolution: {integrity: sha512-dioOyvShGheEqqFHcPNKCixCOc2evwb2VEt9sitfJfTZ1hir8m6b8W0CNBvcUj+8Y8IeWu4yb88DI7k88aYTQQ==}
@@ -19381,6 +19398,10 @@ snapshots:
       minimist: 1.2.8
       strip-json-comments: 2.0.1
 
+  react-devtools-electron@4.7.0(electron@39.2.7):
+    dependencies:
+      electron: 39.2.7
+
   react-docgen-typescript@2.4.0(typescript@5.9.3):
     dependencies:
       typescript: 5.9.3
@@ -19496,6 +19517,11 @@ snapshots:
     dependencies:
       react: 19.2.3
     optionalDependencies:
+      react-dom: 19.2.3(react@19.2.3)
+
+  react-virtuoso@4.18.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
   react-window-infinite-loader@2.0.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):

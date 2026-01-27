@@ -82,7 +82,7 @@ export function ChatPanel() {
   return (
     <div
       className={cn(
-        'relative flex size-full flex-col items-stretch justify-center rounded-lg bg-transparent py-1 transition-colors',
+        'relative flex size-full flex-col items-stretch justify-center rounded-lg bg-transparent transition-colors',
         isDragOver && 'bg-hover-derived!',
       )}
       onDrop={handleDrop}

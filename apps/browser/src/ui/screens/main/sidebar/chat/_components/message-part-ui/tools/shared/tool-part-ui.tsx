@@ -19,6 +19,7 @@ export const ToolPartUI = ({
   expanded: controlledExpanded,
   setExpanded: controlledSetExpanded,
   showBorder = false,
+  autoScroll = true,
 }: {
   trigger?: React.ReactNode;
   content?: React.ReactNode;
@@ -28,6 +29,7 @@ export const ToolPartUI = ({
   expanded?: boolean;
   setExpanded?: (expanded: boolean) => void;
   showBorder?: boolean;
+  autoScroll?: boolean;
 }) => {
   // Internal state for uncontrolled mode
   const [internalExpanded, setInternalExpanded] = useState(true);
@@ -38,18 +40,24 @@ export const ToolPartUI = ({
   const setExpanded = controlledSetExpanded ?? setInternalExpanded;
 
   // Auto-scroll hook with smaller threshold for compact container (max-h-32 = 128px)
-  const { scrollbarRef } = useAutoScroll({
-    enabled: expanded,
+  const { scrollerRef } = useAutoScroll({
+    enabled: expanded && autoScroll,
     scrollEndThreshold: 20,
+    initializeAtBottom: false,
   });
 
   // State for viewport reference (for fade effect detection)
   const [viewport, setViewport] = useState<HTMLElement | null>(null);
 
   // Callback to receive viewport ref from OverlayScrollbar
-  const handleViewportRef = useCallback((vp: HTMLElement | null) => {
-    setViewport(vp);
-  }, []);
+  // Connects both auto-scroll hook and fade mask effect to the viewport element
+  const handleViewportRef = useCallback(
+    (vp: HTMLElement | null) => {
+      setViewport(vp);
+      scrollerRef(vp);
+    },
+    [scrollerRef],
+  );
 
   // Create a ref-like object for useScrollFadeMask hook
   const viewportRef = useMemo(
@@ -116,7 +124,7 @@ export const ToolPartUI = ({
               'size-3 shrink-0 transition-transform duration-150',
               expanded && 'rotate-180',
               !showBorder && !expanded && 'hidden group-hover/trigger:block',
-              showBorder && 'pl-auto',
+              showBorder && 'ml-auto',
             )}
           />
         </CollapsibleTrigger>
@@ -136,7 +144,6 @@ export const ToolPartUI = ({
               style={maskStyle}
             >
               <OverlayScrollbar
-                ref={scrollbarRef}
                 contentClassName={cn('py-0.5', contentClassName)}
                 options={{
                   overflow: { x: 'scroll', y: 'scroll' },

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { OverlayScrollbarRef } from '@stagewise/stage-ui/components/overlay-scrollbar';
 
 export interface UseAutoScrollOptions {
   /**
@@ -13,11 +12,19 @@ export interface UseAutoScrollOptions {
    * @default true
    */
   enabled?: boolean;
+  /**
+   * Wether to initialize the scroll position to the bottom when the hook is mounted.
+   * @default true
+   */
+  initializeAtBottom?: boolean;
 }
 
 export interface UseAutoScrollReturn {
-  /** Ref to pass to OverlayScrollbar component */
-  scrollbarRef: React.RefObject<OverlayScrollbarRef | null>;
+  /**
+   * Callback ref to pass to scrollable element or Virtuoso's scrollerRef.
+   * Call with the HTMLElement when it becomes available.
+   */
+  scrollerRef: (element: HTMLElement | Window | null) => void;
   /** Manually scroll to the bottom of the container */
   scrollToBottom: () => void;
   /** Force enable auto-scroll (e.g., when user sends a message) */
@@ -37,26 +44,36 @@ export interface UseAutoScrollReturn {
  *
  * @example
  * ```tsx
- * const { scrollbarRef, forceEnableAutoScroll } = useAutoScroll();
+ * const { scrollerRef, forceEnableAutoScroll } = useAutoScroll();
  *
  * // When user sends a message:
  * forceEnableAutoScroll();
  *
- * return <OverlayScrollbar ref={scrollbarRef}>...</OverlayScrollbar>;
+ * // With Virtuoso:
+ * return <Virtuoso scrollerRef={scrollerRef} ... />;
+ *
+ * // Or with a regular scrollable div:
+ * return <div ref={scrollerRef}>...</div>;
  * ```
  */
 export function useAutoScroll(
   options: UseAutoScrollOptions = {},
 ): UseAutoScrollReturn {
-  const { scrollEndThreshold = 80, enabled = true } = options;
+  const {
+    scrollEndThreshold = 80,
+    enabled = true,
+    initializeAtBottom = true,
+  } = options;
 
-  const scrollbarRef = useRef<OverlayScrollbarRef>(null);
+  // Store the viewport element directly
+  const viewportRef = useRef<HTMLElement | null>(null);
   const isAutoScrollLockedRef = useRef(true);
   const pendingScrollEndOptInRef = useRef(false);
+  const observerRef = useRef<MutationObserver | null>(null);
 
   // Scroll to the very bottom
   const scrollToBottom = useCallback(() => {
-    const viewport = scrollbarRef.current?.getViewport();
+    const viewport = viewportRef.current;
     if (!viewport) return;
     viewport.scrollTop = viewport.scrollHeight;
   }, []);
@@ -64,7 +81,8 @@ export function useAutoScroll(
   // Force enable auto-scroll (for external triggers like sending a message)
   const forceEnableAutoScroll = useCallback(() => {
     isAutoScrollLockedRef.current = true;
-  }, []);
+    scrollToBottom();
+  }, [scrollToBottom]);
 
   // Check if auto-scroll is currently enabled
   const isAutoScrollEnabled = useCallback(() => {
@@ -88,7 +106,7 @@ export function useAutoScroll(
     if (!pendingScrollEndOptInRef.current) return;
     pendingScrollEndOptInRef.current = false;
 
-    const viewport = scrollbarRef.current?.getViewport();
+    const viewport = viewportRef.current;
     if (!viewport) return;
 
     const distanceFromBottom =
@@ -98,90 +116,71 @@ export function useAutoScroll(
     }
   }, [scrollEndThreshold]);
 
-  // MutationObserver: auto-scroll when DOM content changes
-  useEffect(() => {
-    if (!enabled) return;
+  // Callback ref that sets up everything when the element is attached
+  const scrollerRef = useCallback(
+    (element: HTMLElement | Window | null) => {
+      // Cleanup previous element
+      const prevViewport = viewportRef.current;
+      if (prevViewport) {
+        prevViewport.removeEventListener('wheel', handleWheel);
+        prevViewport.removeEventListener('scrollend', handleScrollEnd);
+        observerRef.current?.disconnect();
+        observerRef.current = null;
+      }
 
-    let rafId: number;
-    let observer: MutationObserver | null = null;
-
-    const setupObserver = () => {
-      const viewport = scrollbarRef.current?.getViewport();
-      if (!viewport) {
-        rafId = requestAnimationFrame(setupObserver);
+      // Store new element (ignore Window, only accept HTMLElement)
+      if (element instanceof HTMLElement) {
+        viewportRef.current = element;
+      } else {
+        viewportRef.current = null;
         return;
       }
 
-      observer = new MutationObserver(() => {
+      if (!enabled) return;
+
+      const viewport = viewportRef.current;
+
+      // Attach event listeners
+      viewport.addEventListener('wheel', handleWheel, { passive: true });
+      viewport.addEventListener('scrollend', handleScrollEnd);
+
+      // Setup MutationObserver for auto-scroll on content changes
+      const observer = new MutationObserver(() => {
         if (isAutoScrollLockedRef.current) scrollToBottom();
       });
-
       observer.observe(viewport, {
         childList: true,
         subtree: true,
         characterData: true,
       });
-    };
+      observerRef.current = observer;
 
-    setupObserver();
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      observer?.disconnect();
-    };
-  }, [scrollToBottom, enabled]);
-
-  // Attach wheel and scrollend listeners to viewport
-  useEffect(() => {
-    if (!enabled) return;
-
-    let rafId: number;
-
-    const setupListeners = () => {
-      const viewport = scrollbarRef.current?.getViewport();
-      if (!viewport) {
-        rafId = requestAnimationFrame(setupListeners);
-        return;
+      // Initialize scroll position to bottom
+      if (initializeAtBottom) {
+        // Use rAF to ensure content is rendered
+        requestAnimationFrame(() => {
+          scrollToBottom();
+          isAutoScrollLockedRef.current = true;
+        });
       }
-      viewport.addEventListener('wheel', handleWheel, { passive: true });
-      viewport.addEventListener('scrollend', handleScrollEnd);
-    };
+    },
+    [enabled, initializeAtBottom, handleWheel, handleScrollEnd, scrollToBottom],
+  );
 
-    setupListeners();
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      const viewport = scrollbarRef.current?.getViewport();
-      viewport?.removeEventListener('wheel', handleWheel);
-      viewport?.removeEventListener('scrollend', handleScrollEnd);
-    };
-  }, [handleWheel, handleScrollEnd, enabled]);
-
-  // Initialize scroll position to bottom when enabled
+  // Cleanup on unmount
   useEffect(() => {
-    if (!enabled) return;
-
-    let rafId: number;
-
-    const initializeScroll = () => {
-      const viewport = scrollbarRef.current?.getViewport();
-      if (!viewport) {
-        rafId = requestAnimationFrame(initializeScroll);
-        return;
-      }
-      scrollToBottom();
-      isAutoScrollLockedRef.current = true;
-    };
-
-    initializeScroll();
-
     return () => {
-      cancelAnimationFrame(rafId);
+      const viewport = viewportRef.current;
+      if (viewport) {
+        viewport.removeEventListener('wheel', handleWheel);
+        viewport.removeEventListener('scrollend', handleScrollEnd);
+      }
+      observerRef.current?.disconnect();
     };
-  }, [scrollToBottom, enabled]);
+  }, [handleWheel, handleScrollEnd]);
 
   return {
-    scrollbarRef,
+    scrollerRef,
     scrollToBottom,
     forceEnableAutoScroll,
     isAutoScrollEnabled,

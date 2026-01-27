@@ -401,7 +401,7 @@ export function StatusCard() {
     const hasContent = items.length > 0;
     const initialHeight = hasContent ? card.offsetHeight : 0;
     document.documentElement.style.setProperty(
-      '--file-diff-card-height',
+      '--status-card-height',
       `${initialHeight}px`,
     );
     previousHeightRef.current = initialHeight;
@@ -409,21 +409,11 @@ export function StatusCard() {
     // Only dispatch events on actual resize changes (not initial mount)
     const resizeObserver = new ResizeObserver(() => {
       const height = hasContent ? card.offsetHeight : 0;
-      const delta = height - previousHeightRef.current;
 
       document.documentElement.style.setProperty(
-        '--file-diff-card-height',
+        '--status-card-height',
         `${height}px`,
       );
-
-      // Only dispatch scroll adjustment event on actual size changes
-      if (delta !== 0) {
-        window.dispatchEvent(
-          new CustomEvent('file-diff-card-height-changed', {
-            detail: { delta, height },
-          }),
-        );
-      }
 
       previousHeightRef.current = height;
     });
@@ -431,10 +421,7 @@ export function StatusCard() {
 
     return () => {
       resizeObserver.disconnect();
-      document.documentElement.style.setProperty(
-        '--file-diff-card-height',
-        '0px',
-      );
+      document.documentElement.style.setProperty('--status-card-height', '0px');
     };
   }, [items.length]);
 

@@ -73,7 +73,7 @@ export const MessageAssistant = memo(
         <div className="w-full">
           <div
             className={cn(
-              'group/chat-bubble mt-2 flex w-full shrink-0 flex-row items-center justify-start gap-2',
+              'mt-2 flex w-full shrink-0 flex-row items-center justify-start gap-2',
               isEmptyMessage ? 'hidden' : '',
             )}
           >

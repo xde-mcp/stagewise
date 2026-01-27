@@ -28,7 +28,8 @@
     "chokidar": "^4.0.3",
     "electron-squirrel-startup": "^1.0.1",
     "electron-unhandled": "^5.0.0",
-    "immer": "^10.2.0"
+    "immer": "^10.2.0",
+    "react-virtuoso": "^4.18.1"
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "3.0.7",
@@ -118,6 +119,7 @@
     "postcss": "^8.5.3",
     "posthog-js": "^1.257.0",
     "react": "^19.1.0",
+    "react-devtools-electron": "^4.7.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
     "react-timeago": "^8.3.0",

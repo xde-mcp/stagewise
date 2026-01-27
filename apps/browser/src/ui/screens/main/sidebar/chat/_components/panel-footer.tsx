@@ -462,10 +462,10 @@ export function ChatPanelFooter() {
   });
 
   return (
-    <footer className="z-20 flex flex-col items-stretch gap-1 px-1">
+    <footer className="z-20 flex shrink-0 flex-col items-stretch gap-1 px-1 pb-1">
       <div
         className={cn(
-          'relative flex flex-row items-stretch gap-1 rounded-md bg-background p-2 shadow-elevation-1 ring-1 ring-derived-strong transition-colors before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',
+          'relative flex flex-row items-stretch gap-1 rounded-md bg-background p-2 shadow-elevation-1 ring-1 ring-derived-strong transition-colors dark:bg-surface-1',
           isDragOver && 'bg-hover-derived!',
         )}
         id="chat-input-container-box"
@@ -501,22 +501,20 @@ export function ChatPanelFooter() {
           onPasteFiles={handlePasteFiles}
           onAttachmentRemoved={handleAttachmentRemoved}
         />
-        <div className="self-end">
-          <ChatInputActions
-            isAgentWorking={isWorking}
-            hasTextInput={chatInput.trim().length > 0}
-            onStop={abortAgent}
-            showElementSelectorButton
-            elementSelectionActive={elementSelectionActive}
-            onToggleElementSelection={handleToggleElementSelection}
-            elementSelectorDisabled={hasOpenedInternalPage}
-            showImageUploadButton
-            onAddFileAttachment={handleAddFileAttachment}
-            canSendMessage={canSendMessage && chatInputActive}
-            onSubmit={handleSubmit}
-            isActive={chatInputActive}
-          />
-        </div>
+        <ChatInputActions
+          isAgentWorking={isWorking}
+          hasTextInput={chatInput.trim().length > 0}
+          onStop={abortAgent}
+          showElementSelectorButton
+          elementSelectionActive={elementSelectionActive}
+          onToggleElementSelection={handleToggleElementSelection}
+          elementSelectorDisabled={hasOpenedInternalPage}
+          showImageUploadButton
+          onAddFileAttachment={handleAddFileAttachment}
+          canSendMessage={canSendMessage}
+          onSubmit={handleSubmit}
+          isActive={chatInputActive}
+        />
         <StatusCard />
       </div>
     </footer>

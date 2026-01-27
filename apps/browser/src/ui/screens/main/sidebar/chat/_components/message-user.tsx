@@ -531,12 +531,11 @@ export const MessageUser = memo(
               {/* Container with conditional styling for view/edit modes */}
               <div
                 className={cn(
-                  'message-user-edit-container relative flex flex-row items-stretch gap-1',
+                  'message-user-edit-container relative flex flex-row items-stretch gap-1 overflow-y-hidden',
                   // Edit mode: full width input field style
                   isEditing &&
                     'w-full rounded-md bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] ring-1 ring-derived-strong before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',
                   isEditing && isEditDragOver && 'bg-hover-derived!',
-                  // View mode: bubble style
                   !isEditing &&
                     'group group/chat-message-user wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
                   !isEditing &&

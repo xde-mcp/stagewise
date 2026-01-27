@@ -1,17 +1,13 @@
-import {
+import React, {
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
+  useRef,
+  useEffect,
   useLayoutEffect,
 } from 'react';
-import { useMessageEditState } from '@/hooks/use-message-edit-state';
-import { useEventListener } from '@/hooks/use-event-listener';
-import { useAutoScroll } from '@/hooks/use-auto-scroll';
-import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { Button } from '@stagewise/stage-ui/components/button';
-import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { MessageUser } from './message-user';
 import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
@@ -24,31 +20,80 @@ import { cn } from '@/utils';
 import { MessageError } from './message-error';
 import type { History, ChatMessage } from '@shared/karton-contracts/ui';
 import { IconXmark } from 'nucleo-micro-bold';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
+import { useMessageEditState } from '@/hooks/use-message-edit-state';
+import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
 import { isEmptyAssistantMessage } from './message-utils';
 
 export const ChatHistory = () => {
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [spacerHeight, setSpacerHeight] = useState(0);
+  const scrollbarWidth = useScrollbarWidth();
+
+  // Ref to store latest containerHeight for use in callback ref (avoids stale closure)
+  const containerHeightRef = useRef(0);
+
+  const paddingRight = useMemo(() => {
+    return scrollbarWidth === 0 ? 18 : 5;
+  }, [scrollbarWidth]);
+
+  // Element refs for direct measurement in useLayoutEffect
+  const lastUserElementRef = useRef<HTMLDivElement | null>(null);
+  const lastAssistantElementRef = useRef<HTMLDivElement | null>(null);
+
+  // Extracted measurement function - called from both callback ref and useLayoutEffect
+  const updateSpacerHeight = useCallback(() => {
+    const userMessageHeight =
+      lastUserElementRef.current?.getBoundingClientRect().height ?? 0;
+    const currentContainerHeight = containerHeightRef.current;
+    const minHeight = currentContainerHeight - (userMessageHeight + 10);
+    setSpacerHeight(minHeight);
+    if (lastAssistantElementRef.current)
+      lastAssistantElementRef.current.style.minHeight = `${minHeight}px`;
+  }, []);
+
+  // Callback ref for last user message - stores element for measurement AND triggers height update
+  const lastUserMessageRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      lastUserElementRef.current = node;
+      // Trigger height measurement when a new element is mounted
+      if (node) updateSpacerHeight();
+    },
+    [updateSpacerHeight],
+  );
+
+  // Callback ref for last assistant message - stores element for measurement
+  const lastAssistantMessageRef = useCallback((node: HTMLDivElement | null) => {
+    lastAssistantElementRef.current = node;
+  }, []);
+
+  // Auto-scroll hook
   const {
-    scrollbarRef,
+    scrollerRef: autoScrollRef,
+    isAutoScrollEnabled,
     scrollToBottom,
     forceEnableAutoScroll,
-    isAutoScrollEnabled,
-  } = useAutoScroll();
-
-  // Viewport ref for scroll fade mask
-  const [viewport, setViewport] = useState<HTMLElement | null>(null);
-  const viewportRef = useMemo(
-    () => ({ current: viewport }),
-    [viewport],
-  ) as React.RefObject<HTMLElement>;
-  const { maskStyle } = useScrollFadeMask(viewportRef, {
-    axis: 'vertical',
-    fadeDistances: { top: 4, bottom: 0 },
+  } = useAutoScroll({
+    scrollEndThreshold: 100,
   });
-  const [containerHeight, setContainerHeight] = useState(0);
-  const lastUserMessageRef = useRef<HTMLDivElement | null>(null);
-  const workingIndicatorRef = useRef<HTMLDivElement | null>(null);
-  const lastAssistantMessageWrapperRef = useRef<HTMLDivElement | null>(null);
-  const [spacerMinHeight, setSpacerMinHeight] = useState(0);
+
+  // Track scroller element for spacerHeight calculation
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  const scrollerRef = useCallback(
+    (element: HTMLElement | Window | null) => {
+      // Chain to auto-scroll hook
+      autoScrollRef(element);
+      // Store element for local use (spacerHeight, etc.)
+      if (element instanceof HTMLElement) {
+        setScroller(element);
+      } else {
+        setScroller(null);
+      }
+    },
+    [autoScrollRef],
+  );
+
   const { activeEditMessageId } = useMessageEditState();
   const createTab = useKartonProcedure((s) => s.browser.createTab);
   const sendUserMessage = useKartonProcedure(
@@ -65,61 +110,48 @@ export const ChatHistory = () => {
   const [removedSuggestionUrls, setRemovedSuggestionUrls] = useState<
     Set<string>
   >(new Set());
-  // Callback ref for the last user message -> Called when a new user message is sent or one is removed!
-  const lastUserMessageMeasureRef = useCallback((el: HTMLDivElement | null) => {
-    lastUserMessageRef.current = el;
-  }, []);
 
   const activeChat = useMemo(() => {
     return activeChatId ? chats?.[activeChatId] : null;
   }, [activeChatId, chats]);
-
-  // Setting the spacer min-height synchronously in the DOM
-  useLayoutEffect(() => {
-    const userMessageHeight =
-      lastUserMessageRef.current?.getBoundingClientRect().height ?? 0;
-    const lastAssistantMessageWrapper = lastAssistantMessageWrapperRef.current;
-    const workingIndicator = workingIndicatorRef.current;
-    const minHeight = containerHeight - userMessageHeight;
-    setSpacerMinHeight(minHeight);
-    if (lastAssistantMessageWrapper)
-      lastAssistantMessageWrapper.style.minHeight = `${minHeight}px`;
-    if (workingIndicator) workingIndicator.style.minHeight = `${minHeight}px`;
-  }, [
-    activeEditMessageId,
-    containerHeight,
-    lastUserMessageRef,
-    activeChat?.messages.length,
-  ]);
 
   // Track container height to set the spacer
   useEffect(() => {
     let rafId: number;
     let resizeObserver: ResizeObserver | null = null;
     const checkViewport = () => {
-      const viewport = scrollbarRef.current?.getViewport();
-      if (!viewport) {
+      if (!scroller) {
         rafId = requestAnimationFrame(checkViewport);
         return;
       }
       resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          if (
-            entry.contentRect.height !== containerHeight &&
-            isAutoScrollEnabled()
-          )
-            scrollToBottom();
-          setContainerHeight(entry.contentRect.height);
+          const newHeight = entry.contentRect.height;
+          containerHeightRef.current = newHeight;
+          setContainerHeight(newHeight);
+          if (isAutoScrollEnabled()) updateSpacerHeight();
         }
       });
-      resizeObserver.observe(viewport);
+      resizeObserver.observe(scroller);
     };
     checkViewport();
     return () => {
       cancelAnimationFrame(rafId);
       resizeObserver?.disconnect();
     };
-  }, [isAutoScrollEnabled, scrollToBottom]);
+  }, [isAutoScrollEnabled, scrollToBottom, scroller]);
+
+  // Enable auto-scroll when a new message is sent (scrolls to bottom as well)
+  useEffect(() => {
+    window.addEventListener('chat-message-sent', () => {
+      forceEnableAutoScroll();
+    });
+    return () => {
+      window.removeEventListener('chat-message-sent', () => {
+        forceEnableAutoScroll();
+      });
+    };
+  }, [forceEnableAutoScroll]);
 
   // Shuffle suggestions once on mount using Fisher-Yates algorithm
   const [shuffledSuggestions] = useState(() => {
@@ -141,28 +173,8 @@ export const ChatHistory = () => {
     setRemovedSuggestionUrls((prev) => new Set([...Array.from(prev), url]));
   };
 
-  // Force scroll to bottom when user sends a message
-  useEventListener('chat-message-sent', forceEnableAutoScroll);
-
-  // Adjust scroll position when FileDiffCard height changes
-  // This makes it look like the container grew/shrank at the bottom
-  const handleFileDiffCardHeightChanged = useCallback(
-    (e: CustomEvent<{ delta: number; height: number }>) => {
-      const viewport = scrollbarRef.current?.getViewport();
-      if (!viewport) return;
-
-      const { delta } = e.detail;
-      if (delta !== 0) viewport.scrollTop += delta;
-    },
-    [],
-  );
-
-  useEventListener(
-    'file-diff-card-height-changed',
-    handleFileDiffCardHeightChanged as EventListener,
-  );
-
-  const renderedMessages = useMemo(() => {
+  // All messages after filtering and merging consecutive assistant messages
+  const filteredMessages = useMemo(() => {
     if (!activeChat?.messages) return [];
 
     return activeChat?.messages
@@ -170,17 +182,14 @@ export const ChatHistory = () => {
         (message) => message.role === 'user' || message.role === 'assistant',
       )
       .reduce<History>((curr, message) => {
-        // If the last message is the same role as the current message and the role is 'assistant, we append the parts to the previous message instead of pushing the new message to the array.
         const lastMessage = curr[curr.length - 1];
         if (!lastMessage) {
-          // Shallow copy to avoid mutating original, but preserve part references
           curr.push({ ...message, parts: [...message.parts] });
           return curr;
         }
 
         if (lastMessage.role === message.role && message.role === 'assistant') {
           lastMessage.parts = [...lastMessage.parts, ...message.parts];
-          // Use the longer thinkingDurations array (each message has cumulative durations)
           if (
             message.metadata?.thinkingDurations &&
             message.metadata.thinkingDurations.length >
@@ -192,150 +201,171 @@ export const ChatHistory = () => {
             };
           }
         } else {
-          // Shallow copy to avoid mutating original, but preserve part references
           curr.push({ ...message, parts: [...message.parts] });
         }
         return curr;
       }, []);
   }, [activeChat]);
 
-  // Find the index of the last user message
-  const lastUserMessageIndex = useMemo(() => {
-    for (let i = renderedMessages.length - 1; i >= 0; i--) {
-      if (renderedMessages[i].role === 'user') {
-        return i;
-      }
-    }
-    return -1;
-  }, [renderedMessages]);
-
   // Determine if we should show the "Working..." indicator
   const showWorkingIndicator = useMemo(() => {
     if (!isWorking) return false;
-
-    const lastMessage = renderedMessages[renderedMessages.length - 1];
+    const lastMessage = filteredMessages[filteredMessages.length - 1];
     if (!lastMessage) return false;
-
-    // Show if last message is from user (agent hasn't responded yet)
     if (lastMessage.role === 'user') return true;
-
-    // Show if last message is an empty assistant message (agent just started)
     if (
       lastMessage.role === 'assistant' &&
       isEmptyAssistantMessage(lastMessage)
     )
       return true;
-
     return false;
-  }, [isWorking, renderedMessages]);
+  }, [isWorking, filteredMessages]);
+
+  // Find the index of the last user message (for attaching measurement ref)
+  const lastUserMsgIndex = useMemo(() => {
+    for (let i = filteredMessages.length - 1; i >= 0; i--)
+      if (filteredMessages[i].role === 'user') return i;
+
+    return -1;
+  }, [filteredMessages]);
+
+  // Set spacer height synchronously before paint
+  useLayoutEffect(() => {
+    // Update ref so callback ref can access latest value
+    containerHeightRef.current = containerHeight;
+    updateSpacerHeight();
+  }, [
+    activeEditMessageId,
+    containerHeight,
+    filteredMessages.length,
+    updateSpacerHeight,
+  ]);
+
+  // Render individual message item
+  const itemContent = useCallback(
+    (index: number, message: ChatMessage) => {
+      const isLastMessage = index === filteredMessages.length - 1;
+      const isLastUserMessage = index === lastUserMsgIndex;
+      const isLastAssistantMessage =
+        isLastMessage && message.role === 'assistant';
+
+      const messageComponent =
+        message.role === 'user' ? (
+          <MessageUser
+            message={message as ChatMessage & { role: 'user' }}
+            isLastMessage={isLastMessage}
+          />
+        ) : (
+          <MessageAssistant
+            message={message as ChatMessage & { role: 'assistant' }}
+            isLastMessage={isLastMessage}
+          />
+        );
+
+      // Attach ref to last assistant message wrapper for height measurement
+      if (isLastAssistantMessage)
+        return (
+          <div
+            ref={lastAssistantMessageRef}
+            className="flex flex-col pb-[calc(64px+var(--status-card-height,0px))] pl-4"
+            style={{ minHeight: spacerHeight, paddingRight }}
+          >
+            {messageComponent}
+            {activeChat?.error && <MessageError error={activeChat.error} />}
+            {showWorkingIndicator && <MessageLoading />}
+          </div>
+        );
+
+      // Attach ref to last user message wrapper for height measurement
+      if (isLastUserMessage) {
+        return (
+          <div
+            className={cn('flex flex-col pl-4', index === 0 && 'pt-2.5')}
+            style={{ paddingRight }}
+          >
+            <div ref={lastUserMessageRef}>{messageComponent}</div>
+            {showWorkingIndicator &&
+              (filteredMessages.length === 0 ||
+                filteredMessages[filteredMessages.length - 1]?.role ===
+                  'user') && <MessageLoading />}
+          </div>
+        );
+      }
+
+      return (
+        <div
+          className={cn('pl-4', index === 0 && 'pt-2.5')}
+          style={{ paddingRight }}
+        >
+          {messageComponent}
+        </div>
+      );
+    },
+    [
+      filteredMessages.length,
+      lastUserMsgIndex,
+      activeChat?.error,
+      showWorkingIndicator,
+      paddingRight,
+    ],
+  );
+
+  // Empty state component for suggestions
+  const EmptyPlaceholder = useCallback(() => {
+    return (
+      <div className="flex w-full flex-col items-center justify-center gap-1 px-4 pb-2 text-sm">
+        {visibleSuggestions.map((suggestion) => (
+          <ChatSuggestion
+            key={suggestion.url}
+            {...suggestion}
+            onClick={async () => {
+              await createTab(suggestion.url);
+              await sendUserMessage({
+                id: crypto.randomUUID(),
+                role: 'user',
+                parts: [
+                  {
+                    type: 'text',
+                    text: suggestion.prompt,
+                  },
+                ],
+              });
+            }}
+            onRemove={() => handleRemoveSuggestion(suggestion.url)}
+          />
+        ))}
+      </div>
+    );
+  }, [visibleSuggestions, createTab, sendUserMessage, paddingRight]);
+
+  // If no messages, show empty state directly
+  if (filteredMessages.length === 0) {
+    return (
+      <section
+        aria-label="Agent message display"
+        className={cn(
+          'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
+        )}
+      >
+        <EmptyPlaceholder />
+      </section>
+    );
+  }
 
   return (
-    <OverlayScrollbar
-      ref={scrollbarRef}
-      onViewportRef={setViewport}
-      element="section"
-      aria-label="Agent message display"
-      className={cn(
-        'mask-alpha pointer-events-auto block h-full text-foreground text-sm focus-within:outline-none focus:outline-none',
-        renderedMessages.length > 0 && 'flex-1',
-        renderedMessages.length === 0 && 'mb-1 h-max min-h-[inherit]',
-        'pb-[calc(1rem+var(--file-diff-card-height,0px))]',
-      )}
-      style={maskStyle}
-      contentClassName="px-2.5"
-      options={
-        renderedMessages.length === 0
-          ? { overflow: { x: 'hidden', y: 'hidden' } }
-          : undefined
-      }
-    >
-      {renderedMessages.map((message, index) => {
-        const isLastMessage = index === renderedMessages.length - 1;
-        const isLastAssistantMessage =
-          isLastMessage && message.role === 'assistant';
-
-        const messageComponent =
-          message.role === 'user' ? (
-            <MessageUser
-              key={message.id ?? `user-${index}`}
-              message={message as ChatMessage & { role: 'user' }}
-              isLastMessage={isLastMessage}
-              measureRef={
-                index === lastUserMessageIndex
-                  ? lastUserMessageMeasureRef
-                  : undefined
-              }
-            />
-          ) : (
-            <MessageAssistant
-              key={message.id ?? `assistant-${index}`}
-              message={message as ChatMessage & { role: 'assistant' }}
-              isLastMessage={isLastMessage}
-            />
-          );
-
-        // Wrap last assistant message + error + loading in a flex container with minHeight
-        if (isLastAssistantMessage)
-          return (
-            <div
-              ref={lastAssistantMessageWrapperRef}
-              style={{ minHeight: spacerMinHeight }}
-              key={`wrapper-${message.id ?? index}`}
-              className="flex flex-col"
-            >
-              {messageComponent}
-              {activeChat?.error && <MessageError error={activeChat.error} />}
-              {/* Working indicator inside wrapper when last message is assistant */}
-              {showWorkingIndicator && <MessageLoading />}
-            </div>
-          );
-
-        return messageComponent;
-      }) ?? []}
-
-      {/* Render error after messages only if last message is user (or no messages) */}
-      {(renderedMessages.length === 0 ||
-        renderedMessages[renderedMessages.length - 1]?.role === 'user') &&
-        activeChat?.error && <MessageError error={activeChat.error} />}
-
-      {/* Working indicator outside wrapper when last message is user (or no messages) */}
-      {showWorkingIndicator &&
-        (renderedMessages.length === 0 ||
-          renderedMessages[renderedMessages.length - 1]?.role === 'user') && (
-          <div
-            ref={workingIndicatorRef}
-            style={{ minHeight: spacerMinHeight }}
-            className="flex flex-col"
-          >
-            <MessageLoading />
-          </div>
-        )}
-
-      {renderedMessages.length === 0 && (
-        <div className="flex w-full flex-col items-center justify-center gap-1 text-sm">
-          {visibleSuggestions.map((suggestion) => (
-            <ChatSuggestion
-              key={suggestion.url}
-              {...suggestion}
-              onClick={async () => {
-                await createTab(suggestion.url);
-                await sendUserMessage({
-                  id: crypto.randomUUID(),
-                  role: 'user',
-                  parts: [
-                    {
-                      type: 'text',
-                      text: suggestion.prompt,
-                    },
-                  ],
-                });
-              }}
-              onRemove={() => handleRemoveSuggestion(suggestion.url)}
-            />
-          ))}
-        </div>
-      )}
-    </OverlayScrollbar>
+    <Virtuoso
+      style={{ scrollbarGutter: 'stable' }}
+      key={activeChatId ?? 'no-chat'}
+      data={filteredMessages}
+      ref={virtuosoRef}
+      className="scrollbar-hover-only -mr-[2px]"
+      scrollerRef={scrollerRef}
+      increaseViewportBy={{ top: 3000, bottom: 3000 }} // Render items above and below viewport
+      itemContent={itemContent}
+      followOutput={false} // We use our own auto-scroll logic
+      computeItemKey={(_, message) => message.id}
+      totalCount={filteredMessages.length}
+    />
   );
 };
 

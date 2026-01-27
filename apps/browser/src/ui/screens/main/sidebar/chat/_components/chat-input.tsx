@@ -158,6 +158,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     // TipTap editor setup
     const editor = useEditor({
+      // Disable markdown parsing - treat **bold**, *italic*, etc. as literal characters
+      enableInputRules: false,
+      enablePasteRules: false,
       extensions: [
         StarterKit.configure({
           // Disable block-level features we don't need for chat input
