@@ -272,48 +272,59 @@ const InlineColorComponent = ({
 }: DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> &
   ExtraProps & { color: string }) => {
   const [hasCopied, setHasCopied] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const ignoreCloseRef = useRef(false);
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(color);
     setHasCopied(true);
-    setTimeout(() => setHasCopied(false), 2000);
+    setTooltipOpen(true);
+    // Briefly prevent the click-triggered close, but allow hover-out to work
+    ignoreCloseRef.current = true;
+    setTimeout(() => {
+      ignoreCloseRef.current = false;
+    }, 50); // Short delay to ignore only the click-triggered close
+    // Reset "Copied" text after 2 seconds
+    setTimeout(() => {
+      setHasCopied(false);
+    }, 2000);
   };
+
+  const handleOpenChange = (open: boolean) => {
+    // Ignore the immediate close triggered by clicking, but allow hover-out
+    if (!open && ignoreCloseRef.current) return;
+    setTooltipOpen(open);
+  };
+
   return (
-    <span
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        copyToClipboard();
-      }}
-      className={cn(
-        'group/inline-code rounded bg-surface-1 px-1.5 py-0.5 font-mono text-foreground text-xs',
-        'inline-flex cursor-pointer items-center hover:bg-hover-derived hover:text-hover-derived active:bg-active-derived active:text-active-derived',
-      )}
-    >
-      <span
-        className={`mr-1 inline-block size-3 shrink-0 rounded-sm border border-derived align-middle group-hover/inline-code:border-derived-strong! group-hover/inline-code:bg-hover-derived! group-active/inline-code:border-derived-strong! group-active/inline-code:bg-active-derived!`}
-        style={
-          {
-            backgroundColor: color,
-            '--cm-bg-color': color,
-          } as React.CSSProperties
-        }
-        aria-hidden="true"
-      />
-      {children}
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        onClick={copyToClipboard}
-        className="m-0 ml-1 size-3 p-0 text-foreground group-hover/inline-code:text-hover-derived group-active/inline-code:text-active-derived"
-      >
-        {' '}
-        {hasCopied ? (
-          <CopyCheckIcon className="size-3" />
-        ) : (
-          <CopyIcon className="size-3" />
-        )}
-      </Button>
-    </span>
+    <Tooltip open={tooltipOpen} onOpenChange={handleOpenChange}>
+      <TooltipTrigger>
+        <span
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            copyToClipboard();
+          }}
+          className={cn(
+            'group/inline-code rounded bg-surface-1 px-1.5 py-0.5 font-mono text-foreground text-xs',
+            'inline-flex cursor-pointer items-center hover:bg-hover-derived hover:text-hover-derived active:bg-active-derived active:text-active-derived',
+          )}
+        >
+          <span
+            className={`mr-1 inline-block size-3 shrink-0 rounded-sm border border-derived align-middle group-hover/inline-code:border-derived-strong! group-hover/inline-code:bg-hover-derived! group-active/inline-code:border-derived-strong! group-active/inline-code:bg-active-derived!`}
+            style={
+              {
+                backgroundColor: color,
+                '--cm-bg-color': color,
+              } as React.CSSProperties
+            }
+            aria-hidden="true"
+          />
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{hasCopied ? 'Copied' : `Copy`}</TooltipContent>
+    </Tooltip>
   );
 };
 

@@ -5,10 +5,18 @@ export const TooltipProvider = BaseTooltip.Provider;
 
 export const Tooltip = ({
   children,
+  open,
+  onOpenChange,
 }: {
   children: ReactElement | ReactNode | ReactNode[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) => {
-  return <BaseTooltip.Root>{children}</BaseTooltip.Root>;
+  return (
+    <BaseTooltip.Root open={open} onOpenChange={onOpenChange}>
+      {children}
+    </BaseTooltip.Root>
+  );
 };
 
 type TooltipTriggerProps = ComponentProps<typeof BaseTooltip.Trigger> & {
