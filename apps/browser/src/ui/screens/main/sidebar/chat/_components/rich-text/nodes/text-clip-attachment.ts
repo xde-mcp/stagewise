@@ -6,12 +6,61 @@ import { TextClipAttachmentView } from './text-clip-attachment-view';
 import {
   type AttachmentNodeOptions,
   type AttachmentType,
+  type TextClipAttachmentAttrs,
   ALL_ATTACHMENT_NODE_NAMES,
   NODE_NAME_TO_TYPE,
 } from '../types';
 
 /** Minimum character length for text to be converted to a text clip on paste */
 const TEXT_CLIP_THRESHOLD = 100;
+
+/**
+ * Extracts text clip attachments from TipTap JSON content.
+ * Used to collect all text clips before sending a message so the agent
+ * can correlate @{id} references with the full text content.
+ *
+ * @param jsonContent - Serialized TipTap JSON content string
+ * @returns Array of text clip attachment data (id, label, content)
+ */
+export function extractTextClipsFromTiptapJson(
+  jsonContent: string | undefined,
+): TextClipAttachmentAttrs[] {
+  if (!jsonContent) return [];
+
+  try {
+    const doc = JSON.parse(jsonContent);
+    const clips: TextClipAttachmentAttrs[] = [];
+
+    const traverse = (node: {
+      type?: string;
+      attrs?: { id?: string; label?: string; content?: string };
+      content?: unknown[];
+    }) => {
+      if (node.type === 'textClipAttachment' && node.attrs)
+        clips.push({
+          id: node.attrs.id ?? '',
+          label: node.attrs.label ?? '',
+          content: node.attrs.content ?? '',
+        });
+
+      if (Array.isArray(node.content))
+        node.content.forEach((child) =>
+          traverse(
+            child as {
+              type?: string;
+              attrs?: { id?: string; label?: string; content?: string };
+              content?: unknown[];
+            },
+          ),
+        );
+    };
+
+    traverse(doc);
+    return clips;
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Checks if HTML content contains existing attachment nodes.

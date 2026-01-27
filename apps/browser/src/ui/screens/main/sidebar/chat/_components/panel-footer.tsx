@@ -201,8 +201,11 @@ export function ChatPanelFooter() {
       )
     ).filter((part) => part !== null);
 
-    // Collect metadata for selected elements
-    const metadata = collectUserMessageMetadata(localSelectedElements);
+    // Collect metadata for selected elements and text clips
+    const metadata = collectUserMessageMetadata(
+      localSelectedElements,
+      tiptapJsonContent,
+    );
 
     const message: ChatMessage = {
       id: generateId(),
@@ -210,7 +213,6 @@ export function ChatPanelFooter() {
       role: 'user',
       metadata: {
         ...metadata,
-        createdAt: new Date(),
         tiptapJsonContent,
       },
     };

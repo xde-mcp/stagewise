@@ -252,10 +252,6 @@ export const MessageUser = memo(
           ...selectedElementsFromEditor,
         ];
 
-        // Then send the new message
-        // Collect metadata for selected elements
-        const metadata = collectUserMessageMetadata(combinedSelectedElements);
-
         // Convert FileAttachments to FileUIParts (convert File to data URL)
         const fileParts: FileUIPart[] = await Promise.all(
           editedFileAttachments.map(fileAttachmentToFileUIPart),
@@ -267,13 +263,18 @@ export const MessageUser = memo(
           pendingTiptapContentRef.current,
         );
 
+        // Collect metadata for selected elements and text clips
+        const metadata = collectUserMessageMetadata(
+          combinedSelectedElements,
+          tiptapJsonContent,
+        );
+
         await sendUserMessage({
           id: generateId(),
           parts: [...fileParts, { type: 'text' as const, text: editedText }],
           role: 'user',
           metadata: {
             ...metadata,
-            createdAt: new Date(),
             tiptapJsonContent,
           },
         });

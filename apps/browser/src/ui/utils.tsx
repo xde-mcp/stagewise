@@ -3,6 +3,7 @@ import type {
   UserMessageMetadata,
 } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
+import { extractTextClipsFromTiptapJson } from '@/screens/main/sidebar/chat/_components/rich-text';
 
 export const companionAnchorTagName = 'stagewise-companion-anchor';
 
@@ -561,13 +562,20 @@ export const getBrowserData = (): BrowserData | null => {
 
 export const collectUserMessageMetadata = (
   selectedElements: SelectedElement[],
-  _sentByPlugin?: boolean,
+  tiptapJsonContent?: string,
 ): UserMessageMetadata => {
   const browserData = getBrowserData();
+
+  // Extract text clip attachments from TipTap content
+  // These are collapsed long texts that show as @{id} in plain text
+  const textClipAttachments = extractTextClipsFromTiptapJson(tiptapJsonContent);
+
   return {
     createdAt: new Date(),
     selectedPreviewElements: selectedElements,
     browserData: browserData || undefined,
+    textClipAttachments:
+      textClipAttachments.length > 0 ? textClipAttachments : undefined,
   };
 };
 

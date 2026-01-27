@@ -32,7 +32,10 @@ export {
 export { FileAttachment } from './nodes/file-attachment';
 export { ImageAttachment } from './nodes/image-attachment';
 export { ElementAttachment } from './nodes/element-attachment';
-export { TextClipAttachment } from './nodes/text-clip-attachment';
+export {
+  TextClipAttachment,
+  extractTextClipsFromTiptapJson,
+} from './nodes/text-clip-attachment';
 
 // Node view components (used by TipTap and view-only renderer)
 export { AttachmentNodeView } from './base-attachment-fallback-view';

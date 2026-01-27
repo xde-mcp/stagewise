@@ -318,6 +318,17 @@ const userMessageFormatDescription = xml({
               type: [
                 {
                   _attr: {
+                    name: 'selected-dom-element',
+                    description:
+                      'A DOM element selected by [USER] from the dev app preview. Contains element details including tag name, xpath, bounding box position, computed styles, attributes, parent/child hierarchy, and related codebase files. Use this to understand which UI element [USER] is referring to and to locate the corresponding source code for modifications.',
+                  },
+                },
+              ],
+            },
+            {
+              type: [
+                {
+                  _attr: {
                     name: 'displayed-ui',
                     description: `The currently displayed UI mode of ${productName} interface. User messages contain info about active UI mode. Modes are described in app environment info.`,
                   },
@@ -331,6 +342,17 @@ const userMessageFormatDescription = xml({
                     name: 'rejected-edits',
                     description:
                       "A comma-separated list of file paths where [USER] rejected [STAGE]'s previous edits. These files were modified by [STAGE] but [USER] reverted the changes.",
+                  },
+                },
+              ],
+            },
+            {
+              type: [
+                {
+                  _attr: {
+                    name: 'text-clip',
+                    description:
+                      'A long text pasted by [USER] that is collapsed/clipped in the UI for better readability. The "id" attribute matches the @{id} reference in the user message text. The content contains the full pasted text. Use this to understand what text the user is referring to when they include @{id} references.',
                   },
                 },
               ],

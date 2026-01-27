@@ -1,6 +1,22 @@
 import { z } from 'zod';
 import { selectedElementSchema } from '../../selected-elements';
 
+/**
+ * Schema for text clip attachments - collapsed long text pasted by user.
+ * These are stored in metadata so the agent can correlate @{id} references
+ * in the user message with the full text content.
+ */
+export const textClipAttachmentSchema = z.object({
+  /** Unique identifier matching the @{id} reference in user message */
+  id: z.string(),
+  /** Truncated preview label shown in UI */
+  label: z.string(),
+  /** Full pasted text content */
+  content: z.string(),
+});
+
+export type TextClipAttachment = z.infer<typeof textClipAttachmentSchema>;
+
 export const browserDataSchema = z.object({
   viewport: z.object({
     width: z.number().min(0),
@@ -19,6 +35,8 @@ export type BrowserData = z.infer<typeof browserDataSchema>;
 const metadataSchema = z.object({
   createdAt: z.date(),
   selectedPreviewElements: z.array(selectedElementSchema).optional(),
+  /** Text clip attachments - collapsed long text pasted by user */
+  textClipAttachments: z.array(textClipAttachmentSchema).optional(),
   browserData: browserDataSchema.optional(),
   thinkingDurations: z.array(z.number()).optional(),
   autoCompactInformation: z

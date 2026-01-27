@@ -7,6 +7,7 @@ import {
   relevantCodebaseFilesToContextSnippet,
   selectedElementToContextSnippet,
 } from '../utils/metadata-converter/html-elements';
+import { textClipToContextSnippet } from '../utils/metadata-converter/text-clips';
 
 export async function getUserMessage(
   userMessage: ChatMessage,
@@ -49,6 +50,16 @@ export async function getUserMessage(
       browserMetadataToContextSnippet(userMessage.metadata.browserData),
     );
   }
+
+  // Handle text clip attachments - collapsed long text pasted by user
+  // These are referenced in user message as @{id} and contain the full text content
+  if (
+    userMessage.metadata?.textClipAttachments &&
+    userMessage.metadata.textClipAttachments.length > 0
+  )
+    userMessage.metadata.textClipAttachments.forEach((textClip) => {
+      systemAttachmentTextPart.push(textClipToContextSnippet(textClip));
+    });
 
   if (
     userMessage.metadata?.selectedPreviewElements &&
