@@ -11,7 +11,7 @@ import {
 import { cn } from '@/utils';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { diffLines } from 'diff';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { useKartonState } from '@/hooks/use-karton';
 import { IDE_SELECTION_ITEMS } from '@/utils';
@@ -73,17 +73,14 @@ export const MultiEditToolPart = ({
     return 'success';
   }, [part.state, streaming]);
 
+  const effectiveExpanded = useMemo(() => {
+    return state === 'error' ? false : expanded;
+  }, [state, expanded]);
+
   const path = useMemo(() => {
     if (!part.input?.relative_path) return null;
     return part.input?.relative_path;
   }, [part.input?.relative_path]);
-
-  // Force expanded to false when in error state
-  useEffect(() => {
-    if (state === 'error') {
-      setExpanded(false);
-    }
-  }, [state]);
 
   const firstLineNumberEdited = useMemo(() => {
     let startLine = 1;
@@ -159,7 +156,7 @@ export const MultiEditToolPart = ({
   return (
     <ToolPartUI
       showBorder={true}
-      expanded={expanded}
+      expanded={effectiveExpanded}
       setExpanded={setExpanded}
       trigger={trigger}
       content={content}
@@ -319,7 +316,7 @@ const LoadingHeader = ({ relativePath }: { relativePath?: string }) => {
 
   return (
     <div className="flex flex-row items-center justify-start gap-1">
-      <Loader2Icon className="size-3 shrink-0 animate-spin text-primary" />
+      <Loader2Icon className="size-3 shrink-0 animate-spin text-primary-foreground" />
       {relativePath !== null ? (
         <Tooltip>
           <TooltipTrigger>

@@ -15,7 +15,7 @@ import { Skeleton } from '@stagewise/stage-ui/components/skeleton';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { DiffPreview } from './shared/diff-preview';
 import { cn } from '@/utils';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { diffLines } from 'diff';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
@@ -83,12 +83,9 @@ export const OverwriteFileToolPart = ({
     return part.input?.relative_path;
   }, [part.input?.relative_path]);
 
-  // Force expanded to false when in error state
-  useEffect(() => {
-    if (state === 'error') {
-      setExpanded(false);
-    }
-  }, [state]);
+  const effectiveExpanded = useMemo(() => {
+    return state === 'error' ? false : expanded;
+  }, [state, expanded]);
 
   const trigger = useMemo(() => {
     if (state === 'error')
@@ -193,7 +190,7 @@ export const OverwriteFileToolPart = ({
   return (
     <ToolPartUI
       showBorder={true}
-      expanded={expanded}
+      expanded={effectiveExpanded}
       setExpanded={setExpanded}
       trigger={trigger}
       content={content}
@@ -287,7 +284,9 @@ const LoadingHeader = ({ relativePath }: { relativePath?: string }) => {
 
   return (
     <div className="flex flex-row items-center justify-start gap-1">
-      <Loader2Icon className={cn('size-3 shrink-0 animate-spin')} />
+      <Loader2Icon
+        className={cn('size-3 shrink-0 animate-spin text-primary-foreground')}
+      />
       {relativePath !== null ? (
         <Tooltip>
           <TooltipTrigger>
