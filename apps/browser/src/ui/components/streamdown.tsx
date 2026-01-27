@@ -41,6 +41,26 @@ import {
 
 const LANGUAGE_REGEX = /language-([^\s]+)/;
 
+const getValidCssColor = (children: ReactNode): string | null => {
+  const textContent =
+    typeof children === 'string'
+      ? children
+      : Array.isArray(children) && children.every((c) => typeof c === 'string')
+        ? children.join('')
+        : null;
+  if (!textContent || typeof textContent !== 'string') return null;
+
+  const trimmed = textContent.trim();
+  if (!trimmed) return null;
+
+  try {
+    if (!CSS.supports('color', trimmed)) return null;
+    return trimmed;
+  } catch {
+    return null;
+  }
+};
+
 const StreamdownContext = createContext<{
   isStreaming: boolean;
 }>({
@@ -136,20 +156,12 @@ const CodeComponent = ({
 
   const inline = node?.position?.start.line === node?.position?.end.line;
 
-  if (inline) {
+  if (inline)
     return (
-      <code
-        className={cn(
-          'rounded bg-muted-foreground/5 px-1.5 py-0.5 font-mono text-xs',
-          className,
-        )}
-        data-streamdown="inline-code"
-        {...props}
-      >
+      <InlineCodeComponent className={className} {...props}>
         {children}
-      </code>
+      </InlineCodeComponent>
     );
-  }
 
   const match = className?.match(LANGUAGE_REGEX);
   const language = (match?.at(1) ?? '') as BundledLanguage;
@@ -222,6 +234,86 @@ const CodeComponent = ({
         </OverlayScrollbar>
       )}
     </div>
+  );
+};
+
+const InlineCodeComponent = ({
+  children,
+  className,
+  ...props
+}: DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> &
+  ExtraProps) => {
+  const isColor = !!getValidCssColor(children);
+
+  if (isColor)
+    return (
+      <InlineColorComponent color={getValidCssColor(children)}>
+        {children}
+      </InlineColorComponent>
+    );
+
+  return (
+    <code
+      className={cn(
+        'rounded bg-surface-1 px-1.5 py-0.5 font-mono text-foreground text-xs',
+        className,
+      )}
+      data-streamdown="inline-code"
+      {...props}
+    >
+      {children}
+    </code>
+  );
+};
+
+const InlineColorComponent = ({
+  children,
+  color,
+}: DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> &
+  ExtraProps & { color: string }) => {
+  const [hasCopied, setHasCopied] = useState(false);
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(color);
+    setHasCopied(true);
+    setTimeout(() => setHasCopied(false), 2000);
+  };
+  return (
+    <span
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        copyToClipboard();
+      }}
+      className={cn(
+        'group/inline-code rounded bg-surface-1 px-1.5 py-0.5 font-mono text-foreground text-xs',
+        'inline-flex cursor-pointer items-center hover:bg-hover-derived hover:text-hover-derived active:bg-active-derived active:text-active-derived',
+      )}
+    >
+      <span
+        className={`mr-1 inline-block size-3 shrink-0 rounded-sm border border-derived align-middle group-hover/inline-code:border-derived-strong! group-hover/inline-code:bg-hover-derived! group-active/inline-code:border-derived-strong! group-active/inline-code:bg-active-derived!`}
+        style={
+          {
+            backgroundColor: color,
+            '--cm-bg-color': color,
+          } as React.CSSProperties
+        }
+        aria-hidden="true"
+      />
+      {children}
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        onClick={copyToClipboard}
+        className="m-0 ml-1 size-3 p-0 text-foreground group-hover/inline-code:text-hover-derived group-active/inline-code:text-active-derived"
+      >
+        {' '}
+        {hasCopied ? (
+          <CopyCheckIcon className="size-3" />
+        ) : (
+          <CopyIcon className="size-3" />
+        )}
+      </Button>
+    </span>
   );
 };
 
