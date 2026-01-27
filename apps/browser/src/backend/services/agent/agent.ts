@@ -1484,7 +1484,7 @@ export class AgentService {
           // If the parsing fails, we simply return an invalid tool call
           this.logger.debug('[AgentService] Repairing tool call', r.error);
           this.telemetryService.captureException(r.error);
-          if (NoSuchToolError.isInstance(r.error)) return null;
+          if (NoSuchToolError.isInstance(r.error)) return r.toolCall;
 
           const tool = toolsContext
             ? tools?.[r.toolCall.toolName as keyof typeof tools]
