@@ -5,6 +5,7 @@ import {
   useState,
   useEffect,
   useImperativeHandle,
+  type KeyboardEvent,
 } from 'react';
 import type { TabState } from '@shared/karton-contracts/ui';
 import {
@@ -138,6 +139,38 @@ export const Omnibox = ({
     }, 0);
   }, []);
 
+  // Handle Ctrl+N/P for omnibox navigation (Chrome-like behavior)
+  // Uses physical Ctrl key on all platforms (including Mac)
+  const onInputKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    // Ctrl+N to move down (like ArrowDown)
+    if (e.ctrlKey && e.key === 'n' && !e.metaKey && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Dispatch a synthetic ArrowDown event to trigger Base UI's navigation
+      const arrowEvent = new window.KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+        bubbles: true,
+        cancelable: true,
+      });
+      e.currentTarget.dispatchEvent(arrowEvent);
+    }
+
+    // Ctrl+P to move up (like ArrowUp)
+    if (e.ctrlKey && e.key === 'p' && !e.metaKey && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Dispatch a synthetic ArrowUp event to trigger Base UI's navigation
+      const arrowEvent = new window.KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        code: 'ArrowUp',
+        bubbles: true,
+        cancelable: true,
+      });
+      e.currentTarget.dispatchEvent(arrowEvent);
+    }
+  }, []);
+
   const showDefaultBrowserInfo = false; // TODO
 
   return (
@@ -162,6 +195,7 @@ export const Omnibox = ({
             ref={inputRef}
             placeholder="Search or type a URL"
             onFocus={onInputFocus}
+            onKeyDown={onInputKeyDown}
             className={cn(
               'h-8 w-full flex-1 rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent transition-all duration-150 ease-out hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong',
               shouldShowBreadcrumbs && !isOmniboxOpen && 'text-transparent',

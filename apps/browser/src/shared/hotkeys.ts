@@ -124,7 +124,8 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    // Note: captureDominantly is intentionally false to allow omnibox
+    // Ctrl+N/P navigation to intercept on Windows (Chrome-like behavior)
   },
   [HotkeyActions.CTRL_J]: {
     keyComboDefault: 'Ctrl+J',
