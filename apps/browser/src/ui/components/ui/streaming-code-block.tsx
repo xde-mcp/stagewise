@@ -334,14 +334,14 @@ export const StreamingCodeBlock = memo(
       <>
         <div
           className={cn(
-            'group/chat-bubble-user:hidden dark:hidden [&_code]:text-xs [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:p-0',
+            'group/chat-message-user:hidden dark:hidden [&_code]:text-xs [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:p-0',
             className,
           )}
           dangerouslySetInnerHTML={{ __html: lightHtml }}
         />
         <div
           className={cn(
-            'hidden group/chat-bubble-user:block dark:block [&_code]:text-xs [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:p-0',
+            'hidden group/chat-message-user:block dark:block [&_code]:text-xs [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:p-0',
             className,
           )}
           dangerouslySetInnerHTML={{ __html: darkHtml }}

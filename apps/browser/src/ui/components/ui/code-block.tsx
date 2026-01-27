@@ -342,7 +342,10 @@ export const CodeBlock = memo(
     return (
       <>
         <div
-          className={cn('group/chat-bubble-user:hidden dark:hidden', className)}
+          className={cn(
+            'group/chat-message-user:hidden dark:hidden',
+            className,
+          )}
           dangerouslySetInnerHTML={{ __html: html }}
           data-code-block
           data-language={language}

@@ -538,7 +538,7 @@ export const MessageUser = memo(
                   isEditing && isEditDragOver && 'bg-hover-derived!',
                   // View mode: bubble style
                   !isEditing &&
-                    'group group/chat-bubble-user wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
+                    'group group/chat-message-user wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
                   !isEditing &&
                     canEdit &&
                     'cursor-pointer hover:bg-hover-derived active:bg-active-derived',

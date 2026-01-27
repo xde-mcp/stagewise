@@ -56,7 +56,7 @@ export const BadgeContainer = forwardRef<HTMLSpanElement, BadgeContainerProps>(
       <span
         ref={ref}
         className={cn(
-          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded bg-inherit px-1.5 align-middle text-secondary-foreground ring-1 ring-derived group-hover/chat-bubble-user:bg-hover-derived group-hover/chat-bubble-user:ring-derived dark:bg-surface-tinted dark:group-hover/chat-bubble-user:ring-derived-strong',
+          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded bg-inherit px-1.5 align-middle text-secondary-foreground ring-1 ring-derived group-hover/chat-message-user:bg-hover-derived group-hover/chat-message-user:ring-derived dark:bg-surface-tinted dark:group-hover/chat-message-user:ring-derived-strong',
           selected && 'ring-primary-foreground',
           className,
         )}
