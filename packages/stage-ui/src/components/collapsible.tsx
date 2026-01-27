@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { Collapsible as CollapsibleBase } from '@base-ui/react/collapsible';
 import { cn } from '../lib/utils';
-import { ChevronDownIcon } from 'lucide-react';
 
 export const Collapsible = CollapsibleBase.Root;
 
@@ -18,7 +17,7 @@ export const CollapsibleTrigger = ({
   size,
   ...props
 }: CollapsibleTriggerProps) => {
-  const paddingClass = size === 'default' ? 'py-3 px-1' : 'px-1 py-1'; // TODO: Decide on a final style here
+  const paddingClass = size === 'default' ? 'py-3 px-1' : 'px-1 py-1';
   const gapClass = size === 'default' ? 'gap-2' : 'gap-1';
 
   return (
@@ -32,7 +31,6 @@ export const CollapsibleTrigger = ({
       )}
     >
       <div className="flex flex-1 flex-row items-center gap-1">{children}</div>
-      <ChevronDownIcon className="size-3 transition-transform group-data-[state=open]:rotate-180" />
     </CollapsibleBase.Trigger>
   );
 };

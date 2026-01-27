@@ -6,6 +6,7 @@ import {
 } from '@stagewise/stage-ui/components/collapsible';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { cn } from '@stagewise/stage-ui/lib/utils';
+import { ChevronDownIcon } from 'lucide-react';
 import { Tabs, TabsList } from '@stagewise/stage-ui/components/tabs';
 import { Tabs as TabsBase } from '@base-ui/react/tabs';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
@@ -205,8 +206,14 @@ export function ColorHistogram({ tabId, getScreenshot }: HistogramProps) {
       open={isOpen}
       onOpenChange={handleOpenChange}
     >
-      <CollapsibleTrigger size="condensed">
+      <CollapsibleTrigger size="condensed" className="gap-1">
         <IconChartHistogramFill18 className="size-3.5" /> Histogram
+        <ChevronDownIcon
+          className={cn(
+            'ml-auto size-3 shrink-0 transition-transform duration-150',
+            isOpen && 'rotate-180',
+          )}
+        />
       </CollapsibleTrigger>
       <CollapsibleContent className="border-derived-subtle border-t p-2">
         {/* Tab Switcher */}

@@ -11,6 +11,7 @@ import {
 } from '@stagewise/stage-ui/components/collapsible';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@stagewise/stage-ui/lib/utils';
+import { ChevronDownIcon } from 'lucide-react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import {
   Tooltip,
@@ -546,8 +547,14 @@ export function DominantColors({ tabId, getScreenshot }: DominantColorsProps) {
       open={isOpen}
       onOpenChange={setIsOpen}
     >
-      <CollapsibleTrigger size="condensed">
+      <CollapsibleTrigger size="condensed" className="gap-1">
         <IconColorPaletteFill18 className="inline size-3.5" /> Dominant Colors
+        <ChevronDownIcon
+          className={cn(
+            'ml-auto size-3 shrink-0 transition-transform duration-150',
+            isOpen && 'rotate-180',
+          )}
+        />
       </CollapsibleTrigger>
       <CollapsibleContent className="border-derived-subtle border-t p-2">
         <Button

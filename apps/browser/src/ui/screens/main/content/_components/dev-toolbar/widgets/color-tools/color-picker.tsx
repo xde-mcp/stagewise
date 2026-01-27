@@ -9,6 +9,7 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { ChevronDownIcon } from 'lucide-react';
 import { useEventListener } from '@/hooks/use-event-listener';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
@@ -207,6 +208,9 @@ export function ColorPicker({ tabId, getScreenshot }: ColorPickerProps) {
 
   // Active color mode tab
   const [activeTab, setActiveTab] = useState<ColorMode>('hex');
+
+  // Collapsible state
+  const [isExpanded, setIsExpanded] = useState(true);
 
   // Get hex value for display/preview purposes
   const selectedHex = useMemo(
@@ -567,9 +571,19 @@ export function ColorPicker({ tabId, getScreenshot }: ColorPickerProps) {
   );
 
   return (
-    <Collapsible className="rounded-lg border border-derived">
-      <CollapsibleTrigger size="condensed">
+    <Collapsible
+      className="rounded-lg border border-derived"
+      open={isExpanded}
+      onOpenChange={setIsExpanded}
+    >
+      <CollapsibleTrigger size="condensed" className="gap-1">
         <IconEyeDropperOutline18 className="inline size-3.5" /> Color Picker
+        <ChevronDownIcon
+          className={cn(
+            'ml-auto size-3 shrink-0 transition-transform duration-150',
+            isExpanded && 'rotate-180',
+          )}
+        />
       </CollapsibleTrigger>
       <CollapsibleContent className="border-derived-subtle border-t p-2">
         <div className="flex flex-row items-center gap-2">
