@@ -1,11 +1,11 @@
 import { ChevronLeft, SquareDashedMousePointer } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { usePostHog } from 'posthog-js/react';
-import { getTruncatedFileUrl } from '@/utils';
-import { useFileIDEHref } from '@/hooks/use-file-ide-href';
+import { getTruncatedFileUrl } from '@ui/utils';
+import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
-import { useMessageEditState } from '@/hooks/use-message-edit-state';
-import { useMessageElements } from '@/hooks/use-message-elements';
+import { useMessageEditState } from '@ui/hooks/use-message-edit-state';
+import { useMessageElements } from '@ui/hooks/use-message-elements';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { PreviewCardContent } from '@stagewise/stage-ui/components/preview-card';
@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
-import { IdeLogo } from '@/components/ide-logo';
+import { IdeLogo } from '@ui/components/ide-logo';
 import { IconOpenExternalOutline18 } from 'nucleo-ui-outline-18';
 import type { ElementAttachmentAttrs, AttachmentNodeViewProps } from '../types';
 import {

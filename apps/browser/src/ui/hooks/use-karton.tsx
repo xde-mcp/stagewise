@@ -1,4 +1,4 @@
-import { getBrowserData } from '@/utils';
+import { getBrowserData } from '@ui/utils';
 import { type KartonContract, defaultState } from '@shared/karton-contracts/ui';
 import {
   createKartonReactClient,

@@ -3,7 +3,7 @@ import type {
   UserMessageMetadata,
 } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
-import { extractTextClipsFromTiptapJson } from '@/screens/main/sidebar/chat/_components/rich-text';
+import { extractTextClipsFromTiptapJson } from '@ui/screens/main/sidebar/chat/_components/rich-text';
 
 export const companionAnchorTagName = 'stagewise-companion-anchor';
 

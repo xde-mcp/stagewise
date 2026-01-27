@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useKartonState } from '@/hooks/use-karton';
-import { getIDEFileUrl } from '@/utils';
+import { getIDEFileUrl } from '@ui/utils';
 
 export function useFileIDEHref() {
   const accessPath = useKartonState((s) => s.workspace?.agent?.accessPath);
