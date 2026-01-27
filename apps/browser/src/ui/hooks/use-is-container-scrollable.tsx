@@ -60,8 +60,20 @@ export function useIsContainerScrollable(
     ro.observe(element);
 
     // MutationObserver to detect when children are added/removed,
-    // which changes scrollWidth/scrollHeight without changing the container's size
-    const mo = new MutationObserver(update);
+    // which changes scrollWidth/scrollHeight without changing the container's size.
+    // We defer the update using requestAnimationFrame to avoid triggering state
+    // updates synchronously during React's commit phase, which would cause an
+    // infinite loop (MutationObserver fires during DOM mutations → setState →
+    // re-render → more mutations → observer fires again).
+    let rafId: number | null = null;
+    const deferredUpdate = () => {
+      if (rafId !== null) return; // Already scheduled
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        update();
+      });
+    };
+    const mo = new MutationObserver(deferredUpdate);
     mo.observe(element, { childList: true, subtree: true });
 
     return () => {
@@ -69,6 +81,7 @@ export function useIsContainerScrollable(
       window.removeEventListener('resize', update);
       ro.disconnect();
       mo.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [element, update]);
 
