@@ -15,6 +15,7 @@ import { cn } from '@ui/utils';
 import CodeBlockLightTheme from './code-block-light-theme.json';
 import CodeBlockDarkTheme from './code-block-dark-theme.json';
 import type { Element } from 'hast';
+import { getHighlightCache } from '@ui/hooks/use-shiki-highlighter-cache';
 
 const PRE_TAG_REGEX = /<pre(\s|>)/;
 
@@ -306,6 +307,9 @@ function getHighlighterManager(
 export const lineAddedDiffMarker = '/*>> STAGEWISE_ADDED_LINE <<*/';
 export const lineRemovedDiffMarker = '/*>> STAGEWISE_REMOVED_LINE <<*/';
 
+// Global cache instance
+const highlightCache = getHighlightCache();
+
 export const CodeBlock = memo(
   ({
     code,
@@ -317,25 +321,70 @@ export const CodeBlock = memo(
     theme = defaultCodeBlockTheme,
     ...rest
   }: CodeBlockProps) => {
-    const [html, setHtml] = useState<string>('');
-    const [darkHtml, setDarkHtml] = useState<string>('');
-    const mounted = useRef(false);
+    // Check cache FIRST - if we have a cache hit, use it immediately
+    const cachedEntry = highlightCache.get(
+      code,
+      language,
+      preClassName,
+      compactDiff,
+    );
 
+    // Initialize state: use cached HTML if available, otherwise empty string
+    const [html, setHtml] = useState<string>(cachedEntry?.lightHtml ?? '');
+    const [darkHtml, setDarkHtml] = useState<string>(
+      cachedEntry?.darkHtml ?? '',
+    );
+
+    const mountedRef = useRef(true);
+
+    // Highlight on mount or when code/language/theme changes
     useEffect(() => {
-      mounted.current = true;
+      mountedRef.current = true;
 
+      // Check cache first
+      const cached = highlightCache.get(
+        code,
+        language,
+        preClassName,
+        compactDiff,
+      );
+
+      if (cached) {
+        // Cache hit: use highlighted HTML immediately
+        setHtml(cached.lightHtml);
+        setDarkHtml(cached.darkHtml);
+        return () => {
+          mountedRef.current = false;
+        };
+      }
+
+      // Cache miss: start highlighting immediately
       const highlighterManager = getHighlighterManager(theme);
       highlighterManager
         .highlightCode(code, language, preClassName, compactDiff)
         .then(([light, dark]) => {
-          if (mounted.current) {
+          // Cache the result
+          highlightCache.set(
+            code,
+            language,
+            preClassName,
+            compactDiff,
+            light,
+            dark,
+          );
+
+          // Update state only if still mounted
+          if (mountedRef.current) {
             setHtml(light);
             setDarkHtml(dark);
           }
+        })
+        .catch((error) => {
+          console.warn('CodeBlock: Highlighting failed', error);
         });
 
       return () => {
-        mounted.current = false;
+        mountedRef.current = false;
       };
     }, [code, language, preClassName, compactDiff, theme]);
 
@@ -353,7 +402,7 @@ export const CodeBlock = memo(
         />
         <div
           className={cn(
-            'hidden group/chat-bubble-user:block dark:block',
+            'hidden group/chat-message-user:block dark:block',
             className,
           )}
           dangerouslySetInnerHTML={{ __html: darkHtml }}

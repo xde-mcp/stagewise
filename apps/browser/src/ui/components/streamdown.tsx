@@ -1,5 +1,6 @@
 import { defaultRehypePlugins, Streamdown as StreamdownBase } from 'streamdown';
 import { CodeBlock } from './ui/code-block';
+import { StreamingCodeBlock } from './ui/streaming-code-block';
 import { Mermaid } from './ui/mermaid';
 import {
   memo,
@@ -199,6 +200,12 @@ const CodeComponent = ({
             className="size-max min-h-full min-w-full"
           />
         </OverlayScrollbar>
+      ) : isStreaming ? (
+        <StreamingCodeBlock
+          code={code}
+          language={language}
+          className="px-1.5"
+        />
       ) : (
         <OverlayScrollbar
           data-code-block-container
@@ -210,7 +217,7 @@ const CodeComponent = ({
             data-language={language}
             data-streamdown="code-block"
             language={language}
-            hideActionButtons={isStreaming}
+            hideActionButtons={false}
           />
         </OverlayScrollbar>
       )}

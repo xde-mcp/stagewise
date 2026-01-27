@@ -1,11 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState, memo } from 'react';
-import type { BundledLanguage, ThemeRegistrationAny } from 'shiki';
+import type {
+  BundledLanguage,
+  ThemeRegistrationAny,
+  ShikiTransformer,
+} from 'shiki';
 import { cn } from '@ui/utils';
 import CodeBlockLightTheme from './code-block-light-theme.json';
 import CodeBlockDarkTheme from './code-block-dark-theme.json';
 import type { CodeBlockTheme } from './code-block';
+import type { Element } from 'hast';
 
 // =============================================================================
 // Streaming Highlighter Manager (simplified version for streaming)
@@ -103,6 +108,7 @@ class StreamingHighlighterManager {
   async highlightCode(
     code: string,
     language: BundledLanguage,
+    preClassName?: string,
   ): Promise<[string, string]> {
     if (this.initializationPromise) {
       await this.initializationPromise;
@@ -114,21 +120,92 @@ class StreamingHighlighterManager {
 
     const lang = this.isLanguageSupported(language) ? language : 'text';
 
-    // Simple highlighting without transformers for speed
+    // Use line number transformer for visual consistency with CodeBlock
+    const transformers: ShikiTransformer[] = [streamingLineNumbers()];
+
     const light =
       this.lightHighlighter?.codeToHtml(code, {
         lang,
         theme: this.themes[0],
+        transformers,
       }) ?? '';
 
     const dark =
       this.darkHighlighter?.codeToHtml(code, {
         lang,
         theme: this.themes[1],
+        transformers,
       }) ?? '';
 
-    return [light, dark];
+    const addPreClass = (html: string) => {
+      if (!preClassName) return html;
+      const preTagRegex = /<pre(\s|>)/;
+      return html.replace(preTagRegex, `<pre class="${preClassName}"$1`);
+    };
+
+    const addCodeScroll = (html: string) => {
+      // Add overflow-x: auto and scrollbar-subtle to code element so it scrolls
+      // Match the styling from CodeBlock for consistency
+      return html.replace(/<code([^>]*)>/, (_match, attrs) => {
+        const flexStyles =
+          'overflow-x: auto; overflow-y: visible; min-width: 0; flex: 1;';
+        if (attrs.includes('class=')) {
+          const withClass = attrs.replace(
+            /class="([^"]*)"/,
+            'class="$1 scrollbar-subtle"',
+          );
+          return `<code${withClass} style="${flexStyles}">`;
+        }
+        return `<code${attrs} class="scrollbar-subtle" style="${flexStyles}">`;
+      });
+    };
+
+    return [
+      addCodeScroll(addPreClass(light)),
+      addCodeScroll(addPreClass(dark)),
+    ];
   }
+}
+
+/**
+ * Simple line number transformer for streaming code blocks.
+ * Adds a line-numbers-container div matching CodeBlock's structure.
+ */
+function streamingLineNumbers(): ShikiTransformer {
+  return {
+    name: 'streaming-line-numbers',
+    pre(node) {
+      const codeElement = node.children.find(
+        (child) => child.type === 'element' && child.tagName === 'code',
+      ) as Element | undefined;
+
+      if (!codeElement) return;
+
+      const lineElements = codeElement.children.filter(
+        (child) =>
+          child.type === 'element' &&
+          child.tagName === 'span' &&
+          child.properties?.class &&
+          (child.properties.class === 'line' ||
+            (Array.isArray(child.properties.class) &&
+              child.properties.class.includes('line'))),
+      );
+
+      const lineNumberElements: Element[] = lineElements.map((_, index) => ({
+        type: 'element',
+        tagName: 'span',
+        properties: { class: 'line-number' },
+        children: [{ type: 'text', value: `${index + 1}` }],
+      }));
+
+      node.children.unshift({
+        type: 'element',
+        tagName: 'div',
+        properties: { class: ['line-numbers-container'] },
+        children: lineNumberElements,
+      });
+    },
+  };
 }
 
 // Singleton manager for streaming highlighting
@@ -218,6 +295,7 @@ interface StreamingCodeBlockProps {
   code: string;
   language: BundledLanguage;
   className?: string;
+  preClassName?: string;
 }
 
 // Dynamic threshold configuration: scales with code length
@@ -252,8 +330,16 @@ function getCharThreshold(codeLength: number): number {
  * - Uses version tracking to ignore stale highlighting results
  * - Smoothly transitions from plain text to highlighted text
  */
+const DEFAULT_PRE_CLASS_NAME =
+  'flex flex-row font-mono text-xs w-full select-text';
+
 export const StreamingCodeBlock = memo(
-  ({ code, language, className }: StreamingCodeBlockProps) => {
+  ({
+    code,
+    language,
+    className,
+    preClassName = DEFAULT_PRE_CLASS_NAME,
+  }: StreamingCodeBlockProps) => {
     const [lightHtml, setLightHtml] = useState<string>('');
     const [darkHtml, setDarkHtml] = useState<string>('');
     const [hasHighlighted, setHasHighlighted] = useState(false);
@@ -265,6 +351,9 @@ export const StreamingCodeBlock = memo(
     // Timeout for flushing remaining characters when streaming stops
     const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const mountedRef = useRef(true);
+
+    // Compute line numbers for fallback view
+    const lineCount = code.split('\n').length;
 
     useEffect(() => {
       mountedRef.current = true;
@@ -287,7 +376,7 @@ export const StreamingCodeBlock = memo(
         const highlighterManager = getStreamingHighlighterManager();
 
         highlighterManager
-          .highlightCode(code, language)
+          .highlightCode(code, language, preClassName)
           .then(([light, dark]) => {
             // Only apply if this is still the current version and component is mounted
             if (mountedRef.current && currentVersion === versionRef.current) {
@@ -313,18 +402,35 @@ export const StreamingCodeBlock = memo(
           clearTimeout(flushTimeoutRef.current);
         }
       };
-    }, [code, language]);
+    }, [code, language, preClassName]);
 
-    // Show plain text until highlighting is ready
+    // Show plain text with line numbers until highlighting is ready
     if (!hasHighlighted) {
       return (
-        <pre
-          className={cn(
-            'overflow-x-hidden whitespace-pre font-mono text-xs',
-            className,
-          )}
-        >
-          <code>{code}</code>
+        <pre className={cn(preClassName, className)}>
+          <div className="line-numbers-container">
+            {Array.from({ length: lineCount }, (_, i) => (
+              <span key={`ln-${i + 1}`} className="line-number">
+                {i + 1}
+              </span>
+            ))}
+          </div>
+          <code
+            className="scrollbar-subtle"
+            style={{
+              overflowX: 'auto',
+              overflowY: 'visible',
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
+            {code.split('\n').map((line, i) => (
+              <span key={`line-${i + 1}`} className="line">
+                {line}
+                {i < lineCount - 1 && '\n'}
+              </span>
+            ))}
+          </code>
         </pre>
       );
     }
@@ -352,7 +458,8 @@ export const StreamingCodeBlock = memo(
   (prevProps, nextProps) =>
     prevProps.code === nextProps.code &&
     prevProps.language === nextProps.language &&
-    prevProps.className === nextProps.className,
+    prevProps.className === nextProps.className &&
+    prevProps.preClassName === nextProps.preClassName,
 );
 
 StreamingCodeBlock.displayName = 'StreamingCodeBlock';
