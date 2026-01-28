@@ -289,11 +289,8 @@ export function StatusCard() {
   const cardRef = useRef<HTMLDivElement>(null);
   // Use ref to persist previousHeight across effect re-runs (fixes flickering)
   const previousHeightRef = useRef(0);
-  const activeChatId = useKartonState((s) => s.agentChat.activeChatId);
-  const chats = useKartonState((s) => s.agentChat.chats);
-  const activeChat = useMemo(() => {
-    return activeChatId && chats ? chats[activeChatId] : null;
-  }, [activeChatId, chats]);
+  const activeChat = useKartonState((s) => s.agentChat?.activeChat);
+  const activeChatId = activeChat?.id ?? null;
 
   const rejectAllPendingEdits = useKartonProcedure(
     (p) => p.agentChat.rejectAllPendingEdits,

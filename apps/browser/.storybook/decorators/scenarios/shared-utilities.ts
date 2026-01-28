@@ -682,8 +682,7 @@ export function updateMessageInState(
   messageId: string,
   updater: (message: ChatMessage) => ChatMessage,
 ): Partial<AppState> {
-  const chatId = state.agentChat?.activeChatId || 'streaming-chat';
-  const existingChat = state.agentChat?.chats?.[chatId];
+  const existingChat = state.agentChat?.activeChat;
 
   const updatedMessages = (existingChat?.messages || []).map((msg) => {
     if (msg.id === messageId) {
@@ -699,13 +698,12 @@ export function updateMessageInState(
     },
     agentChat: {
       ...state.agentChat,
-      chats: {
-        ...state.agentChat?.chats,
-        [chatId]: {
-          ...existingChat,
-          messages: updatedMessages,
-        },
-      },
+      activeChat: existingChat
+        ? {
+            ...existingChat,
+            messages: updatedMessages,
+          }
+        : undefined,
     },
   } as Partial<AppState>;
 }
@@ -717,8 +715,7 @@ export function addMessageToState(
   state: Partial<AppState>,
   message: ChatMessage,
 ): Partial<AppState> {
-  const chatId = state.agentChat?.activeChatId || 'streaming-chat';
-  const existingChat = state.agentChat?.chats?.[chatId];
+  const existingChat = state.agentChat?.activeChat;
 
   const updatedMessages = [...(existingChat?.messages || []), message];
 
@@ -729,13 +726,12 @@ export function addMessageToState(
     },
     agentChat: {
       ...state.agentChat,
-      chats: {
-        ...state.agentChat?.chats,
-        [chatId]: {
-          ...existingChat,
-          messages: updatedMessages,
-        },
-      },
+      activeChat: existingChat
+        ? {
+            ...existingChat,
+            messages: updatedMessages,
+          }
+        : undefined,
     },
   } as Partial<AppState>;
 }

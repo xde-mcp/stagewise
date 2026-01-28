@@ -465,10 +465,11 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   // This allows pages routes to fetch pending file edits from the main UI state
   pagesService.setGetPendingEditsHandler(async (chatId: string) => {
     const agentChat = uiKarton.state.agentChat;
-    if (!agentChat || !agentChat.chats[chatId]) {
+    const activeChat = agentChat?.activeChat;
+    if (!activeChat || activeChat.id !== chatId) {
       return { found: false, edits: [] };
     }
-    const pendingEdits = agentChat.chats[chatId].pendingEdits ?? [];
+    const pendingEdits = activeChat.pendingEdits ?? [];
     const workspacePath = uiKarton.state.workspace?.path;
     return {
       found: true,
@@ -485,46 +486,41 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   // Subscribe to UI Karton state changes to sync pending edits to Pages API state
   // This enables real-time updates in the diff-review page
-  const previousPendingEditsSnapshot: Record<string, string> = {};
+  let previousPendingEditsSnapshot = '';
   const pendingEditsSyncCallback = (state: typeof uiKarton.state) => {
-    const agentChat = state.agentChat;
-    if (!agentChat) return;
+    const activeChat = state.agentChat?.activeChat;
+    if (!activeChat) return;
 
+    const chatId = activeChat.id;
     const workspacePath = state.workspace?.path;
+    const pendingEdits = activeChat.pendingEdits ?? [];
 
-    // Check each chat for pending edits changes
-    for (const [chatId, chat] of Object.entries(agentChat.chats)) {
-      const pendingEdits = chat.pendingEdits ?? [];
-      // Create a snapshot key that detects ANY content changes, not just path changes.
-      // Include path + simple content hash (length + sample chars) for fast but reliable comparison.
-      const hashContent = (s: string | null | undefined): string => {
-        if (!s) return '0';
-        // Use length + first/last 8 chars + middle char for a quick fingerprint
-        const mid = Math.floor(s.length / 2);
-        return `${s.length}:${s.slice(0, 8)}:${s.slice(-8)}:${s[mid] ?? ''}`;
-      };
-      const snapshotKey = pendingEdits
-        .map(
-          (e) => `${e.path}|${hashContent(e.before)}|${hashContent(e.after)}`,
-        )
-        .join('||');
-      const previousKey = previousPendingEditsSnapshot[chatId] ?? '';
+    // Create a snapshot key that detects ANY content changes, not just path changes.
+    // Include path + simple content hash (length + sample chars) for fast but reliable comparison.
+    const hashContent = (s: string | null | undefined): string => {
+      if (!s) return '0';
+      // Use length + first/last 8 chars + middle char for a quick fingerprint
+      const mid = Math.floor(s.length / 2);
+      return `${s.length}:${s.slice(0, 8)}:${s.slice(-8)}:${s[mid] ?? ''}`;
+    };
+    const snapshotKey = `${chatId}:${pendingEdits
+      .map((e) => `${e.path}|${hashContent(e.before)}|${hashContent(e.after)}`)
+      .join('||')}`;
 
-      if (snapshotKey !== previousKey) {
-        previousPendingEditsSnapshot[chatId] = snapshotKey;
-        // Push update to Pages API state
-        pagesService.updatePendingEditsState(
-          chatId,
-          pendingEdits.map((edit) => ({
-            // Convert absolute paths to relative paths for display in pages API
-            path: workspacePath
-              ? path.relative(workspacePath, edit.path)
-              : edit.path,
-            before: edit.before,
-            after: edit.after,
-          })),
-        );
-      }
+    if (snapshotKey !== previousPendingEditsSnapshot) {
+      previousPendingEditsSnapshot = snapshotKey;
+      // Push update to Pages API state
+      pagesService.updatePendingEditsState(
+        chatId,
+        pendingEdits.map((edit) => ({
+          // Convert absolute paths to relative paths for display in pages API
+          path: workspacePath
+            ? path.relative(workspacePath, edit.path)
+            : edit.path,
+          before: edit.before,
+          after: edit.after,
+        })),
+      );
     }
   };
   uiKarton.registerStateChangeCallback(pendingEditsSyncCallback);
@@ -734,7 +730,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   // These call AgentService methods which handle the actual diff history logic
   pagesService.setAcceptAllPendingEditsHandler(async (chatId: string) => {
     // First ensure the correct chat is active
-    const currentActiveChatId = uiKarton.state.agentChat?.activeChatId;
+    const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
     if (currentActiveChatId !== chatId) {
       logger.warn(
         `[Main] acceptAllPendingEdits: chat ${chatId} is not active, skipping`,
@@ -745,7 +741,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   });
 
   pagesService.setRejectAllPendingEditsHandler(async (chatId: string) => {
-    const currentActiveChatId = uiKarton.state.agentChat?.activeChatId;
+    const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
     if (currentActiveChatId !== chatId) {
       logger.warn(
         `[Main] rejectAllPendingEdits: chat ${chatId} is not active, skipping`,
@@ -757,7 +753,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   pagesService.setAcceptPendingEditHandler(
     async (chatId: string, filePath: string) => {
-      const currentActiveChatId = uiKarton.state.agentChat?.activeChatId;
+      const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
       if (currentActiveChatId !== chatId) {
         logger.warn(
           `[Main] acceptPendingEdit: chat ${chatId} is not active, skipping`,
@@ -775,7 +771,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   pagesService.setRejectPendingEditHandler(
     async (chatId: string, filePath: string) => {
-      const currentActiveChatId = uiKarton.state.agentChat?.activeChatId;
+      const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
       if (currentActiveChatId !== chatId) {
         logger.warn(
           `[Main] rejectPendingEdit: chat ${chatId} is not active, skipping`,

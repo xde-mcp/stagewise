@@ -7,6 +7,7 @@ import { SidebarTopSection } from './top';
 import { useRef, useCallback, useState } from 'react';
 import { useEventListener } from '@/hooks/use-event-listener';
 import { usePostHog } from 'posthog-js/react';
+import { ChatDraftProvider } from '@/hooks/use-chat-draft';
 
 export function Sidebar() {
   const panelRef = useRef<ImperativePanelHandle>(null);
@@ -83,9 +84,11 @@ export function Sidebar() {
       data-collapsed={isCollapsed}
       className="@container group overflow-visible! flex h-full flex-col items-stretch justify-between rounded-lg bg-background p-1 ring-1 ring-derived-strong data-[collapsed=false]:min-w-64 data-[collapsed=false]:max-w-2xl data-[collapsed=true]:max-w-0 data-[collapsed=true]:p-0 data-[collapsed=true]:ring-transparent"
     >
-      <SidebarTopSection isCollapsed={isCollapsed} />
-      {/* Chat area */}
-      <SidebarChatSection />
+      <ChatDraftProvider>
+        <SidebarTopSection isCollapsed={isCollapsed} />
+        {/* Chat area */}
+        <SidebarChatSection />
+      </ChatDraftProvider>
     </ResizablePanel>
   );
 }

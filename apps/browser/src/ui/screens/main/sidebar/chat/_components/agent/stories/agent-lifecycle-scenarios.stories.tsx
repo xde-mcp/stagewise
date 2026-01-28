@@ -42,11 +42,9 @@ const baseState: Partial<AppState> = {
     },
   },
   agentChat: {
-    chats: {
-      'streaming-chat': createEmptyChat(),
-    },
-    activeChatId: 'streaming-chat',
-    toolCallApprovalRequests: [],
+    activeChat: { ...createEmptyChat(), id: 'streaming-chat' },
+    chatList: [],
+    hasMoreChats: false,
     isWorking: false,
     messageQueue: {},
     queuePausedChats: {},

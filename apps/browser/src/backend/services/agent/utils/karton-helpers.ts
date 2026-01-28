@@ -29,14 +29,14 @@ export function createAndActivateNewChat(
   })}`;
   karton.setState((draft) => {
     if (!draft.agentChat) return;
-    draft.agentChat.chats[chatId] = {
+    draft.agentChat.activeChat = {
+      id: chatId,
       title,
       createdAt: new Date(),
       messages: [],
       usage: { maxContextWindowSize: 200000, usedContextWindowSize: 0 },
       pendingEdits: [],
     };
-    draft.agentChat.activeChatId = chatId;
   });
   return chatId;
 }
@@ -54,13 +54,10 @@ export function attachToolOutputToMessage(
   messageId: string,
 ) {
   karton.setState((draft) => {
-    const state = karton.state;
-    const activeChatId = state.agentChat?.activeChatId;
-    if (!activeChatId || !draft.agentChat?.chats[activeChatId]) return;
+    const activeChat = draft.agentChat?.activeChat;
+    if (!activeChat) return;
 
-    const message = draft.agentChat.chats[activeChatId].messages.find(
-      (m) => m.id === messageId,
-    );
+    const message = activeChat.messages.find((m) => m.id === messageId);
     if (!message) return;
 
     for (const result of toolResults) {
@@ -92,7 +89,7 @@ export function attachToolOutputToMessage(
 /**
  * Finds tool calls in the last assistant message that don't have corresponding results
  * @param karton - Object providing state access
- * @param chatId - The chat ID to check
+ * @param chatId - The chat ID to check (must match active chat)
  * @returns Array of pending tool call IDs and their names
  */
 export function findPendingToolCalls(
@@ -100,10 +97,11 @@ export function findPendingToolCalls(
   chatId: string,
 ): Array<{ toolCallId: string }> {
   const state = karton.state;
-  const chat = state.agentChat?.chats[chatId];
-  if (!chat) return [];
+  const activeChat = state.agentChat?.activeChat;
+  // Only check the active chat, and ensure the chatId matches
+  if (!activeChat || activeChat.id !== chatId) return [];
 
-  const messages = chat.messages;
+  const messages = activeChat.messages;
 
   // Find the last assistant message
   let lastAssistantMessage = null;

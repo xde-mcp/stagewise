@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ModelId } from '@shared/available-models';
 import type { ExampleUserInputOutput } from '@stagewise/agent-tools';
 import type { UserMessageMetadata, BrowserData } from './metadata';
 import type { ReactSelectedElementInfo } from '../../selected-elements/react';
@@ -107,13 +108,26 @@ export type History = ChatMessage[];
 
 type ChatId = string;
 
+/**
+ * Lightweight chat metadata for the chat history list.
+ * Does not include messages - those are loaded on demand.
+ */
+export type ChatSummary = {
+  id: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type Chat = {
+  id: string;
   title: string;
   createdAt: Date;
   messages: History;
   error?: AgentError;
   usage: { maxContextWindowSize: number; usedContextWindowSize: number };
   pendingEdits: FileDiff[];
+  draftInputContent?: string; // TipTap JSON string for unsent input
 };
 
 /**
@@ -476,9 +490,12 @@ export type AppState = {
   };
   agentChat: {
     selectedModel: ModelSettings;
-    activeChatId: ChatId | null;
-    chats: Record<ChatId, Chat>;
-    toolCallApprovalRequests: string[];
+    /** The currently active chat loaded in memory (null if none) */
+    activeChat: Chat | null;
+    /** Paginated list of chat metadata for history dropdown (most recent first) */
+    chatList: ChatSummary[];
+    /** Whether there are more chats in DB beyond what's loaded in chatList */
+    hasMoreChats: boolean;
     isWorking: boolean;
     /** Queue of messages waiting to be sent, keyed by chat ID */
     messageQueue: Record<ChatId, QueuedMessage[]>;
@@ -630,8 +647,8 @@ export type KartonContract = {
   };
   serverProcedures: {
     agentChat: {
-      create: () => Promise<string>;
-      switch: (chatId: string) => Promise<void>;
+      create: (draftContent?: string) => Promise<string>;
+      switch: (chatId: string, oldChatDraft?: string) => Promise<void>;
       delete: (chatId: string) => Promise<void>;
       sendUserMessage: (message: ChatMessage) => Promise<void>;
       retrySendingUserMessage: () => Promise<void>;
@@ -659,7 +676,7 @@ export type KartonContract = {
         chatId: string,
         shouldUndoUserMessage?: boolean,
       ) => Promise<void>;
-      setSelectedModel: (model: string) => Promise<void>;
+      setSelectedModel: (model: ModelId) => Promise<void>;
       // Message queue procedures
       /** Queue a message to be sent when the agent finishes (called automatically by sendUserMessage when agent is working) */
       queueUserMessage: (message: ChatMessage) => Promise<void>;
@@ -677,6 +694,8 @@ export type KartonContract = {
         chatId: string,
         queuedMessageId: string,
       ) => Promise<void>;
+      /** Load more chats into the chatList (pagination) */
+      loadMoreChats: () => Promise<{ loaded: number; hasMore: boolean }>;
     };
     userAccount: {
       refreshStatus: () => Promise<void>;

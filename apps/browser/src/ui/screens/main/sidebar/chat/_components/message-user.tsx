@@ -73,7 +73,7 @@ export const MessageUser = memo(
       (p) => p.agentChat.sendUserMessage,
     );
     const activeChatId = useKartonState(
-      (s) => s.agentChat?.activeChatId || null,
+      (s) => s.agentChat?.activeChat?.id || null,
     );
     const isWorking = useKartonState((s) => s.agentChat?.isWorking || false);
 

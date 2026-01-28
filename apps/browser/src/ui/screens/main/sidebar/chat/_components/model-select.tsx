@@ -1,4 +1,5 @@
 import { SearchableSelect } from '@stagewise/stage-ui/components/searchable-select';
+import type { ModelId } from '@shared/available-models';
 import { IconBrainOutline18 } from 'nucleo-ui-outline-18';
 import { availableModels } from '@shared/available-models';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
@@ -50,9 +51,9 @@ export function ModelSelect({ onModelChange }: ModelSelectProps) {
   return (
     <SearchableSelect
       side="top"
-      value={selectedModel.modelId as string}
+      value={selectedModel.modelId}
       onValueChange={(value) => {
-        setSelectedModel(value as string);
+        setSelectedModel(value as ModelId);
         onModelChange?.();
       }}
       items={modelOptions}

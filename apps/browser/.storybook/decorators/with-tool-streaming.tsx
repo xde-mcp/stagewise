@@ -211,8 +211,7 @@ function ToolStreamingSimulator({
 
   // Build the tool streaming state
   const streamingState = useMemo(() => {
-    const chatId = baseMockState?.agentChat?.activeChatId || 'streaming-chat';
-    const existingChat = baseMockState?.agentChat?.chats?.[chatId];
+    const existingChat = baseMockState?.agentChat?.activeChat;
 
     // Find and update the target message
     const updatedMessages = (existingChat?.messages || []).map((msg) => {
@@ -281,13 +280,12 @@ function ToolStreamingSimulator({
       },
       agentChat: {
         ...baseMockState?.agentChat,
-        chats: {
-          ...baseMockState?.agentChat?.chats,
-          [chatId]: {
-            ...existingChat,
-            messages: updatedMessages,
-          },
-        },
+        activeChat: existingChat
+          ? {
+              ...existingChat,
+              messages: updatedMessages,
+            }
+          : undefined,
         isWorking,
       },
     } as Partial<AppState>;

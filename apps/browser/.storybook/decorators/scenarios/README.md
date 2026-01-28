@@ -367,7 +367,6 @@ const baseState: Partial<AppState> = {
   agentChat: {
     chats: {},
     activeChatId: 'streaming-chat',
-    toolCallApprovalRequests: [],
     isWorking: false,
   },
 };

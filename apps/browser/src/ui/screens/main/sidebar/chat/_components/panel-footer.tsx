@@ -34,9 +34,12 @@ import {
   transformTiptapBlobUrls,
 } from '@/utils/attachment-conversions';
 import type { ChatMessage, FileUIPart } from '@shared/karton-contracts/ui';
+import { useChatDraft } from '@/hooks/use-chat-draft';
 
 export function ChatPanelFooter() {
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const prevChatIdRef = useRef<string | null>(null);
+  const prevDraftRef = useRef<string | undefined>(undefined);
 
   const [chatInput, setChatInput] = useState<string>('');
   const [localSelectedElements, setLocalSelectedElements] = useState<
@@ -54,13 +57,52 @@ export function ChatPanelFooter() {
 
   const { activeEditMessageId, setMainDropHandler } = useMessageEditState();
 
-  const { isWorking, activeChatId, chats } = useKartonState(
+  const { isWorking, activeChat } = useKartonState(
     useComparingSelector((s) => ({
-      activeChatId: s.agentChat?.activeChatId,
+      activeChat: s.agentChat?.activeChat,
       isWorking: s.agentChat?.isWorking,
-      chats: s.agentChat?.chats,
     })),
   );
+
+  // Restore draft when activeChat changes (after switch or create)
+  useEffect(() => {
+    const currentChatId = activeChat?.id ?? null;
+    const currentDraft = activeChat?.draftInputContent;
+
+    const chatChanged = currentChatId !== prevChatIdRef.current;
+    const draftChanged = currentDraft !== prevDraftRef.current;
+
+    // Skip if nothing changed
+    if (!chatChanged && !draftChanged) return;
+
+    // Update refs
+    prevChatIdRef.current = currentChatId;
+    prevDraftRef.current = currentDraft;
+
+    if (!currentChatId) return;
+
+    // Clear file attachments and selected elements only on chat switch
+    if (chatChanged) {
+      clearFileAttachments();
+      setLocalSelectedElements([]);
+    }
+
+    // Restore draft from the newly loaded chat (or when draft becomes available)
+    if (currentDraft) chatInputRef.current?.setJsonContent(currentDraft);
+    else if (chatChanged) {
+      // Only clear input on chat change (not when draft becomes undefined)
+      chatInputRef.current?.clear();
+      setChatInput('');
+    }
+  }, [activeChat?.id, activeChat?.draftInputContent, clearFileAttachments]);
+
+  // Register draft getter with context (for switch/create in sibling components)
+  const { registerDraftGetter } = useChatDraft();
+  useEffect(() => {
+    return registerDraftGetter(
+      () => chatInputRef.current?.getTiptapJsonContent() ?? '',
+    );
+  }, [registerDraftGetter]);
 
   const activeTabId = useKartonState((s) => s.browser.activeTabId);
   const tabs = useKartonState((s) => s.browser.tabs);
@@ -151,10 +193,6 @@ export function ChatPanelFooter() {
 
     // Restore tiptap JSON content (handles element badges in editor)
   }, [stopAgent]);
-
-  const activeChat = useMemo(() => {
-    return activeChatId && chats ? chats[activeChatId] : null;
-  }, [activeChatId, chats]);
 
   const isVerboseMode = useKartonState(
     (s) => s.appInfo.releaseChannel === 'dev',

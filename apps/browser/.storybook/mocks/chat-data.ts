@@ -509,6 +509,7 @@ export function createDeleteFileToolPart(
 // Preset chat scenarios
 export function createEmptyChat(): Chat {
   return {
+    id: crypto.randomUUID(),
     title: 'New Chat',
     createdAt: new Date(),
     messages: [],
@@ -522,6 +523,7 @@ export function createEmptyChat(): Chat {
 
 export function createSimpleChat(): Chat {
   return {
+    id: crypto.randomUUID(),
     title: 'Simple Conversation',
     createdAt: new Date(),
     messages: [
@@ -571,6 +573,7 @@ export function createChatWithManyMessages(): Chat {
   }
 
   return {
+    id: crypto.randomUUID(),
     title: 'Long Conversation',
     createdAt: new Date(Date.now() - 3600000), // 1 hour ago
     messages,
@@ -584,6 +587,7 @@ export function createChatWithManyMessages(): Chat {
 
 export function createStreamingChat(): Chat {
   return {
+    id: crypto.randomUUID(),
     title: 'Streaming Response',
     createdAt: new Date(),
     messages: [
@@ -600,6 +604,7 @@ export function createStreamingChat(): Chat {
 
 export function createChatWithToolCalls(): Chat {
   return {
+    id: crypto.randomUUID(),
     title: 'Tool Calls Demo',
     createdAt: new Date(),
     messages: [
@@ -639,6 +644,7 @@ export function createChatWithToolCalls(): Chat {
 
 export function createChatWithError(): Chat {
   return {
+    id: crypto.randomUUID(),
     title: 'Error Scenario',
     createdAt: new Date(),
     messages: [
@@ -664,6 +670,7 @@ export function createChatWithError(): Chat {
 
 export function createChatWithFileAttachments(): Chat {
   return {
+    id: crypto.randomUUID(),
     title: 'With Attachments',
     createdAt: new Date(),
     messages: [

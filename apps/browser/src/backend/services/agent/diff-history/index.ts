@@ -214,7 +214,7 @@ export class DiffHistoryService extends DisposableService {
     files: FileMap,
     acceptedPaths: string[] = [], // Default to empty (Pending)
   ): void {
-    const chatId = this.uiKarton.state.agentChat?.activeChatId;
+    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
     const userMessageId = this.getLastUserMessageId();
     if (!userMessageId || !chatId) {
       this.logError(
@@ -251,8 +251,8 @@ export class DiffHistoryService extends DisposableService {
     this.updateWatcher();
     const newDiffState = this.getDiffState();
     this.uiKarton.setState((draft) => {
-      if (draft.agentChat)
-        draft.agentChat.chats[chatId].pendingEdits = newDiffState;
+      if (draft.agentChat?.activeChat)
+        draft.agentChat.activeChat.pendingEdits = newDiffState;
     });
     this.logDebug(
       `[DiffHistory] Snapshot recorded. Trigger: ${trigger}. ChatId: ${chatId}. History Size: ${this.history.length}`,
@@ -267,7 +267,7 @@ export class DiffHistoryService extends DisposableService {
    * @returns The operations performed.
    */
   public revertToMessage(targetUserMessageId: string): FileOperations | null {
-    const chatId = this.uiKarton.state.agentChat?.activeChatId;
+    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!chatId) {
       this.logError('No chat id found', new Error('No chat id found'));
       return null;
@@ -297,8 +297,8 @@ export class DiffHistoryService extends DisposableService {
       this.writeFilesToDisk(operations);
       this.updateWatcher();
       this.uiKarton.setState((draft) => {
-        if (draft.agentChat?.activeChatId === chatId) {
-          draft.agentChat.chats[chatId].pendingEdits = [];
+        if (draft.agentChat?.activeChat?.id === chatId) {
+          draft.agentChat.activeChat.pendingEdits = [];
         }
       });
       return operations;
@@ -323,8 +323,8 @@ export class DiffHistoryService extends DisposableService {
     this.updateWatcher();
 
     this.uiKarton.setState((draft) => {
-      if (draft.agentChat?.activeChatId === chatId) {
-        draft.agentChat.chats[chatId].pendingEdits = this.getDiffState();
+      if (draft.agentChat?.activeChat?.id === chatId) {
+        draft.agentChat.activeChat.pendingEdits = this.getDiffState();
       }
     });
 
@@ -367,7 +367,7 @@ export class DiffHistoryService extends DisposableService {
     if (this.currentIndex === -1) return;
 
     const currentNode = this.history[this.currentIndex];
-    const chatId = this.uiKarton.state.agentChat?.activeChatId;
+    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!chatId) {
       this.logError('No chat id found', new Error('No chat id found'));
       return;
@@ -392,8 +392,8 @@ export class DiffHistoryService extends DisposableService {
 
     this.updateWatcher();
     this.uiKarton.setState((draft) => {
-      if (draft.agentChat?.activeChatId === chatId) {
-        draft.agentChat.chats[chatId].pendingEdits = [];
+      if (draft.agentChat?.activeChat?.id === chatId) {
+        draft.agentChat.activeChat.pendingEdits = [];
       }
     });
     this.logger.debug(
@@ -556,13 +556,11 @@ export class DiffHistoryService extends DisposableService {
   }
 
   private getLastUserMessageId(): string | null {
-    const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
-    if (!activeChatId) return null;
-    const chat = this.uiKarton.state.agentChat?.chats[activeChatId];
-    if (!chat) return null;
+    const activeChat = this.uiKarton.state.agentChat?.activeChat;
+    if (!activeChat) return null;
 
     // Find LAST message (search from end)
-    const messages = chat.messages || [];
+    const messages = activeChat.messages || [];
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
       if (m.role === 'user' && 'id' in m) return m.id;

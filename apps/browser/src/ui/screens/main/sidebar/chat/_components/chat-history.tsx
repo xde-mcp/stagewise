@@ -99,21 +99,16 @@ export const ChatHistory = () => {
   const sendUserMessage = useKartonProcedure(
     (s) => s.agentChat.sendUserMessage,
   );
-  const { activeChatId, chats, isWorking } = useKartonState(
+  const { activeChat, isWorking } = useKartonState(
     useComparingSelector((s) => ({
-      activeChatId: s.agentChat?.activeChatId,
+      activeChat: s.agentChat?.activeChat,
       isWorking: s.agentChat?.isWorking ?? false,
-      chats: s.agentChat?.chats,
       workspaceStatus: s.workspaceStatus,
     })),
   );
   const [removedSuggestionUrls, setRemovedSuggestionUrls] = useState<
     Set<string>
   >(new Set());
-
-  const activeChat = useMemo(() => {
-    return activeChatId ? chats?.[activeChatId] : null;
-  }, [activeChatId, chats]);
 
   // Track container height to set the spacer
   useEffect(() => {
@@ -355,7 +350,7 @@ export const ChatHistory = () => {
   return (
     <Virtuoso
       style={{ scrollbarGutter: 'stable' }}
-      key={activeChatId ?? 'no-chat'}
+      key={activeChat?.id ?? 'no-chat'}
       data={filteredMessages}
       ref={virtuosoRef}
       className="scrollbar-hover-only -mr-[2px]"
@@ -382,7 +377,7 @@ const ChatSuggestion: React.FC<
   return (
     <div
       onClick={onClick}
-      className="group/suggestion relative flex w-full cursor-pointer flex-row items-center justify-start gap-3 rounded-lg p-2 text-muted-foreground hover:bg-hover-derived hover:text-foreground"
+      className="group/suggestion relative flex w-full cursor-pointer flex-row items-center justify-start gap-3 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-hover-derived hover:text-foreground"
     >
       <span className="flex shrink-0 items-center">
         <img src={faviconUrl} className="size-3 rounded-sm" alt="Favicon" />
@@ -393,7 +388,7 @@ const ChatSuggestion: React.FC<
       <Button
         variant="ghost"
         size="icon-xs"
-        className="-translate-y-1/2 absolute top-1/2 right-2 ml-auto hidden text-muted-foreground group-hover/suggestion:flex"
+        className="-translate-y-1/2 absolute top-1/2 right-1 ml-auto hidden text-muted-foreground group-hover/suggestion:flex"
         onClick={(e) => {
           e.stopPropagation();
           onRemove?.();

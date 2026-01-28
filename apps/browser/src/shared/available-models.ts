@@ -87,3 +87,5 @@ export const availableModels = [
     thinkingEnabled: true,
   },
 ] as const satisfies ModelSettings[];
+
+export type ModelId = (typeof availableModels)[number]['modelId'];

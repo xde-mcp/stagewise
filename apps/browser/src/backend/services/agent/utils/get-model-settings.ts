@@ -4,9 +4,8 @@ import type { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
-
+import type { ModelId } from '@shared/available-models';
 type ProviderOptions = Parameters<typeof streamText>[0]['providerOptions'];
-type ModelId = (typeof availableModels)[number]['modelId'];
 
 /**
  * Get model options for the agent using native AI SDK providers with LiteLLM passthroughs.

@@ -1,5 +1,12 @@
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import path from 'node:path';
+import { type Client, createClient } from '@libsql/client';
+import { migrateDatabase } from '../../utils/migrate-database';
+import { registry, schemaVersion } from './migrations';
+import * as schema from './schema';
+import initSql from './schema.sql?raw';
 import { getArbitraryModel, getModelOptions } from './utils/get-model-settings';
+import type { ModelId } from '@shared/available-models';
 import type { GlobalDataPathService } from '../global-data-path';
 import { DiffHistoryService } from './diff-history';
 import { isContextLimitError } from './utils/is-context-limit-error';
@@ -17,12 +24,7 @@ import {
   type ChatMessage,
   type QueuedMessage,
   AgentErrorType,
-  agentPreferencesSchema,
 } from '@shared/karton-contracts/ui';
-import {
-  readPersistedData,
-  writePersistedData,
-} from '../../utils/persisted-data';
 import type { AnthropicProviderOptions } from '@ai-sdk/anthropic';
 import {
   codingAgentTools,
@@ -69,6 +71,23 @@ import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { LspService } from '../workspace/services/lsp';
 import type { DiagnosticsByFile } from './prompt-builder';
 import { availableModels } from '@shared/available-models';
+import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
+import {
+  insertChat,
+  updateChatTitle,
+  updateChatTimestamp,
+  updateChatModelId,
+  getMostRecentChatModelId,
+  getChatDetails,
+  updateChatDraftInput,
+  deleteChat as deleteChatFromDb,
+  getChatSummaries,
+  getChatCount,
+  insertMessage,
+  getMessagesForChat,
+  deleteMessagesFromIndex,
+} from './utils/db';
+import { toWebKitTimestamp } from '../chrome-db-utils';
 
 type ToolCallType = 'dynamic-tool' | `tool-${string}`;
 
@@ -146,6 +165,8 @@ export class AgentService {
   private lspService: LspService | null = null;
   /** Files modified per chat - used to collect LSP diagnostics */
   private modifiedFilesPerChat: Map<ChatId, Set<string>> = new Map();
+  private dbDriver: Client;
+  private db: LibSQLDatabase<typeof schema>;
 
   // Current turn state tracking for early abort detection
   /** Whether any tool has produced a result in the current turn */
@@ -171,6 +192,9 @@ export class AgentService {
     this.windowLayoutService = windowLayoutService;
     this.authService = authService;
     this.globalDataPathService = globalDataPathService;
+    const dbPath = path.join(globalDataPathService.globalDataPath, 'Agent');
+    this.dbDriver = createClient({ url: `file:${dbPath}`, intMode: 'bigint' });
+    this.db = drizzle(this.dbDriver, { schema });
 
     // Initialize prompt builder with state getter to ensure fresh state on each conversion
     this.promptBuilder = new PromptBuilder(
@@ -187,7 +211,7 @@ export class AgentService {
     this.abortController.signal.addEventListener(
       'abort',
       () => {
-        const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+        const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
         if (!activeChatId) return;
 
         this.cleanupPendingOperations(
@@ -198,27 +222,6 @@ export class AgentService {
       },
       { once: true },
     );
-  }
-
-  private async readStoredSelectedModelId(): Promise<string | undefined> {
-    const data = await readPersistedData(
-      'agent-preferences',
-      agentPreferencesSchema,
-      {},
-    );
-    return data.selectedModelId;
-  }
-
-  private async writeSelectedModelId(modelId: string): Promise<void> {
-    try {
-      await writePersistedData('agent-preferences', agentPreferencesSchema, {
-        selectedModelId: modelId,
-      });
-    } catch (error) {
-      this.logger.debug('[AgentService] Failed to save selected model ID', {
-        cause: error,
-      });
-    }
   }
 
   private getToolsContext(): AgentToolsContext | null {
@@ -252,7 +255,7 @@ export class AgentService {
    * Used by the getLintingDiagnosticsTool.
    */
   private async getStructuredLintingDiagnostics(): Promise<LintingDiagnosticsResult> {
-    const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+    const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!activeChatId) {
       return {
         files: [],
@@ -417,7 +420,7 @@ export class AgentService {
 
   public async sendUserMessage(message: ChatMessage): Promise<void> {
     this.logger.debug('[AgentService] Sending user message');
-    const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+    const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!activeChatId) return;
 
     // If agent is currently working, queue the message for later processing
@@ -467,7 +470,7 @@ export class AgentService {
     this.setAgentWorking(true);
 
     const newstate = this.uiKarton.setState((draft) => {
-      const chat = draft.agentChat?.chats[activeChatId];
+      const chat = draft.agentChat?.activeChat;
       if (chat) {
         chat.messages.push({
           ...message,
@@ -483,7 +486,26 @@ export class AgentService {
       }
     });
 
-    const messages = newstate?.agentChat?.chats[activeChatId]?.messages;
+    const messages = newstate?.agentChat?.activeChat?.messages;
+    const messageIndex = (messages?.length ?? 1) - 1;
+
+    // Persist user message to SQLite
+    try {
+      await insertMessage(this.db, {
+        id: message.id,
+        chatId: activeChatId,
+        messageIndex,
+        content: message,
+      });
+      // Update chat timestamp in DB and memory
+      await this.updateChatLastModified(activeChatId);
+    } catch (error) {
+      this.logger.error('[AgentService] Failed to persist user message', {
+        error,
+        chatId: activeChatId,
+        messageId: message.id,
+      });
+    }
 
     this.logger.debug('[AgentService] Calling agent');
 
@@ -528,7 +550,7 @@ export class AgentService {
    * Called after the agent finishes working.
    */
   private async processNextQueuedMessage(): Promise<void> {
-    const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+    const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!activeChatId) return;
 
     // Check if queue is paused for this chat (e.g., after an error)
@@ -700,6 +722,154 @@ export class AgentService {
     );
   }
 
+  /**
+   * Creates a new chat with persistence to SQLite.
+   * Updates both in-memory state and database.
+   * @param draftContent - Optional TipTap JSON to save to OLD chat and transfer to new chat
+   */
+  private async createNewChatWithPersistence(
+    draftContent?: string,
+  ): Promise<string> {
+    // Save draft to OLD chat before creating new one
+    const oldChatId = this.uiKarton.state.agentChat?.activeChat?.id;
+    if (oldChatId && draftContent !== undefined) {
+      try {
+        await updateChatDraftInput(this.db, oldChatId, draftContent || null);
+      } catch (error) {
+        this.logger.error(
+          '[AgentService] Failed to save draft to old chat before creating new',
+          { error, chatId: oldChatId },
+        );
+      }
+    }
+
+    const chatId = createAndActivateNewChat(
+      this.uiKarton as KartonStateProvider<KartonContract['state']>,
+    );
+
+    const chat = this.uiKarton.state.agentChat?.activeChat;
+    if (!chat) return chatId;
+
+    const now = new Date();
+    const nowTimestamp = toWebKitTimestamp(now);
+    const modelId =
+      this.uiKarton.state.agentChat?.selectedModel?.modelId ??
+      availableModels[0].modelId;
+
+    // Insert into SQLite with draft content transferred to new chat
+    try {
+      await insertChat(this.db, {
+        id: chatId,
+        title: chat.title,
+        lastUsedModelId: modelId,
+        createdAt: nowTimestamp,
+        updatedAt: nowTimestamp,
+        draftInputContent: draftContent || null,
+      });
+
+      // Prepend to chatList in state
+      this.uiKarton.setState((draft) => {
+        if (draft.agentChat) {
+          draft.agentChat.chatList.unshift({
+            id: chatId,
+            title: chat.title,
+            createdAt: now,
+            updatedAt: now,
+          });
+          // Set the draft content on the activeChat so UI can restore it
+          if (draft.agentChat.activeChat) {
+            draft.agentChat.activeChat.draftInputContent =
+              draftContent || undefined;
+          }
+        }
+      });
+    } catch (error) {
+      this.logger.error('[AgentService] Failed to persist new chat', { error });
+    }
+
+    return chatId;
+  }
+
+  /**
+   * Updates the chat's updatedAt timestamp in both the database and in-memory chatList.
+   */
+  private async updateChatLastModified(chatId: string): Promise<void> {
+    const now = new Date();
+    await updateChatTimestamp(this.db, chatId);
+    this.uiKarton.setState((draft) => {
+      if (draft.agentChat) {
+        const chat = draft.agentChat.chatList.find((c) => c.id === chatId);
+        if (chat) chat.updatedAt = now;
+      }
+    });
+  }
+
+  /**
+   * Loads a chat's messages from SQLite into memory.
+   * Sets the chat as active and populates the chats record.
+   * Also restores the chat's last used model.
+   */
+  private async loadChatIntoMemory(chatId: string): Promise<void> {
+    try {
+      const messages = await getMessagesForChat(this.db, chatId);
+      const chatSummary = this.uiKarton.state.agentChat?.chatList.find(
+        (c) => c.id === chatId,
+      );
+
+      if (!chatSummary) {
+        this.logger.warn(
+          '[AgentService] Chat not found in chatList, creating new chat instead',
+          { chatId },
+        );
+        await this.createNewChatWithPersistence();
+        return;
+      }
+
+      // Fetch the chat's details (model and draft) from DB
+      const chatDetails = await getChatDetails(this.db, chatId);
+      const chatModel = chatDetails?.lastUsedModelId
+        ? (availableModels.find(
+            (m) => m.modelId === chatDetails.lastUsedModelId,
+          ) ?? availableModels[0])
+        : availableModels[0];
+
+      // Extract messages content before setState to avoid type complexity
+      const loadedMessages = messages.map((m) => m.content);
+
+      this.uiKarton.setState((draft) => {
+        if (!draft.agentChat) return;
+
+        // Create the chat object with loaded messages and draft
+        draft.agentChat.activeChat = {
+          id: chatId,
+          title: chatSummary.title,
+          createdAt: chatSummary.createdAt,
+          messages: loadedMessages as any,
+          usage: { maxContextWindowSize: 200000, usedContextWindowSize: 0 },
+          pendingEdits: [],
+          draftInputContent: chatDetails?.draftInputContent ?? undefined,
+        };
+
+        // Restore the chat's model
+        draft.agentChat.selectedModel = chatModel;
+      });
+
+      this.logger.debug('[AgentService] Loaded chat into memory', {
+        chatId,
+        messageCount: messages.length,
+        modelId: chatModel.modelId,
+        hasDraft: !!chatDetails?.draftInputContent,
+      });
+    } catch (error) {
+      this.logger.error('[AgentService] Failed to load chat from DB', {
+        error,
+        chatId,
+      });
+      // Fallback: create a new chat
+      await this.createNewChatWithPersistence();
+    }
+  }
+
   private setAgentWorking(isWorking: boolean): void {
     this.timeoutManager.clear('is-working');
     const wasWorking = this.isWorking;
@@ -768,7 +938,7 @@ export class AgentService {
     if (shouldProcessQueue) {
       // Successful completion clears any paused state from previous errors
       // This allows the queue to resume after user retries/resends successfully
-      const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+      const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
       if (activeChatId) {
         this.uiKarton.setState((draft) => {
           if (draft.agentChat)
@@ -795,19 +965,35 @@ export class AgentService {
   public async initialize() {
     this.logger.debug('[AgentService] Initializing...');
 
-    // Read persisted model ID and find matching model settings
-    const storedModelId = await this.readStoredSelectedModelId();
-    const initialModel = storedModelId
-      ? (availableModels.find((m) => m.modelId === storedModelId) ??
+    try {
+      await migrateDatabase({
+        db: this.db,
+        client: this.dbDriver,
+        registry,
+        initSql,
+        schemaVersion,
+      });
+    } catch (e) {
+      this.logger.error('[AgentService] Failed to initialize', { error: e });
+    }
+
+    // Get the most recently used model from the most recent chat (or fallback)
+    const mostRecentModelId = await getMostRecentChatModelId(this.db);
+    const initialModel = mostRecentModelId
+      ? (availableModels.find((m) => m.modelId === mostRecentModelId) ??
         availableModels[0])
       : availableModels[0];
+
+    // Load initial chat summaries from SQLite
+    const initialChatList = await getChatSummaries(this.db, 20, 0);
+    const totalChatCount = await getChatCount(this.db);
 
     this.uiKarton.setState((draft) => {
       if (!draft.agentChat) {
         draft.agentChat = {
-          chats: {},
-          activeChatId: null,
-          toolCallApprovalRequests: [],
+          activeChat: null,
+          chatList: initialChatList,
+          hasMoreChats: totalChatCount > 20,
           isWorking: false,
           selectedModel: initialModel,
           messageQueue: {},
@@ -819,6 +1005,7 @@ export class AgentService {
     this.diffHistoryService = await DiffHistoryService.create(
       this.logger,
       this.uiKarton,
+      // this.globalDataPathService,
     );
 
     // Initialize client
@@ -834,9 +1021,9 @@ export class AgentService {
 
     // Set initial state
     this.setAgentWorking(false);
-    createAndActivateNewChat(
-      this.uiKarton as KartonStateProvider<KartonContract['state']>,
-    );
+
+    // Always start with a fresh new chat
+    await this.createNewChatWithPersistence();
 
     this.logger.debug('[AgentService] Initialized');
   }
@@ -845,7 +1032,7 @@ export class AgentService {
     restored: boolean;
     userMessage?: ChatMessage;
   } {
-    const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+    const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!activeChatId) return { restored: false };
 
     // Check if this is an early abort (should restore user message to input)
@@ -860,7 +1047,7 @@ export class AgentService {
 
     if (isEarlyAbort) {
       // Find the last user message to restore
-      const chat = this.uiKarton.state.agentChat?.chats[activeChatId];
+      const chat = this.uiKarton.state.agentChat?.activeChat;
       const messages = chat?.messages ?? [];
 
       // Find the last user message
@@ -878,9 +1065,25 @@ export class AgentService {
 
         // Remove the user message and any messages after it (partial assistant response)
         this.uiKarton.setState((draft) => {
-          const chat = draft.agentChat?.chats[activeChatId];
+          const chat = draft.agentChat?.activeChat;
           if (chat)
             chat.messages = messages.slice(0, lastUserMessageIndex) as any;
+        });
+
+        // Delete truncated messages from SQLite (fire-and-forget)
+        deleteMessagesFromIndex(
+          this.db,
+          activeChatId,
+          lastUserMessageIndex,
+        ).catch((error) => {
+          this.logger.error(
+            '[AgentService] Failed to delete early abort messages from DB',
+            {
+              error,
+              chatId: activeChatId,
+              fromIndex: lastUserMessageIndex,
+            },
+          );
         });
 
         this.logger.debug(
@@ -895,7 +1098,7 @@ export class AgentService {
     this.abortController.signal.addEventListener(
       'abort',
       () => {
-        const chatId = this.uiKarton.state.agentChat?.activeChatId;
+        const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
         if (chatId) {
           this.cleanupPendingOperations('Agent call aborted', false, chatId);
         }
@@ -930,7 +1133,7 @@ export class AgentService {
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.setSelectedModel',
-        async (_callingClientId: string, model: string) => {
+        async (_callingClientId: string, model: ModelId) => {
           const modelSettings = availableModels.find(
             (m) => m.modelId === model,
           );
@@ -938,8 +1141,10 @@ export class AgentService {
           this.uiKarton.setState((draft) => {
             if (draft.agentChat) draft.agentChat.selectedModel = modelSettings;
           });
-          // Persist the selection for next app launch
-          await this.writeSelectedModelId(model);
+          // Persist the selection to the active chat's DB record
+          const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
+          if (activeChatId)
+            await updateChatModelId(this.db, activeChatId, model);
         },
       );
 
@@ -954,7 +1159,7 @@ export class AgentService {
         'agentChat.rejectAllPendingEdits',
         async (_callingClientId: string) => {
           const rejected = this.diffHistoryService?.rejectPendingChanges();
-          const chatId = this.uiKarton.state.agentChat?.activeChatId;
+          const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
           if (!rejected || !chatId) return;
 
           const existingRejectedEdits = this.rejectedEditsPerChat.get(chatId);
@@ -981,7 +1186,7 @@ export class AgentService {
         'agentChat.rejectPendingEdit',
         async (_callingClientId: string, filePath: string) => {
           const rejected = this.diffHistoryService?.partialReject([filePath]);
-          const chatId = this.uiKarton.state.agentChat?.activeChatId;
+          const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
           if (!rejected || !chatId) return;
 
           // Track rejected edits for this chat
@@ -1001,18 +1206,17 @@ export class AgentService {
         'agentChat.retrySendingUserMessage',
         async (_callingClientId: string) => {
           this.setAgentWorking(true);
-          const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+          const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
           if (!activeChatId) return;
 
           this.uiKarton.setState((draft) => {
-            const chat = draft.agentChat?.chats[activeChatId];
+            const chat = draft.agentChat?.activeChat;
             if (chat) {
               chat.error = undefined;
             }
           });
 
-          const messages =
-            this.uiKarton.state.agentChat?.chats[activeChatId]?.messages;
+          const messages = this.uiKarton.state.agentChat?.activeChat?.messages;
           await this.callAgent({
             chatId: activeChatId,
             history: messages,
@@ -1045,55 +1249,90 @@ export class AgentService {
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.create',
-        async (_callingClientId: string) => {
-          return createAndActivateNewChat(
-            this.uiKarton as KartonStateProvider<KartonContract['state']>,
-          );
+        async (_callingClientId: string, draftContent?: string) => {
+          return this.createNewChatWithPersistence(draftContent);
         },
       );
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.switch',
-        async (_callingClientId: string, chatId: string) => {
-          this.uiKarton.setState((draft) => {
-            if (draft.agentChat) draft.agentChat.activeChatId = chatId;
-          });
+        async (
+          _callingClientId: string,
+          chatId: string,
+          oldChatDraft?: string,
+        ) => {
+          const currentActiveChat = this.uiKarton.state.agentChat?.activeChat;
 
-          const chats = this.uiKarton.state.agentChat?.chats;
-          if (chats) {
-            Object.entries(chats).forEach(([id, chat]) => {
-              if (chat.messages.length === 0 && id !== chatId) {
-                this.uiKarton.setState((draft) => {
-                  if (draft.agentChat?.chats[id])
-                    delete draft.agentChat?.chats[id];
-                });
+          // Don't do anything if switching to the same chat
+          if (currentActiveChat?.id === chatId) return;
+
+          // Clean up current chat if it's empty
+          if (currentActiveChat && currentActiveChat.messages.length === 0) {
+            // Delete empty chat from DB
+            try {
+              await deleteChatFromDb(this.db, currentActiveChat.id);
+            } catch (error) {
+              this.logger.error(
+                '[AgentService] Failed to delete empty chat from DB',
+                { error, chatId: currentActiveChat.id },
+              );
+            }
+            // Remove from chatList
+            this.uiKarton.setState((draft) => {
+              if (draft.agentChat) {
+                draft.agentChat.chatList = draft.agentChat.chatList.filter(
+                  (c) => c.id !== currentActiveChat.id,
+                );
               }
             });
+          } else if (currentActiveChat) {
+            // Save the draft to the OLD chat (if it's not being deleted)
+            try {
+              await updateChatDraftInput(
+                this.db,
+                currentActiveChat.id,
+                oldChatDraft ?? null,
+              );
+            } catch (error) {
+              this.logger.error(
+                '[AgentService] Failed to save draft to old chat',
+                { error, chatId: currentActiveChat.id },
+              );
+            }
           }
+
+          // Load the new chat from DB
+          await this.loadChatIntoMemory(chatId);
         },
       );
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.delete',
         async (_callingClientId: string, chatId: string) => {
-          const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
-          if (!activeChatId) return;
+          const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
           if (this.isWorking) this.abortAgentCall();
 
-          if (activeChatId === chatId) {
-            const chats = this.uiKarton.state.agentChat?.chats;
-            const nextChatId = Object.keys(chats || {}).find(
-              (id) => id !== chatId,
-            );
+          // Delete from SQLite first
+          try {
+            await deleteChatFromDb(this.db, chatId);
+          } catch (error) {
+            this.logger.error('[AgentService] Failed to delete chat from DB', {
+              error,
+              chatId,
+            });
+          }
 
-            if (!nextChatId) {
-              createAndActivateNewChat(
-                this.uiKarton as KartonStateProvider<KartonContract['state']>,
-              );
+          if (activeChatId === chatId) {
+            // Find next chat from chatList (excluding the one being deleted)
+            const chatList = this.uiKarton.state.agentChat?.chatList ?? [];
+            const nextChat = chatList.find((c) => c.id !== chatId);
+
+            if (!nextChat) {
+              // No other chats exist - create a new one
+              await this.createNewChatWithPersistence();
             } else {
-              this.uiKarton.setState((draft) => {
-                if (draft.agentChat) draft.agentChat.activeChatId = nextChatId;
-              });
+              // Load the next chat
+              await this.loadChatIntoMemory(nextChat.id);
             }
           }
 
@@ -1102,8 +1341,12 @@ export class AgentService {
           this.thinkingDurationsPerChat.delete(chatId);
 
           this.uiKarton.setState((draft) => {
-            if (draft.agentChat?.chats[chatId])
-              delete draft.agentChat?.chats[chatId];
+            // Remove from chatList
+            if (draft.agentChat) {
+              draft.agentChat.chatList = draft.agentChat.chatList.filter(
+                (c) => c.id !== chatId,
+              );
+            }
             // Clean up message queue and paused state for deleted chat
             if (draft.agentChat?.messageQueue[chatId])
               delete draft.agentChat.messageQueue[chatId];
@@ -1124,7 +1367,7 @@ export class AgentService {
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.queueUserMessage',
         async (_callingClientId: string, message: ChatMessage) => {
-          const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+          const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
           if (!activeChatId) return;
           this.queueMessage(message, activeChatId);
         },
@@ -1179,6 +1422,29 @@ export class AgentService {
       );
 
       this.uiKarton.registerServerProcedureHandler(
+        'agentChat.loadMoreChats',
+        async (_callingClientId: string) => {
+          const currentCount =
+            this.uiKarton.state.agentChat?.chatList.length ?? 0;
+          const moreChats = await getChatSummaries(this.db, 10, currentCount);
+          const totalChats = await getChatCount(this.db);
+
+          this.uiKarton.setState((draft) => {
+            if (draft.agentChat) {
+              draft.agentChat.chatList.push(...moreChats);
+              draft.agentChat.hasMoreChats =
+                currentCount + moreChats.length < totalChats;
+            }
+          });
+
+          return {
+            loaded: moreChats.length,
+            hasMore: currentCount + moreChats.length < totalChats,
+          };
+        },
+      );
+
+      this.uiKarton.registerServerProcedureHandler(
         'agentChat.submitUserInteractionToolInput',
         async (_callingClientId: string, toolCallId, input) => {
           const { type: _, ...cleanInput } = input;
@@ -1196,16 +1462,13 @@ export class AgentService {
           );
           const pendingToolCalls = findPendingToolCalls(
             this.uiKarton as KartonStateProvider<KartonContract['state']>,
-            this.uiKarton.state.agentChat?.activeChatId!,
+            this.uiKarton.state.agentChat?.activeChat?.id!,
           );
           if (pendingToolCalls.length > 0) return { success: true }; // Other tool calls are still pending - only call agent on the last submission
           this.setAgentWorking(true);
           this.callAgent({
-            chatId: this.uiKarton.state.agentChat?.activeChatId!,
-            history:
-              this.uiKarton.state.agentChat?.chats[
-                this.uiKarton.state.agentChat?.activeChatId!
-              ]?.messages,
+            chatId: this.uiKarton.state.agentChat?.activeChat?.id!,
+            history: this.uiKarton.state.agentChat?.activeChat?.messages,
           });
           return { success: true };
         },
@@ -1229,11 +1492,8 @@ export class AgentService {
           );
           this.setAgentWorking(true);
           this.callAgent({
-            chatId: this.uiKarton.state.agentChat?.activeChatId!,
-            history:
-              this.uiKarton.state.agentChat?.chats[
-                this.uiKarton.state.agentChat?.activeChatId!
-              ]?.messages,
+            chatId: this.uiKarton.state.agentChat?.activeChat?.id!,
+            history: this.uiKarton.state.agentChat?.activeChat?.messages,
           });
         },
       );
@@ -1291,6 +1551,7 @@ export class AgentService {
     this.uiKarton.removeServerProcedureHandler(
       'agentChat.sendQueuedMessageNow',
     );
+    this.uiKarton.removeServerProcedureHandler('agentChat.loadMoreChats');
     this.uiKarton.removeServerProcedureHandler(
       'userAccount.refreshSubscription',
     );
@@ -1350,7 +1611,7 @@ export class AgentService {
     if (this.recursionDepth >= MAX_RECURSION_DEPTH) {
       this.setAgentWorking(false);
       this.uiKarton.setState((draft) => {
-        const chat = draft.agentChat?.chats[chatId];
+        const chat = draft.agentChat?.activeChat;
         if (chat) {
           chat.error = {
             type: AgentErrorType.AGENT_ERROR,
@@ -1402,10 +1663,26 @@ export class AgentService {
           ),
         );
 
+        // Update title in state
         this.uiKarton.setState((draft) => {
-          const chat = draft.agentChat?.chats[chatId];
+          const chat = draft.agentChat?.activeChat;
           if (chat) chat.title = title;
+          // Also update in chatList
+          const chatListEntry = draft.agentChat?.chatList.find(
+            (c) => c.id === chatId,
+          );
+          if (chatListEntry) chatListEntry.title = title;
         });
+
+        // Persist to DB
+        try {
+          await updateChatTitle(this.db, chatId, title);
+        } catch (error) {
+          this.logger.error('[AgentService] Failed to persist chat title', {
+            error,
+            chatId,
+          });
+        }
       }
 
       // Check if abort was called during the async operations above
@@ -1506,7 +1783,7 @@ export class AgentService {
         onFinish: async (r) => {
           this.authRetryCount = 0;
           const messages =
-            this.uiKarton.state.agentChat?.chats[chatId]?.messages ?? [];
+            this.uiKarton.state.agentChat?.activeChat?.messages ?? [];
 
           // Get current tools context for processing tool calls
           const currentToolsContext = this.getToolsContext();
@@ -1642,7 +1919,7 @@ export class AgentService {
 
           // Update the used context window size of the chat
           this.uiKarton.setState((draft) => {
-            const chat = draft.agentChat?.chats[chatId];
+            const chat = draft.agentChat?.activeChat;
             if (chat && r.totalUsage.inputTokens) {
               chat.usage.usedContextWindowSize = r.totalUsage.inputTokens;
             }
@@ -1650,6 +1927,38 @@ export class AgentService {
 
           // Check if we need to compact the chat history (separate from state update)
           this.triggerCompactionIfNeeded(chatId);
+
+          // Persist assistant message to SQLite
+          const chatMessages =
+            this.uiKarton.state.agentChat?.activeChat?.messages ?? [];
+          if (this.lastMessageId) {
+            const assistantMessage = chatMessages.find(
+              (m) => m.id === this.lastMessageId,
+            );
+            if (assistantMessage) {
+              const messageIndex = chatMessages.findIndex(
+                (m) => m.id === this.lastMessageId,
+              );
+              try {
+                await insertMessage(this.db, {
+                  id: assistantMessage.id,
+                  chatId,
+                  messageIndex,
+                  content: assistantMessage,
+                });
+                await this.updateChatLastModified(chatId);
+              } catch (error) {
+                this.logger.error(
+                  '[AgentService] Failed to persist assistant message',
+                  {
+                    error,
+                    chatId,
+                    messageId: assistantMessage.id,
+                  },
+                );
+              }
+            }
+          }
 
           const requiresUserInteraction = toolResults.some(
             (r) => 'userInteractionrequired' in r && r.userInteractionrequired,
@@ -1661,7 +1970,7 @@ export class AgentService {
             this.isWorking
           ) {
             const updatedMessages =
-              this.uiKarton.state.agentChat?.chats[chatId]?.messages;
+              this.uiKarton.state.agentChat?.activeChat?.messages;
 
             return this.callAgent({
               chatId,
@@ -1693,7 +2002,7 @@ export class AgentService {
       const structuredError = extractStructuredError(error);
       this.setAgentWorking(false);
       this.uiKarton.setState((draft) => {
-        const chat = draft.agentChat?.chats[chatId];
+        const chat = draft.agentChat?.activeChat;
         if (chat) {
           chat.error = {
             type: AgentErrorType.AGENT_ERROR,
@@ -1711,7 +2020,7 @@ export class AgentService {
     uiStream: ReadableStream<InferUIMessageChunk<ChatMessage>>,
     onNewMessage?: (messageId: string) => void,
   ) {
-    const activeChatId = this.uiKarton.state.agentChat?.activeChatId;
+    const activeChatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!activeChatId) return;
 
     // Initialize or get thinking durations state for this chat (persists across agent recursions)
@@ -1769,7 +2078,7 @@ export class AgentService {
         0,
       );
 
-      const chat = this.uiKarton.state.agentChat?.chats[activeChatId];
+      const chat = this.uiKarton.state.agentChat?.activeChat;
       const existingMessage = chat?.messages.find((m) => m.id === uiMessage.id);
       const messageExists = !!existingMessage;
 
@@ -1787,7 +2096,7 @@ export class AgentService {
 
       if (messageExists) {
         this.uiKarton.setState((draft) => {
-          const chat = draft.agentChat?.chats[activeChatId];
+          const chat = draft.agentChat?.activeChat;
           if (chat) {
             chat.messages = chat.messages.map((m) =>
               m.id === uiMessage.id
@@ -1799,7 +2108,7 @@ export class AgentService {
       } else {
         onNewMessage?.(uiMessage.id);
         this.uiKarton.setState((draft) => {
-          const chat = draft.agentChat?.chats[activeChatId];
+          const chat = draft.agentChat?.activeChat;
           if (chat) {
             chat.messages.push(uiMessageWithMetadata as any);
           }
@@ -1809,10 +2118,10 @@ export class AgentService {
   }
 
   /** Triggers compaction if context window usage exceeds 80%. */
-  private triggerCompactionIfNeeded(chatId: string): void {
+  private triggerCompactionIfNeeded(_chatId: string): void {
     if (this.isCompacting) return;
 
-    const chat = this.uiKarton.state.agentChat?.chats[chatId];
+    const chat = this.uiKarton.state.agentChat?.activeChat;
     if (!chat) return;
 
     const usedSize = chat.usage.usedContextWindowSize || 0;
@@ -1843,13 +2152,13 @@ export class AgentService {
       return;
     }
 
-    const chatId = this.uiKarton.state.agentChat?.activeChatId;
+    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!chatId) return;
 
     // Set compacting flag before any async operations
     this.isCompacting = true;
 
-    const chat = this.uiKarton.state.agentChat?.chats[chatId];
+    const chat = this.uiKarton.state.agentChat?.activeChat;
     const history = chat?.messages ?? [];
 
     // Find the last user message (where we'll attach the summary)
@@ -1916,7 +2225,7 @@ export class AgentService {
 
       // Attach summary to last user message's metadata
       this.uiKarton.setState((draft) => {
-        const draftChat = draft.agentChat?.chats[chatId];
+        const draftChat = draft.agentChat?.activeChat;
         if (draftChat) {
           const userMessage = draftChat.messages[lastUserMessageIndex];
           if (userMessage && userMessage.role === 'user') {
@@ -1960,7 +2269,7 @@ export class AgentService {
     chatId: string,
     type: 'restore-checkpoint' | 'undo-changes' = 'restore-checkpoint',
   ): Promise<void> {
-    const chat = this.uiKarton.state.agentChat?.chats[chatId];
+    const chat = this.uiKarton.state.agentChat?.activeChat;
     const history = chat?.messages ?? [];
     const userMessageIndex = history.findIndex(
       (m) => m.role === 'user' && 'id' in m && m.id === userMessageId,
@@ -1989,10 +2298,26 @@ export class AgentService {
 
     this.uiKarton.setState((draft) => {
       if (userMessageIndex !== -1) {
-        const chat = draft.agentChat?.chats[chatId];
+        const chat = draft.agentChat?.activeChat;
         if (chat) chat.messages = history.slice(0, userMessageIndex) as any;
       }
     });
+
+    // Delete truncated messages from SQLite
+    if (userMessageIndex !== -1) {
+      try {
+        await deleteMessagesFromIndex(this.db, chatId, userMessageIndex);
+      } catch (error) {
+        this.logger.error(
+          '[AgentService] Failed to delete truncated messages from DB',
+          {
+            error,
+            chatId,
+            fromIndex: userMessageIndex,
+          },
+        );
+      }
+    }
 
     this.telemetryService.capture('agent-undo-tool-calls', {
       chat_id: chatId,
@@ -2135,7 +2460,7 @@ export class AgentService {
       });
 
       this.uiKarton.setState((draft) => {
-        const chat = draft.agentChat?.chats[chatId];
+        const chat = draft.agentChat?.activeChat;
         if (chat) {
           chat.error = {
             type: AgentErrorType.PLAN_LIMITS_EXCEEDED,
@@ -2163,7 +2488,7 @@ export class AgentService {
       // We just need to reinitialize our client
       await this.initializeClient();
 
-      const messages = this.uiKarton.state.agentChat?.chats[chatId]?.messages;
+      const messages = this.uiKarton.state.agentChat?.activeChat?.messages;
       await this.callAgent({
         chatId,
         history: messages,
@@ -2176,7 +2501,7 @@ export class AgentService {
       this.authRetryCount = 0;
       this.setAgentWorking(false);
       this.uiKarton.setState((draft) => {
-        const chat = draft.agentChat?.chats[chatId];
+        const chat = draft.agentChat?.activeChat;
         if (chat) {
           chat.error = {
             type: AgentErrorType.AGENT_ERROR,
@@ -2192,7 +2517,7 @@ export class AgentService {
       return;
     } else if (isContextLimitError(error.error)) {
       this.uiKarton.setState((draft) => {
-        const chat = draft.agentChat?.chats[chatId];
+        const chat = draft.agentChat?.activeChat;
         if (chat)
           chat.error = {
             type: AgentErrorType.CONTEXT_LIMIT_EXCEEDED,
@@ -2212,7 +2537,7 @@ export class AgentService {
       const structuredError = extractStructuredError(error.error);
       this.setAgentWorking(false);
       this.uiKarton.setState((draft) => {
-        const chat = draft.agentChat?.chats[chatId];
+        const chat = draft.agentChat?.activeChat;
         if (chat) {
           chat.error = {
             type: AgentErrorType.AGENT_ERROR,
@@ -2238,7 +2563,7 @@ export class AgentService {
    */
   public rejectAllPendingEdits(): void {
     const rejected = this.diffHistoryService?.rejectPendingChanges();
-    const chatId = this.uiKarton.state.agentChat?.activeChatId;
+    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!rejected || !chatId) return;
 
     const existingRejectedEdits = this.rejectedEditsPerChat.get(chatId);
@@ -2264,7 +2589,7 @@ export class AgentService {
    */
   public rejectPendingEdit(filePath: string): void {
     const rejected = this.diffHistoryService?.partialReject([filePath]);
-    const chatId = this.uiKarton.state.agentChat?.activeChatId;
+    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
     if (!rejected || !chatId) return;
 
     const existingRejectedEdits = this.rejectedEditsPerChat.get(chatId);

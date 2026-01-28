@@ -19,34 +19,54 @@ import {
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import TimeAgo from 'react-timeago';
 import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
-import type { Chat } from '@shared/karton-contracts/ui';
-import { useCallback, useMemo } from 'react';
+import type { ChatSummary } from '@shared/karton-contracts/ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
 import { HotkeyComboText } from '@/components/hotkey-combo-text';
 import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
+import { useChatDraft } from '@/hooks/use-chat-draft';
 
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createChat = useKartonProcedure((p) => p.agentChat.create);
   const switchChat = useKartonProcedure((p) => p.agentChat.switch);
   const deleteChat = useKartonProcedure((p) => p.agentChat.delete);
-  const chats = useKartonState((s) => s.agentChat?.chats) || {};
+  const loadMoreChats = useKartonProcedure((p) => p.agentChat.loadMoreChats);
+  const chatList = useKartonState((s) => s.agentChat?.chatList) || [];
+  const hasMoreChats =
+    useKartonState((s) => s.agentChat?.hasMoreChats) || false;
   const platform = useKartonState((s) => s.appInfo.platform);
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
-  const activeChatId = useKartonState((s) => s.agentChat?.activeChatId || null);
+  const activeChatId = useKartonState(
+    (s) => s.agentChat?.activeChat?.id || null,
+  );
   const isWorking = useKartonState((s) => s.agentChat?.isWorking);
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
 
+  // Tick every minute to refresh time-ago labels and groupings
+  const [timeTick, setTimeTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTimeTick((t) => t + 1), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
   const showChatListButton = useMemo(() => {
-    return Object.keys(chats).length > 1;
-  }, [chats]);
+    return chatList.length > 1;
+  }, [chatList]);
 
   const showNewChatButton = useMemo(() => {
     return activeChatId;
   }, [activeChatId]);
 
-  const groupedChats = useMemo(() => groupChatsByTime(chats), [chats]);
+  const groupedChats = useMemo(() => {
+    // Sort by updatedAt descending so most recent chats appear first
+    const sorted = [...chatList].sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+    return groupChatsByTime(sorted);
+  }, [chatList, timeTick]);
 
   const minimalFormatter = useMemo(
     () =>
@@ -75,19 +95,22 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     [],
   );
 
+  // Get draft getter from context (provided by panel-footer)
+  const { getDraft } = useChatDraft();
+
   // Convert grouped chats to flat items with group property for SearchableSelect
   const chatSelectItems = useMemo((): SearchableSelectItem[] => {
     const items: SearchableSelectItem[] = [];
     for (const [label, groupChats] of Object.entries(groupedChats)) {
-      for (const [chatId, chat] of Object.entries(groupChats)) {
+      for (const chat of groupChats) {
         items.push({
-          value: chatId,
+          value: chat.id,
           label: (
             <span className="flex w-full items-center gap-2">
               <span className="truncate">{chat.title}</span>
               <span className="shrink-0 text-subtle-foreground text-xs">
                 <TimeAgo
-                  date={chat.createdAt}
+                  date={chat.updatedAt}
                   formatter={minimalFormatter}
                   live={false}
                 />
@@ -107,14 +130,26 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
         });
       }
     }
+    // Add "Load more" item if there are more chats available
+    if (hasMoreChats) {
+      items.push({
+        value: '__load_more__',
+        label: (
+          <span className="text-muted-foreground text-xs">Load more...</span>
+        ),
+        searchText: '',
+        group: '',
+      });
+    }
     return items;
-  }, [groupedChats, deleteChat, isWorking, minimalFormatter]);
+  }, [groupedChats, deleteChat, isWorking, minimalFormatter, hasMoreChats]);
 
   // Helper to create a new chat and focus the input
   const createChatAndFocus = useCallback(async () => {
-    await createChat();
+    const draft = getDraft();
+    await createChat(draft);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [createChat]);
+  }, [createChat, getDraft]);
 
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {
@@ -123,11 +158,17 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 
   const handleChatSelect = useCallback(
     (value: string | null) => {
-      if (value && value !== activeChatId && !isWorking) {
-        void switchChat(value);
+      if (!value || isWorking) return;
+      if (value === '__load_more__') {
+        void loadMoreChats();
+        return;
+      }
+      if (value !== activeChatId) {
+        const draft = getDraft();
+        void switchChat(value, draft);
       }
     },
-    [activeChatId, isWorking, switchChat],
+    [activeChatId, isWorking, switchChat, loadMoreChats, getDraft],
   );
 
   return (
@@ -185,7 +226,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    <span>Show chat history</span>
+                    <span>Show recent chats</span>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -215,13 +256,13 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 type TimeAgoLabel = string;
 
 /**
- *
- * @param chats The chats to sort
- * @returns The sorted chats, labeled by time strings, e.g. : 'Today', 'Yesterday', '2 days ago', '3 days ago', '1 week ago', '2 weeks ago', '1 month ago', '2 months ago', '1 year ago', '2 years ago', etc.
+ * Groups chat summaries by time labels (Today, Yesterday, etc.)
+ * @param chatList The chat summaries to group (already sorted by updatedAt desc)
+ * @returns Grouped chats by time label, each group containing an array of ChatSummary
  */
 function groupChatsByTime(
-  chats: Record<string, Chat>,
-): Record<TimeAgoLabel, Record<string, Chat>> {
+  chatList: ChatSummary[],
+): Record<TimeAgoLabel, ChatSummary[]> {
   // Helper function to get time label for a chat
   function getTimeLabel(date: Date): string {
     const now = new Date();
@@ -258,25 +299,13 @@ function groupChatsByTime(
     return yearsDiff === 1 ? '1 year ago' : `${yearsDiff} years ago`;
   }
 
-  // Group chats by time label
-  const grouped: Record<string, Record<string, Chat>> = {};
+  // Group chats by time label (chatList is already sorted by updatedAt desc)
+  const grouped: Record<string, ChatSummary[]> = {};
 
-  for (const [chatId, chat] of Object.entries(chats)) {
-    const label = getTimeLabel(chat.createdAt);
-
-    if (!grouped[label]) grouped[label] = {};
-
-    grouped[label][chatId] = chat;
-  }
-
-  // Sort chats within each group by createdAt descending (newest first)
-  for (const label in grouped) {
-    const sortedEntries = Object.entries(grouped[label]).sort(
-      ([, a], [, b]) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-    // Rebuild the record in sorted order
-    grouped[label] = Object.fromEntries(sortedEntries);
+  for (const chat of chatList) {
+    const label = getTimeLabel(chat.updatedAt);
+    if (!grouped[label]) grouped[label] = [];
+    grouped[label].push(chat);
   }
 
   return grouped;
