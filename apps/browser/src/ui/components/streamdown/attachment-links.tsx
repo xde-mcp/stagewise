@@ -12,14 +12,14 @@ import { usePostHog } from 'posthog-js/react';
 import {
   useAttachmentMetadata,
   type AttachmentMetadata,
-} from '@/hooks/use-attachment-metadata';
-import { MessageElementsProvider } from '@/hooks/use-message-elements';
+} from '@ui/hooks/use-attachment-metadata';
+import { MessageElementsProvider } from '@ui/hooks/use-message-elements';
 import {
   ElementAttachmentView,
   ImageAttachmentView,
   AttachmentNodeView,
   TextClipAttachmentView,
-} from '@/screens/main/sidebar/chat/_components/rich-text';
+} from '@ui/screens/main/sidebar/chat/_components/rich-text';
 import type { SelectedElement } from '@shared/selected-elements';
 
 interface ColorBadgeProps {
