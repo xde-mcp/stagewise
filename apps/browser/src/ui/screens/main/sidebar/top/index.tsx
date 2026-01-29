@@ -264,22 +264,34 @@ function groupChatsByTime(
   chatList: ChatSummary[],
 ): Record<TimeAgoLabel, ChatSummary[]> {
   // Helper function to get time label for a chat
+  // Uses calendar-day boundaries (midnight in user's timezone) instead of
+  // absolute time differences for more intuitive "Yesterday" grouping
   function getTimeLabel(date: Date): string {
     const now = new Date();
     const chatDate = new Date(date);
 
-    // Calculate days difference
-    const diffTime = now.getTime() - chatDate.getTime();
-    const daysAgo = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // Get start of today (midnight) in user's local timezone
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+
+    // Calculate calendar days ago (based on midnight boundaries)
+    const diffFromTodayStart = todayStart.getTime() - chatDate.getTime();
+    const calendarDaysAgo = Math.ceil(
+      diffFromTodayStart / (1000 * 60 * 60 * 24),
+    );
 
     // Daily grouping (0-7 days)
-    if (daysAgo === 0) return 'Today';
-    if (daysAgo === 1) return 'Yesterday';
-    if (daysAgo >= 2 && daysAgo <= 7) return `${daysAgo} days ago`;
+    if (calendarDaysAgo <= 0) return 'Today'; // chatDate >= todayStart
+    if (calendarDaysAgo === 1) return 'Yesterday';
+    if (calendarDaysAgo >= 2 && calendarDaysAgo <= 7)
+      return `${calendarDaysAgo} days ago`;
 
     // Weekly grouping (8-29 days)
-    if (daysAgo < 30) {
-      const weeksAgo = Math.floor(daysAgo / 7);
+    if (calendarDaysAgo < 30) {
+      const weeksAgo = Math.floor(calendarDaysAgo / 7);
       return weeksAgo === 1 ? 'last week' : `${weeksAgo} weeks ago`;
     }
 
