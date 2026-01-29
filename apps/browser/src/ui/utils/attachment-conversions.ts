@@ -1,16 +1,8 @@
 import type { FileUIPart } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
-import { fileToDataUrl, generateId } from '@/utils';
+import { generateId } from '@/utils';
+import type { FileAttachment } from '@shared/karton-contracts/ui/metadata';
 import type { AttachmentAttributes } from '@/screens/main/sidebar/chat/_components/rich-text';
-
-/**
- * File attachment as stored in chat state.
- */
-export interface FileAttachment {
-  id: string;
-  file: File;
-  url: string;
-}
 
 /**
  * Convert a data URL to a File object.
@@ -33,26 +25,20 @@ export function dataUrlToFile(dataUrl: string, filename: string): File {
 
 /**
  * Convert a FileUIPart (from a stored message) to a FileAttachment for editing.
- * Fetches the data URL and creates a blob URL for display.
+ * Simply preserves the data URL from the stored message.
  *
  * @param filePart - The file part from a ChatMessage
  * @returns A FileAttachment suitable for chat state, or null if conversion failed
  */
-export async function fileUIPartToFileAttachment(
+export function fileUIPartToFileAttachment(
   filePart: FileUIPart,
-): Promise<FileAttachment | null> {
+): FileAttachment | null {
   try {
-    const response = await fetch(filePart.url);
-    const blob = await response.blob();
-    const file = new File([blob], filePart.filename, {
-      type: filePart.mediaType,
-    });
-    const blobUrl = URL.createObjectURL(file);
-
     return {
       id: generateId(),
-      file,
-      url: blobUrl,
+      mediaType: filePart.mediaType,
+      fileName: filePart.filename,
+      url: filePart.url,
     };
   } catch (e) {
     console.warn(
@@ -76,9 +62,9 @@ export async function fileAttachmentToFileUIPart(
   try {
     return {
       type: 'file' as const,
-      mediaType: attachment.file.type,
-      filename: attachment.file.name,
-      url: await fileToDataUrl(attachment.file),
+      mediaType: attachment.mediaType,
+      filename: attachment.fileName,
+      url: attachment.url,
     };
   } catch (e) {
     console.warn(
@@ -98,21 +84,23 @@ export async function fileAttachmentToFileUIPart(
 export function fileAttachmentToAttachmentAttributes(
   attachment: FileAttachment,
 ): AttachmentAttributes {
-  const isImage = attachment.file.type.startsWith('image/');
+  const isImage = attachment.mediaType.startsWith('image/');
 
   if (isImage) {
     return {
       id: attachment.id,
       type: 'image',
-      label: attachment.file.name,
+      label: attachment.fileName,
       url: attachment.url,
+      validationError: attachment.validationError,
     };
   }
 
   return {
     id: attachment.id,
     type: 'file',
-    label: attachment.file.name,
+    label: attachment.fileName,
+    validationError: attachment.validationError,
   };
 }
 
@@ -135,98 +123,4 @@ export function selectedElementToAttachmentAttributes(
     type: 'element',
     label,
   };
-}
-
-/**
- * Convert a blob URL to a data URL by fetching the blob and reading it as base64.
- *
- * @param blobUrl - The blob URL to convert
- * @returns A data URL string, or the original URL if conversion fails
- */
-async function blobUrlToDataUrl(blobUrl: string): Promise<string> {
-  try {
-    const response = await fetch(blobUrl);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (e) {
-    console.warn('[blobUrlToDataUrl] Failed to convert blob URL:', e);
-    return blobUrl; // Return original on failure
-  }
-}
-
-/**
- * TipTap JSON node structure (simplified).
- */
-interface TiptapNode {
-  type: string;
-  attrs?: Record<string, unknown>;
-  content?: TiptapNode[];
-  text?: string;
-}
-
-/**
- * Recursively transform a TipTap JSON node, converting blob URLs in imageAttachment
- * nodes to data URLs.
- *
- * @param node - The TipTap node to transform
- * @returns The transformed node with data URLs
- */
-async function transformTiptapNode(node: TiptapNode): Promise<TiptapNode> {
-  // If this is an imageAttachment node with a blob URL, convert it
-  if (
-    node.type === 'imageAttachment' &&
-    node.attrs?.url &&
-    typeof node.attrs.url === 'string' &&
-    node.attrs.url.startsWith('blob:')
-  ) {
-    const dataUrl = await blobUrlToDataUrl(node.attrs.url);
-    return {
-      ...node,
-      attrs: {
-        ...node.attrs,
-        url: dataUrl,
-      },
-    };
-  }
-
-  // Recursively transform content array
-  if (node.content && Array.isArray(node.content)) {
-    const transformedContent = await Promise.all(
-      node.content.map((child) => transformTiptapNode(child)),
-    );
-    return {
-      ...node,
-      content: transformedContent,
-    };
-  }
-
-  return node;
-}
-
-/**
- * Transform TipTap JSON content, converting all blob URLs in imageAttachment nodes
- * to data URLs. This ensures the content can be persisted and displayed even after
- * the original blob URLs are revoked.
- *
- * @param jsonContent - The TipTap JSON content string
- * @returns The transformed JSON content string with data URLs
- */
-export async function transformTiptapBlobUrls(
-  jsonContent: string | undefined | null,
-): Promise<string | undefined> {
-  if (!jsonContent) return undefined;
-
-  try {
-    const doc = JSON.parse(jsonContent) as TiptapNode;
-    const transformedDoc = await transformTiptapNode(doc);
-    return JSON.stringify(transformedDoc);
-  } catch (e) {
-    console.warn('[transformTiptapBlobUrls] Failed to transform content:', e);
-    return jsonContent; // Return original on failure
-  }
 }

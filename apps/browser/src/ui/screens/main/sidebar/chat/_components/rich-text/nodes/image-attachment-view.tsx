@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { ImageIcon } from 'lucide-react';
 import type { ImageAttachmentAttrs, AttachmentNodeViewProps } from '../types';
 import {
   truncateLabel,
@@ -15,14 +16,16 @@ export function ImageAttachmentView(props: AttachmentNodeViewProps) {
   const attrs = props.node.attrs as ImageAttachmentAttrs;
 
   const isEditable = !('viewOnly' in props);
+  const hasError = !!attrs.validationError;
+  const hasUrl = !!attrs.url;
 
   const displayLabel = useMemo(
     () => truncateLabel(attrs.label, attrs.id),
     [attrs.label, attrs.id],
   );
 
-  // Thumbnail icon showing a small preview of the image
-  const icon = (
+  // Thumbnail icon - show image preview if URL exists, otherwise show placeholder
+  const icon = hasUrl ? (
     <span className="relative size-3 shrink-0 overflow-hidden rounded">
       <img
         src={attrs.url}
@@ -30,10 +33,12 @@ export function ImageAttachmentView(props: AttachmentNodeViewProps) {
         className="size-full object-cover"
       />
     </span>
+  ) : (
+    <ImageIcon className="size-3 shrink-0" />
   );
 
-  // Preview card showing larger image on hover
-  const previewContent = (
+  // Preview card showing larger image on hover (only if URL exists)
+  const previewContent = hasUrl ? (
     <PreviewCardContent className="flex w-64 flex-col items-stretch gap-2">
       <div className="flex min-h-24 w-full items-center justify-center overflow-hidden rounded-sm bg-background ring-1 ring-border-subtle">
         <img
@@ -44,18 +49,20 @@ export function ImageAttachmentView(props: AttachmentNodeViewProps) {
       </div>
       <span className="font-medium text-foreground text-xs">{attrs.label}</span>
     </PreviewCardContent>
-  );
+  ) : undefined;
 
   return (
     <AttachmentBadgeWrapper
       viewOnly={!isEditable}
       previewContent={previewContent}
+      errorMessage={attrs.validationError}
     >
       <AttachmentBadge
         icon={icon}
         label={displayLabel}
         selected={props.selected}
         isEditable={isEditable}
+        hasError={hasError}
         onDelete={() =>
           'deleteNode' in props ? props.deleteNode() : undefined
         }

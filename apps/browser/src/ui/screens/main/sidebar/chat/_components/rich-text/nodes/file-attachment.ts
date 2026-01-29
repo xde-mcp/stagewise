@@ -1,5 +1,6 @@
 import { createAttachmentNode } from '../base-attachment-node';
 import type { FileAttachmentAttrs } from '../types';
+import { getAttachmentAnchorText } from '@ui/components/streamdown';
 
 /**
  * File attachment node for non-image files.
@@ -8,5 +9,19 @@ import type { FileAttachmentAttrs } from '../types';
 export const FileAttachment = createAttachmentNode<FileAttachmentAttrs>({
   name: 'fileAttachment',
   dataTag: 'data-file-attachment',
-  // No additional attributes beyond base (id, label)
+  additionalAttributes: {
+    validationError: {
+      default: null,
+      parseHTML: (element) => element.getAttribute('data-validation-error'),
+      renderHTML: (attributes) => ({
+        'data-validation-error': attributes.validationError,
+      }),
+    },
+  },
+  renderText: ({ node }) => {
+    return getAttachmentAnchorText({
+      type: 'file',
+      id: node.attrs.id,
+    });
+  },
 });

@@ -19,7 +19,10 @@ export interface BaseAttachmentAttrs {
 /**
  * Attributes for file attachments (non-image files).
  */
-export interface FileAttachmentAttrs extends BaseAttachmentAttrs {}
+export interface FileAttachmentAttrs extends BaseAttachmentAttrs {
+  /** Validation error message if file is unsupported */
+  validationError?: string;
+}
 
 /**
  * Attributes for image attachments.
@@ -27,6 +30,8 @@ export interface FileAttachmentAttrs extends BaseAttachmentAttrs {}
 export interface ImageAttachmentAttrs extends BaseAttachmentAttrs {
   /** Data URL or blob URL for the image */
   url: string;
+  /** Validation error message if file is unsupported */
+  validationError?: string;
 }
 
 /**

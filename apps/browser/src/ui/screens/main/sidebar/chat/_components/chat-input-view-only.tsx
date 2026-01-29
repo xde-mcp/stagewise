@@ -117,10 +117,6 @@ function getNodeKey(node: TiptapNode, index: number): string {
   return `${node.type}-${index}`;
 }
 
-function AttachmentContainer({ children }: { children: React.ReactNode }) {
-  return <div className="m-0.5 inline">{children}</div>;
-}
-
 /**
  * Recursively renders a TipTap node as React elements.
  */
@@ -143,46 +139,38 @@ function RenderNode({ node }: { node: TiptapNode }): React.ReactNode {
 
     case 'elementAttachment':
       return (
-        <AttachmentContainer>
-          <ElementAttachmentView
-            viewOnly
-            selected={false}
-            node={{ attrs: node.attrs ?? {} }}
-          />
-        </AttachmentContainer>
+        <ElementAttachmentView
+          viewOnly
+          selected={false}
+          node={{ attrs: node.attrs ?? {} }}
+        />
       );
 
     case 'imageAttachment':
       return (
-        <AttachmentContainer>
-          <ImageAttachmentView
-            viewOnly
-            selected={false}
-            node={{ attrs: node.attrs ?? {} }}
-          />
-        </AttachmentContainer>
+        <ImageAttachmentView
+          viewOnly
+          selected={false}
+          node={{ attrs: node.attrs ?? {} }}
+        />
       );
 
     case 'fileAttachment':
       return (
-        <AttachmentContainer>
-          <AttachmentNodeView
-            viewOnly
-            selected={false}
-            node={{ attrs: node.attrs ?? {} }}
-          />
-        </AttachmentContainer>
+        <AttachmentNodeView
+          viewOnly
+          selected={false}
+          node={{ attrs: node.attrs ?? {} }}
+        />
       );
 
     case 'textClipAttachment':
       return (
-        <AttachmentContainer>
-          <TextClipAttachmentView
-            viewOnly
-            selected={false}
-            node={{ attrs: node.attrs ?? {} }}
-          />
-        </AttachmentContainer>
+        <TextClipAttachmentView
+          viewOnly
+          selected={false}
+          node={{ attrs: node.attrs ?? {} }}
+        />
       );
 
     default:

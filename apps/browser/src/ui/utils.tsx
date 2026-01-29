@@ -183,6 +183,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 import { getSelectedElementReactInfo } from './utils/element-analysis/react';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
+import type { FileAttachment } from '@shared/karton-contracts/ui/metadata';
 
 const customTwMerge = extendTailwindMerge({
   extend: {
@@ -612,7 +613,7 @@ export const getDataUriForData = (data: string) => {
   }
 };
 
-export const isAnthropicSupportedFileType = (mimeType: string): boolean => {
+export const isSupportedMimeType = (mimeType: string): boolean => {
   const supportedTypes = [
     // Images
     'image/jpeg',
@@ -622,21 +623,27 @@ export const isAnthropicSupportedFileType = (mimeType: string): boolean => {
     // Documents
     'application/pdf',
     'text/plain',
-    'text/markdown',
   ];
 
   return supportedTypes.includes(mimeType.toLowerCase());
 };
 
-export const isAnthropicSupportedFile = (
+// Type-specific size limits (exported for reuse)
+export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images (Claude API limit)
+export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20MB for documents
+
+/**
+ * Validate a raw File object BEFORE converting to data URL.
+ * This prevents memory waste by checking type/size early.
+ *
+ * @param file - The raw File object to validate
+ * @returns Validation result with supported flag and optional reason
+ */
+export const validateFileBeforeUpload = (
   file: File,
 ): { supported: boolean; reason?: string } => {
-  // Type-specific size limits
-  const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images (Claude API limit)
-  const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20MB for documents
-
   // Check file type first
-  if (!isAnthropicSupportedFileType(file.type)) {
+  if (!isSupportedMimeType(file.type)) {
     return {
       supported: false,
       reason: 'Unsupported file type',
@@ -653,6 +660,33 @@ export const isAnthropicSupportedFile = (
     return {
       supported: false,
       reason: `File too large (${sizeMB}MB). Maximum size for ${isImage ? 'images' : 'documents'} is ${maxSizeLabel}`,
+    };
+  }
+
+  return { supported: true };
+};
+
+/**
+ * Validate a FileAttachment object (after data URL conversion).
+ * @deprecated Use validateFileBeforeUpload for better performance
+ */
+export const validateFileAttachmentBeforeUpload = (
+  fileAttachment: FileAttachment,
+): { supported: boolean; reason?: string } => {
+  // For FileAttachments, we can't get the real file size from a data URL easily,
+  // so we check if there's already a validationError set during upload
+  if (fileAttachment.validationError) {
+    return {
+      supported: false,
+      reason: fileAttachment.validationError,
+    };
+  }
+
+  // Type check (size was already validated during upload)
+  if (!isSupportedMimeType(fileAttachment.mediaType)) {
+    return {
+      supported: false,
+      reason: 'Unsupported file type',
     };
   }
 

@@ -1,4 +1,4 @@
-import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { ModelSelect } from './model-select';
@@ -237,7 +237,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       },
       onUpdate: ({ editor: ed }) => {
         // Extract plain text with @attachments preserved
-        const text = extractTextWithMentions(ed);
+        const text = ed.getText();
         lastValueRef.current = text;
         onChange(text);
       },
@@ -282,7 +282,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       }
       // Only update if the value changed externally (not from editor onChange)
       // and the editor exists
-      const editorText = editor ? extractTextWithMentions(editor) : undefined;
+      const editorText = editor ? editor.getText() : undefined;
       if (
         editorText !== undefined &&
         value !== lastValueRef.current &&
@@ -364,7 +364,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       },
       getTextContent: () => {
         if (!editor) return '';
-        return extractTextWithMentions(editor);
+        return editor.getText();
       },
       clear: () => {
         editor?.commands.clearContent();
@@ -464,31 +464,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   },
 );
 
-/**
- * Extract plain text from the editor, preserving @attachments in their text format.
- * Attachments are rendered as @{id} (e.g., @image-1, @element-2).
- */
-function extractTextWithMentions(editor: Editor): string {
-  const doc = editor.state.doc;
-  const textParts: string[] = [];
-
-  doc.descendants((node, _pos) => {
-    if (node.type.name === 'text') {
-      textParts.push(node.text || '');
-    } else if (ALL_ATTACHMENT_NODE_NAMES.includes(node.type.name as never)) {
-      // Handle all attachment node types (fileAttachment, imageAttachment, elementAttachment)
-      textParts.push(`@${node.attrs.id}`);
-    } else if (node.type.name === 'paragraph') {
-      // Add newline between paragraphs (except first)
-      if (textParts.length > 0) textParts.push('\n');
-    }
-    // Return true to continue traversing children
-    return true;
-  });
-
-  return textParts.join('').trim();
-}
-
 export interface ChatInputActionsProps {
   /** Whether the agent is currently working (used to determine stop/send button visibility) */
   isAgentWorking?: boolean;
@@ -574,7 +549,7 @@ export function ChatInputActions({
             type="file"
             multiple
             className="hidden"
-            accept="image/png, image/jpeg, image/gif, image/webp"
+            accept="image/png, image/jpeg, image/gif, image/webp, application/pdf, text/plain"
             id="chat-file-attachment-input-file"
           />
           <Tooltip>

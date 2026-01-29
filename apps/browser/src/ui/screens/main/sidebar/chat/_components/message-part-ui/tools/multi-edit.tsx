@@ -14,7 +14,7 @@ import { diffLines } from 'diff';
 import { useMemo, useState } from 'react';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { useKartonState } from '@/hooks/use-karton';
-import { IDE_SELECTION_ITEMS } from '@/utils';
+import { IDE_SELECTION_ITEMS } from '@ui/utils';
 import {
   Tooltip,
   TooltipContent,

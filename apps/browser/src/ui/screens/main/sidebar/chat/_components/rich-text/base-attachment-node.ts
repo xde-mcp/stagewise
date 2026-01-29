@@ -16,6 +16,14 @@ import {
 type NodeViewComponent = (props: NodeViewProps) => React.ReactElement | null;
 
 /**
+ * Base attributes shared by all attachment nodes.
+ */
+interface BaseAttrs {
+  id: string;
+  label: string;
+}
+
+/**
  * Configuration for creating an attachment node extension.
  */
 export interface CreateAttachmentNodeConfig<TAttrs extends object = object> {
@@ -35,6 +43,11 @@ export interface CreateAttachmentNodeConfig<TAttrs extends object = object> {
   };
   /** Optional custom NodeView component. Falls back to shared AttachmentNodeView if not provided. */
   NodeView?: NodeViewComponent;
+  /**
+   * Optional custom renderText function for copy/paste and serialization.
+   * Defaults to `@${node.attrs.id}` if not provided.
+   */
+  renderText?: (params: { node: { attrs: BaseAttrs & TAttrs } }) => string;
 }
 
 /**
@@ -52,7 +65,13 @@ export interface CreateAttachmentNodeConfig<TAttrs extends object = object> {
 export function createAttachmentNode<TAttrs extends object = object>(
   config: CreateAttachmentNodeConfig<TAttrs>,
 ) {
-  const { name, dataTag, additionalAttributes = {}, NodeView } = config;
+  const {
+    name,
+    dataTag,
+    additionalAttributes = {},
+    NodeView,
+    renderText: customRenderText,
+  } = config;
 
   return Node.create<AttachmentNodeOptions>({
     name,
@@ -116,6 +135,11 @@ export function createAttachmentNode<TAttrs extends object = object>(
 
     // Render the text representation for copy/paste and serialization
     renderText({ node }) {
+      if (customRenderText) {
+        return customRenderText({
+          node: node as unknown as { attrs: BaseAttrs & TAttrs },
+        });
+      }
       return `@${node.attrs.id}`;
     },
 

@@ -5,11 +5,9 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
-import { generateId } from '@/utils';
-import {
-  fileAttachmentToAttachmentAttributes,
-  type FileAttachment,
-} from '@/utils/attachment-conversions';
+import { fileToDataUrl, generateId, validateFileBeforeUpload } from '@/utils';
+import { fileAttachmentToAttachmentAttributes } from '@/utils/attachment-conversions';
+import type { FileAttachment } from '@shared/karton-contracts/ui/metadata';
 import type { ChatInputHandle } from '@/screens/main/sidebar/chat/_components/chat-input';
 
 export interface UseFileAttachmentsOptions {
@@ -23,23 +21,23 @@ export interface UseFileAttachmentsReturn {
   /** Current file attachments */
   fileAttachments: FileAttachment[];
   /** Add a file attachment, returns the created attachment */
-  addFileAttachment: (file: File) => FileAttachment;
-  /** Remove a file attachment by ID, revokes blob URL */
+  addFileAttachment: (file: File) => Promise<FileAttachment>;
+  /** Remove a file attachment by ID */
   removeFileAttachment: (id: string) => void;
-  /** Clear all file attachments, revokes all blob URLs */
+  /** Clear all file attachments */
   clearFileAttachments: () => void;
   /** Direct state setter for advanced use cases (e.g., restoring from message) */
   setFileAttachments: Dispatch<SetStateAction<FileAttachment[]>>;
 }
 
 /**
- * Hook for managing file attachment state with blob URL lifecycle management.
+ * Hook for managing file attachment state.
  * Each consumer gets their own independent state instance.
  *
  * Features:
- * - Automatic blob URL creation and cleanup
+ * - Data URL storage for file attachments
  * - Optional automatic insertion into TipTap editor
- * - Proper cleanup on removal/clear to prevent memory leaks
+ * - Early validation before data URL conversion to prevent memory waste
  */
 export function useFileAttachments(
   options: UseFileAttachmentsOptions = {},
@@ -49,10 +47,24 @@ export function useFileAttachments(
   const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
 
   const addFileAttachment = useCallback(
-    (file: File): FileAttachment => {
+    async (file: File): Promise<FileAttachment> => {
       const id = generateId();
-      const url = URL.createObjectURL(file);
-      const attachment: FileAttachment = { id, file, url };
+      const mediaType = file.type;
+
+      // Validate BEFORE converting to data URL to avoid memory waste
+      const validation = validateFileBeforeUpload(file);
+
+      // Only convert to data URL if the file is supported
+      // For unsupported files, store empty URL to save memory
+      const url = validation.supported ? await fileToDataUrl(file) : '';
+
+      const attachment: FileAttachment = {
+        id,
+        mediaType,
+        fileName: file.name,
+        url,
+        validationError: validation.supported ? undefined : validation.reason,
+      };
 
       setFileAttachments((prev) => [...prev, attachment]);
 
@@ -68,25 +80,11 @@ export function useFileAttachments(
   );
 
   const removeFileAttachment = useCallback((id: string) => {
-    setFileAttachments((prev) => {
-      const attachment = prev.find((a) => a.id === id);
-      // Only revoke blob URLs (not data URLs)
-      if (attachment?.url.startsWith('blob:'))
-        URL.revokeObjectURL(attachment.url);
-
-      return prev.filter((a) => a.id !== id);
-    });
+    setFileAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
   const clearFileAttachments = useCallback(() => {
-    setFileAttachments((prev) => {
-      // Only revoke blob URLs (not data URLs)
-      prev.forEach((attachment) => {
-        if (attachment.url.startsWith('blob:'))
-          URL.revokeObjectURL(attachment.url);
-      });
-      return [];
-    });
+    setFileAttachments([]);
   }, []);
 
   return {

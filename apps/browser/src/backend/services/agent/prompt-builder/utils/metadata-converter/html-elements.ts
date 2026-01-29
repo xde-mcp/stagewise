@@ -96,7 +96,8 @@ export function selectedElementToContextSnippet(
     [specialTokens.userMsgAttachmentXmlTag]: [
       {
         _attr: {
-          type: 'selected-dom-element',
+          type: 'element',
+          id: element.stagewiseId,
         },
       },
       serializeSelectedElementPart(element),

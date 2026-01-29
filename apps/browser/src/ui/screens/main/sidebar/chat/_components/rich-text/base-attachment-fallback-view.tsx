@@ -5,7 +5,7 @@ import {
   AttachmentBadge,
   AttachmentBadgeWrapper,
 } from './view-utils';
-import type { AttachmentNodeViewProps } from './types';
+import type { AttachmentNodeViewProps, FileAttachmentAttrs } from './types';
 
 /**
  * AttachmentNodeView is the default view component for attachment nodes.
@@ -20,9 +20,10 @@ import type { AttachmentNodeViewProps } from './types';
  * in base-attachment-node.ts, not here. This component is purely presentational.
  */
 export function AttachmentNodeView(props: AttachmentNodeViewProps) {
-  const attrs = props.node.attrs;
+  const attrs = props.node.attrs as FileAttachmentAttrs;
 
   const isEditable = !('viewOnly' in props);
+  const hasError = !!attrs.validationError;
 
   const displayLabel = useMemo(
     () => truncateLabel(attrs.label, attrs.id),
@@ -41,12 +42,14 @@ export function AttachmentNodeView(props: AttachmentNodeViewProps) {
     <AttachmentBadgeWrapper
       viewOnly={!isEditable}
       tooltipContent={previewContent}
+      errorMessage={attrs.validationError}
     >
       <AttachmentBadge
         icon={typeIcon}
         label={displayLabel}
         selected={props.selected}
         isEditable={isEditable}
+        hasError={hasError}
         onDelete={() =>
           'deleteNode' in props ? props.deleteNode() : undefined
         }

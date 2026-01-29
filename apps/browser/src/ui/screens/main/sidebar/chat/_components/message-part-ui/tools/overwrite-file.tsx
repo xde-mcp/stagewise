@@ -20,7 +20,7 @@ import { ToolPartUI } from './shared/tool-part-ui';
 import { diffLines } from 'diff';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 
-import { IDE_SELECTION_ITEMS } from '@/utils';
+import { IDE_SELECTION_ITEMS } from '@ui/utils';
 import { useKartonState } from '@/hooks/use-karton';
 import { usePostHog } from 'posthog-js/react';
 import { IdeLogo } from '@/components/ide-logo';

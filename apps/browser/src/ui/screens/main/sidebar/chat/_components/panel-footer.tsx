@@ -4,12 +4,7 @@ import { useMessageEditState } from '@/hooks/use-message-edit-state';
 import { useFileAttachments } from '@/hooks/use-file-attachments';
 import { useDragDrop } from '@/hooks/use-drag-drop';
 import { useElementSelectionWatcher } from '@/hooks/use-element-selection-watcher';
-import {
-  cn,
-  generateId,
-  collectUserMessageMetadata,
-  isAnthropicSupportedFile,
-} from '@/utils';
+import { cn, generateId, collectUserMessageMetadata } from '@/utils';
 import { HotkeyActions } from '@shared/hotkeys';
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
@@ -29,11 +24,9 @@ import {
 import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/rich-text';
 import {
   selectedElementToAttachmentAttributes,
-  fileAttachmentToFileUIPart,
   fileUIPartToFileAttachment,
-  transformTiptapBlobUrls,
 } from '@/utils/attachment-conversions';
-import type { ChatMessage, FileUIPart } from '@shared/karton-contracts/ui';
+import type { ChatMessage } from '@shared/karton-contracts/ui';
 import { useChatDraft } from '@/hooks/use-chat-draft';
 
 export function ChatPanelFooter() {
@@ -177,11 +170,11 @@ export function ChatPanelFooter() {
     else if (textPart && textPart.type === 'text') setChatInput(textPart.text);
     else setChatInput('');
 
-    // Restore file attachments from file parts (convert data URLs back to Files)
+    // Restore file attachments from file parts
     const fileParts = message.parts.filter((p) => p.type === 'file');
-    fileParts.forEach(async (part) => {
+    fileParts.forEach((part) => {
       if (!(part.type === 'file') || !part.url) return;
-      const attachment = await fileUIPartToFileAttachment(part);
+      const attachment = fileUIPartToFileAttachment(part);
       if (attachment) setFileAttachments((prev) => [...prev, attachment]);
     });
 
@@ -218,26 +211,7 @@ export function ChatPanelFooter() {
   const handleSubmit = useCallback(async () => {
     if (!canSendMessage) return;
 
-    const rawTiptapJsonContent = chatInputRef.current?.getTiptapJsonContent();
-
-    // Transform blob URLs to data URLs in TipTap content BEFORE clearing attachments
-    // (clearAll() will revoke blob URLs, making them invalid)
-    const tiptapJsonContent =
-      await transformTiptapBlobUrls(rawTiptapJsonContent);
-
-    // Filter only supported file attachments (type and size)
-    const supportedAttachments = fileAttachments.filter(
-      (attachment) => isAnthropicSupportedFile(attachment.file).supported,
-    );
-
-    // Convert supported file attachments to FileUIPart
-    const fileParts: FileUIPart[] = (
-      await Promise.all(
-        supportedAttachments.map(async (attachment) =>
-          fileAttachmentToFileUIPart(attachment),
-        ),
-      )
-    ).filter((part) => part !== null);
+    const tiptapJsonContent = chatInputRef.current?.getTiptapJsonContent();
 
     // Collect metadata for selected elements and text clips
     const metadata = collectUserMessageMetadata(
@@ -245,13 +219,15 @@ export function ChatPanelFooter() {
       tiptapJsonContent,
     );
 
+    // Include all file attachments (validation is handled by prompt builder)
     const message: ChatMessage = {
       id: generateId(),
-      parts: [...fileParts, { type: 'text' as const, text: chatInput }],
+      parts: [{ type: 'text' as const, text: chatInput }],
       role: 'user',
       metadata: {
         ...metadata,
         tiptapJsonContent,
+        fileAttachments,
       },
     };
 

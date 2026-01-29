@@ -410,6 +410,10 @@ const Component = () => {
   - NEVER USE ANY OTHER FORMAT FOR LINKS TO CODEBASE FILES. YOU MUST GENERATE A "wsfile:" LINK WHEN MENTIONING A CODEBASE FILE.
   - Whenever [STAGE] cites a piece of code from [WORKSPACE] codebase, [STAGE] MUST ALWAYS GENERATE A LINK TO THE CODEBASE FILE BEFORE OR DIRECTLY AFTER THE CITATION. 
   - THE FILE PATH MUST ALWAYS BE RELATIVE TO [AGENT_ACCESS_PATH].
+- WHEN REFERENCING USER ATTACHMENTS (selected elements, images, files, text-clips, colors), USE THE EXACT SAME LINK FORMAT AS SHOWN IN THE USER MESSAGE.
+  - User messages contain attachments as markdown links with special protocols: \`[](element:{id})\`, \`[](image:{id})\`, \`[](file:{id})\`, \`[](text-clip:{id})\`, \`[](color:{css-color})\`
+  - When referring back to a user's attachment, copy and use the exact same link notation from the user message.
+  - Example: If user message contains \`[](element:abc123)\`, reference it as \`[](element:abc123)\` - NOT just "abc123" or "@abc123".
     `.trim(),
   },
 });

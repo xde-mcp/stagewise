@@ -16,13 +16,14 @@ import {
   useKartonState,
   useKartonProcedure,
 } from '@/hooks/use-karton';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { MessageError } from './message-error';
 import type { History, ChatMessage } from '@shared/karton-contracts/ui';
 import { IconXmark } from 'nucleo-micro-bold';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
 import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
+import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
 import { isEmptyAssistantMessage } from './message-utils';
 
 export const ChatHistory = () => {
@@ -336,31 +337,35 @@ export const ChatHistory = () => {
   // If no messages, show empty state directly
   if (filteredMessages.length === 0) {
     return (
-      <section
-        aria-label="Agent message display"
-        className={cn(
-          'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
-        )}
-      >
-        <EmptyPlaceholder />
-      </section>
+      <AttachmentMetadataProvider messages={filteredMessages}>
+        <section
+          aria-label="Agent message display"
+          className={cn(
+            'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
+          )}
+        >
+          <EmptyPlaceholder />
+        </section>
+      </AttachmentMetadataProvider>
     );
   }
 
   return (
-    <Virtuoso
-      style={{ scrollbarGutter: 'stable' }}
-      key={activeChat?.id ?? 'no-chat'}
-      data={filteredMessages}
-      ref={virtuosoRef}
-      className="scrollbar-hover-only -mr-[2px]"
-      scrollerRef={scrollerRef}
-      increaseViewportBy={{ top: 3000, bottom: 3000 }} // Render items above and below viewport
-      itemContent={itemContent}
-      followOutput={false} // We use our own auto-scroll logic
-      computeItemKey={(_, message) => message.id}
-      totalCount={filteredMessages.length}
-    />
+    <AttachmentMetadataProvider messages={filteredMessages}>
+      <Virtuoso
+        style={{ scrollbarGutter: 'stable' }}
+        key={activeChat?.id ?? 'no-chat'}
+        data={filteredMessages}
+        ref={virtuosoRef}
+        className="scrollbar-hover-only -mr-[2px]"
+        scrollerRef={scrollerRef}
+        increaseViewportBy={{ top: 3000, bottom: 3000 }} // Render items above and below viewport
+        itemContent={itemContent}
+        followOutput={false} // We use our own auto-scroll logic
+        computeItemKey={(_, message) => message.id}
+        totalCount={filteredMessages.length}
+      />
+    </AttachmentMetadataProvider>
   );
 };
 

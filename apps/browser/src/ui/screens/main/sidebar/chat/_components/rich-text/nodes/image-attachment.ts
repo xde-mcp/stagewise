@@ -1,6 +1,7 @@
 import { createAttachmentNode } from '../base-attachment-node';
 import type { ImageAttachmentAttrs } from '../types';
 import { ImageAttachmentView } from './image-attachment-view';
+import { getAttachmentAnchorText } from '@ui/components/streamdown';
 
 /**
  * Image attachment node for image files.
@@ -18,6 +19,19 @@ export const ImageAttachment = createAttachmentNode<ImageAttachmentAttrs>({
         'data-url': attributes.url,
       }),
     },
+    validationError: {
+      default: null,
+      parseHTML: (element) => element.getAttribute('data-validation-error'),
+      renderHTML: (attributes) => ({
+        'data-validation-error': attributes.validationError,
+      }),
+    },
   },
   NodeView: ImageAttachmentView,
+  renderText: ({ node }) => {
+    return getAttachmentAnchorText({
+      type: 'image',
+      id: node.attrs.id,
+    });
+  },
 });

@@ -10,6 +10,7 @@ import {
   ALL_ATTACHMENT_NODE_NAMES,
   NODE_NAME_TO_TYPE,
 } from '../types';
+import { getAttachmentAnchorText } from '@ui/components/streamdown';
 
 /** Minimum character length for text to be converted to a text clip on paste */
 const TEXT_CLIP_THRESHOLD = 100;
@@ -150,7 +151,10 @@ export const TextClipAttachment = Node.create<AttachmentNodeOptions>({
   renderText({ node }) {
     // Unlike other attachments that reference external data via ID,
     // text clips contain the full content - so we return it directly
-    return node.attrs.content as string;
+    return getAttachmentAnchorText({
+      type: 'textClip',
+      id: node.attrs.id,
+    });
   },
 
   addNodeView() {

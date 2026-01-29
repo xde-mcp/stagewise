@@ -1,7 +1,7 @@
 import { defaultRehypePlugins, Streamdown as StreamdownBase } from 'streamdown';
-import { CodeBlock } from './ui/code-block';
-import { StreamingCodeBlock } from './ui/streaming-code-block';
-import { Mermaid } from './ui/mermaid';
+import { CodeBlock } from '../ui/code-block';
+import { StreamingCodeBlock } from '../ui/streaming-code-block';
+import { Mermaid } from '../ui/mermaid';
 import {
   memo,
   type DetailedHTMLProps,
@@ -15,10 +15,10 @@ import {
   type AnchorHTMLAttributes,
   useMemo,
 } from 'react';
-import { cn, IDE_SELECTION_ITEMS } from '@/utils';
+import { cn } from '@ui/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { CopyCheckIcon, CopyIcon, ExternalLinkIcon } from 'lucide-react';
+import { CopyCheckIcon, CopyIcon } from 'lucide-react';
 import type { BundledLanguage } from 'shiki';
 import type { ExtraProps } from 'react-markdown';
 import { useKartonState } from '@/hooks/use-karton';
@@ -27,8 +27,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { getTruncatedFileUrl } from '@/utils';
-import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { usePostHog } from 'posthog-js/react';
 import {
   MemoTable,
@@ -37,7 +35,59 @@ import {
   MemoTr,
   MemoTh,
   MemoTd,
-} from './streamdown-tables';
+} from '../streamdown-tables';
+import {
+  parseAttachmentLink,
+  AttachmentLinkRouter,
+  ColorBadge,
+} from './attachment-links';
+
+type AttachmentData =
+  | {
+      displayText: string;
+      type: 'fileLink';
+      filePath: string;
+      lineNumber?: string;
+    }
+  | {
+      type: 'element';
+      id: string;
+    }
+  | {
+      type: 'image';
+      id: string;
+    }
+  | {
+      type: 'file';
+      id: string;
+    }
+  | {
+      type: 'textClip';
+      id: string;
+    }
+  | {
+      type: 'color';
+      color: string;
+    };
+
+export function getAttachmentAnchorText(data: AttachmentData): string {
+  switch (data.type) {
+    case 'fileLink': {
+      const link = `${data.filePath}${data.lineNumber ? `:${data.lineNumber}` : ''}`;
+      return `[${data.displayText}](${link})`;
+    }
+    case 'element':
+      return `[](element:${data.id})`;
+    case 'image':
+      return `[](image:${data.id})`;
+    case 'file':
+      return `[](file:${data.id})`;
+    case 'textClip':
+      return `[](text-clip:${data.id})`;
+    case 'color':
+      return `[](color:${data.color})`;
+  }
+}
 
 const LANGUAGE_REGEX = /language-([^\s]+)/;
 
@@ -82,24 +132,33 @@ const StreamdownProvider = ({
 };
 
 /**
- * Preprocesses markdown to handle incomplete wsfile: links during streaming
- * Converts incomplete markdown like [](wsfile:/path without closing ) to valid markdown
+ * Preprocesses markdown to handle incomplete attachment links during streaming.
+ * Converts incomplete markdown like [](wsfile:/path without closing ) to valid markdown.
  *
- * Note: This runs on every render because it's called in JSX (line 105). However, once
+ * Handles all attachment link types: wsfile:, element:, image:, file:, text-clip:, color:
+ *
+ * Note: This runs on every render because it's called in JSX. However, once
  * the markdown is complete with a closing ), the regex won't match anymore, so the
  * function efficiently returns the input unchanged.
  */
 const preprocessMarkdown = (markdown: string): string => {
-  // Detect incomplete wsfile: links at the end of the string
-  // Pattern: [any-text](wsfile:... without closing )
-  const incompleteWsfileLinkRegex = /\[([^\]]*)\]\(wsfile:([^)]*?)$/;
+  // Detect incomplete attachment links at the end of the string
+  // Pattern: [any-text](prefix:... without closing )
+  // Supports: wsfile:, element:, image:, file:, text-clip:, color:
+  const incompleteAttachmentLinkRegex =
+    /\[([^\]]*)\]\((wsfile|element|image|file|text-clip|color):([^)]*?)$/;
 
   return markdown.replace(
-    incompleteWsfileLinkRegex,
-    (_match, linkText, partialPath) => {
-      // Convert to complete markdown with special incomplete prefix
-      const displayText = linkText || '...';
-      return `[${displayText}](wsfile:incomplete:${partialPath})`;
+    incompleteAttachmentLinkRegex,
+    (_match, linkText, prefix, partialContent) => {
+      // For wsfile links, add incomplete marker for special handling
+      if (prefix === 'wsfile') {
+        const displayText = linkText || '...';
+        return `[${displayText}](wsfile:incomplete:${partialContent})`;
+      }
+      // For other attachment links, just close them properly
+      // The content might be incomplete but the parser will handle partial IDs gracefully
+      return `[${linkText}](${prefix}:${partialContent})`;
     },
   );
 };
@@ -243,14 +302,10 @@ const InlineCodeComponent = ({
   ...props
 }: DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> &
   ExtraProps) => {
-  const isColor = !!getValidCssColor(children);
+  const validColor = getValidCssColor(children);
 
-  if (isColor)
-    return (
-      <InlineColorComponent color={getValidCssColor(children)}>
-        {children}
-      </InlineColorComponent>
-    );
+  // If it's a valid CSS color, render the shared ColorBadge component
+  if (validColor) return <ColorBadge color={validColor}>{children}</ColorBadge>;
 
   return (
     <code
@@ -263,68 +318,6 @@ const InlineCodeComponent = ({
     >
       {children}
     </code>
-  );
-};
-
-const InlineColorComponent = ({
-  children,
-  color,
-}: DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> &
-  ExtraProps & { color: string }) => {
-  const [hasCopied, setHasCopied] = useState(false);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-  const ignoreCloseRef = useRef(false);
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(color);
-    setHasCopied(true);
-    setTooltipOpen(true);
-    // Briefly prevent the click-triggered close, but allow hover-out to work
-    ignoreCloseRef.current = true;
-    setTimeout(() => {
-      ignoreCloseRef.current = false;
-    }, 50); // Short delay to ignore only the click-triggered close
-    // Reset "Copied" text after 2 seconds
-    setTimeout(() => {
-      setHasCopied(false);
-    }, 2000);
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    // Ignore the immediate close triggered by clicking, but allow hover-out
-    if (!open && ignoreCloseRef.current) return;
-    setTooltipOpen(open);
-  };
-
-  return (
-    <Tooltip open={tooltipOpen} onOpenChange={handleOpenChange}>
-      <TooltipTrigger>
-        <span
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            copyToClipboard();
-          }}
-          className={cn(
-            'group/inline-code rounded bg-surface-1 px-1.5 py-0.5 font-mono text-foreground text-xs',
-            'inline-flex cursor-pointer items-center hover:bg-hover-derived hover:text-hover-derived active:bg-active-derived active:text-active-derived',
-          )}
-        >
-          <span
-            className={`mr-1 inline-block size-3 shrink-0 rounded-sm border border-derived align-middle group-hover/inline-code:border-derived-strong! group-hover/inline-code:bg-hover-derived! group-active/inline-code:border-derived-strong! group-active/inline-code:bg-active-derived!`}
-            style={
-              {
-                backgroundColor: color,
-                '--cm-bg-color': color,
-              } as React.CSSProperties
-            }
-            aria-hidden="true"
-          />
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{hasCopied ? 'Copied' : `Copy`}</TooltipContent>
-    </Tooltip>
   );
 };
 
@@ -392,59 +385,6 @@ const CodeBlockCopyButton = ({ code }: { code: string }) => {
   );
 };
 
-const FileLink = ({
-  filePath,
-  lineNumber,
-  href,
-  ideKey,
-  ideName,
-}: {
-  filePath: string;
-  lineNumber?: string;
-  href: string;
-  ideName: string;
-  ideKey: keyof typeof IDE_SELECTION_ITEMS;
-}) => {
-  const posthog = usePostHog();
-  return (
-    <Tooltip>
-      <TooltipTrigger>
-        <a
-          href={href}
-          onClick={() =>
-            posthog?.capture('agent_file_opened_in_ide_via_chat_link', {
-              file_path: filePath,
-              ide: ideKey,
-            })
-          }
-          className={cn(
-            'inline-flex items-center gap-0.5',
-            'font-medium text-primary-foreground text-sm',
-            'hover:text-hover-derived',
-            'break-all',
-          )}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {filePath}
-          {lineNumber && (
-            <span className="shrink-0 opacity-70">:{lineNumber}</span>
-          )}
-          <ExternalLinkIcon className="size-3 shrink-0" />
-        </a>
-      </TooltipTrigger>
-      <TooltipContent>
-        <div className="flex flex-col gap-1">
-          <div className="font-mono text-xs">{decodeURI(href)}</div>
-          <div className="text-muted-foreground text-xs">
-            Click to open in {ideName}
-          </div>
-        </div>
-      </TooltipContent>
-    </Tooltip>
-  );
-};
-
 const AnchorComponent = ({
   href,
   className,
@@ -455,76 +395,27 @@ const AnchorComponent = ({
   HTMLAnchorElement
 > &
   ExtraProps) => {
-  const isFileLink = useMemo(() => {
-    return href?.startsWith('wsfile:');
-  }, [href]);
-
-  // Detect incomplete file links during streaming
-  // Our preprocessing converts incomplete wsfile: URLs to "wsfile:incomplete:..." format
-  const isIncompleteFileLink = useMemo(() => {
-    return href?.startsWith('wsfile:incomplete:') ?? false;
-  }, [href]);
-
   const conversationId = useKartonState(
     (s) => s.agentChat?.activeChat?.id ?? 'unknown',
   );
 
-  const openInIdeChoice = useKartonState((s) => s.globalConfig.openFilesInIde);
-  const ideName = IDE_SELECTION_ITEMS[openInIdeChoice];
+  // Parse href for attachment links (element:, image:, file:, text-clip:, wsfile:, color:)
+  const attachmentLink = useMemo(() => parseAttachmentLink(href), [href]);
 
-  const filePathTools = useFileIDEHref();
-
-  const { filePath, lineNumber } = useMemo(() => {
-    if (!href?.startsWith('wsfile:'))
-      return { filePath: null, lineNumber: null };
-
-    // Handle both complete and incomplete wsfile links
-    const prefix = href.startsWith('wsfile:incomplete:')
-      ? 'wsfile:incomplete:'
-      : 'wsfile:';
-    const path = decodeURI(href.slice(prefix.length));
-    const [file, line] = path.split(':');
-    const truncated = getTruncatedFileUrl(file!, 3, 128);
-
-    return { filePath: truncated, lineNumber: line };
-  }, [href]);
-
+  // Process regular links (replace conversation ID placeholder)
+  // Must be called before conditional return to satisfy React hooks rules
   const processedHref = useMemo(() => {
     if (!href) return '';
-
-    let finalHref = href;
-
-    if (href.startsWith('wsfile:')) {
-      // Remove the wsfile: (or wsfile:incomplete:) prefix before processing
-      const prefix = href.startsWith('wsfile:incomplete:')
-        ? 'wsfile:incomplete:'
-        : 'wsfile:';
-      finalHref = filePathTools.getFileIDEHref(href.slice(prefix.length));
-    }
-
-    finalHref = finalHref.replaceAll(
+    return href.replaceAll(
       encodeURIComponent('{{CONVERSATION_ID}}'),
       conversationId,
     );
+  }, [conversationId, href]);
 
-    return finalHref;
-  }, [conversationId, filePathTools, href]);
+  // If it's an attachment link, render the appropriate component
+  if (attachmentLink) return <AttachmentLinkRouter linkData={attachmentLink} />;
 
-  // Render file link bubble for wsfile: links or incomplete file links
-  if (isFileLink || isIncompleteFileLink) {
-    // Show complete link bubble for all other cases (valid markdown with extracted path)
-    return (
-      <FileLink
-        filePath={filePath ?? '...'}
-        lineNumber={lineNumber ?? undefined}
-        href={processedHref}
-        ideName={ideName}
-        ideKey={openInIdeChoice}
-      />
-    );
-  }
-
-  // Regular link rendering
+  // Regular external link rendering
   return (
     <Tooltip>
       <TooltipTrigger>

@@ -12,9 +12,51 @@ import { textClipToContextSnippet } from '../utils/metadata-converter/text-clips
 export async function getUserMessage(
   userMessage: ChatMessage,
 ): Promise<UserModelMessage> {
+  const p = [...userMessage.parts]; // TODO: Do the wrapping of 'user-msg' here!!
+  const parts = p.map((part) => {
+    if (part.type === 'text')
+      return {
+        ...part,
+        text: xml({ 'user-msg': { _cdata: part.text } }),
+      };
+    return part;
+  });
+
+  if ((userMessage.metadata?.fileAttachments?.length || 0) > 0) {
+    userMessage.metadata?.fileAttachments?.forEach((f) => {
+      // Determine hint based on whether file is supported
+      const hint = f.validationError
+        ? `This file could not be included: ${f.validationError}`
+        : 'This attachment contains metadata about the file attachment. See next attachment for its content.';
+
+      parts.push({
+        type: 'text',
+        text: xml({
+          [specialTokens.userMsgAttachmentXmlTag]: {
+            _attr: {
+              type: f.validationError ? 'unsupported-file' : 'file',
+              filename: f.fileName,
+              id: f.id,
+              hint,
+            },
+          },
+        }),
+      });
+
+      // Only create FileUIPart if file is supported (no validation error)
+      if (!f.validationError) {
+        parts.push({
+          type: 'file',
+          url: f.url,
+          mediaType: f.mediaType,
+          filename: f.fileName,
+        });
+      }
+    });
+  }
   // convert file parts and text to model messages (without metadata) to ensure correct mapping of ui parts to model content
   const convertedMessage = (
-    await convertToModelMessages([userMessage])
+    await convertToModelMessages([{ ...userMessage, parts }])
   )[0]! as UserModelMessage;
 
   // If the content is a string, we convert it to a single text part because we always want a parts array as content.
@@ -26,13 +68,6 @@ export async function getUserMessage(
       },
     ];
   }
-
-  // We convert the text content of every user message to a XML-entry with CDATA in order to prevent stupid accidents due to weird user message content.
-  convertedMessage.content.forEach((part) => {
-    if (part.type === 'text') {
-      part.text = xml({ 'user-msg': { _cdata: part.text } });
-    }
-  });
 
   const systemAttachmentTextPart: string[] = [];
 

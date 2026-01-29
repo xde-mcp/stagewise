@@ -2,7 +2,6 @@ import {
   fileUIPartToFileAttachment,
   fileAttachmentToFileUIPart,
   selectedElementToAttachmentAttributes,
-  transformTiptapBlobUrls,
 } from '@/utils/attachment-conversions';
 import { cn, collectUserMessageMetadata } from '@/utils';
 import type {
@@ -156,7 +155,7 @@ export const MessageUser = memo(
       | undefined;
 
     // Start editing - initialize the editor with message content
-    const handleStartEditing = useCallback(async () => {
+    const handleStartEditing = useCallback(() => {
       if (!canEdit || !editMessageId) return;
 
       // Dispatch event to cancel any other active message edits
@@ -184,9 +183,9 @@ export const MessageUser = memo(
       clearSelectedElements();
 
       // Convert existing file attachments to FileAttachment format
-      const fileAttachments = await Promise.all(
-        fileUIParts.map(fileUIPartToFileAttachment),
-      );
+      const fileAttachments = fileUIParts
+        .map(fileUIPartToFileAttachment)
+        .filter((a): a is NonNullable<typeof a> => a !== null);
       setEditedFileAttachments(fileAttachments);
 
       setIsEditing(true);
@@ -252,16 +251,12 @@ export const MessageUser = memo(
           ...selectedElementsFromEditor,
         ];
 
-        // Convert FileAttachments to FileUIParts (convert File to data URL)
+        // Convert FileAttachments to FileUIParts
         const fileParts: FileUIPart[] = await Promise.all(
           editedFileAttachments.map(fileAttachmentToFileUIPart),
         );
 
-        // Transform blob URLs to data URLs in TipTap content BEFORE clearing attachments
-        // (clearFileAttachments() will revoke blob URLs, making them invalid)
-        const tiptapJsonContent = await transformTiptapBlobUrls(
-          pendingTiptapContentRef.current,
-        );
+        const tiptapJsonContent = pendingTiptapContentRef.current ?? undefined;
 
         // Collect metadata for selected elements and text clips
         const metadata = collectUserMessageMetadata(
@@ -537,10 +532,10 @@ export const MessageUser = memo(
                     'w-full rounded-md bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] ring-1 ring-derived-strong before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',
                   isEditing && isEditDragOver && 'bg-hover-derived!',
                   !isEditing &&
-                    'group group/chat-message-user wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
+                    'group wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
                   !isEditing &&
                     canEdit &&
-                    'cursor-pointer hover:bg-hover-derived active:bg-active-derived',
+                    'group/chat-message-user cursor-pointer hover:bg-hover-derived active:bg-active-derived',
                 )}
                 onClick={!isEditing && canEdit ? handleStartEditing : undefined}
                 role={!isEditing && canEdit ? 'button' : undefined}

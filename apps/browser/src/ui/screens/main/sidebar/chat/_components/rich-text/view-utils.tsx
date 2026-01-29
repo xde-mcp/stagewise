@@ -1,6 +1,6 @@
 import { NodeViewWrapper } from '@tiptap/react';
 import { PreviewCard as PreviewCardBase } from '@base-ui/react/preview-card';
-import { XIcon } from 'lucide-react';
+import { XIcon, AlertTriangleIcon } from 'lucide-react';
 import { useCallback, forwardRef } from 'react';
 import { cn } from '@/utils';
 import { PreviewCard } from '@stagewise/stage-ui/components/preview-card';
@@ -56,7 +56,8 @@ export const BadgeContainer = forwardRef<HTMLSpanElement, BadgeContainerProps>(
       <span
         ref={ref}
         className={cn(
-          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded bg-inherit px-1.5 align-middle text-secondary-foreground ring-1 ring-derived group-hover/chat-message-user:bg-hover-derived group-hover/chat-message-user:ring-derived dark:bg-surface-tinted dark:group-hover/chat-message-user:ring-derived-strong',
+          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded bg-inherit px-1.5 align-middle text-secondary-foreground ring-1',
+          'ring-1 ring-derived group-hover/chat-message-user:bg-hover-derived group-hover/chat-message-user:ring-derived-strong dark:bg-surface-tinted dark:group-hover/chat-message-user:ring-derived-strong',
           selected && 'ring-primary-foreground',
           className,
         )}
@@ -81,6 +82,8 @@ export interface AttachmentBadgeProps
   isEditable: boolean;
   /** Callback when delete button is clicked */
   onDelete: () => void;
+  /** Whether the attachment has a validation error (unsupported type/size) */
+  hasError?: boolean;
 }
 
 /**
@@ -92,7 +95,16 @@ export const AttachmentBadge = forwardRef<
   HTMLSpanElement,
   AttachmentBadgeProps
 >(function AttachmentBadge(
-  { icon, label, selected, isEditable, onDelete, className, ...props },
+  {
+    icon,
+    label,
+    selected,
+    isEditable,
+    onDelete,
+    hasError,
+    className,
+    ...props
+  },
   ref,
 ) {
   const handleDelete = useCallback(
@@ -104,11 +116,18 @@ export const AttachmentBadge = forwardRef<
     [onDelete],
   );
 
+  // Show warning icon when there's a validation error
+  const displayIcon = hasError ? (
+    <AlertTriangleIcon className="size-3 shrink-0 text-warning" />
+  ) : (
+    icon
+  );
+
   return (
     <BadgeContainer
       ref={ref}
       selected={selected}
-      className={className}
+      className={cn(hasError && 'opacity-50', className)}
       {...props}
     >
       {/* Icon container - shows type icon normally, X on hover when editable */}
@@ -125,13 +144,13 @@ export const AttachmentBadge = forwardRef<
         >
           {/* Normal icon - hidden on hover */}
           <span className="transition-opacity group-hover/badge:opacity-0">
-            {icon}
+            {displayIcon}
           </span>
           {/* X icon - shown on hover */}
           <XIcon className="absolute inset-0 size-3 text-error opacity-0 transition-opacity group-hover/badge:opacity-100" />
         </span>
       ) : (
-        icon
+        displayIcon
       )}
 
       {/* Label */}
@@ -151,6 +170,8 @@ export interface AttachmentBadgeWrapperProps {
   tooltipContent?: React.ReactNode;
   /** Optional viw-only mode, will return a span instead of a NodeViewWrapper */
   viewOnly?: boolean;
+  /** Error message to display (overrides previewContent/tooltipContent when set) */
+  errorMessage?: string;
 }
 
 function Wrapper({
@@ -161,7 +182,7 @@ function Wrapper({
   children: React.ReactNode;
 }) {
   if (viewOnly) {
-    return <span className="inline">{children}</span>;
+    return <span className="inline px-0.5">{children}</span>;
   }
   return (
     <NodeViewWrapper as="span" className="inline">
@@ -179,7 +200,22 @@ export function AttachmentBadgeWrapper({
   previewContent,
   tooltipContent,
   viewOnly,
+  errorMessage,
 }: AttachmentBadgeWrapperProps) {
+  // Error message takes priority - show as tooltip
+  if (errorMessage) {
+    return (
+      <Wrapper viewOnly={viewOnly}>
+        <Tooltip>
+          <TooltipTrigger render={children} />
+          <TooltipContent>
+            <span className="text-warning">{errorMessage}</span>
+          </TooltipContent>
+        </Tooltip>
+      </Wrapper>
+    );
+  }
+
   return (
     <Wrapper viewOnly={viewOnly}>
       {previewContent ? (
