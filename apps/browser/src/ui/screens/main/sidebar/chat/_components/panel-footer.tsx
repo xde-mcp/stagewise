@@ -296,8 +296,8 @@ export function ChatPanelFooter() {
 
   const onInputBlur = useCallback(
     (ev: FocusEvent) => {
-      // We should only allow chat blur if the user clicked outside the chat box or the context selector element tree. Otherwise, we should keep the input active by refocusing it.
       const target = ev.relatedTarget as HTMLElement;
+      // We should only allow chat blur if the user clicked outside the chat box or the context selector element tree. Otherwise, we should keep the input active by refocusing it.
       if (target?.closest('#chat-file-attachment-menu-content')) {
         return;
       }
@@ -312,7 +312,9 @@ export function ChatPanelFooter() {
           wasActiveBeforeAppBlurRef.current = true;
 
         setChatInputActive(false);
-      } else if (chatInputActive) chatInputRef.current?.focus();
+      } else if (chatInputActive) {
+        chatInputRef.current?.focus();
+      }
     },
     [chatInputActive],
   );
@@ -329,6 +331,12 @@ export function ChatPanelFooter() {
     {},
     window,
   );
+
+  // Clear focus restoration flag when omnibox takes focus (prevents chat from reclaiming focus)
+  useEventListener('omnibox-focus-requested', () => {
+    wasActiveBeforeAppBlurRef.current = false;
+    setChatInputActive(false);
+  });
 
   useHotKeyListener(
     useCallback(async () => {

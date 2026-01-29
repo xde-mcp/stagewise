@@ -48,16 +48,38 @@ export const Omnibox = ({
   const [inputValue, setInputValue] = useState(displayedTabUrl);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Expose focus method via ref
+  // Track whether the current open/close interaction was triggered by keyboard
+  // This is used to disable animations for keyboard interactions (instant feel)
+  // while keeping animations for mouse interactions
+  const [isKeyboardInteraction, setIsKeyboardInteraction] = useState(false);
+
+  // Expose focus method via ref (called by hotkey CMD+L)
   useImperativeHandle(
     ref,
     () => ({
       focus: () => {
+        // Notify other components that omnibox is taking focus
+        // This prevents chat input from reclaiming focus when stagewise-ui regains keyboard focus
+        window.dispatchEvent(new Event('omnibox-focus-requested'));
+
+        // WORKAROUND: TipTap/ProseMirror may capture keyboard events even after blur.
+        // Explicitly blur ALL contentEditable elements to release keyboard capture.
+        const contentEditables = document.querySelectorAll(
+          '[contenteditable="true"]',
+        );
+        contentEditables.forEach((el) => {
+          if (el instanceof HTMLElement) el.blur();
+        });
+
+        // Mark this as a keyboard interaction for instant open (no animation)
+        setIsKeyboardInteraction(true);
         setIsOmniboxOpen(true);
-        setTimeout(() => {
+        // Focus immediately without delay for instant keyboard response
+        // Use requestAnimationFrame to ensure state has been applied
+        requestAnimationFrame(() => {
           inputRef.current?.focus();
           inputRef.current?.select();
-        }, 10);
+        });
       },
     }),
     [],
@@ -98,6 +120,8 @@ export const Omnibox = ({
       }
 
       if (details.reason === 'escape-key') {
+        // Mark this as a keyboard interaction for instant close (no animation)
+        setIsKeyboardInteraction(true);
         inputRef.current?.blur();
       }
 
@@ -123,12 +147,22 @@ export const Omnibox = ({
 
   const onOpenChange = useCallback(
     (open: boolean) => {
+      // If opening and not already marked as keyboard interaction,
+      // this is a mouse interaction (clicking on input)
+      if (open && !isKeyboardInteraction) {
+        setIsKeyboardInteraction(false);
+      }
       setIsOmniboxOpen(open);
       if (!open) {
         inputRef.current?.blur();
+        // Reset keyboard interaction flag after close completes
+        // Use a small delay to allow the closing animation to use the current flag
+        setTimeout(() => {
+          setIsKeyboardInteraction(false);
+        }, 0);
       }
     },
-    [inputValue],
+    [isKeyboardInteraction],
   );
 
   const onInputFocus = useCallback(() => {
@@ -197,7 +231,11 @@ export const Omnibox = ({
             onFocus={onInputFocus}
             onKeyDown={onInputKeyDown}
             className={cn(
-              'h-8 w-full flex-1 rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent transition-all duration-150 ease-out hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong',
+              'h-8 w-full flex-1 rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong',
+              // Only apply transitions for mouse interactions, instant for keyboard
+              isKeyboardInteraction
+                ? 'transition-none'
+                : 'transition-all duration-150 ease-out',
               shouldShowBreadcrumbs && !isOmniboxOpen && 'text-transparent',
             )}
           />
@@ -213,7 +251,13 @@ export const Omnibox = ({
             sideOffset={6}
           >
             <Autocomplete.Popup
-              className="data-ending-style:-translate-y-2 data-starting-style:-translate-y-2 w-[calc(var(--anchor-width)-0.5rem)] max-w-[calc(var(--anchor-width)-0.5rem)] rounded-xl bg-surface-1 p-1 text-foreground shadow-lg ring-1 ring-derived-subtle transition-all duration-150 ease-out data-ending-style:scale-y-95 data-starting-style:scale-y-95 data-ending-style:rounded-t-none data-startinstyle:rounded-t-none data-ending-style:opacity-0 data-starting-style:opacity-0"
+              className={cn(
+                'w-[calc(var(--anchor-width)-0.5rem)] max-w-[calc(var(--anchor-width)-0.5rem)] rounded-xl bg-surface-1 p-1 text-foreground shadow-lg ring-1 ring-derived-subtle',
+                // Only apply transitions and animation styles for mouse interactions
+                isKeyboardInteraction
+                  ? 'transition-none'
+                  : 'data-ending-style:-translate-y-2 data-starting-style:-translate-y-2 transition-all duration-150 ease-out data-ending-style:scale-y-95 data-starting-style:scale-y-95 data-ending-style:rounded-t-none data-starting-style:rounded-t-none data-ending-style:opacity-0 data-starting-style:opacity-0',
+              )}
               finalFocus={false}
             >
               {suggestionGroups.filter((g) => g.items.length > 0).length ===
