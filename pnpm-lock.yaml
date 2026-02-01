@@ -196,6 +196,9 @@ importers:
 
   apps/browser:
     dependencies:
+      '@bokuweb/zstd-wasm':
+        specifier: ^0.0.27
+        version: 0.0.27
       '@libsql/client':
         specifier: ^0.15.15
         version: 0.15.15(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -211,6 +214,9 @@ importers:
       electron-unhandled:
         specifier: ^5.0.0
         version: 5.0.0
+      fossil-delta:
+        specifier: ^2.0.0
+        version: 2.0.0
       immer:
         specifier: ^10.2.0
         version: 10.2.0
@@ -1151,6 +1157,9 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@bokuweb/zstd-wasm@0.0.27':
+    resolution: {integrity: sha512-GDm2uOTK3ESjnYmSeLQifJnBsRCWajKLvN32D2ZcQaaCIJI/Hse9s74f7APXjHit95S10UImsRGkTsbwHmrtmg==}
 
   '@braintree/sanitize-url@7.1.1':
     resolution: {integrity: sha512-i1L7noDNxtFyL5DmZafWy1wRVhGehQmzZaz1HiN5e7iylJMSZR7ekOV7NsIqa5qBldlLrsKv4HbgFUVlQrz8Mw==}
@@ -6147,6 +6156,9 @@ packages:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
     engines: {node: '>= 0.6'}
 
+  fossil-delta@2.0.0:
+    resolution: {integrity: sha512-rcvnd0xjV7KNkEbXhTCsjHhONvdami+WWhTYGf4ORkPk9ixkQDmVeII96F6wBD/6qa9zBjH15bOzSARKsQ/rKg==}
+
   framer-motion@12.24.5:
     resolution: {integrity: sha512-AVvdvRFg9btOo1HI/cj1p4+L1QOHg4jzn9x1hrEdo/eKTxEC0EBKCkxE4sTvdL9S4psz/ipin4Li/Xm5g4U9AQ==}
     peerDependencies:
@@ -10745,6 +10757,8 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.0.6':
     optional: true
+
+  '@bokuweb/zstd-wasm@0.0.27': {}
 
   '@braintree/sanitize-url@7.1.1': {}
 
@@ -16354,6 +16368,8 @@ snapshots:
       fetch-blob: 3.2.0
 
   forwarded@0.2.0: {}
+
+  fossil-delta@2.0.0: {}
 
   framer-motion@12.24.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
