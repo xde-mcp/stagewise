@@ -17,8 +17,8 @@ import {
   getOperationHistory,
   insertOperation,
   storeFileContent,
-  getPendingOperationsForChatId,
-  getAllOperationsForChatId,
+  getPendingOperationsForAgentInstanceId,
+  getAllOperationsForAgentInstanceId,
   storeLargeContent,
   streamContent,
   copyContentToPath,
@@ -153,7 +153,7 @@ describe('diff-history db utilities', () => {
     const baseMeta = {
       operation: 'edit' as const,
       reason: 'tool-test-123' as const,
-      contributor: 'chat-test-456' as const,
+      contributor: 'agent-test-456' as const,
     };
 
     it('stores multiple versions and retrieves them correctly', async () => {
@@ -221,7 +221,7 @@ describe('diff-history db utilities', () => {
       const oid = await storeFileContent(db, filepath, content, {
         operation: 'edit',
         reason: 'tool-test',
-        contributor: 'chat-test',
+        contributor: 'agent-test',
       });
 
       expect(oid).toBe(expectedOid);
@@ -229,10 +229,10 @@ describe('diff-history db utilities', () => {
   });
 
   // ===========================================================================
-  // getPendingOperationsForChatId
+  // getPendingOperationsForAgentInstanceId
   // ===========================================================================
 
-  describe('getPendingOperationsForChatId', () => {
+  describe('getPendingOperationsForAgentInstanceId', () => {
     /**
      * Helper to create a snapshot and return its oid.
      * Uses insertKeyframe directly to avoid storeFileContent's side effects.
@@ -259,10 +259,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       expect(pending).toHaveLength(2);
       expect(pending[0].idx).toBe(1);
@@ -287,7 +287,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
@@ -295,7 +295,7 @@ describe('diff-history db utilities', () => {
         contributor: 'user',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       expect(pending).toHaveLength(0);
     });
@@ -317,7 +317,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidC, {
         operation: 'baseline',
@@ -325,7 +325,7 @@ describe('diff-history db utilities', () => {
         contributor: 'user',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       expect(pending).toHaveLength(3);
       expect(pending.map((op) => op.idx)).toEqual([1, 2, 3]);
@@ -348,7 +348,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidC, {
         operation: 'edit',
@@ -356,7 +356,7 @@ describe('diff-history db utilities', () => {
         contributor: 'user',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       expect(pending).toHaveLength(3);
       // Latest baseline is A, latest edit is C, A != C -> pending
@@ -384,7 +384,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
@@ -400,10 +400,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidC, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       // Should only return session 2 (idx 4, 5)
       expect(pending).toHaveLength(2);
@@ -429,7 +429,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidA2, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
       // File /b.ts - fully accepted (idx 3, 4, 5)
@@ -441,7 +441,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/b.ts', oidB2, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/b.ts', oidB2, {
         operation: 'baseline',
@@ -449,7 +449,7 @@ describe('diff-history db utilities', () => {
         contributor: 'user',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       // Should only return /a.ts operations
       expect(pending).toHaveLength(2);
@@ -457,7 +457,7 @@ describe('diff-history db utilities', () => {
     });
 
     it('returns empty array for chat with no operations', async () => {
-      // Chat-2 has no operations
+      // Agent-2 has no operations
       const oidA = createSnapshot('content');
 
       insertOperation(db, '/a.ts', oidA, {
@@ -468,20 +468,20 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidA, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1', // chat-1, not chat-2
+        contributor: 'agent-1', // agent-1, not agent-2
       });
 
-      const pending = await getPendingOperationsForChatId(db, '2');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '2');
 
       expect(pending).toHaveLength(0);
     });
 
     it('returns all session ops when multiple chats edit same file', async () => {
-      // Both chat-1 and chat-2 edit /a.ts
+      // Both agent-1 and agent-2 edit /a.ts
       // Querying for either chat should return all ops from the session
       const oidA = createSnapshot('original');
-      const oidB = createSnapshot('edit by chat-1');
-      const oidC = createSnapshot('edit by chat-2');
+      const oidB = createSnapshot('edit by agent-1');
+      const oidC = createSnapshot('edit by agent-2');
 
       insertOperation(db, '/a.ts', oidA, {
         operation: 'baseline',
@@ -491,16 +491,22 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidC, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-2',
+        contributor: 'agent-2',
       });
 
-      const pendingChat1 = await getPendingOperationsForChatId(db, '1');
-      const pendingChat2 = await getPendingOperationsForChatId(db, '2');
+      const pendingChat1 = await getPendingOperationsForAgentInstanceId(
+        db,
+        '1',
+      );
+      const pendingChat2 = await getPendingOperationsForAgentInstanceId(
+        db,
+        '2',
+      );
 
       // Both should return all 3 operations
       expect(pendingChat1).toHaveLength(3);
@@ -510,7 +516,7 @@ describe('diff-history db utilities', () => {
     });
 
     it('handles multiple pending files for same chat', async () => {
-      // Chat-1 edits both /a.ts and /b.ts, both pending
+      // Agent-1 edits both /a.ts and /b.ts, both pending
       // With global idx: /a.ts gets idx 1,2 and /b.ts gets idx 3,4
       const oidA1 = createSnapshot('a original');
       const oidA2 = createSnapshot('a edited');
@@ -526,7 +532,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidA2, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
       // File /b.ts
@@ -538,10 +544,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/b.ts', oidB2, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       // Should return ops for both files
       expect(pending).toHaveLength(4);
@@ -565,7 +571,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/b.ts', oidA, {
         operation: 'baseline',
@@ -575,10 +581,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/b.ts', oidB, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const pending = await getPendingOperationsForChatId(db, '1');
+      const pending = await getPendingOperationsForAgentInstanceId(db, '1');
 
       // Should be ordered: /a.ts (1, 2), then /b.ts (3, 4)
       expect(pending).toHaveLength(4);
@@ -594,10 +600,10 @@ describe('diff-history db utilities', () => {
   });
 
   // ===========================================================================
-  // getAllOperationsForChatId
+  // getAllOperationsForAgentInstanceId
   // ===========================================================================
 
-  describe('getAllOperationsForChatId', () => {
+  describe('getAllOperationsForAgentInstanceId', () => {
     /**
      * Helper to create a snapshot and return its oid.
      * Uses insertKeyframe directly to avoid storeFileContent's side effects.
@@ -610,7 +616,7 @@ describe('diff-history db utilities', () => {
     }
 
     it('returns empty array for chat with no operations', async () => {
-      // Chat-2 has no operations
+      // Agent-2 has no operations
       const oidA = createSnapshot('content');
 
       insertOperation(db, '/a.ts', oidA, {
@@ -621,16 +627,16 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidA, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1', // chat-1, not chat-2
+        contributor: 'agent-1', // agent-1, not agent-2
       });
 
-      const allOps = await getAllOperationsForChatId(db, '2');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '2');
 
       expect(allOps).toHaveLength(0);
     });
 
     it('returns all session ops for simple pending session', async () => {
-      // Single session, chat-1 has one edit (same as getPending for pending)
+      // Single session, agent-1 has one edit (same as getPending for pending)
       const oidA = createSnapshot('original');
       const oidB = createSnapshot('edited');
 
@@ -642,10 +648,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const allOps = await getAllOperationsForChatId(db, '1');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '1');
 
       expect(allOps).toHaveLength(2);
       expect(allOps[0].idx).toBe(1);
@@ -667,7 +673,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
@@ -675,7 +681,7 @@ describe('diff-history db utilities', () => {
         contributor: 'user',
       });
 
-      const allOps = await getAllOperationsForChatId(db, '1');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '1');
 
       // Should return all 3 ops from the completed session
       expect(allOps).toHaveLength(3);
@@ -699,7 +705,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
@@ -715,10 +721,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidC, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const allOps = await getAllOperationsForChatId(db, '1');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '1');
 
       // Should return all 5 ops from both sessions
       expect(allOps).toHaveLength(5);
@@ -726,15 +732,15 @@ describe('diff-history db utilities', () => {
     });
 
     it('skips sessions where chat did not participate', async () => {
-      // Session 1: chat-1 participated
-      // Session 2: chat-2 participated (not chat-1)
-      // Session 3: chat-1 participated
+      // Session 1: agent-1 participated
+      // Session 2: agent-2 participated (not agent-1)
+      // Session 3: agent-1 participated
       const oidA = createSnapshot('original');
       const oidB = createSnapshot('session 1 edit');
       const oidC = createSnapshot('session 2 edit');
       const oidD = createSnapshot('session 3 edit');
 
-      // Session 1 (chat-1)
+      // Session 1 (agent-1)
       insertOperation(db, '/a.ts', oidA, {
         operation: 'baseline',
         reason: 'init',
@@ -743,14 +749,14 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
         reason: 'accept',
         contributor: 'user',
       });
-      // Session 2 (chat-2 only)
+      // Session 2 (agent-2 only)
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
         reason: 'init',
@@ -759,14 +765,14 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidC, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-2',
+        contributor: 'agent-2',
       });
       insertOperation(db, '/a.ts', oidC, {
         operation: 'baseline',
         reason: 'accept',
         contributor: 'user',
       });
-      // Session 3 (chat-1)
+      // Session 3 (agent-1)
       insertOperation(db, '/a.ts', oidC, {
         operation: 'baseline',
         reason: 'init',
@@ -775,10 +781,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidD, {
         operation: 'edit',
         reason: 'tool-3',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const allOps = await getAllOperationsForChatId(db, '1');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '1');
 
       // Should return sessions 1 and 3 (idx 1-3 and 7-8), skip session 2 (idx 4-6)
       expect(allOps).toHaveLength(5);
@@ -786,7 +792,7 @@ describe('diff-history db utilities', () => {
     });
 
     it('handles multiple files where chat participated', async () => {
-      // Chat-1 edits /a.ts and /b.ts
+      // Agent-1 edits /a.ts and /b.ts
       const oidA1 = createSnapshot('a original');
       const oidA2 = createSnapshot('a edited');
       const oidB1 = createSnapshot('b original');
@@ -801,7 +807,7 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidA2, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
       // File /b.ts
@@ -813,10 +819,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/b.ts', oidB2, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const allOps = await getAllOperationsForChatId(db, '1');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '1');
 
       // Should return ops for both files
       expect(allOps).toHaveLength(4);
@@ -826,10 +832,10 @@ describe('diff-history db utilities', () => {
     });
 
     it('returns session ops when multiple chats edit same file', async () => {
-      // Both chat-1 and chat-2 edit in the same session
+      // Both agent-1 and agent-2 edit in the same session
       const oidA = createSnapshot('original');
-      const oidB = createSnapshot('edit by chat-1');
-      const oidC = createSnapshot('edit by chat-2');
+      const oidB = createSnapshot('edit by agent-1');
+      const oidC = createSnapshot('edit by agent-2');
 
       insertOperation(db, '/a.ts', oidA, {
         operation: 'baseline',
@@ -839,16 +845,16 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidC, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-2',
+        contributor: 'agent-2',
       });
 
-      const opsChat1 = await getAllOperationsForChatId(db, '1');
-      const opsChat2 = await getAllOperationsForChatId(db, '2');
+      const opsChat1 = await getAllOperationsForAgentInstanceId(db, '1');
+      const opsChat2 = await getAllOperationsForAgentInstanceId(db, '2');
 
       // Both chats participated in the session, both should get all 3 ops
       expect(opsChat1).toHaveLength(3);
@@ -858,13 +864,13 @@ describe('diff-history db utilities', () => {
     });
 
     it('only includes sessions where chat made an edit (not just baseline)', async () => {
-      // Session 1: chat-1 edited
-      // Session 2: chat-1 did NOT edit (only baseline ops exist, no edit by chat-1)
+      // Session 1: agent-1 edited
+      // Session 2: agent-1 did NOT edit (only baseline ops exist, no edit by agent-1)
       // This tests that baseline ops by 'user' don't count as chat participation
       const oidA = createSnapshot('original');
       const oidB = createSnapshot('session 1 edit');
 
-      // Session 1 (chat-1 edited)
+      // Session 1 (agent-1 edited)
       insertOperation(db, '/a.ts', oidA, {
         operation: 'baseline',
         reason: 'init',
@@ -873,14 +879,14 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidB, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
         reason: 'accept',
         contributor: 'user',
       });
-      // Session 2 (only user baseline, chat-2 edits but not chat-1)
+      // Session 2 (only user baseline, agent-2 edits but not agent-1)
       insertOperation(db, '/a.ts', oidB, {
         operation: 'baseline',
         reason: 'init',
@@ -889,10 +895,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidA, {
         operation: 'edit',
         reason: 'tool-2',
-        contributor: 'chat-2',
+        contributor: 'agent-2',
       });
 
-      const allOps = await getAllOperationsForChatId(db, '1');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '1');
 
       // Should only return session 1 (idx 1-3), not session 2
       expect(allOps).toHaveLength(3);
@@ -908,10 +914,10 @@ describe('diff-history db utilities', () => {
       insertOperation(db, '/a.ts', oidA, {
         operation: 'edit',
         reason: 'tool-1',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
       });
 
-      const allOps = await getAllOperationsForChatId(db, '1');
+      const allOps = await getAllOperationsForAgentInstanceId(db, '1');
 
       // No init means no sessions can be identified
       expect(allOps).toHaveLength(0);
@@ -1149,11 +1155,11 @@ describe('diff-history db utilities', () => {
     it('copies operations from baseline to target operation', async () => {
       // Setup: Create a sequence of operations
       // idx 0: baseline (init)
-      // idx 1: edit (tool-1, chat-1)
-      // idx 2: edit (tool-2, chat-1)
+      // idx 1: edit (tool-1, agent-1)
+      // idx 2: edit (tool-2, agent-1)
       // idx 3: baseline (accept)
       // idx 4: baseline (init) - new session
-      // idx 5: edit (tool-3, chat-1)
+      // idx 5: edit (tool-3, agent-1)
 
       const content0 = Buffer.from('initial content');
       const content1 = Buffer.from('after tool-1');
@@ -1185,12 +1191,12 @@ describe('diff-history db utilities', () => {
       });
       insertOperation(db, filepath, oid1, {
         operation: 'edit',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
         reason: 'tool-1',
       });
       insertOperation(db, filepath, oid2, {
         operation: 'edit',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
         reason: 'tool-2',
       });
       insertOperation(db, filepath, oid3, {
@@ -1205,7 +1211,7 @@ describe('diff-history db utilities', () => {
       });
       insertOperation(db, filepath, oid5, {
         operation: 'edit',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
         reason: 'tool-3',
       });
 
@@ -1214,7 +1220,7 @@ describe('diff-history db utilities', () => {
         db,
         filepath,
         'tool-2',
-        'chat-1',
+        'agent-1',
       );
 
       expect(resultOid).toBe(oid2);
@@ -1255,7 +1261,7 @@ describe('diff-history db utilities', () => {
         db,
         filepath,
         'tool-nonexistent',
-        'chat-1',
+        'agent-1',
       );
 
       expect(result).toBeNull();
@@ -1273,7 +1279,7 @@ describe('diff-history db utilities', () => {
 
       insertOperation(db, filepath, oid, {
         operation: 'edit',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
         reason: 'tool-1',
       });
 
@@ -1281,17 +1287,17 @@ describe('diff-history db utilities', () => {
         db,
         filepath,
         'tool-1',
-        'chat-1',
+        'agent-1',
       );
 
       expect(result).toBeNull();
     });
 
     it('copies only the relevant block for the matching operation', async () => {
-      // Setup with two different chats
+      // Setup with two different agents
       const content0 = Buffer.from('baseline');
-      const content1 = Buffer.from('chat-1 edit');
-      const content2 = Buffer.from('chat-2 edit');
+      const content1 = Buffer.from('agent-1 edit');
+      const content2 = Buffer.from('agent-2 edit');
 
       const oid0 = computeOid(content0);
       const oid1 = computeOid(content1);
@@ -1308,21 +1314,21 @@ describe('diff-history db utilities', () => {
       });
       insertOperation(db, filepath, oid1, {
         operation: 'edit',
-        contributor: 'chat-1',
+        contributor: 'agent-1',
         reason: 'tool-a',
       });
       insertOperation(db, filepath, oid2, {
         operation: 'edit',
-        contributor: 'chat-2',
+        contributor: 'agent-2',
         reason: 'tool-b',
       });
 
-      // Revert to chat-1's tool-a (should copy idx 1-2, not include idx 3)
+      // Revert to agent-1's tool-a (should copy idx 1-2, not include idx 3)
       const resultOid = await copyOperationsUpToBaseline(
         db,
         filepath,
         'tool-a',
-        'chat-1',
+        'agent-1',
       );
 
       expect(resultOid).toBe(oid1);

@@ -9,7 +9,7 @@ import {
 import { metaTable } from '../../../utils/migrate-database/types';
 
 export const meta = metaTable;
-export type ChatId = string;
+export type AgentInstanceId = string;
 export type ToolCallId = string;
 
 export const snapshots = sqliteTable(
@@ -42,7 +42,7 @@ export const operations = sqliteTable(
       .$type<'init' | `tool-${ToolCallId}` | 'accept' | 'reject'>(),
     contributor: text('contributor')
       .notNull()
-      .$type<'user' | `chat-${ChatId}`>(),
+      .$type<'user' | `agent-${AgentInstanceId}`>(),
   },
   (table) => [
     index('operations_filepath_index').on(table.filepath),
@@ -84,16 +84,16 @@ type NewBaselineOperation = NewOperationBase & {
   reason: 'init' | 'accept';
 };
 
-// Edit operations: contributor can be 'user' or 'chat-{id}', reason is 'reject' or 'tool-{id}'
+// Edit operations: contributor can be 'user' or 'agent-{id}', reason is 'reject' or 'tool-{id}'
 type EditOperation = OperationBase & {
   operation: 'edit';
-  contributor: 'user' | `chat-${ChatId}`;
+  contributor: 'user' | `agent-${AgentInstanceId}`;
   reason: 'reject' | `tool-${ToolCallId}`;
 };
 
 type NewEditOperation = NewOperationBase & {
   operation: 'edit';
-  contributor: 'user' | `chat-${ChatId}`;
+  contributor: 'user' | `agent-${AgentInstanceId}`;
   reason: 'reject' | `tool-${ToolCallId}`;
 };
 
@@ -110,7 +110,7 @@ type BaselineMeta = {
 
 type EditMeta = {
   operation: 'edit';
-  contributor: 'user' | `chat-${ChatId}`;
+  contributor: 'user' | `agent-${AgentInstanceId}`;
   reason: 'reject' | `tool-${ToolCallId}`;
 };
 

@@ -3,13 +3,17 @@ import { createReadStream, createWriteStream } from 'node:fs';
 import { rename, mkdir } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import * as path from 'node:path';
-import type { OperationMeta, Operation } from '../schema';
+import type {
+  OperationMeta,
+  Operation,
+  AgentInstanceId,
+  ToolCallId,
+} from '../schema';
 import { eq, and, desc, or, gte, sql, inArray } from 'drizzle-orm';
 import type { LibSQLDatabase } from 'drizzle-orm/libsql';
 import * as zstd from '@bokuweb/zstd-wasm';
 import * as fossilDelta from 'fossil-delta';
 import * as schema from '../schema';
-import type { ToolCallId, ChatId } from '../schema';
 
 type SnapshotDb = LibSQLDatabase<typeof schema>;
 
@@ -229,11 +233,11 @@ type FileSummary = {
  * Returns all operations from the latest 'init' baseline to the latest operation
  * for each file that has pending edits. Includes isExternal flag from joined snapshot.
  */
-export async function getPendingOperationsForChatId(
+export async function getPendingOperationsForAgentInstanceId(
   db: SnapshotDb,
-  chatId: string,
+  agentInstanceId: AgentInstanceId,
 ): Promise<OperationWithExternal[]> {
-  const contributor = `chat-${chatId}`;
+  const contributor = `agent-${agentInstanceId}` as `agent-${AgentInstanceId}`;
 
   // Query 1: Get summary per filepath using raw SQL with correlated subqueries
   // This returns: filepath, latest_baseline_oid, latest_edit_oid, latest_init_idx
@@ -306,8 +310,8 @@ export async function getPendingOperationsForChatId(
 }
 
 /**
- * Get all operations for sessions where a chat participated.
- * Returns operations from all sessions (not just pending) where the chat
+ * Get all operations for sessions where an agent participated.
+ * Returns operations from all sessions (not just pending) where the agent
  * contributed at least one edit. This is used to compute FilesEditedSummary
  * with contributor blame.
  *
@@ -315,16 +319,16 @@ export async function getPendingOperationsForChatId(
  * baseline (exclusive), or to the latest operation if no next 'init' exists.
  *
  * @param db - Database connection
- * @param chatId - The chat ID to find operations for
- * @returns All operations from sessions where the chat contributed edits
+ * @param agentInstanceId - The agent instance ID to find operations for
+ * @returns All operations from sessions where the agent contributed edits
  */
-export async function getAllOperationsForChatId(
+export async function getAllOperationsForAgentInstanceId(
   db: SnapshotDb,
-  chatId: string,
+  agentInstanceId: AgentInstanceId,
 ): Promise<OperationWithExternal[]> {
-  const contributor = `chat-${chatId}` as `chat-${ChatId}`;
+  const contributor = `agent-${agentInstanceId}` as `agent-${AgentInstanceId}`;
 
-  // Step 1: Find all filepaths where chat-id contributed
+  // Step 1: Find all filepaths where agent-id contributed
   const filepathRows = await db
     .selectDistinct({ filepath: schema.operations.filepath })
     .from(schema.operations)
@@ -384,12 +388,12 @@ export async function getAllOperationsForChatId(
         (op) => op.idx >= sessionStart && op.idx <= sessionEnd,
       );
 
-      // Check if chat-id contributed any edit in this session
-      const chatContributed = sessionOps.some(
+      // Check if agent-id contributed any edit in this session
+      const agentContributed = sessionOps.some(
         (op) => op.contributor === contributor && op.operation === 'edit',
       );
 
-      if (chatContributed) {
+      if (agentContributed) {
         // Add all ops from this session to result
         for (const op of sessionOps) {
           result.push({
@@ -540,7 +544,7 @@ export async function getOperationHistory(
 export function insertOperation(
   db: SnapshotDb,
   filepath: string,
-  snapshotOid: string,
+  snapshotOid: string | null,
   meta: OperationMeta,
 ): void {
   db.insert(schema.operations)
@@ -571,14 +575,14 @@ type RevertInfo = {
  * @param db - Database connection
  * @param filepath - The file path to revert operations for
  * @param reason - The tool-call reason to find (e.g., 'tool-abc123')
- * @param contributor - The chat contributor to find (e.g., 'chat-xyz')
+ * @param contributor - The agent instance ID to find (e.g., 'agent-xyz')
  * @returns The snapshot_oid of the target operation (for writing to disk), or null if not found
  */
 export async function copyOperationsUpToBaseline(
   db: SnapshotDb,
   filepath: string,
   reason: `tool-${ToolCallId}`,
-  contributor: `chat-${ChatId}`,
+  contributor: `agent-${AgentInstanceId}`,
 ): Promise<string | null> {
   // Query 1: Get target idx and baseline idx
   const infoQuery = sql`

@@ -1,25 +1,37 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { structuredPatch } from 'diff';
 import type { Operation, Contributor } from '../schema';
-import type { FileDiff, BlamedHunk } from '../types';
+import type {
+  TextFileDiff,
+  ExternalFileDiff,
+  BlamedHunk,
+} from '@shared/karton-contracts/ui/shared-types';
 import {
   segmentFileOperationsIntoGenerations,
   buildContributorMap,
   createFileDiffsFromGenerations,
   acceptAndRejectHunks,
+  isTextFileDiff,
+  isExternalFileDiff,
 } from './diff';
 
 // =============================================================================
 // Helper Types
 // =============================================================================
 
-type OperationWithContent = Operation & { snapshot_content: string };
+type OperationWithContent = Operation & {
+  snapshot_content: string;
+  isExternal: boolean; // Required to match the actual type from diff.ts
+};
 
 // =============================================================================
 // Helper Factories
 // =============================================================================
 
 let operationIdx = 0;
+
+// Type for operation with isExternal flag (for segmentFileOperationsIntoGenerations tests)
+type OperationWithExternal = Operation & { isExternal: boolean };
 
 /**
  * Creates a mock baseline Operation
@@ -46,6 +58,24 @@ function createBaselineOp(overrides: {
 }
 
 /**
+ * Creates a mock baseline Operation with isExternal flag
+ */
+function createBaselineOpWithExternal(
+  overrides: {
+    filepath?: string;
+    snapshot_oid?: string | null;
+    reason?: 'init' | 'accept';
+    idx?: number;
+  },
+  isExternal = false,
+): OperationWithExternal {
+  return {
+    ...createBaselineOp(overrides),
+    isExternal,
+  };
+}
+
+/**
  * Creates a mock edit Operation
  * Note: Use explicit `snapshot_oid: null` to indicate file deletion
  */
@@ -66,8 +96,27 @@ function createEditOp(overrides: {
         ? overrides.snapshot_oid
         : `oid- ${Math.random().toString(36)}`,
     reason: overrides.reason ?? 'tool-123',
-    contributor: overrides.contributor ?? 'chat-agent1',
+    contributor: overrides.contributor ?? 'agent-1',
   } as Operation;
+}
+
+/**
+ * Creates a mock edit Operation with isExternal flag
+ */
+function createEditOpWithExternal(
+  overrides: {
+    filepath?: string;
+    snapshot_oid?: string | null;
+    reason?: 'reject' | `tool-${string}`;
+    contributor?: Contributor;
+    idx?: number;
+  },
+  isExternal = false,
+): OperationWithExternal {
+  return {
+    ...createEditOp(overrides),
+    isExternal,
+  };
 }
 
 /**
@@ -76,22 +125,24 @@ function createEditOp(overrides: {
 function createOpWithContent(
   op: Operation,
   content: string,
+  isExternal = false,
 ): OperationWithContent {
   return {
     ...op,
     snapshot_content: content,
+    isExternal,
   };
 }
 
 /**
- * Creates a FileDiff with realistic hunks from actual content diff
+ * Creates a TextFileDiff with realistic hunks from actual content diff
  */
 function createFileDiffFromContent(
   fileId: string,
   path: string,
   baseline: string | null,
   current: string | null,
-): FileDiff {
+): TextFileDiff {
   const diffBaseline = baseline ?? '';
   const diffCurrent = current ?? '';
   const patch = structuredPatch('', '', diffBaseline, diffCurrent, '', '');
@@ -103,10 +154,45 @@ function createFileDiffFromContent(
   return {
     fileId,
     path,
+    isExternal: false,
     baseline,
     current,
     lineChanges: [], // Not needed for acceptAndRejectHunks tests
     hunks,
+  };
+}
+
+/**
+ * Creates an ExternalFileDiff for testing external/binary file handling
+ */
+function createExternalFileDiff(
+  fileId: string,
+  path: string,
+  changeType: 'created' | 'deleted' | 'modified',
+  baselineOid: string | null,
+  currentOid: string | null,
+  contributor: Contributor = 'agent-1',
+): ExternalFileDiff {
+  return {
+    fileId,
+    path,
+    isExternal: true,
+    changeType,
+    baselineOid,
+    currentOid,
+    contributor,
+    hunkId: `ext-hunk-${fileId}`,
+  };
+}
+
+/**
+ * Creates a mock OperationWithContent for external files
+ */
+function createExternalOpWithContent(op: Operation): OperationWithContent {
+  return {
+    ...op,
+    snapshot_content: '', // External files don't have text content
+    isExternal: true,
   };
 }
 
@@ -131,7 +217,7 @@ describe('diff utilities', () => {
     });
 
     it('returns one generation with one operation', () => {
-      const op = createBaselineOp({ filepath: '/readme.md' });
+      const op = createBaselineOpWithExternal({ filepath: '/readme.md' });
       const result = segmentFileOperationsIntoGenerations([op]);
 
       const generations = Object.values(result);
@@ -142,9 +228,12 @@ describe('diff utilities', () => {
 
     it('keeps multiple ops without deletion in single generation', () => {
       const ops = [
-        createBaselineOp({ filepath: '/readme.md', reason: 'init' }),
-        createEditOp({ filepath: '/readme.md', reason: 'tool-1' }),
-        createEditOp({ filepath: '/readme.md', reason: 'tool-2' }),
+        createBaselineOpWithExternal({
+          filepath: '/readme.md',
+          reason: 'init',
+        }),
+        createEditOpWithExternal({ filepath: '/readme.md', reason: 'tool-1' }),
+        createEditOpWithExternal({ filepath: '/readme.md', reason: 'tool-2' }),
       ];
       const result = segmentFileOperationsIntoGenerations(ops);
 
@@ -155,13 +244,16 @@ describe('diff utilities', () => {
 
     it('starts new generation after deletion (snapshot_oid = null)', () => {
       const ops = [
-        createBaselineOp({ filepath: '/readme.md', reason: 'init' }),
-        createEditOp({
+        createBaselineOpWithExternal({
+          filepath: '/readme.md',
+          reason: 'init',
+        }),
+        createEditOpWithExternal({
           filepath: '/readme.md',
           reason: 'tool-1',
           snapshot_oid: null,
         }), // deletion
-        createEditOp({ filepath: '/readme.md', reason: 'tool-2' }), // recreation
+        createEditOpWithExternal({ filepath: '/readme.md', reason: 'tool-2' }), // recreation
       ];
       const result = segmentFileOperationsIntoGenerations(ops);
 
@@ -175,11 +267,17 @@ describe('diff utilities', () => {
 
     it('creates multiple generations for multiple deletions', () => {
       const ops = [
-        createBaselineOp({ filepath: '/readme.md' }),
-        createEditOp({ filepath: '/readme.md', snapshot_oid: null }), // delete
-        createEditOp({ filepath: '/readme.md' }), // create
-        createEditOp({ filepath: '/readme.md', snapshot_oid: null }), // delete again
-        createEditOp({ filepath: '/readme.md' }), // create again
+        createBaselineOpWithExternal({ filepath: '/readme.md' }),
+        createEditOpWithExternal({
+          filepath: '/readme.md',
+          snapshot_oid: null,
+        }), // delete
+        createEditOpWithExternal({ filepath: '/readme.md' }), // create
+        createEditOpWithExternal({
+          filepath: '/readme.md',
+          snapshot_oid: null,
+        }), // delete again
+        createEditOpWithExternal({ filepath: '/readme.md' }), // create again
       ];
       const result = segmentFileOperationsIntoGenerations(ops);
 
@@ -189,14 +287,17 @@ describe('diff utilities', () => {
 
     it('treats init baseline with null oid as deletion', () => {
       const ops = [
-        createBaselineOp({ filepath: '/readme.md', reason: 'init' }),
-        createEditOp({ filepath: '/readme.md' }),
-        createBaselineOp({
+        createBaselineOpWithExternal({
+          filepath: '/readme.md',
+          reason: 'init',
+        }),
+        createEditOpWithExternal({ filepath: '/readme.md' }),
+        createBaselineOpWithExternal({
           filepath: '/readme.md',
           reason: 'init',
           snapshot_oid: null,
         }), // user deleted file between sessions
-        createEditOp({ filepath: '/readme.md' }), // new session
+        createEditOpWithExternal({ filepath: '/readme.md' }), // new session
       ];
       const result = segmentFileOperationsIntoGenerations(ops);
 
@@ -206,11 +307,14 @@ describe('diff utilities', () => {
 
     it('groups by filepath first, then segments each', () => {
       const ops = [
-        createBaselineOp({ filepath: '/file1.txt' }),
-        createBaselineOp({ filepath: '/file2.txt' }),
-        createEditOp({ filepath: '/file1.txt' }),
-        createEditOp({ filepath: '/file2.txt', snapshot_oid: null }), // delete file2
-        createEditOp({ filepath: '/file2.txt' }), // recreate file2
+        createBaselineOpWithExternal({ filepath: '/file1.txt' }),
+        createBaselineOpWithExternal({ filepath: '/file2.txt' }),
+        createEditOpWithExternal({ filepath: '/file1.txt' }),
+        createEditOpWithExternal({
+          filepath: '/file2.txt',
+          snapshot_oid: null,
+        }), // delete file2
+        createEditOpWithExternal({ filepath: '/file2.txt' }), // recreate file2
       ];
       const result = segmentFileOperationsIntoGenerations(ops);
 
@@ -221,9 +325,12 @@ describe('diff utilities', () => {
 
     it('handles deletion as last op without creating orphan generation', () => {
       const ops = [
-        createBaselineOp({ filepath: '/readme.md' }),
-        createEditOp({ filepath: '/readme.md' }),
-        createEditOp({ filepath: '/readme.md', snapshot_oid: null }), // deletion is last
+        createBaselineOpWithExternal({ filepath: '/readme.md' }),
+        createEditOpWithExternal({ filepath: '/readme.md' }),
+        createEditOpWithExternal({
+          filepath: '/readme.md',
+          snapshot_oid: null,
+        }), // deletion is last
       ];
       const result = segmentFileOperationsIntoGenerations(ops);
 
@@ -265,7 +372,7 @@ describe('diff utilities', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(createBaselineOp({ reason: 'init' }), 'line1\n'),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1', reason: 'tool-1' }),
+          createEditOp({ contributor: 'agent-1', reason: 'tool-1' }),
           'line1\nline2\n',
         ),
       ];
@@ -273,18 +380,18 @@ describe('diff utilities', () => {
 
       // Verify the important parts: line 0 is user (unchanged), line 1 is agent (added)
       expect(result['file-1'][0]).toBe('user');
-      expect(result['file-1'][1]).toBe('chat-agent1');
+      expect(result['file-1'][1]).toBe('agent-1');
     });
 
     it('tracks multiple agent edits with different contributors', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(createBaselineOp({ reason: 'init' }), 'line1\n'),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1', reason: 'tool-1' }),
+          createEditOp({ contributor: 'agent-1', reason: 'tool-1' }),
           'line1\nline2\n',
         ),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent2', reason: 'tool-2' }),
+          createEditOp({ contributor: 'agent-2', reason: 'tool-2' }),
           'line1\nline2\nline3\n',
         ),
       ];
@@ -292,15 +399,15 @@ describe('diff utilities', () => {
 
       // Verify the important attributions
       expect(result['file-1'][0]).toBe('user'); // baseline
-      expect(result['file-1'][1]).toBe('chat-agent1'); // added by agent1
-      expect(result['file-1'][2]).toBe('chat-agent2'); // added by agent2
+      expect(result['file-1'][1]).toBe('agent-1'); // added by agent1
+      expect(result['file-1'][2]).toBe('agent-2'); // added by agent2
     });
 
     it('attributes user reject edits to user', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(createBaselineOp({ reason: 'init' }), 'line1'),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1', reason: 'tool-1' }),
+          createEditOp({ contributor: 'agent-1', reason: 'tool-1' }),
           'line1\nline2',
         ),
         createOpWithContent(
@@ -318,7 +425,7 @@ describe('diff utilities', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(createBaselineOp({ reason: 'init' }), 'original'),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1' }),
+          createEditOp({ contributor: 'agent-1' }),
           'modified',
         ),
         // Session boundary: new init with different content
@@ -337,14 +444,14 @@ describe('diff utilities', () => {
       // After file deletion and recreation
       const ops: OperationWithContent[] = [
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1', reason: 'tool-1' }),
+          createEditOp({ contributor: 'agent-1', reason: 'tool-1' }),
           'new-content',
         ),
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
       // All lines from the edit contributor (baseline is empty)
-      expect(result['file-1'][0]).toBe('chat-agent1');
+      expect(result['file-1'][0]).toBe('agent-1');
     });
 
     it('handles mixed contributors modifying same lines', () => {
@@ -354,11 +461,11 @@ describe('diff utilities', () => {
           'line1\nline2\nline3',
         ),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1' }),
+          createEditOp({ contributor: 'agent-1' }),
           'line1\nmodified-by-A\nline3',
         ),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent2' }),
+          createEditOp({ contributor: 'agent-2' }),
           'line1\nmodified-by-B\nline3',
         ),
       ];
@@ -366,7 +473,7 @@ describe('diff utilities', () => {
 
       expect(result['file-1']).toEqual({
         0: 'user', // unchanged
-        1: 'chat-agent2', // last modifier
+        1: 'agent-2', // last modifier
         2: 'user', // unchanged
       });
     });
@@ -378,7 +485,7 @@ describe('diff utilities', () => {
           'line1\nline2\nline3',
         ),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1' }),
+          createEditOp({ contributor: 'agent-1' }),
           'line1\nline3',
         ), // removed line2
       ];
@@ -399,15 +506,15 @@ describe('diff utilities', () => {
           'old1\nold2\nold3',
         ),
         createOpWithContent(
-          createEditOp({ contributor: 'chat-agent1' }),
+          createEditOp({ contributor: 'agent-1' }),
           'new1\nnew2',
         ),
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
       expect(result['file-1']).toEqual({
-        0: 'chat-agent1',
-        1: 'chat-agent1',
+        0: 'agent-1',
+        1: 'agent-1',
       });
     });
   });
@@ -440,9 +547,13 @@ describe('diff utilities', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].hunks).toHaveLength(0);
-      expect(result[0].baseline).toBe('same content');
-      expect(result[0].current).toBe('same content');
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.hunks).toHaveLength(0);
+        expect(diff.baseline).toBe('same content');
+        expect(diff.current).toBe('same content');
+      }
     });
 
     it('creates hunks for added lines', () => {
@@ -457,7 +568,7 @@ describe('diff utilities', () => {
         ),
       ];
       const contributorMap = {
-        'file-1': { 0: 'user' as Contributor, 1: 'chat-agent1' as Contributor },
+        'file-1': { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
       };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
@@ -465,9 +576,13 @@ describe('diff utilities', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].hunks.length).toBeGreaterThan(0);
-      expect(result[0].baseline).toBe('line1');
-      expect(result[0].current).toBe('line1\nline2');
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.hunks.length).toBeGreaterThan(0);
+        expect(diff.baseline).toBe('line1');
+        expect(diff.current).toBe('line1\nline2');
+      }
     });
 
     it('creates hunks for removed lines', () => {
@@ -485,7 +600,11 @@ describe('diff utilities', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].hunks.length).toBeGreaterThan(0);
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.hunks.length).toBeGreaterThan(0);
+      }
     });
 
     it('handles multiple hunks for mixed changes', () => {
@@ -501,11 +620,11 @@ describe('diff utilities', () => {
       ];
       const contributorMap = {
         'file-1': {
-          0: 'chat-agent1' as Contributor,
+          0: 'agent-1' as Contributor,
           1: 'user' as Contributor,
           2: 'user' as Contributor,
           3: 'user' as Contributor,
-          4: 'chat-agent1' as Contributor,
+          4: 'agent-1' as Contributor,
         },
       };
       const result = createFileDiffsFromGenerations(
@@ -514,8 +633,12 @@ describe('diff utilities', () => {
       );
 
       expect(result).toHaveLength(1);
-      // Should have hunks for the changes
-      expect(result[0].hunks.length).toBeGreaterThan(0);
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        // Should have hunks for the changes
+        expect(diff.hunks.length).toBeGreaterThan(0);
+      }
     });
 
     it('sets baseline to null for file creation (no init)', () => {
@@ -525,15 +648,19 @@ describe('diff utilities', () => {
           'new file content',
         ),
       ];
-      const contributorMap = { 'file-1': { 0: 'chat-agent1' as Contributor } };
+      const contributorMap = { 'file-1': { 0: 'agent-1' as Contributor } };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
         contributorMap,
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].baseline).toBeNull();
-      expect(result[0].current).toBe('new file content');
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.baseline).toBeNull();
+        expect(diff.current).toBe('new file content');
+      }
     });
 
     it('sets current to null for file deletion', () => {
@@ -557,8 +684,12 @@ describe('diff utilities', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].baseline).toBe('original content');
-      expect(result[0].current).toBeNull();
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.baseline).toBe('original content');
+        expect(diff.current).toBeNull();
+      }
     });
 
     it('includes contributor in lineChanges', () => {
@@ -570,13 +701,13 @@ describe('diff utilities', () => {
         createOpWithContent(
           createEditOp({
             filepath: '/readme.md',
-            contributor: 'chat-agent1',
+            contributor: 'agent-1',
           }),
           'line1\nline2',
         ),
       ];
       const contributorMap = {
-        'file-1': { 0: 'user' as Contributor, 1: 'chat-agent1' as Contributor },
+        'file-1': { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
       };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
@@ -584,10 +715,14 @@ describe('diff utilities', () => {
       );
 
       expect(result).toHaveLength(1);
-      // Check that lineChanges have contributors
-      const addedChange = result[0].lineChanges.find((lc) => lc.added);
-      if (addedChange) {
-        expect(addedChange.contributor).toBeDefined();
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        // Check that lineChanges have contributors
+        const addedChange = diff.lineChanges.find((lc) => lc.added);
+        if (addedChange) {
+          expect(addedChange.contributor).toBeDefined();
+        }
       }
     });
 
@@ -606,7 +741,7 @@ describe('diff utilities', () => {
       ];
       const contributorMap = {
         'file-1': { 0: 'user' as Contributor },
-        'file-2': { 0: 'chat-agent1' as Contributor },
+        'file-2': { 0: 'agent-1' as Contributor },
       };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops1, 'file-2': ops2 },
@@ -632,7 +767,7 @@ describe('diff utilities', () => {
       );
       const result = acceptAndRejectHunks([fileDiff], [], []);
 
-      expect(Object.keys(result)).toHaveLength(0);
+      expect(Object.keys(result.result)).toHaveLength(0);
     });
 
     it('updates baseline when accepting a hunk', () => {
@@ -646,8 +781,13 @@ describe('diff utilities', () => {
       if (!hunkId) throw new Error('Expected hunk');
 
       const result = acceptAndRejectHunks([fileDiff], [hunkId], []);
+      const fileResult = result.result['/readme.md'];
 
-      expect(result['/readme.md']?.newBaseline).toBe('line1\nline2');
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        expect(fileResult.newBaseline).toBe('line1\nline2');
+      }
     });
 
     it('updates current when rejecting a hunk', () => {
@@ -661,9 +801,14 @@ describe('diff utilities', () => {
       if (!hunkId) throw new Error('Expected hunk');
 
       const result = acceptAndRejectHunks([fileDiff], [], [hunkId]);
+      const fileResult = result.result['/readme.md'];
 
-      // Rejecting should revert current to baseline
-      expect(result['/readme.md']?.newCurrent).toBe('line1');
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        // Rejecting should revert current to baseline
+        expect(fileResult.newCurrent).toBe('line1');
+      }
     });
 
     it('applies multiple accepted hunks', () => {
@@ -677,10 +822,15 @@ describe('diff utilities', () => {
 
       const hunkIds = fileDiff.hunks.map((h) => h.id);
       const result = acceptAndRejectHunks([fileDiff], hunkIds, []);
+      const fileResult = result.result['/readme.md'];
 
-      expect(result['/readme.md']?.newBaseline).toBe(
-        'modified1\nline2\nline3\nline4\nmodified5',
-      );
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        expect(fileResult.newBaseline).toBe(
+          'modified1\nline2\nline3\nline4\nmodified5',
+        );
+      }
     });
 
     it('applies multiple rejected hunks', () => {
@@ -693,11 +843,14 @@ describe('diff utilities', () => {
 
       const hunkIds = fileDiff.hunks.map((h) => h.id);
       const result = acceptAndRejectHunks([fileDiff], [], hunkIds);
+      const fileResult = result.result['/readme.md'];
 
-      // Should revert to baseline
-      expect(result['/readme.md']?.newCurrent).toBe(
-        'line1\nline2\nline3\nline4\nline5',
-      );
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        // Should revert to baseline
+        expect(fileResult.newCurrent).toBe('line1\nline2\nline3\nline4\nline5');
+      }
     });
 
     it('handles accept and reject of different hunks', () => {
@@ -716,10 +869,15 @@ describe('diff utilities', () => {
       const acceptId = fileDiff.hunks[0].id;
       const rejectId = fileDiff.hunks[1].id;
       const result = acceptAndRejectHunks([fileDiff], [acceptId], [rejectId]);
+      const fileResult = result.result['/readme.md'];
 
-      // Should have both newBaseline and newCurrent
-      expect(result['/readme.md']?.newBaseline).toBeDefined();
-      expect(result['/readme.md']?.newCurrent).toBeDefined();
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        // Should have both newBaseline and newCurrent
+        expect(fileResult.newBaseline).toBeDefined();
+        expect(fileResult.newCurrent).toBeDefined();
+      }
     });
 
     it('accept wins when same hunk in both lists', () => {
@@ -733,10 +891,15 @@ describe('diff utilities', () => {
       if (!hunkId) throw new Error('Expected hunk');
 
       const result = acceptAndRejectHunks([fileDiff], [hunkId], [hunkId]);
+      const fileResult = result.result['/readme.md'];
 
-      // Accept should win - baseline is updated, not current
-      expect(result['/readme.md']?.newBaseline).toBe('line1\nline2');
-      expect(result['/readme.md']?.newCurrent).toBeUndefined();
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        // Accept should win - baseline is updated, not current
+        expect(fileResult.newBaseline).toBe('line1\nline2');
+        expect(fileResult.newCurrent).toBeUndefined();
+      }
     });
 
     it('later FileDiff overwrites earlier for same path', () => {
@@ -762,9 +925,14 @@ describe('diff utilities', () => {
         [hunkId1, hunkId2],
         [],
       );
+      const fileResult = result.result['/readme.md'];
 
-      // Later FileDiff's result should be the final one
-      expect(result['/readme.md']?.newBaseline).toBe('version2');
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        // Later FileDiff's result should be the final one
+        expect(fileResult.newBaseline).toBe('version2');
+      }
     });
 
     it('handles null baseline (file creation)', () => {
@@ -778,8 +946,13 @@ describe('diff utilities', () => {
       if (!hunkId) throw new Error('Expected hunk');
 
       const result = acceptAndRejectHunks([fileDiff], [hunkId], []);
+      const fileResult = result.result['/readme.md'];
 
-      expect(result['/readme.md']?.newBaseline).toBe('new file content');
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        expect(fileResult.newBaseline).toBe('new file content');
+      }
     });
 
     it('handles null current (file deletion)', () => {
@@ -793,9 +966,14 @@ describe('diff utilities', () => {
       if (!hunkId) throw new Error('Expected hunk');
 
       const result = acceptAndRejectHunks([fileDiff], [hunkId], []);
+      const fileResult = result.result['/readme.md'];
 
-      // Accepting deletion means baseline becomes empty/null
-      expect(result['/readme.md']?.newBaseline).toBe('');
+      expect(fileResult).toBeDefined();
+      expect(fileResult?.isExternal).toBe(false);
+      if (fileResult && !fileResult.isExternal) {
+        // Accepting deletion means baseline becomes empty/null
+        expect(fileResult.newBaseline).toBe('');
+      }
     });
 
     it('reports failed hunk IDs when patch cannot be applied', () => {
@@ -824,6 +1002,329 @@ describe('diff utilities', () => {
 
       // Should report the failed hunk since context doesn't match modified baseline
       expect(result.failedAcceptedHunkIds).toContain(hunkId);
+    });
+
+    // =========================================================================
+    // External File Tests
+    // =========================================================================
+
+    it('accepts external file hunk (oid swap)', () => {
+      const externalDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'modified',
+        'baseline-oid-123',
+        'current-oid-456',
+      );
+
+      const result = acceptAndRejectHunks(
+        [externalDiff],
+        [externalDiff.hunkId],
+        [],
+      );
+
+      expect(result.result['/image.png']).toBeDefined();
+      const fileResult = result.result['/image.png'];
+      expect(fileResult.isExternal).toBe(true);
+      if (fileResult.isExternal) {
+        expect(fileResult.newBaselineOid).toBe('current-oid-456');
+      }
+    });
+
+    it('rejects external file hunk (oid revert)', () => {
+      const externalDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'modified',
+        'baseline-oid-123',
+        'current-oid-456',
+      );
+
+      const result = acceptAndRejectHunks(
+        [externalDiff],
+        [],
+        [externalDiff.hunkId],
+      );
+
+      expect(result.result['/image.png']).toBeDefined();
+      const fileResult = result.result['/image.png'];
+      expect(fileResult.isExternal).toBe(true);
+      if (fileResult.isExternal) {
+        expect(fileResult.newCurrentOid).toBe('baseline-oid-123');
+      }
+    });
+
+    it('handles mixed text and external files', () => {
+      const textDiff = createFileDiffFromContent(
+        'file-1',
+        '/readme.md',
+        'line1',
+        'line1\nline2',
+      );
+      const externalDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'created',
+        null,
+        'new-oid-789',
+      );
+
+      const textHunkId = textDiff.hunks[0]?.id;
+      if (!textHunkId) throw new Error('Expected text hunk');
+
+      const result = acceptAndRejectHunks(
+        [textDiff, externalDiff],
+        [textHunkId, externalDiff.hunkId],
+        [],
+      );
+
+      // Text file should have newBaseline content
+      const textResult = result.result['/readme.md'];
+      expect(textResult.isExternal).toBe(false);
+      if (!textResult.isExternal) {
+        expect(textResult.newBaseline).toBe('line1\nline2');
+      }
+
+      // External file should have newBaselineOid
+      const extResult = result.result['/image.png'];
+      expect(extResult.isExternal).toBe(true);
+      if (extResult.isExternal) {
+        expect(extResult.newBaselineOid).toBe('new-oid-789');
+      }
+    });
+
+    it('skips external files with no matching hunkId', () => {
+      const externalDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'modified',
+        'baseline-oid',
+        'current-oid',
+      );
+
+      const result = acceptAndRejectHunks(
+        [externalDiff],
+        ['non-existent-hunk-id'],
+        [],
+      );
+
+      expect(result.result['/image.png']).toBeUndefined();
+    });
+
+    it('accept wins for external file when hunkId in both lists', () => {
+      const externalDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'modified',
+        'baseline-oid-123',
+        'current-oid-456',
+      );
+
+      // Same hunkId in both accept and reject lists
+      const result = acceptAndRejectHunks(
+        [externalDiff],
+        [externalDiff.hunkId],
+        [externalDiff.hunkId],
+      );
+
+      const fileResult = result.result['/image.png'];
+      expect(fileResult.isExternal).toBe(true);
+      if (fileResult.isExternal) {
+        // Accept wins: baseline adopts current
+        expect(fileResult.newBaselineOid).toBe('current-oid-456');
+        // Reject should not have been processed
+        expect(fileResult.newCurrentOid).toBeUndefined();
+      }
+    });
+  });
+
+  // ===========================================================================
+  // createFileDiffsFromGenerations - External Files
+  // ===========================================================================
+
+  describe('createFileDiffsFromGenerations - external files', () => {
+    it('creates ExternalFileDiff for generation with external operations', () => {
+      const ops: OperationWithContent[] = [
+        createExternalOpWithContent(
+          createBaselineOp({
+            filepath: '/image.png',
+            reason: 'init',
+            snapshot_oid: 'baseline-oid',
+          }),
+        ),
+        createExternalOpWithContent(
+          createEditOp({
+            filepath: '/image.png',
+            snapshot_oid: 'current-oid',
+            contributor: 'agent-1',
+          }),
+        ),
+      ];
+
+      const result = createFileDiffsFromGenerations({ 'file-1': ops }, {});
+
+      expect(result).toHaveLength(1);
+      expect(isExternalFileDiff(result[0])).toBe(true);
+      if (isExternalFileDiff(result[0])) {
+        expect(result[0].isExternal).toBe(true);
+        expect(result[0].changeType).toBe('modified');
+        expect(result[0].baselineOid).toBe('baseline-oid');
+        expect(result[0].currentOid).toBe('current-oid');
+        expect(result[0].contributor).toBe('agent-1');
+      }
+    });
+
+    it('determines changeType as created for external file', () => {
+      const ops: OperationWithContent[] = [
+        createExternalOpWithContent(
+          createEditOp({
+            filepath: '/new-image.png',
+            snapshot_oid: 'new-oid',
+            contributor: 'agent-1',
+            reason: 'tool-1',
+          }),
+        ),
+      ];
+
+      const result = createFileDiffsFromGenerations({ 'file-1': ops }, {});
+
+      expect(result).toHaveLength(1);
+      if (isExternalFileDiff(result[0])) {
+        expect(result[0].changeType).toBe('created');
+        expect(result[0].baselineOid).toBeNull();
+        expect(result[0].currentOid).toBe('new-oid');
+      }
+    });
+
+    it('determines changeType as deleted for external file', () => {
+      const ops: OperationWithContent[] = [
+        createExternalOpWithContent(
+          createBaselineOp({
+            filepath: '/image.png',
+            reason: 'init',
+            snapshot_oid: 'original-oid',
+          }),
+        ),
+        createExternalOpWithContent(
+          createEditOp({
+            filepath: '/image.png',
+            snapshot_oid: null,
+            contributor: 'agent-1',
+          }),
+        ),
+      ];
+
+      const result = createFileDiffsFromGenerations({ 'file-1': ops }, {});
+
+      expect(result).toHaveLength(1);
+      if (isExternalFileDiff(result[0])) {
+        expect(result[0].changeType).toBe('deleted');
+        expect(result[0].baselineOid).toBe('original-oid');
+        expect(result[0].currentOid).toBeNull();
+      }
+    });
+
+    it('creates TextFileDiff for generation without external flag', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ filepath: '/readme.md', reason: 'init' }),
+          'text content',
+        ),
+        createOpWithContent(
+          createEditOp({ filepath: '/readme.md' }),
+          'modified text content',
+        ),
+      ];
+
+      const result = createFileDiffsFromGenerations(
+        { 'file-1': ops },
+        { 'file-1': { 0: 'user' as Contributor } },
+      );
+
+      expect(result).toHaveLength(1);
+      expect(isTextFileDiff(result[0])).toBe(true);
+      if (isTextFileDiff(result[0])) {
+        expect(result[0].isExternal).toBe(false);
+        expect(result[0].baseline).toBe('text content');
+        expect(result[0].current).toBe('modified text content');
+      }
+    });
+
+    it('handles mixed text and external generations', () => {
+      const textOps: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ filepath: '/readme.md', reason: 'init' }),
+          'text',
+        ),
+      ];
+      const externalOps: OperationWithContent[] = [
+        createExternalOpWithContent(
+          createBaselineOp({
+            filepath: '/image.png',
+            reason: 'init',
+            snapshot_oid: 'img-oid',
+          }),
+        ),
+      ];
+
+      const result = createFileDiffsFromGenerations(
+        { 'file-1': textOps, 'file-2': externalOps },
+        { 'file-1': { 0: 'user' as Contributor } },
+      );
+
+      expect(result).toHaveLength(2);
+
+      const textDiff = result.find((d) => d.path === '/readme.md');
+      const externalDiff = result.find((d) => d.path === '/image.png');
+
+      expect(textDiff).toBeDefined();
+      expect(externalDiff).toBeDefined();
+      expect(isTextFileDiff(textDiff!)).toBe(true);
+      expect(isExternalFileDiff(externalDiff!)).toBe(true);
+    });
+  });
+
+  // ===========================================================================
+  // Type Guards
+  // ===========================================================================
+
+  describe('type guards', () => {
+    it('isTextFileDiff correctly identifies text files', () => {
+      const textDiff = createFileDiffFromContent(
+        'file-1',
+        '/readme.md',
+        'content',
+        'content',
+      );
+      const externalDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'created',
+        null,
+        'oid',
+      );
+
+      expect(isTextFileDiff(textDiff)).toBe(true);
+      expect(isTextFileDiff(externalDiff)).toBe(false);
+    });
+
+    it('isExternalFileDiff correctly identifies external files', () => {
+      const textDiff = createFileDiffFromContent(
+        'file-1',
+        '/readme.md',
+        'content',
+        'content',
+      );
+      const externalDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'created',
+        null,
+        'oid',
+      );
+
+      expect(isExternalFileDiff(textDiff)).toBe(false);
+      expect(isExternalFileDiff(externalDiff)).toBe(true);
     });
   });
 });

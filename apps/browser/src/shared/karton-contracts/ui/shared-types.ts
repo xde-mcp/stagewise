@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ChangeObject, StructuredPatchHunk } from 'diff';
 import type {
   AnthropicProvider,
   AnthropicProviderOptions,
@@ -513,3 +514,55 @@ export const defaultDevToolbarPreferences: DevToolbarPreferences = {
   originSettings: {},
   lastUsedOrigin: null,
 };
+
+type AgentInstanceId = string;
+type Contributor = 'user' | `agent-${AgentInstanceId}`;
+
+export type BlamedLineChange = ChangeObject<string> & {
+  hunkId: string | null; // null if the line change is not part of a hunk
+  contributor: Contributor;
+};
+
+export type BlamedHunk = StructuredPatchHunk & {
+  id: string;
+};
+
+type FileDiffBase = {
+  fileId: string;
+  path: string;
+};
+
+export type TextFileDiff = FileDiffBase & {
+  isExternal: false;
+  baseline: string | null;
+  current: string | null;
+  lineChanges: BlamedLineChange[];
+  hunks: BlamedHunk[];
+};
+
+// External file diff - single atomic "hunk"
+export type ExternalFileDiff = FileDiffBase & {
+  isExternal: true;
+  changeType: 'created' | 'deleted' | 'modified';
+  baselineOid: string | null; // null = file didn't exist
+  currentOid: string | null; // null = file was deleted
+  contributor: Contributor; // who made this change
+  hunkId: string; // single ID for accept/reject
+};
+
+export type FileDiff = TextFileDiff | ExternalFileDiff;
+
+// Result types for acceptAndRejectHunks
+export type TextFileResult = {
+  isExternal: false;
+  newBaseline?: string | null;
+  newCurrent?: string | null;
+};
+
+export type ExternalFileResult = {
+  isExternal: true;
+  newBaselineOid?: string | null;
+  newCurrentOid?: string | null;
+};
+
+export type FileResult = TextFileResult | ExternalFileResult;

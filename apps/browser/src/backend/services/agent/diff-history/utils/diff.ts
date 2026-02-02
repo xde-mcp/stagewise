@@ -6,8 +6,31 @@ import {
   reversePatch,
   applyPatch,
 } from 'diff';
-import type { Contributor, Operation } from '../schema';
-import type { FileDiff, BlamedLineChange, BlamedHunk } from '../types';
+import type { Contributor } from '../schema';
+import type {
+  FileDiff,
+  TextFileDiff,
+  ExternalFileDiff,
+  BlamedLineChange,
+  BlamedHunk,
+  FileResult,
+  ExternalFileResult,
+} from '@shared/karton-contracts/ui/shared-types';
+import type { OperationWithExternal } from './db';
+
+/**
+ * Type guard to check if a FileDiff is a TextFileDiff
+ */
+export function isTextFileDiff(diff: FileDiff): diff is TextFileDiff {
+  return diff.isExternal === false;
+}
+
+/**
+ * Type guard to check if a FileDiff is an ExternalFileDiff
+ */
+export function isExternalFileDiff(diff: FileDiff): diff is ExternalFileDiff {
+  return diff.isExternal === true;
+}
 
 type FileId = string;
 /**
@@ -26,13 +49,13 @@ type FileId = string;
  * @param operations - Ordered operations (should be for a single filepath, but handles multiple defensively)
  * @returns Array of generations, each with a unique fileId and its operations
  */
-export function segmentFileOperationsIntoGenerations(
-  operations: Operation[],
-): Record<FileId, Operation[]> {
+export function segmentFileOperationsIntoGenerations<
+  T extends OperationWithExternal | OperationWithContent,
+>(operations: T[]): Record<FileId, T[]> {
   if (operations.length === 0) return {};
 
   // Step 1: Group operations by filepath (defensive)
-  const opsByFilepath: Record<string, Operation[]> = {};
+  const opsByFilepath: Record<string, T[]> = {};
   for (const op of operations) {
     const existing = opsByFilepath[op.filepath] ?? [];
     existing.push(op);
@@ -40,11 +63,11 @@ export function segmentFileOperationsIntoGenerations(
   }
 
   // Step 2: For each filepath, segment into generations
-  const result: Record<FileId, Operation[]> = {};
+  const result: Record<FileId, T[]> = {};
 
   for (const filepath of Object.keys(opsByFilepath)) {
     const fileOps = opsByFilepath[filepath];
-    let currentGeneration: Operation[] = [];
+    let currentGeneration: T[] = [];
     let wasDeleted = false;
 
     for (const op of fileOps) {
@@ -78,7 +101,9 @@ export function segmentFileOperationsIntoGenerations(
   return result;
 }
 
-type OperationWithContent = Operation & { snapshot_content: string };
+export type OperationWithContent = OperationWithExternal & {
+  snapshot_content: string | null;
+};
 
 /**
  * Builds a contributor map for each generation, showing which contributor
@@ -224,8 +249,27 @@ function findHunkId(
 }
 
 /**
+ * Determines the change type for an external file based on baseline and current state.
+ */
+function determineExternalChangeType(
+  firstOp: OperationWithContent,
+  lastOp: OperationWithContent,
+): 'created' | 'deleted' | 'modified' {
+  const hasBaseline =
+    firstOp.operation === 'baseline' &&
+    firstOp.reason === 'init' &&
+    firstOp.snapshot_oid !== null;
+  const hasCurrent = lastOp.snapshot_oid !== null;
+
+  if (!hasBaseline && hasCurrent) return 'created';
+  if (hasBaseline && !hasCurrent) return 'deleted';
+  return 'modified';
+}
+
+/**
  * Creates FileDiff objects from generations and their contributor maps.
  * Uses diffLines for full file diff (lineChanges) and structuredPatch for hunks.
+ * For external files, creates ExternalFileDiff with a single atomic hunk.
  *
  * @param generations - Record of fileId to operations with resolved snapshot content
  * @param contributorMap - Record of fileId to line number → contributor mapping
@@ -243,8 +287,31 @@ export function createFileDiffsFromGenerations(
 
     const firstOp = operations[0];
     const lastOp = operations[operations.length - 1];
+    const path = firstOp.filepath;
 
-    // Determine baseline: null if file didn't exist, otherwise content
+    // Check if this is an external file generation
+    const isExternalGeneration = operations.some((op) => op.isExternal);
+
+    if (isExternalGeneration) {
+      // Create ExternalFileDiff for external/binary files
+      const startsWithInit =
+        firstOp.operation === 'baseline' && firstOp.reason === 'init';
+      const changeType = determineExternalChangeType(firstOp, lastOp);
+
+      result.push({
+        fileId,
+        path,
+        isExternal: true,
+        changeType,
+        baselineOid: startsWithInit ? firstOp.snapshot_oid : null,
+        currentOid: lastOp.snapshot_oid,
+        contributor: lastOp.contributor,
+        hunkId: randomUUID(),
+      });
+      continue; // Skip text diff logic
+    }
+
+    // Text file processing (existing logic)
     const startsWithInit =
       firstOp.operation === 'baseline' && firstOp.reason === 'init';
     const baseline: string | null = startsWithInit
@@ -256,9 +323,6 @@ export function createFileDiffsFromGenerations(
     // Determine current: null if file was deleted, otherwise content
     const current: string | null =
       lastOp.snapshot_oid === null ? null : (lastOp.snapshot_content ?? '');
-
-    // Filepath from first operation
-    const path = firstOp.filepath;
 
     // For diffing, convert null to '' (diff functions expect strings)
     const diffBaseline = baseline ?? '';
@@ -318,10 +382,11 @@ export function createFileDiffsFromGenerations(
       if (!change.removed) newLine += lineCount;
     }
 
-    // Step 7: Assemble FileDiff object
+    // Step 7: Assemble TextFileDiff object
     result.push({
       fileId,
       path,
+      isExternal: false,
       baseline,
       current,
       lineChanges,
@@ -337,55 +402,90 @@ type FilePath = string;
  * Accepts and rejects hunks for each file in the fileDiffs and return the new baseline and current for each file.
  * Accepted hunks will move the baseline closer to the current and rejected hunks will move the current closer to the baseline.
  *
+ * For text files: applies patches to compute new content.
+ * For external files: returns oid swaps (accept = baseline adopts current oid, reject = current reverts to baseline oid).
+ *
  * Hunks will be accepted/ rejected in order of the fileDiffs first, and then by the order of the hunkIdsToAccept and hunkIdsToReject. If the same ID is accepted and rejected, the hunk will be accepted.
  * If accepted hunks of different generations (file-ids) modify the same file-path, the latest accept/ reject will win.
  * - example:
  *   - FileDiff 1 with hunkId '1' deletes readme.md
  *   - FileDiff 2 with hunkId '2' creates readme.md with content 'Hello, world!'
  *   - acceptedHunkIds: ['1', '2']
- *   - result: { '/readme.md': { newBaseline: 'Hello, world!' } }
+ *   - result: { '/readme.md': { isExternal: false, newBaseline: 'Hello, world!' } }
  *
  */
 export function acceptAndRejectHunks(
   fileDiffs: FileDiff[],
   hunkIdsToAccept: string[],
   hunkIdsToReject: string[],
-): Record<
-  FilePath,
-  { newBaseline?: string | null; newCurrent?: string | null }
-> & { failedAcceptedHunkIds?: string[]; failedRejectedHunkIds?: string[] } {
+): {
+  result: Record<FilePath, FileResult>;
+  failedAcceptedHunkIds?: string[];
+  failedRejectedHunkIds?: string[];
+} {
   // Step 1: Build accept/reject sets with precedence (accept wins)
   const acceptSet = new Set(hunkIdsToAccept);
   const rejectSet = new Set(hunkIdsToReject.filter((id) => !acceptSet.has(id)));
 
   // Result tracking
-  const pathResults: Record<
-    FilePath,
-    { newBaseline?: string | null; newCurrent?: string | null }
-  > = {};
+  const pathResults: Record<FilePath, FileResult> = {};
   const failedAcceptedHunkIds: string[] = [];
   const failedRejectedHunkIds: string[] = [];
 
-  // Step 3: Process each FileDiff in order
+  // Process each FileDiff in order
   for (const fileDiff of fileDiffs) {
+    // Handle external files (binary/large files)
+    if (isExternalFileDiff(fileDiff)) {
+      const shouldAccept = acceptSet.has(fileDiff.hunkId);
+      const shouldReject = rejectSet.has(fileDiff.hunkId);
+
+      if (!shouldAccept && !shouldReject) continue;
+
+      // For external files, accept = baseline adopts current, reject = current reverts to baseline
+      const existingResult = pathResults[fileDiff.path];
+      const isExistingExternal =
+        existingResult && 'isExternal' in existingResult
+          ? existingResult.isExternal
+          : false;
+
+      if (shouldAccept) {
+        pathResults[fileDiff.path] = {
+          isExternal: true,
+          ...(isExistingExternal ? (existingResult as ExternalFileResult) : {}),
+          newBaselineOid: fileDiff.currentOid,
+        };
+      }
+      if (shouldReject) {
+        pathResults[fileDiff.path] = {
+          isExternal: true,
+          ...(isExistingExternal ? (existingResult as ExternalFileResult) : {}),
+          newCurrentOid: fileDiff.baselineOid,
+        };
+      }
+      continue; // Skip text processing
+    }
+
+    // Handle text files (existing logic)
+    const textFileDiff = fileDiff; // Type narrowed to TextFileDiff
+
     // Get hunks to accept/reject for this FileDiff, preserving original order
-    const hunksToAccept = fileDiff.hunks.filter((h) => acceptSet.has(h.id));
-    const hunksToReject = fileDiff.hunks.filter((h) => rejectSet.has(h.id));
+    const hunksToAccept = textFileDiff.hunks.filter((h) => acceptSet.has(h.id));
+    const hunksToReject = textFileDiff.hunks.filter((h) => rejectSet.has(h.id));
 
     // Skip if no hunks to process for this FileDiff
     if (hunksToAccept.length === 0 && hunksToReject.length === 0) continue;
 
     // Get working copies of baseline/current (convert null to '' for diffing)
-    const diffBaseline = fileDiff.baseline ?? '';
-    const diffCurrent = fileDiff.current ?? '';
+    const diffBaseline = textFileDiff.baseline ?? '';
+    const diffCurrent = textFileDiff.current ?? '';
 
     // Track whether we've modified baseline/current
-    let workingBaseline: string | null = fileDiff.baseline;
-    let workingCurrent: string | null = fileDiff.current;
+    let workingBaseline: string | null = textFileDiff.baseline;
+    let workingCurrent: string | null = textFileDiff.current;
     let baselineChanged = false;
     let currentChanged = false;
 
-    // Step 4: Apply accepts (batch with fallback)
+    // Apply accepts (batch with fallback)
     if (hunksToAccept.length > 0) {
       // Build patch structure for accepted hunks
       const basePatch = structuredPatch(
@@ -426,7 +526,7 @@ export function acceptAndRejectHunks(
       }
     }
 
-    // Step 5: Apply rejects (batch with fallback)
+    // Apply rejects (batch with fallback)
     if (hunksToReject.length > 0) {
       // Build reversed patch structure for rejected hunks
       const basePatch = structuredPatch(
@@ -471,10 +571,10 @@ export function acceptAndRejectHunks(
       }
     }
 
-    // Step 6: Store results per filepath (later FileDiffs overwrite earlier)
+    // Store results per filepath (later FileDiffs overwrite earlier)
     if (baselineChanged || currentChanged) {
       pathResults[fileDiff.path] = {
-        ...pathResults[fileDiff.path],
+        isExternal: false,
         ...(baselineChanged && { newBaseline: workingBaseline }),
         ...(currentChanged && { newCurrent: workingCurrent }),
       };
@@ -482,18 +582,12 @@ export function acceptAndRejectHunks(
   }
 
   // Build final result with optional failure arrays
-  const finalResult: Record<
-    FilePath,
-    { newBaseline?: string | null; newCurrent?: string | null }
-  > & { failedAcceptedHunkIds?: string[]; failedRejectedHunkIds?: string[] } = {
+  const finalResult: Record<FilePath, FileResult> & {
+    failedAcceptedHunkIds?: string[];
+    failedRejectedHunkIds?: string[];
+  } = {
     ...pathResults,
   };
 
-  if (failedAcceptedHunkIds.length > 0)
-    finalResult.failedAcceptedHunkIds = failedAcceptedHunkIds;
-
-  if (failedRejectedHunkIds.length > 0)
-    finalResult.failedRejectedHunkIds = failedRejectedHunkIds;
-
-  return finalResult;
+  return { result: finalResult, failedAcceptedHunkIds, failedRejectedHunkIds };
 }

@@ -11,6 +11,7 @@ import type {
   UIMessagePart as AIMessagePart,
 } from 'ai';
 import type { UITools, ToolPart } from '@stagewise/agent-tools';
+import type { FileDiff as NewFileDiff } from './shared-types';
 import type { FileDiff } from '@stagewise/agent-types';
 import type {
   FilePickerRequest,
@@ -502,6 +503,12 @@ export type AppState = {
     /** Chats where queue processing is paused (e.g., after an error) */
     queuePausedChats: Record<ChatId, boolean>;
   } | null;
+  toolbox: {
+    [agentInstanceId: string]: {
+      pendingFileDiffs: NewFileDiff[];
+      editSummary: NewFileDiff[];
+    };
+  };
   workspace: {
     path: string;
     paths: {
@@ -696,6 +703,10 @@ export type KartonContract = {
       ) => Promise<void>;
       /** Load more chats into the chatList (pagination) */
       loadMoreChats: () => Promise<{ loaded: number; hasMore: boolean }>;
+    };
+    toolbox: {
+      acceptHunks: (hunkIds: string[]) => Promise<void>;
+      rejectHunks: (hunkIds: string[]) => Promise<void>;
     };
     userAccount: {
       refreshStatus: () => Promise<void>;
@@ -942,6 +953,7 @@ export const defaultState: KartonContract['state'] = {
     },
   },
   agentChat: null,
+  toolbox: {},
   workspace: null,
   workspaceStatus: 'closed',
   userAccount: {
