@@ -40,8 +40,9 @@ export type { AttachmentAttributes, AttachmentType };
 
 export interface ChatInputProps {
   // Core controlled input
-  value: string;
-  onChange: (value: string) => void;
+  value?: string; // TipTap JSON content string
+  defaultValue?: string; // TipTap JSON content string
+  onChange?: (TipTapJsonContent: string) => void;
   onSubmit: () => void;
   disabled?: boolean;
   placeholder?: string;
@@ -84,18 +85,13 @@ export interface ChatInputHandle {
   insertAttachment: (attrs: AttachmentAttributes) => void;
   /** Get the plain text content with @attachments */
   getTextContent: () => string;
-  /** Clear the editor content */
-  clear: () => void;
-  /** Set content from TipTap JSON string */
-  setJsonContent: (json: string) => void;
-  /** Get the tiptap JSON content */
-  getTiptapJsonContent: () => string;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   function ChatInput(
     {
       value,
+      defaultValue,
       onChange,
       onSubmit,
       disabled = false,
@@ -140,7 +136,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     }, [canSendMessage, onSubmit]);
 
     // Track last value for external sync
-    const lastValueRef = useRef(value);
+    const _lastValueRef = useRef(value);
 
     // Parse initial JSON content if provided, fallback to plain text
     const getInitialContent = useCallback(() => {
@@ -236,10 +232,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         handleDrop: () => true,
       },
       onUpdate: ({ editor: ed }) => {
-        // Extract plain text with @attachments preserved
-        const text = ed.getText();
-        lastValueRef.current = text;
-        onChange(text);
+        onChange(JSON.stringify(ed.getJSON()));
       },
       onFocus: () => {
         onFocus?.();
@@ -256,47 +249,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       if (editor) editor.setEditable(!disabled);
     }, [editor, disabled]);
 
-    // Update content when initialJsonContent changes (for MessageUser view mode)
-    // This is needed because useEditor only uses content during initial creation
-    useEffect(() => {
-      if (!editor || !initialJsonContent) return;
-
-      // Only update if the editor is empty or has different content
-      const currentContent = JSON.stringify(editor.getJSON());
-      if (currentContent !== initialJsonContent) {
-        try {
-          editor.commands.setContent(JSON.parse(initialJsonContent));
-        } catch {
-          console.warn('Failed to update editor with initialJsonContent');
-        }
-      }
-    }, [editor, initialJsonContent]);
-
-    // Sync external value changes to editor (for restoration after abort, etc.)
     // NOTE: Skip when disabled (view mode) to avoid overwriting JSON content
     useEffect(() => {
-      // Skip when disabled - in view mode, content is managed by initialJsonContent
-      if (disabled) {
-        lastValueRef.current = value;
-        return;
-      }
       // Only update if the value changed externally (not from editor onChange)
       // and the editor exists
-      const editorText = editor ? editor.getText() : undefined;
-      if (
-        editorText !== undefined &&
-        value !== lastValueRef.current &&
-        value !== editorText
-      ) {
-        // Convert plain text to HTML, preserving newlines
-        const html = value
-          .split('\n')
-          .map((line) => `<p>${line || '<br>'}</p>`)
-          .join('');
-        editor?.commands.setContent(html);
+      if (value !== undefined) {
+        editor?.commands.setContent(
+          value.length > 0 ? JSON.parse(value) : '<p></p>',
+        );
       }
-      lastValueRef.current = value;
-    }, [value, disabled, editor]);
+    }, [value]);
+
+    // We call this only once with the initial prop value
+    useEffect(() => {
+      if (defaultValue) {
+        editor?.commands.setContent(JSON.parse(defaultValue));
+      }
+    });
 
     // Fix cursor positioning around inline attachment badges
     // The browser's Selection API returns a zero rect when cursor is at element boundaries
@@ -368,19 +337,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       },
       clear: () => {
         editor?.commands.clearContent();
-      },
-      setJsonContent: (json: string) => {
-        if (editor) {
-          try {
-            editor.commands.setContent(JSON.parse(json));
-          } catch {
-            console.warn('Failed to parse JSON content');
-          }
-        }
-      },
-      getTiptapJsonContent: () => {
-        if (!editor) return '';
-        return JSON.stringify(editor.getJSON());
       },
     }));
 

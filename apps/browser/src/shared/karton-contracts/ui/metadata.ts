@@ -38,6 +38,9 @@ export type TextClipAttachment = z.infer<typeof textClipAttachmentSchema>;
 
 const metadataSchema = z.object({
   createdAt: z.date(),
+  partsMetadata: z.array(
+    z.object({ startedAt: z.date().optional(), endedAt: z.date().optional() }),
+  ), // Metadata for each part of the message - indexed accordingly
   selectedPreviewElements: z.array(selectedElementSchema).optional(),
   /** Text clip attachments - collapsed long text pasted by user */
   textClipAttachments: z.array(textClipAttachmentSchema).optional(),

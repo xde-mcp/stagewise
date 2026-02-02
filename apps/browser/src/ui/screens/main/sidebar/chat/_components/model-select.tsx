@@ -3,6 +3,7 @@ import type { ModelId } from '@shared/available-models';
 import { IconBrainOutline18 } from 'nucleo-ui-outline-18';
 import { availableModels } from '@shared/available-models';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 const modelOptions = availableModels.map((model) => ({
   label: model.modelDisplayName,
@@ -43,17 +44,18 @@ interface ModelSelectProps {
 }
 
 export function ModelSelect({ onModelChange }: ModelSelectProps) {
-  const selectedModel = useKartonState((s) => s.agentChat.selectedModel);
-  const setSelectedModel = useKartonProcedure(
-    (p) => p.agentChat.setSelectedModel,
+  const [openAgent] = useOpenAgent();
+  const selectedModel = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.activeModelId,
   );
+  const setSelectedModel = useKartonProcedure((p) => p.agents.setActiveModelId);
 
   return (
     <SearchableSelect
       side="top"
-      value={selectedModel.modelId}
+      value={selectedModel}
       onValueChange={(value) => {
-        setSelectedModel(value as ModelId);
+        setSelectedModel(openAgent, value as ModelId);
         onModelChange?.();
       }}
       items={modelOptions}

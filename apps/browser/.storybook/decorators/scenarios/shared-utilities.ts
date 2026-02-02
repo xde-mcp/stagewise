@@ -164,6 +164,7 @@ export function createUserMessage(
     parts,
     metadata: {
       createdAt: new Date(),
+      partsMetadata: [],
       selectedPreviewElements: options?.selectedElements || [],
     },
   };
@@ -181,6 +182,7 @@ export function createAssistantMessage(
     parts: options.parts || [],
     metadata: {
       createdAt: new Date(),
+      partsMetadata: [],
       ...(options.thinkingDuration
         ? { thinkingDuration: options.thinkingDuration }
         : {}),

@@ -2090,6 +2090,7 @@ export class AgentService {
         metadata: {
           ...(uiMessage.metadata ?? {}),
           ...(thinkingDurations.length > 0 ? { thinkingDurations } : {}),
+          partsMetadata: [],
           createdAt: new Date(),
         },
       };
@@ -2239,6 +2240,7 @@ export class AgentService {
                 compactedAt: new Date(),
                 chatSummary: summary,
               },
+              partsMetadata: [],
             };
           }
         }

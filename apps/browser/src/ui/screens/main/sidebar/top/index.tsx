@@ -30,21 +30,15 @@ import { HotkeyActions } from '@shared/hotkeys';
 import { HotkeyComboText } from '@/components/hotkey-combo-text';
 import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
 import { useChatDraft } from '@/hooks/use-chat-draft';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
-  const createChat = useKartonProcedure((p) => p.agentChat.create);
-  const switchChat = useKartonProcedure((p) => p.agentChat.switch);
-  const deleteChat = useKartonProcedure((p) => p.agentChat.delete);
-  const loadMoreChats = useKartonProcedure((p) => p.agentChat.loadMoreChats);
-  const chatList = useKartonState((s) => s.agentChat?.chatList) || [];
-  const hasMoreChats =
-    useKartonState((s) => s.agentChat?.hasMoreChats) || false;
+  const createAgent = useKartonProcedure((p) => p.agents.create);
+  const deleteChat = useKartonProcedure((p) => p.agents.delete);
+  const getAgentsList = useKartonProcedure((p) => p.agents.getAgentsList);
   const platform = useKartonState((s) => s.appInfo.platform);
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
-  const activeChatId = useKartonState(
-    (s) => s.agentChat?.activeChat?.id || null,
-  );
-  const isWorking = useKartonState((s) => s.agentChat?.isWorking);
+  const [openAgent, setOpenAgent] = useOpenAgent();
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
   const openWorkspace = useKartonProcedure((p) => p.workspace.open);
@@ -63,22 +57,31 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     return () => clearInterval(interval);
   }, []);
 
+  const [agentsList, setAgentsList] = useState<
+    Awaited<ReturnType<typeof getAgentsList>>
+  >([]);
+  useEffect(() => {
+    void getAgentsList(0, 200).then(setAgentsList);
+    // TODO: Later, we can add pagination...
+  }, []);
+
   const showChatListButton = useMemo(() => {
-    return chatList.length > 1;
-  }, [chatList]);
+    return agentsList.length > 1;
+  }, [agentsList]);
 
   const showNewChatButton = useMemo(() => {
-    return activeChatId;
-  }, [activeChatId]);
+    return openAgent !== null;
+  }, [openAgent]);
 
   const groupedChats = useMemo(() => {
     // Sort by updatedAt descending so most recent chats appear first
-    const sorted = [...chatList].sort(
+    const sorted = [...agentsList].sort(
       (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        new Date(b.lastMessageTimestamp).getTime() -
+        new Date(a.lastMessageTimestamp).getTime(),
     );
     return groupChatsByTime(sorted);
-  }, [chatList, timeTick]);
+  }, [agentsList, timeTick]);
 
   const minimalFormatter = useMemo(
     () =>
@@ -135,7 +138,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             icon: <IconTrash2Outline24 className="size-3" />,
             onClick: (value, e) => {
               e.stopPropagation();
-              if (!isWorking) void deleteChat(value);
+              void deleteChat(value);
+              setAgentsList(agentsList.filter((agent) => agent.id !== value));
             },
             showOnHover: true,
           },
@@ -143,7 +147,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       }
     }
     // Add "Load more" item if there are more chats available
-    if (hasMoreChats) {
+    if (agentsList.length % 200 === 0) {
       items.push({
         value: '__load_more__',
         label: (
@@ -154,33 +158,34 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       });
     }
     return items;
-  }, [groupedChats, deleteChat, isWorking, minimalFormatter, hasMoreChats]);
+  }, [groupedChats, deleteChat, minimalFormatter]);
 
   // Helper to create a new chat and focus the input
-  const createChatAndFocus = useCallback(async () => {
-    const draft = getDraft();
-    await createChat(draft);
+  const createAgentAndFocus = useCallback(async () => {
+    await createAgent();
+    void getAgentsList(0, 200).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [createChat, getDraft]);
+  }, [createAgent, getAgentsList]);
 
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {
-    if (showNewChatButton && !isWorking) void createChatAndFocus();
+    if (showNewChatButton) void createAgentAndFocus();
   }, HotkeyActions.CTRL_N);
 
   const handleChatSelect = useCallback(
     (value: string | null) => {
-      if (!value || isWorking) return;
+      if (!value) return;
       if (value === '__load_more__') {
-        void loadMoreChats();
+        void getAgentsList(agentsList.length, 200).then((res) => {
+          setAgentsList([...agentsList, ...res]);
+        });
         return;
       }
-      if (value !== activeChatId) {
-        const draft = getDraft();
-        void switchChat(value, draft);
+      if (value !== openAgent) {
+        setOpenAgent(value);
       }
     },
-    [activeChatId, isWorking, switchChat, loadMoreChats, getDraft],
+    [openAgent, setOpenAgent, getDraft],
   );
 
   // Build menu items for the options dropdown
@@ -278,8 +283,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                   variant="ghost"
                   size="icon-xs"
                   className="shrink-0"
-                  disabled={isWorking}
-                  onClick={() => void createChatAndFocus()}
+                  onClick={() => void createAgentAndFocus()}
                 >
                   <IconPlusFill18 className="size-4" />
                 </Button>
@@ -295,9 +299,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
           {showChatListButton && (
             <SearchableSelect
               items={chatSelectItems}
-              value={activeChatId}
+              value={openAgent}
               onValueChange={handleChatSelect}
-              disabled={isWorking}
               side="bottom"
               sideOffset={8}
               size="xs"
@@ -309,7 +312,6 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                       variant="ghost"
                       size="icon-xs"
                       className="app-no-drag shrink-0"
-                      disabled={isWorking}
                     >
                       <IconHistoryFill18 className="size-4" />
                     </Button>
@@ -362,7 +364,12 @@ type TimeAgoLabel = string;
  * @returns Grouped chats by time label, each group containing an array of ChatSummary
  */
 function groupChatsByTime(
-  chatList: ChatSummary[],
+  agentsList: {
+    id: string;
+    title: string;
+    createdAt: Date;
+    lastMessageTimestamp: Date;
+  }[],
 ): Record<TimeAgoLabel, ChatSummary[]> {
   // Helper function to get time label for a chat
   // Uses calendar-day boundaries (midnight in user's timezone) instead of
@@ -415,10 +422,15 @@ function groupChatsByTime(
   // Group chats by time label (chatList is already sorted by updatedAt desc)
   const grouped: Record<string, ChatSummary[]> = {};
 
-  for (const chat of chatList) {
-    const label = getTimeLabel(chat.updatedAt);
+  for (const agent of agentsList) {
+    const label = getTimeLabel(agent.lastMessageTimestamp);
     if (!grouped[label]) grouped[label] = [];
-    grouped[label].push(chat);
+    grouped[label].push({
+      id: agent.id,
+      title: agent.title,
+      createdAt: new Date(),
+      updatedAt: agent.lastMessageTimestamp,
+    });
   }
 
   return grouped;

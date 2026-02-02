@@ -5,13 +5,13 @@ const anthropicHeaders = {
     'fine-grained-tool-streaming-2025-05-14, interleaved-thinking-2025-05-14',
 };
 
+// TODO!!!!! UPDATE THE CAPABVILITIES OF EACH MODEL TO ADHERE TO THE TRUTH!!!! GLENN DON'T FORGET THIS!
+
 const openaiHeaders = {};
 
 const googleHeaders = {};
 
-// TODO: ADD MODEL CAPABILITIES GLENN!!!!!
-
-export const availableModels = [
+export const availableModels: ModelSettings[] = [
   // Anthropic Models
   {
     modelId: 'claude-opus-4-5',
@@ -21,6 +21,8 @@ export const availableModels = [
       "Anthropic's most capable model, excels at complex reasoning and architectural decisions.",
     modelContext: '200k context',
     modelContextRaw: 200000,
+    headers: anthropicHeaders,
+    thinkingEnabled: true,
     capabilities: {
       inputModalities: {
         text: true,
@@ -29,7 +31,6 @@ export const availableModels = [
         video: false,
         file: false,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -43,8 +44,6 @@ export const availableModels = [
         canCode: true,
       },
     },
-    headers: anthropicHeaders,
-    thinkingEnabled: true,
   },
   {
     modelId: 'gpt-5.2',
@@ -69,7 +68,6 @@ export const availableModels = [
         video: false,
         file: false,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -107,7 +105,6 @@ export const availableModels = [
         video: false,
         file: false,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -140,7 +137,6 @@ export const availableModels = [
         video: false,
         file: false,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -178,7 +174,6 @@ export const availableModels = [
         video: false,
         file: false,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -211,7 +206,6 @@ export const availableModels = [
         video: false,
         file: false,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -226,6 +220,6 @@ export const availableModels = [
       },
     },
   },
-] as const satisfies ModelSettings[];
+] as const;
 
 export type ModelId = (typeof availableModels)[number]['modelId'];

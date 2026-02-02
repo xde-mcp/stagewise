@@ -11,13 +11,8 @@ import { Button } from '@stagewise/stage-ui/components/button';
 import { MessageUser } from './message-user';
 import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
-import {
-  useComparingSelector,
-  useKartonState,
-  useKartonProcedure,
-} from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { cn } from '@ui/utils';
-import { MessageError } from './message-error';
 import type { History, ChatMessage } from '@shared/karton-contracts/ui';
 import { IconXmark } from 'nucleo-micro-bold';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
@@ -25,6 +20,7 @@ import { useMessageEditState } from '@/hooks/use-message-edit-state';
 import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
 import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
 import { isEmptyAssistantMessage } from './message-utils';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 export const ChatHistory = () => {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -97,15 +93,13 @@ export const ChatHistory = () => {
 
   const { activeEditMessageId } = useMessageEditState();
   const createTab = useKartonProcedure((s) => s.browser.createTab);
-  const sendUserMessage = useKartonProcedure(
-    (s) => s.agentChat.sendUserMessage,
+  const sendUserMessage = useKartonProcedure((s) => s.agents.sendUserMessage);
+  const [openAgent] = useOpenAgent();
+  const isWorking = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.isWorking,
   );
-  const { activeChat, isWorking } = useKartonState(
-    useComparingSelector((s) => ({
-      activeChat: s.agentChat?.activeChat,
-      isWorking: s.agentChat?.isWorking ?? false,
-      workspaceStatus: s.workspaceStatus,
-    })),
+  const history = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.history,
   );
   const [removedSuggestionUrls, setRemovedSuggestionUrls] = useState<
     Set<string>
@@ -171,9 +165,9 @@ export const ChatHistory = () => {
 
   // All messages after filtering and merging consecutive assistant messages
   const filteredMessages = useMemo(() => {
-    if (!activeChat?.messages) return [];
+    if (!history) return [];
 
-    return activeChat?.messages
+    return history
       .filter(
         (message) => message.role === 'user' || message.role === 'assistant',
       )
@@ -201,7 +195,7 @@ export const ChatHistory = () => {
         }
         return curr;
       }, []);
-  }, [activeChat]);
+  }, [history]);
 
   // Determine if we should show the "Working..." indicator
   const showWorkingIndicator = useMemo(() => {
@@ -267,7 +261,7 @@ export const ChatHistory = () => {
             style={{ minHeight: spacerHeight, paddingRight }}
           >
             {messageComponent}
-            {activeChat?.error && <MessageError error={activeChat.error} />}
+            {/* history?.error && <MessageError error={history.error} /> */}
             {showWorkingIndicator && <MessageLoading />}
           </div>
         );
@@ -300,7 +294,7 @@ export const ChatHistory = () => {
     [
       filteredMessages.length,
       lastUserMsgIndex,
-      activeChat?.error,
+      history,
       showWorkingIndicator,
       paddingRight,
     ],
@@ -316,7 +310,7 @@ export const ChatHistory = () => {
             {...suggestion}
             onClick={async () => {
               await createTab(suggestion.url);
-              await sendUserMessage({
+              await sendUserMessage(openAgent, {
                 id: crypto.randomUUID(),
                 role: 'user',
                 parts: [
@@ -354,7 +348,7 @@ export const ChatHistory = () => {
     <AttachmentMetadataProvider messages={filteredMessages}>
       <Virtuoso
         style={{ scrollbarGutter: 'stable' }}
-        key={activeChat?.id ?? 'no-chat'}
+        key={openAgent ?? 'no-chat'}
         data={filteredMessages}
         ref={virtuosoRef}
         className="scrollbar-hover-only -mr-[2px]"

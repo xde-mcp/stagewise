@@ -6,13 +6,20 @@ import { useDragDrop } from '@/hooks/use-drag-drop';
 import { useElementSelectionWatcher } from '@/hooks/use-element-selection-watcher';
 import { cn, generateId, collectUserMessageMetadata } from '@/utils';
 import { HotkeyActions } from '@shared/hotkeys';
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useOptimistic,
+  startTransition,
+} from 'react';
 import {
   useKartonState,
   useKartonProcedure,
   useKartonConnected,
   useKartonReconnectState,
-  useComparingSelector,
 } from '@/hooks/use-karton';
 import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
 import { useEventListener } from '@/hooks/use-event-listener';
@@ -22,19 +29,35 @@ import {
   type ChatInputHandle,
 } from './chat-input';
 import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/rich-text';
-import {
-  selectedElementToAttachmentAttributes,
-  fileUIPartToFileAttachment,
-} from '@/utils/attachment-conversions';
+import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { ChatMessage } from '@shared/karton-contracts/ui';
-import { useChatDraft } from '@/hooks/use-chat-draft';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 export function ChatPanelFooter() {
   const chatInputRef = useRef<ChatInputHandle>(null);
-  const prevChatIdRef = useRef<string | null>(null);
-  const prevDraftRef = useRef<string | undefined>(undefined);
 
-  const [chatInput, setChatInput] = useState<string>('');
+  const [openAgent] = useOpenAgent();
+
+  const chatInputState = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.inputState,
+  );
+  const setChatInputState = useKartonProcedure(
+    (p) => p.agents.updateInputState,
+  );
+
+  const [optimisticChatInputState, setOptimisticChatInputState] =
+    useOptimistic(chatInputState);
+
+  const updateChatInputState = useCallback(
+    (newInputState: string) => {
+      startTransition(async () => {
+        setOptimisticChatInputState(newInputState);
+        void setChatInputState(openAgent, newInputState);
+      });
+    },
+    [openAgent],
+  );
+
   const [localSelectedElements, setLocalSelectedElements] = useState<
     SelectedElement[]
   >([]);
@@ -50,52 +73,10 @@ export function ChatPanelFooter() {
 
   const { activeEditMessageId, setMainDropHandler } = useMessageEditState();
 
-  const { isWorking, activeChat } = useKartonState(
-    useComparingSelector((s) => ({
-      activeChat: s.agentChat?.activeChat,
-      isWorking: s.agentChat?.isWorking,
-    })),
-  );
-
   // Restore draft when activeChat changes (after switch or create)
   useEffect(() => {
-    const currentChatId = activeChat?.id ?? null;
-    const currentDraft = activeChat?.draftInputContent;
-
-    const chatChanged = currentChatId !== prevChatIdRef.current;
-    const draftChanged = currentDraft !== prevDraftRef.current;
-
-    // Skip if nothing changed
-    if (!chatChanged && !draftChanged) return;
-
-    // Update refs
-    prevChatIdRef.current = currentChatId;
-    prevDraftRef.current = currentDraft;
-
-    if (!currentChatId) return;
-
-    // Clear file attachments and selected elements only on chat switch
-    if (chatChanged) {
-      clearFileAttachments();
-      setLocalSelectedElements([]);
-    }
-
-    // Restore draft from the newly loaded chat (or when draft becomes available)
-    if (currentDraft) chatInputRef.current?.setJsonContent(currentDraft);
-    else if (chatChanged) {
-      // Only clear input on chat change (not when draft becomes undefined)
-      chatInputRef.current?.clear();
-      setChatInput('');
-    }
-  }, [activeChat?.id, activeChat?.draftInputContent, clearFileAttachments]);
-
-  // Register draft getter with context (for switch/create in sibling components)
-  const { registerDraftGetter } = useChatDraft();
-  useEffect(() => {
-    return registerDraftGetter(
-      () => chatInputRef.current?.getTiptapJsonContent() ?? '',
-    );
-  }, [registerDraftGetter]);
+    setLocalSelectedElements([]);
+  }, [openAgent]);
 
   const activeTabId = useKartonState((s) => s.browser.activeTabId);
   const tabs = useKartonState((s) => s.browser.tabs);
@@ -120,10 +101,8 @@ export function ChatPanelFooter() {
   const togglePanelKeyboardFocus = useKartonProcedure(
     (p) => p.browser.layout.togglePanelKeyboardFocus,
   );
-  const sendUserMessage = useKartonProcedure(
-    (p) => p.agentChat.sendUserMessage,
-  );
-  const stopAgent = useKartonProcedure((p) => p.agentChat.abortAgentCall);
+  const sendUserMessage = useKartonProcedure((p) => p.agents.sendUserMessage);
+  const stopAgent = useKartonProcedure((p) => p.agents.stop);
   const setContextSelectionActive = useKartonProcedure(
     (p) => p.browser.contextSelection.setActive,
   );
@@ -156,35 +135,15 @@ export function ChatPanelFooter() {
   }, [setContextSelectionActive]);
 
   const abortAgent = useCallback(async () => {
-    const result = await stopAgent();
-    // If early abort conditions were met, restore the user message to the input
-    if (!result.restored || !result.userMessage) return;
-
-    const message = result.userMessage;
+    await stopAgent(openAgent);
 
     // Restore text from message parts
+    /*
     const textPart = message.parts.find((p) => p.type === 'text');
     const tiptapJsonContent = message.metadata?.tiptapJsonContent;
     if (tiptapJsonContent)
       chatInputRef.current?.setJsonContent(tiptapJsonContent);
-    else if (textPart && textPart.type === 'text') setChatInput(textPart.text);
-    else setChatInput('');
-
-    // Restore file attachments from file parts
-    const fileParts = message.parts.filter((p) => p.type === 'file');
-    fileParts.forEach((part) => {
-      if (!(part.type === 'file') || !part.url) return;
-      const attachment = fileUIPartToFileAttachment(part);
-      if (attachment) setFileAttachments((prev) => [...prev, attachment]);
-    });
-
-    // Restore selected elements from metadata
-    const elements =
-      (message.metadata?.selectedPreviewElements as SelectedElement[]) ?? [];
-    if (elements.length > 0)
-      setLocalSelectedElements((prev) => [...prev, ...elements]);
-
-    // Restore tiptap JSON content (handles element badges in editor)
+    */
   }, [stopAgent]);
 
   const isVerboseMode = useKartonState(
@@ -201,8 +160,11 @@ export function ChatPanelFooter() {
   const canSendMessage = useMemo(() => {
     // Allow sending when input is enabled and has enough text
     // (backend will queue if agent is working)
-    return enableInputField && chatInput.trim().length > 2;
-  }, [enableInputField, chatInput]);
+    return (
+      enableInputField &&
+      chatInputRef.current?.getTextContent().trim().length > 2
+    );
+  }, [enableInputField, optimisticChatInputState]);
 
   const hasOpenedInternalPage = useMemo(() => {
     return activeTab?.url?.startsWith('stagewise://internal/') ?? false;
@@ -211,7 +173,7 @@ export function ChatPanelFooter() {
   const handleSubmit = useCallback(async () => {
     if (!canSendMessage) return;
 
-    const tiptapJsonContent = chatInputRef.current?.getTiptapJsonContent();
+    const tiptapJsonContent = JSON.parse(optimisticChatInputState);
 
     // Collect metadata for selected elements and text clips
     const metadata = collectUserMessageMetadata(
@@ -220,9 +182,11 @@ export function ChatPanelFooter() {
     );
 
     // Include all file attachments (validation is handled by prompt builder)
-    const message: ChatMessage = {
+    const message: ChatMessage & { role: 'user' } = {
       id: generateId(),
-      parts: [{ type: 'text' as const, text: chatInput }],
+      parts: [
+        { type: 'text' as const, text: chatInputRef.current!.getTextContent() },
+      ],
       role: 'user',
       metadata: {
         ...metadata,
@@ -231,19 +195,14 @@ export function ChatPanelFooter() {
       },
     };
 
-    // Reset state after sending
-    setChatInput('');
     clearAll();
     stopContextSelector();
-
-    // Clear the editor after sending
-    chatInputRef.current?.clear();
 
     // Dispatch event to force scroll to bottom BEFORE sending (must happen before DOM updates)
     window.dispatchEvent(new Event('chat-message-sent'));
 
     // Send the message
-    await sendUserMessage(message);
+    await sendUserMessage(openAgent, message);
 
     // Keep input focused after sending - refocus in next tick
     setTimeout(() => {
@@ -251,7 +210,6 @@ export function ChatPanelFooter() {
     }, 0);
   }, [
     canSendMessage,
-    chatInput,
     fileAttachments,
     localSelectedElements,
     sendUserMessage,
@@ -259,14 +217,16 @@ export function ChatPanelFooter() {
     stopContextSelector,
   ]);
 
+  const usedTokens = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.usedTokens,
+  );
+  const maxTokens = 200000; // TODO Add max tokens info to agent state
+
   const contextUsed = useMemo(() => {
-    const used = activeChat?.usage.usedContextWindowSize ?? 0;
-    const max = activeChat?.usage.maxContextWindowSize ?? 1;
+    const used = usedTokens ?? 0;
+    const max = maxTokens ?? 1;
     return Math.min(100, Math.round((used / max) * 100));
-  }, [
-    activeChat?.usage.usedContextWindowSize,
-    activeChat?.usage.maxContextWindowSize,
-  ]);
+  }, [usedTokens, maxTokens]);
 
   const [chatInputActive, setChatInputActive] = useState<boolean>(false);
   // Track if input was focused before app lost focus (for restoring on app regain)
@@ -483,6 +443,11 @@ export function ChatPanelFooter() {
     ),
   });
 
+  const allowUserInput = useKartonState(
+    (s) => s.agents.instances[openAgent]?.allowUserInput,
+  );
+  if (!allowUserInput) return null;
+
   return (
     <footer className="z-20 flex shrink-0 flex-col items-stretch gap-1 px-1 pb-1">
       <div
@@ -499,8 +464,8 @@ export function ChatPanelFooter() {
       >
         <ChatInput
           ref={chatInputRef}
-          value={chatInput}
-          onChange={setChatInput}
+          value={optimisticChatInputState}
+          onChange={updateChatInputState}
           onSubmit={handleSubmit}
           disabled={!enableInputField}
           attachmentCount={
@@ -509,23 +474,21 @@ export function ChatPanelFooter() {
           showModelSelect
           onModelChange={() => chatInputRef.current?.focus()}
           showContextUsageRing={
-            !!activeChat && (isVerboseMode || contextUsed > 80)
+            !!usedTokens && (isVerboseMode || contextUsed > 80)
           }
           contextUsedPercentage={contextUsed}
-          contextUsedKb={
-            activeChat ? activeChat.usage.usedContextWindowSize / 1000 : 0
-          }
-          contextMaxKb={
-            activeChat ? activeChat.usage.maxContextWindowSize / 1000 : 0
-          }
+          contextUsedKb={usedTokens ? usedTokens / 1000 : 0}
+          contextMaxKb={maxTokens ? maxTokens / 1000 : 0}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
           onPasteFiles={handlePasteFiles}
           onAttachmentRemoved={handleAttachmentRemoved}
         />
         <ChatInputActions
-          isAgentWorking={isWorking}
-          hasTextInput={chatInput.trim().length > 0}
+          isAgentWorking={isConnected && reconnectState.isReconnecting}
+          hasTextInput={
+            chatInputRef.current?.getTextContent().trim().length > 0
+          }
           onStop={abortAgent}
           showElementSelectorButton
           elementSelectionActive={elementSelectionActive}

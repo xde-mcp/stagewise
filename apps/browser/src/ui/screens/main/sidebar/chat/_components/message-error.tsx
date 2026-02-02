@@ -1,12 +1,17 @@
 import { cn } from '@/utils';
 import { useState } from 'react';
 import { IconTriangleWarning } from 'nucleo-micro-bold';
-import { AgentErrorType, type AgentError } from '@shared/karton-contracts/ui';
+import {
+  AgentErrorType,
+  type ChatMessage,
+  type AgentError,
+} from '@shared/karton-contracts/ui';
 import { RefreshCcwIcon, CopyIcon, CopyCheckIcon } from 'lucide-react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { Streamdown } from '@/components/streamdown';
 import { useCallback, useMemo } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 /** Maximum characters to display in error messages (UI-level safety net) */
 const MAX_DISPLAY_LENGTH = 250;
@@ -78,9 +83,32 @@ const paidPlanLimitExceededMessage = (minutes?: number) =>
     : `Wow, looks like you ran out of your daily prompts in your subscription!\n\nYou can wait until the cooldown period ends (max 24 hours) or [ping the stagewise team on Discord](${discordLink}) 💪`;
 
 export function MessageError({ error }: { error: AgentError }) {
-  const retrySendingUserMessage = useKartonProcedure(
-    (p) => p.agentChat.retrySendingUserMessage,
+  const [openAgent] = useOpenAgent();
+  const agentHistory = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.history,
   );
+
+  const revertToUserMessage = useKartonProcedure(
+    (p) => p.agents.revertToUserMessage,
+  );
+  const sendUserMessage = useKartonProcedure((p) => p.agents.sendUserMessage);
+
+  const retrySendingUserMessage = useCallback(async () => {
+    if (!openAgent || !agentHistory) return;
+
+    for (let i = agentHistory.length - 1; i >= 0; i--) {
+      const message = agentHistory[i];
+      if (message.role === 'user') {
+        const message: ChatMessage & { role: 'user' } = {
+          ...agentHistory[i],
+          role: 'user',
+        };
+        await revertToUserMessage(openAgent, message.id, true);
+        await sendUserMessage(openAgent, message);
+        break;
+      }
+    }
+  }, [openAgent, agentHistory]);
 
   const subscription = useKartonState((s) => s.userAccount.subscription);
 

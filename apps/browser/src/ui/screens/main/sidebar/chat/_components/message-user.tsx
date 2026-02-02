@@ -36,6 +36,7 @@ import {
 import { ChatInputViewOnly } from './chat-input-view-only';
 import { generateId } from 'ai';
 import type { AttachmentType } from './rich-text';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 type UserMessage = ChatMessage & { role: 'user' };
 
@@ -65,16 +66,14 @@ export const MessageUser = memo(
     const { registerEditMode, unregisterEditMode } = useMessageEditState();
 
     // Procedures and state
-    const undoEditsUntilUserMessage = useKartonProcedure(
-      (p) => p.agentChat.undoEditsUntilUserMessage,
+    const revertToUserMessage = useKartonProcedure(
+      (p) => p.agents.revertToUserMessage,
     );
-    const sendUserMessage = useKartonProcedure(
-      (p) => p.agentChat.sendUserMessage,
+    const sendUserMessage = useKartonProcedure((p) => p.agents.sendUserMessage);
+    const [openAgent] = useOpenAgent();
+    const isWorking = useKartonState(
+      (s) => s.agents.instances[openAgent]?.state.isWorking || false,
     );
-    const activeChatId = useKartonState(
-      (s) => s.agentChat?.activeChat?.id || null,
-    );
-    const isWorking = useKartonState((s) => s.agentChat?.isWorking || false);
 
     // Use message ID for scoping element selection
     const editMessageId = msg.id;
@@ -118,12 +117,11 @@ export const MessageUser = memo(
     );
 
     // Edit mode state with mention IDs
-    const [editedText, setEditedText] = useState('');
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    // Store original content for reverting on cancel
-    const originalTiptapContentRef = useRef<string | null>(null);
     // Store tiptap content when submit is clicked (before confirmation popover)
-    const pendingTiptapContentRef = useRef<string | null>(null);
+    const [pendingTiptapContent, setPendingTiptapContent] = useState<
+      string | null
+    >(null);
 
     // Extract text content from message
     const textContent = useMemo(() => {
@@ -165,13 +163,6 @@ export const MessageUser = memo(
         }),
       );
 
-      // Save original content for reverting on cancel
-      // Use the message metadata directly since we don't have an editor in view mode
-      originalTiptapContentRef.current = tiptapJsonContent ?? null;
-
-      // Initialize editedText from message text content
-      setEditedText(textContent);
-
       msg.metadata?.selectedPreviewElements?.forEach((element) => {
         setSelectedElementsFromEditor((prev) => [
           ...prev,
@@ -189,6 +180,7 @@ export const MessageUser = memo(
       setEditedFileAttachments(fileAttachments);
 
       setIsEditing(true);
+      setPendingTiptapContent(tiptapJsonContent);
 
       // Focus the editor (will be available after state update triggers re-render)
       setTimeout(() => chatInputRef.current?.focus(), 0);
@@ -196,55 +188,35 @@ export const MessageUser = memo(
       canEdit,
       editMessageId,
       textContent,
-      tiptapJsonContent,
       fileUIParts,
       clearSelectedElements,
     ]);
 
     // Cancel editing
     const handleCancelEditing = useCallback(() => {
-      // Check if current content is completely empty by reading directly from the editor
-      // getTextContent() returns text with @mentions (e.g., "@element-id"), so if empty,
-      // there's no text and no attachment mentions in the editor
-      const currentText = chatInputRef.current?.getTextContent() ?? '';
-      const isContentEmpty = currentText.trim().length === 0;
-
-      // Only restore original content if the edited content is completely empty
-      if (isContentEmpty && originalTiptapContentRef.current)
-        chatInputRef.current?.setJsonContent(originalTiptapContentRef.current);
-
-      originalTiptapContentRef.current = null;
-      pendingTiptapContentRef.current = null;
+      setPendingTiptapContent(null);
 
       setIsEditing(false);
-      setEditedText('');
       clearFileAttachments();
       setIsConfirmOpen(false);
       setElementSelectionActive(false);
       clearSelectedElements();
       setSelectedElementsFromEditor([]);
-    }, [
-      setElementSelectionActive,
-      clearSelectedElements,
-      clearFileAttachments,
-    ]);
+    }, []);
 
     // Submit triggers confirmation
     const handleSubmitEdit = useCallback(() => {
-      if (editedText.trim().length <= 2) return;
-      // Capture tiptap content now, before the confirmation popover
-      pendingTiptapContentRef.current =
-        chatInputRef.current?.getTiptapJsonContent() ?? null;
+      if (chatInputRef.current?.getTextContent().trim().length <= 2) return;
       setIsConfirmOpen(true);
-    }, [editedText]);
+    }, []);
 
     // Confirm and execute the edit
     const handleConfirmEdit = useCallback(async () => {
-      if (!msg.id || !activeChatId) return;
+      if (!msg.id || !openAgent) return;
 
       try {
-        // First, revert the history
-        await undoEditsUntilUserMessage(msg.id, activeChatId);
+        // First, revert the history (( for now we also revert tool calls)
+        await revertToUserMessage(openAgent, msg.id, true);
 
         const combinedSelectedElements = [
           ...selectedElementsFromWebcontents,
@@ -256,21 +228,25 @@ export const MessageUser = memo(
           editedFileAttachments.map(fileAttachmentToFileUIPart),
         );
 
-        const tiptapJsonContent = pendingTiptapContentRef.current ?? undefined;
-
         // Collect metadata for selected elements and text clips
         const metadata = collectUserMessageMetadata(
           combinedSelectedElements,
-          tiptapJsonContent,
+          pendingTiptapContent,
         );
 
-        await sendUserMessage({
+        await sendUserMessage(openAgent, {
           id: generateId(),
-          parts: [...fileParts, { type: 'text' as const, text: editedText }],
+          parts: [
+            ...fileParts,
+            {
+              type: 'text' as const,
+              text: chatInputRef.current!.getTextContent().trim(),
+            },
+          ],
           role: 'user',
           metadata: {
             ...metadata,
-            tiptapJsonContent,
+            tiptapJsonContent: pendingTiptapContent,
           },
         });
 
@@ -279,22 +255,20 @@ export const MessageUser = memo(
 
         // Reset edit state (clearFileAttachments handles blob URL cleanup)
         setIsEditing(false);
-        setEditedText('');
         clearFileAttachments();
         setIsConfirmOpen(false);
         setElementSelectionActive(false);
         clearSelectedElements();
         setSelectedElementsFromEditor([]);
-        pendingTiptapContentRef.current = null;
+        setPendingTiptapContent(null);
       } catch (error) {
         console.warn('Failed to edit message:', error);
       }
     }, [
       msg.id,
-      activeChatId,
-      undoEditsUntilUserMessage,
+      openAgent,
+      revertToUserMessage,
       sendUserMessage,
-      editedText,
       selectedElementsFromWebcontents,
       editedFileAttachments,
       setElementSelectionActive,
@@ -457,9 +431,6 @@ export const MessageUser = memo(
       unregisterEditMode,
     ]);
 
-    // Can send when text is long enough
-    const canSendMessage = editedText.trim().length > 2;
-
     // Check if on internal page (for element selector)
     const activeTabId = useKartonState((s) => s.browser.activeTabId);
     const tabs = useKartonState((s) => s.browser.tabs);
@@ -564,9 +535,8 @@ export const MessageUser = memo(
                   <>
                     <ChatInput
                       ref={chatInputRef}
-                      value={editedText}
-                      onChange={setEditedText}
-                      initialJsonContent={tiptapJsonContent}
+                      defaultValue={tiptapJsonContent}
+                      onChange={setPendingTiptapContent}
                       onSubmit={handleSubmitEdit}
                       onEscape={handleCancelEditing}
                       placeholder="Edit your message..."
@@ -584,14 +554,20 @@ export const MessageUser = memo(
                     <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
                       <ChatInputActions
                         isAgentWorking={false}
-                        hasTextInput={editedText.trim().length > 0}
+                        hasTextInput={
+                          chatInputRef.current?.getTextContent().trim().length >
+                          0
+                        }
                         showElementSelectorButton
                         elementSelectionActive={elementSelectionActive}
                         onToggleElementSelection={handleToggleElementSelection}
                         elementSelectorDisabled={hasOpenedInternalPage}
                         showImageUploadButton
                         onAddFileAttachment={addFileAttachment}
-                        canSendMessage={canSendMessage}
+                        canSendMessage={
+                          chatInputRef.current?.getTextContent().trim().length >
+                          2
+                        }
                         onSubmit={handleSubmitEdit}
                         isActive
                       />

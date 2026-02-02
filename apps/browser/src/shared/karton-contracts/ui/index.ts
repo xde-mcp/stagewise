@@ -34,6 +34,7 @@ import {
   configurablePermissionTypes,
 } from './shared-types';
 import type { PageTransition, DownloadState } from '../pages-api/types';
+import type { AgentState, AgentTypes } from './agent';
 
 export type ChatMessage = UIMessage<UserMessageMetadata, UIDataTypes, UITools>;
 
@@ -503,6 +504,19 @@ export type AppState = {
     /** Chats where queue processing is paused (e.g., after an error) */
     queuePausedChats: Record<ChatId, boolean>;
   } | null;
+  agents: {
+    instances: {
+      [agentInstanceId: string]: {
+        type: AgentTypes;
+        canSelectModel: boolean;
+        requiredModelCapabilities: ModelSettings['capabilities'];
+        allowUserInput: boolean;
+        parentAgentInstanceId: string | null;
+        childAgentInstanceIds: string[];
+        state: AgentState;
+      };
+    };
+  };
   toolbox: {
     [agentInstanceId: string]: {
       pendingFileDiffs: NewFileDiff[];
@@ -698,6 +712,45 @@ export type KartonContract = {
       ) => Promise<void>;
       /** Load more chats into the chatList (pagination) */
       loadMoreChats: () => Promise<{ loaded: number; hasMore: boolean }>;
+    };
+    agents: {
+      create: () => Promise<string>;
+      delete: (agentId: string) => Promise<void>;
+      getAgentsList: (
+        offset: number,
+        limit: number,
+      ) => Promise<
+        {
+          id: string;
+          title: string;
+          createdAt: Date;
+          lastMessageTimestamp: Date;
+        }[]
+      >;
+      updateInputState: (agentId: string, inputState: string) => Promise<void>;
+      sendUserMessage: (
+        agentId: string,
+        message: ChatMessage & { role: 'user' },
+      ) => Promise<void>;
+      sendToolApprovalResponse: (
+        instanceId: string,
+        approvalId: string,
+        approved: boolean,
+        reason?: string,
+      ) => Promise<void>;
+      stop: (agentId: string) => Promise<void>;
+      flushQueue: (agentId: string) => Promise<void>;
+      clearQueue: (agentId: string) => Promise<void>;
+      deleteQueuedMessage: (
+        agentId: string,
+        messageId: string,
+      ) => Promise<void>;
+      revertToUserMessage: (
+        agentId: string,
+        userMessageId: string,
+        undoToolCalls: boolean,
+      ) => Promise<void>;
+      setActiveModelId: (agentId: string, modelId: ModelId) => Promise<void>;
     };
     toolbox: {
       acceptHunks: (hunkIds: string[]) => Promise<void>;
@@ -948,6 +1001,7 @@ export const defaultState: KartonContract['state'] = {
     },
   },
   agentChat: null,
+  agents: { instances: {} },
   toolbox: {},
   workspace: null,
   workspaceStatus: 'closed',

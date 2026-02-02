@@ -59,6 +59,7 @@ export const collectUserMessageMetadata = (
 
   return {
     createdAt: new Date(),
+    partsMetadata: [],
     selectedPreviewElements: selectedElements,
     textClipAttachments:
       textClipAttachments.length > 0 ? textClipAttachments : undefined,

@@ -8,11 +8,24 @@ import {
   useKartonState,
 } from '@/hooks/use-karton';
 import { cn } from '@/utils';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 export function ChatPanel() {
   const { forwardDropEvent } = useMessageEditState();
+  const [openAgent, setOpenAgent] = useOpenAgent();
+  const agents = useKartonState((s) => s.agents.instances);
+
+  useEffect(() => {
+    if (openAgent === null && Object.keys(agents).length > 0) {
+      const firstAgent = Object.keys(agents)[0];
+      setOpenAgent(firstAgent);
+    }
+  }, [agents, openAgent]);
+
   const isWorking = useKartonState(
-    useComparingSelector((s) => s.agentChat?.isWorking || false),
+    useComparingSelector(
+      (s) => s.agents.instances[openAgent]?.state.isWorking || false,
+    ),
   );
   const isConnected = useKartonConnected();
 
@@ -78,6 +91,13 @@ export function ChatPanel() {
     },
     [forwardDropEvent],
   );
+
+  if (openAgent === null || !agents[openAgent])
+    return (
+      <div className="flex size-full items-center justify-center text-muted-foreground">
+        No agent selected
+      </div>
+    );
 
   return (
     <div

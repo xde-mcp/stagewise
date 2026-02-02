@@ -11,11 +11,6 @@ import type {
 } from '@shared/karton-contracts/ui';
 import { useMemo, memo } from 'react';
 import { useKartonState } from '@/hooks/use-karton';
-import {
-  isInteractionToolPart,
-  InteractionToolPartItem,
-  type InteractionToolPart,
-} from './user-interaction-tool-part';
 import { ThinkingPart } from './message-part-ui/thinking';
 import { FilePart } from './message-part-ui/file';
 import { TextPart } from './message-part-ui/text';
@@ -31,7 +26,8 @@ import {
 import { UnknownToolPart } from './message-part-ui/tools/unknown';
 import { ExecuteConsoleScriptToolPart } from './message-part-ui/tools/execute-console-script';
 import { ReadConsoleLogsToolPart } from './message-part-ui/tools/read-console-logs';
-import { isToolPart, isToolOrReasoningPart } from './message-utils';
+import { isToolOrReasoningPart } from './message-utils';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 type AssistantMessage = ChatMessage & { role: 'assistant' };
 
@@ -43,7 +39,10 @@ export const MessageAssistant = memo(
     message: AssistantMessage;
     isLastMessage: boolean;
   }) {
-    const isWorking = useKartonState((s) => s.agentChat?.isWorking || false);
+    const [openAgent] = useOpenAgent();
+    const isWorking = useKartonState(
+      (s) => s.agents.instances[openAgent]?.state.isWorking || false,
+    );
 
     const isEmptyMessage = useMemo(() => {
       if (
@@ -140,14 +139,6 @@ export const MessageAssistant = memo(
                   typeCounters[part.type] = currentTypeIndex + 1;
                   const stableKey = `${msg.id}:${part.type}:${currentTypeIndex}`;
 
-                  if (isToolPart(part) && isInteractionToolPart(part)) {
-                    return (
-                      <InteractionToolPartItem
-                        key={stableKey}
-                        toolPart={part as InteractionToolPart}
-                      />
-                    );
-                  }
                   switch (part.type) {
                     case 'text':
                       if ((part as TextUIPart).text.trim() === '') return null;

@@ -1,0 +1,1424 @@
+import {
+  type ModelMessage,
+  type Tool,
+  type ToolApprovalResponse,
+  streamText,
+  smoothStream,
+  type ToolSet,
+  type StepResult,
+  NoSuchToolError,
+  type AsyncIterableStream,
+  type InferUIMessageChunk,
+  readUIMessageStream,
+  tool,
+  type FlexibleSchema,
+} from 'ai';
+import type { ChatMessage, ToolUIPart } from '@shared/karton-contracts/ui';
+import type { AgentTypes, AgentState } from '@shared/karton-contracts/ui/agent';
+import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
+import type { ModelId } from '../../model-map';
+import type { z } from 'zod';
+import { AgentsMap } from '../../agents-map';
+import type { ToolboxService } from '@/services/toolbox';
+import type { TelemetryService } from '@/services/telemetry';
+import type { Logger } from '@/services/logger';
+import type { ModelProviderService } from '../../model-provider';
+import {
+  convertStagewiseUIToModelMessages,
+  capitalizeFirstLetter,
+  generateSimpleTitle,
+  generateChatSummary,
+} from './utils';
+import { randomUUID } from 'node:crypto';
+
+/**
+ * The base configuration for an agent. Should be defined by the inheriting class.
+ */
+export type BaseAgentConfig<TFinishToolOutputSchema extends FlexibleSchema> = {
+  /**
+   * Whether the agents state (including Messages) should be persisted to the database.
+   */
+  persistent: boolean;
+
+  /**
+   * The default suggested model ID to use for the agent.
+   */
+  defaultModelId: ModelId;
+
+  /**
+   * If user is allowed to select a different model than the default one.
+   *
+   * @note If set to `false`, the default model ID will be used and the UI should not show any model selection options.
+   *        If a madel change call is made anyway, it get's ignored.
+   */
+  allowModelSelection: boolean;
+
+  /**
+   * The required capabilities for the model to be usable by the agent.
+   *
+   * @note The agent will not immediately crash when running a step with a different model (ai-sdk might crash though), but the UI can use the info to filter the available models etc.
+   */
+  requiredCapabilities: ModelCapabilities;
+
+  /**
+   * Configures, if the user can input content directly into the agent.
+   *
+   * @note If set to `false`, the UI should not show any input field for the agent.
+   *
+   * @note If set to `false`, the agent will include a `finish` tool that will be used to send response data to the parent agent. This tools output MUST be configured with the `finishToolOutput` property in this config.
+   */
+  allowUserInput: boolean;
+
+  /**
+   * Allows to configure the output format of a finish tool that can be used by the agentto send response data to the parent agent (if one exists).
+   * @note If set to undefined, the agent will not include a finish tool.
+   */
+  finishToolOutputSchema: FlexibleSchema<TFinishToolOutputSchema> | undefined;
+
+  /**
+   * Whether the agent should generate titles for it's instance.
+   *
+   * @note The base agent provides a default implementation for generating titles, which can be modified by overriding the `generateTitle` method.
+   */
+  generateTitles: boolean;
+
+  /**
+   * The threshold of max context window size after which the chat history should be summarized.
+   *
+   * @note Accepts a value between 0 (0%) and 1 (100%).
+   *
+   * @note You can disable summarization by setting the value to -1.
+   *
+   * @note You can always trigger manual summarization while the agent is in idle by calling the `summarizeChatHistory` method.
+   *
+   * @note You can customize summarization logic by overriding the `summarizeChatHistory` method.
+   *
+   * @default 0.5
+   */
+  summarizeChatHistoryThreshold?: number;
+
+  /**
+   * How many uncompacted messages to keep in the internal history. Only older messages beyond this limit will be compacted.
+   *
+   * @note The minimum value is 5, any lower value will be ignored.
+   *
+   * @default 5
+   */
+  uncompactedMessagesToKeep?: number;
+
+  /**
+   * A configurable uinterval of user messages after which the title should be updated.
+   *
+   * @note If not set, the title will not be updated automatically and only be generated on the first user message.
+   *
+   * @note Only used if `generateTitles` is set to `true`.
+   */
+  updateTitlesEveryNUserMessages?: number;
+
+  /**
+   * A customizable reason text for the LLM in case a running tool call was aborted due to the user flushing the message queue.
+   */
+  flushQueueToolCallAbortReason?: string;
+
+  /**
+   * A customizable reason text for the LLM in case a open tool call approval request was denied due to the user sending a new message instead of waiting for the tool call to finish.
+   */
+  flushQueueToolCallRequestApprovalReason?: string;
+
+  /**
+   * A customizable reason text for the LLM in case a running tool call was aborted due to the user stopping the agent.
+   */
+  stopToolCallAbortReason?: string;
+
+  /**
+   * A customizable reason text for the LLM in case a open tool call approval request was denied due to the user stopping the agent.
+   */
+  stopToolCallRequestApprovalReason?: string;
+
+  /**
+   * A configurable amount of maximum steps to take before new step execution is force-stopped and a new user message is needed to resume the agents operation.
+   *
+   * @default infinite
+   */
+  maxSteps?: number;
+
+  /**
+   * A configurable amount of maximum retries the generation can take within one agent step.
+   *
+   * @default 1
+   */
+  maxRetries?: number;
+
+  /**
+   * A configurable amount of maximum time (ms) to spend before new step execution is force-stopped and a new user message is needed to resume the agents operation.
+   *
+   * @default infinite
+   */
+  maxTime?: number;
+
+  /**
+   * A configurable amount of maximum output tokens per step.
+   *
+   * @default 1000
+   */
+  maxOutputTokens?: number;
+
+  /**
+   * Temperature setting.
+   *
+   * The value is passed through to the provider. The range depends on the provider and model.
+   *
+   * @note It is recommended to set either `temperature` or `topP`, but not both.
+   */
+  temperature?: number;
+
+  /**
+   * Nucleus sampling.
+   *
+   * The value is passed through to the provider. The range depends on the provider and model.
+   *
+   * @note It is recommended to set either `temperature` or `topP`, but not both.
+   */
+  topP?: number;
+
+  /**
+   * Only sample from the top K options for each subsequent token.
+   *
+   * Used to remove "long tail" low probability responses.
+   *
+   * @note Recommended for advanced use cases only. You usually only need to use temperature.
+   */
+  topK?: number;
+
+  /**
+   * Presence penalty setting.
+   *
+   * It affects the likelihood of the model to repeat information that is already in the prompt.
+   * The value is passed through to the provider. The range depends on the provider and model
+   */
+  presencePenalty?: number;
+
+  /**
+   * Frequency penalty setting.
+   *
+   * It affects the likelihood of the model to repeatedly use the same words or phrases.
+   * The value is passed through to the provider. The range depends on the provider and model.
+   */
+  frequencyPenalty?: number;
+
+  /**
+   * Sequences that will stop the generation of the text.
+   *
+   * If the model generates any of these sequences, it will stop generating further text.
+   */
+  stopSequences?: string[];
+
+  /**
+   * The seed (integer) to use for random sampling.
+   *
+   * If set and supported by the model, calls will generate deterministic results.
+   */
+  seed?: number;
+};
+
+export type MessageId = string;
+
+/**
+ * Interface for the static (class) side of any agent.
+ * This enables type-safe access to static properties like `config` and `agentType`
+ * on agent classes (not instances).
+ *
+ * @example
+ * ```ts
+ * const AgentsMap = {
+ *   [AgentTypes.CHAT]: ChatAgent,
+ * } as const satisfies Record<AgentTypes, BaseAgentStatic>;
+ *
+ * // Type-safe access:
+ * AgentsMap[AgentTypes.CHAT].config.defaultModelId
+ * ```
+ */
+export interface BaseAgentStatic<
+  TFinishToolOutputSchema extends z.ZodType = z.ZodType,
+> {
+  readonly config: BaseAgentConfig<TFinishToolOutputSchema>;
+  readonly agentType: AgentTypes;
+}
+
+/**
+ * Utility type to extract the config type from an agent class.
+ */
+export type AgentConfig<T extends BaseAgentStatic> = T['config'];
+
+/**
+ * A reusable base class for all agents.
+ *
+ * Implements a standard API for all agents, including capabilities to invoke sub-agents,
+ * update state with patch functions (convenient to integrate into Karton etc.)
+ * and support for stagewise custom formatting of attachments etc.
+ *
+ * Agents should simply extend this base class and implement the abstract methods as well as pass in a configuration.
+ *
+ * It's highly recommended that all agents define the BaseAgentConfig themselves isntead of receiving it from the outside.
+ *
+ * @note Subclasses MUST define `static readonly config` and `static readonly agentType`.
+ *       TypeScript cannot enforce `abstract static`, so this is enforced by the `BaseAgentClass` interface.
+ */
+export abstract class BaseAgent<
+  TFinishToolOutputSchema extends z.ZodType,
+  TTools extends ToolSet,
+> {
+  public readonly instanceId: string;
+
+  /**
+   * Access the static config from the subclass.
+   * This getter bridges the static config to instance access.
+   */
+  protected get config(): BaseAgentConfig<TFinishToolOutputSchema> {
+    return (
+      this.constructor as unknown as BaseAgentStatic<TFinishToolOutputSchema>
+    ).config;
+  }
+
+  /**
+   * Access the static agentType from the subclass.
+   */
+  protected get agentType(): AgentTypes {
+    return (
+      this.constructor as unknown as BaseAgentStatic<TFinishToolOutputSchema>
+    ).agentType;
+  }
+
+  /**
+   * The state of the agent is stored in a central store (the agent manager owns that store and manages it efficiently)
+   * and is accessed by the agent through the getter and setter.
+   */
+  private readonly state: {
+    get: () => AgentState;
+    set: (recipe: (draft: AgentState) => void) => void;
+    persist: () => Promise<void>;
+  };
+
+  // External dependencies
+  protected readonly toolbox: ToolboxService;
+  protected readonly telemetryService: TelemetryService;
+  protected readonly logger: Logger;
+  protected readonly modelProviderService: ModelProviderService;
+
+  // Internal state
+  private stepAbortController: AbortController | null = null;
+
+  // Handler that get's called when the agent wants to spawn a child agent.
+  private readonly spawnChildAgentHandler?: <TAgentType extends AgentTypes>(
+    // The type of the child agent to spawn.
+    childAgentType: TAgentType,
+
+    // The history with which the child agent should be spawned.
+    history: ChatMessage[],
+
+    // The handler that should be called when the child agent calls the finish tool.
+    onFinish: (
+      finishOutput: z.infer<
+        (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
+      >,
+    ) => void | Promise<void>,
+
+    onError: (error: Error) => void | Promise<void>,
+  ) =>
+    | InstanceType<(typeof AgentsMap)[TAgentType]>
+    | Promise<InstanceType<(typeof AgentsMap)[TAgentType]>>;
+
+  // Handler that get's called when the agent calls the finish tool (notify the parent).
+  // The finish tool should be added to the list of tools when calling `streamText` on every step (if it's configured).
+  private readonly finishToolHandler?: (
+    finishOutput: z.infer<FlexibleSchema<TFinishToolOutputSchema>>,
+  ) => void | Promise<void>;
+  private readonly finishToolErrorHandler?: (
+    error: Error,
+  ) => void | Promise<void>;
+
+  private messages: ChatMessage[] = [];
+
+  public constructor(
+    instaceId: string,
+    state: {
+      get: () => AgentState;
+      set: (recipe: (draft: AgentState) => void) => void;
+      persist: () => Promise<void>;
+    },
+    toolbox: ToolboxService,
+    telemetryService: TelemetryService,
+    logger: Logger,
+    modelProviderService: ModelProviderService,
+    spawnChildAgentHandler?: <TAgentType extends AgentTypes>(
+      childAgentType: TAgentType,
+      history: ChatMessage[],
+      onFinish: (
+        finishOutput: z.infer<
+          (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
+        >,
+      ) => void | Promise<void>,
+      onError: (error: Error) => void | Promise<void>,
+    ) =>
+      | InstanceType<(typeof AgentsMap)[TAgentType]>
+      | Promise<InstanceType<(typeof AgentsMap)[TAgentType]>>,
+    finishToolHandler?: (
+      finishOutput: z.infer<FlexibleSchema<TFinishToolOutputSchema>>,
+    ) => void | Promise<void>,
+    finishToolErrorHandler?: (error: Error) => void | Promise<void>,
+    initialState?: Partial<AgentState>,
+  ) {
+    this.instanceId = instaceId;
+    this.state = state;
+    this.toolbox = toolbox;
+    this.telemetryService = telemetryService;
+    this.logger = logger;
+    this.modelProviderService = modelProviderService;
+    this.spawnChildAgentHandler = spawnChildAgentHandler;
+    this.finishToolHandler = finishToolHandler;
+    this.finishToolErrorHandler = finishToolErrorHandler;
+
+    this.state.set((draft) => {
+      draft.title =
+        initialState?.title ??
+        `New ${capitalizeFirstLetter(this.agentType.toLowerCase())} Agent - ${new Date().toLocaleString(
+          'en-US',
+          {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          },
+        )}`;
+      draft.history = initialState?.history ?? [];
+      draft.compactedHistory = initialState?.compactedHistory ?? undefined;
+      draft.lastCompactedMessageId =
+        initialState?.lastCompactedMessageId ?? undefined;
+      draft.queuedMessages = initialState?.queuedMessages ?? [];
+      draft.activeModelId =
+        initialState?.activeModelId ?? this.config.defaultModelId;
+      draft.inputState = initialState?.inputState ?? '';
+      draft.usedTokens = initialState?.usedTokens ?? 0;
+    });
+  }
+
+  /**
+   * =======================================================
+   * PUBLIC METHODS (STRANDARD API ACROSS ALL AGENTS)
+   * =======================================================
+   */
+
+  /**
+   * Send a message to the agent. If the agent is busy, the message will be queued.
+   * @param message - The message to send to the agent
+   *
+   * @note If the agent is waiting for one or more tool approvals or not every tool call has been finished, the message will be queued and sent once the current step is finished.
+   *
+   * @note On send, the chat history is converted into model context with the following pipeline:
+   *        `transformMessagesBeforeStep` -> `getSystemPrompt` -> `transformMessagesToModelMessages` -> `transformModelMessagesBeforeStep`.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async sendUserMessage(
+    message: ChatMessage & { role: 'user' },
+  ): Promise<MessageId> {
+    // We override the message id with a random UUID to ensure it's unique.
+    const id = crypto.randomUUID();
+
+    // If the agent is running, we queue the message
+    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
+      this.state.set((draft) => {
+        draft.queuedMessages.push({ ...message, id: id });
+      });
+
+      return message.id;
+    }
+
+    // If the agent is not running, we add the message to the history and immediately send it to the model.
+    this.state.set((draft) => {
+      draft.history.push({ ...message, id: id });
+    });
+
+    void this.runStep();
+
+    return id;
+  }
+
+  /**
+   * Sends a tool approval response to the agent.
+   *
+   * @param toolCallResponse - The tool call response to send to the agent
+   *
+   * @note If the agent is busy, the response will be queued and sent once the current step is finished.
+   *
+   * @note If not all open approval requests have been responded to, the agent will not be triggered again until all requests have been responded with either deny or accept.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async sendToolApprovalResponse(
+    toolCallResponse: ToolApprovalResponse,
+  ): Promise<void> {
+    const approvalId = toolCallResponse.approvalId;
+    const approved = toolCallResponse.approved;
+    const reason = toolCallResponse.reason;
+
+    this.state.set((draft) => {
+      for (let i = draft.history.length - 1; i >= 0; i--) {
+        const msg = draft.history[i];
+        if (msg.role === 'assistant') {
+          const toolPartIndex = msg.parts.findIndex(
+            (part) =>
+              (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
+              (part as ToolUIPart).approval?.id === approvalId,
+          );
+          if (toolPartIndex !== -1) {
+            if (
+              (msg.parts[toolPartIndex] as ToolUIPart).state ===
+              'approval-requested'
+            ) {
+              const updatedToolPart = {
+                ...(msg.parts[toolPartIndex] as ToolUIPart),
+                state: 'approval-responded',
+                approval: {
+                  ...(msg.parts[toolPartIndex] as ToolUIPart).approval,
+                  approved: approved,
+                  reason: reason,
+                },
+              };
+              // @ts-expect-error - We know that the tool part is a ToolUIPart
+              msg.parts[toolPartIndex] = updatedToolPart;
+              break;
+            } else {
+              // no-op becuase no approval is needed anymore
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    this.runStep();
+
+    return;
+  }
+
+  /**
+   * Delete a queued message from the agent.
+   * @param messageId - The id of the message to delete
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async deleteQueuedMessage(messageId: string): Promise<void> {
+    this.state.set((draft) => {
+      draft.queuedMessages = draft.queuedMessages.filter(
+        (message) => message.id !== messageId,
+      );
+    });
+    return;
+  }
+
+  /**
+   * Clears/Empties the queue of the agent without sending any of the queued messages.
+   */
+  public async clearQueue(): Promise<void> {
+    this.state.set((draft) => {
+      draft.queuedMessages = [];
+    });
+
+    return;
+  }
+
+  /**
+   * Immediately flushes the queue by stopping the agent (aborts any ongoing streams)
+   * and sending all of the queued messages at once.
+   *
+   * @note Pending tool approvals will be denied with reason "User sent new message instead. Retry if necessary." or configurable response.
+   * @note Pending tool calls will be aborted with reason "User sent new message instead. Retry if necessary." or configurable response.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async flushQueue(): Promise<void> {
+    await this.internalStop('user-flushed-queue');
+
+    // Send all queued messages into the chat
+    this.state.set((draft) => {
+      draft.history.push(...draft.queuedMessages);
+      draft.queuedMessages = [];
+    });
+
+    this.runStep();
+
+    return;
+  }
+
+  /**
+   * Immediately stops the agent, including aborting any ongoing streams.
+   *
+   * @note Unfinished messages will be persisted, unless the only include a "thinking" part and nothing else.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async stop(): Promise<void> {
+    return await this.internalStop('user-stopped');
+  }
+
+  /**
+   * Reports an error to the agents parent. Can be used to notify the parent if the agent is permanently stopped.
+   *
+   * @param error - The error to report to the parent.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async reportErrorToParent(error: Error): Promise<void> {
+    // TODO
+    await this.finishToolErrorHandler?.(error);
+  }
+
+  /**
+   * Replaces the given user message ID with a new message (replacing the old message in the history)
+   *
+   * @param userMessageId The ID of the user message to replace.
+   * @param newUserMessage The new user message to replace the old message with.
+   *
+   * @returns The ID of the new user message.
+   *
+   * @note Permanently removes all messages that were happened after the given user message ID.
+   *        Clears the queue of the agent as well.
+   *
+   * @note Automatically sends the new message to the model.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async replaceUserMessage(
+    userMessageId: string,
+    newUserMessage: ChatMessage & { role: 'user' },
+  ): Promise<string> {
+    this.state.set((draft) => {
+      const replaceMessageIndex = draft.history.findIndex(
+        (message) => message.id === userMessageId,
+      );
+
+      if (replaceMessageIndex === -1) {
+        throw new Error('User message not found in history');
+      }
+
+      draft.history = draft.history.slice(0, replaceMessageIndex);
+      draft.queuedMessages = [];
+    });
+
+    return await this.sendUserMessage(newUserMessage);
+  }
+
+  /**
+   * Retrieves the current message history of the agent (including streaming messages).
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public getMessages(): ChatMessage[] {
+    return this.state.get().history;
+  }
+
+  /**
+   * Reverts the agent to the state before the given user message ID.
+   *
+   * @param userMessageId - The ID of the user message to revert to.
+   * @param undoToolCalls - Whether to undo the tool calls that were executed since the given user message ID.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async revertToUserMessage(
+    userMessageId: string,
+    undoToolCalls: boolean,
+  ): Promise<void> {
+    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
+      throw new Error(
+        'Cannot revert to user message while agent is still running',
+      );
+    }
+
+    const msgIndex = this.state
+      .get()
+      .history.findIndex((msg) => msg.id === userMessageId);
+    if (msgIndex === -1) {
+      throw new Error('User message not found in history');
+    }
+
+    const undoneMessages = this.state.get().history.slice(msgIndex);
+
+    const undoneToolCallIds = undoneMessages
+      .filter((msg) => msg.role === 'assistant')
+      .flatMap(
+        (msg) =>
+          msg.parts.filter(
+            (part) =>
+              part.type.startsWith('tool-') || part.type === 'dynamic-tool',
+          ) as ToolUIPart[],
+      )
+      .map((part) => (part as ToolUIPart).toolCallId);
+
+    if (undoneToolCallIds.length > 0 && undoToolCalls) {
+      await this.toolbox.undoToolCalls(undoneToolCallIds);
+    }
+
+    this.state.set((draft) => {
+      draft.history = draft.history.slice(0, msgIndex);
+      draft.queuedMessages = [];
+    });
+
+    return;
+  }
+
+  public async updateInputState(newInputState: string): Promise<void> {
+    this.state.set((draft) => {
+      draft.inputState = newInputState;
+    });
+
+    return;
+  }
+
+  public async updateActiveModelId(modelId: ModelId): Promise<void> {
+    if (!this.config.allowModelSelection) {
+      throw new Error('Model selection is not allowed for this agent');
+    }
+
+    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
+      throw new Error(
+        'Cannot update active model id while agent is still running',
+      );
+    }
+
+    this.state.set((draft) => {
+      draft.activeModelId = modelId;
+    });
+
+    return;
+  }
+
+  /**
+   * =======================================================
+   * EXTENDABLE METHODS (CONFIGURABLE BEHAVIOR BY THE INHERITING CLASS)
+   * =======================================================
+   */
+
+  /**
+   * Generates a title for a message. Override to customize the title generation.
+   *
+   * @param messages - The chat history for which the title should be generated.
+   *
+   * @returns The title for the message
+   *
+   * @note Will only be called if `generateTitles` in agent config is set to `true`.
+   */
+  protected async generateTitle(messages: ChatMessage[]): Promise<string> {
+    try {
+      return await generateSimpleTitle(
+        messages,
+        this.modelProviderService,
+        this.instanceId,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[BaseAgent:${this.instanceId}] Failed to generate title`,
+        {
+          error,
+        },
+      );
+      return this.state.get().title;
+    }
+  }
+
+  /**
+   * Summarizes the chat history. Override to customize the summarization logic.
+   *
+   * @param messages - The chat history for which the title should be generated.
+   *
+   * @returns The new (summarized/compacted) chat history.
+   *
+   * @note Will only be called automatically, if `summarizeChatHistoryThreshold` in agent config is set to a value greater than 0.
+   */
+  protected async summarizeChatHistory(
+    messages: ChatMessage[],
+    _lastCompactedMessageId: string,
+  ): Promise<ChatMessage[]> {
+    // The standard compaction logic is very simple. We can make this more sophisticated later on.
+    const summary = await generateChatSummary(
+      messages,
+      this.modelProviderService,
+      this.instanceId,
+    );
+
+    return [
+      {
+        id: randomUUID(),
+        role: 'user',
+        parts: [
+          {
+            type: 'text',
+            text: `The previous chat history is too long for the model context window. Here is a summary of the conversation that you should to understand our previous history. When responding, don't explicitly mention the fact that the conversation is summarized and instead continue with the conversation regularly. Here is the summary: ${summary}`,
+          },
+        ],
+      },
+    ];
+  }
+
+  /**
+   * Transforms/Updates the list of messages before a step is started.
+   *
+   * @param messages - The messages to transform
+   *
+   * @returns The transformed messages
+   *
+   * @note Does nothing by default (returns the messages as is).
+   *
+   * @note Can be overridden by the inheriting class to add additional logic before a step is started.
+   *
+   * @note Receives message history that may potentially be compacted already.
+   *
+   * @note If the transform to Model messages should be customized, override the `transformMessagesToModelMessages` instead.
+   */
+  protected transformMessagesBeforeStep(
+    messages: ChatMessage[],
+  ): ChatMessage[] | Promise<ChatMessage[]> {
+    return messages;
+  }
+
+  /**
+   * Transforms/Updates UI messages into model messages that are sent to the model.
+   *
+   * @param messages - The UI messages to transform
+   *
+   * @param systemPrompt - The system prompt to use for the transformation (configured via `getSystemPrompt`)
+   *
+   * @returns An array of model messages for the given UI messages.
+   *
+   * @note By default converts all UI message to model messages with default stagewise conventions and standard system prompt.
+   *
+   * @note Can be overriden by the inheriting class to transform the messages differently.
+   *
+   * @note If transformed model messages should simply be customized, override `transformModelMessagesBeforeStep` instead.
+   *
+   * @note The added system prompt is configured via the method `getSystemPrompt`.
+   */
+  protected async transformMessagesToModelMessages(
+    messages: ChatMessage[],
+    systemPrompt: string,
+  ): Promise<ModelMessage[]> {
+    return convertStagewiseUIToModelMessages(
+      messages,
+      systemPrompt,
+      await this.getTools(messages),
+    );
+  }
+
+  /**
+   * Transforms/Updates model messages before a step is started.
+   *
+   * @param modelMessages - The model messages to transform
+   *
+   * @returns The transformed model messages
+   *
+   * @note Does nothing by default (returns the model messages as is).
+   *
+   * @note Can be overriden by the inheriting class to customize the model message transformation.
+   *
+   * @note For most cases, the transformation of UI messages (`transformMessagesBeforeStep`) is a better place to do context compaction etc.
+   *
+   * @note If the transformation from UI to model messages should be customized, override `transformMessagesToModelMessages` instead.
+   */
+  protected transformModelMessagesBeforeStep(
+    modelMessages: ModelMessage[],
+  ): ModelMessage[] | Promise<ModelMessage[]> {
+    return modelMessages;
+  }
+
+  /**
+   * Retrieves the system prompt for the agent.
+   *
+   * @returns The system prompt for the agent.
+   *
+   * @note Can be overridden by the inheriting class to return a different system prompt.
+   */
+  protected abstract getSystemPrompt(
+    messages: ChatMessage[],
+  ): string | Promise<string>;
+
+  /**
+   * Retrieves the tools that the agent can use.
+   *
+   * @param messages - The current message history before the next step is started.
+   *
+   * @returns The tools that the agent can use.
+   *
+   * @note Can be overridden by the inheriting class to return a different list of tools.
+   */
+  protected abstract getTools(
+    messages: ChatMessage[],
+  ): TTools | Promise<TTools>;
+
+  /**
+   * Allowed to configure the settings that are passed to the model when running a step.
+   *
+   * @returns A partial config that shallow merges with the default config of the agent.
+   */
+  protected getModelSettings(
+    _messages: ChatMessage[],
+  ):
+    | Partial<BaseAgentConfig<TFinishToolOutputSchema>>
+    | Promise<Partial<BaseAgentConfig<TFinishToolOutputSchema>>> {
+    return {};
+  }
+
+  /**
+   * Configurable handler that is called after a step is finished.
+   * @param result - The result of the step
+   * @returns Whether to continue the step or to stop the agent. Returns true by default.
+   *
+   * @note The agent may still not continue with another step if there are still open approval requests, tool calls that need to be finished or the agent only returned text in the last step.
+   */
+  protected onStepFinished(
+    _result: StepResult<TTools>,
+  ): boolean | Promise<boolean> {
+    return true;
+  }
+
+  /**
+   * Configurable handler that is called when the agent goes into idle (ran step without no new step following).
+   */
+  protected onIdle(): void | Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
+   * =======================================================
+   * INTERNAL METHODS (SHOULD ONLY BE USED BY CHILD AGENTS)
+   * =======================================================
+   */
+
+  /**
+   * Returns a tool that the agent can insert into it's tool list to spawn a child agent.
+   */
+  protected getSpawnChildAgentTool<
+    AT extends AgentTypes,
+    TChildAgentInputSchema extends z.ZodType,
+  >(
+    description: string,
+    inputSchema: TChildAgentInputSchema,
+    agentType: AT,
+    contextBuilder: (
+      input: z.infer<TChildAgentInputSchema>,
+    ) => ChatMessage[] | Promise<ChatMessage[]>,
+  ): Tool {
+    return {
+      description: description,
+      inputSchema: inputSchema,
+      outputSchema: AgentsMap[agentType].config.finishToolOutputSchema,
+      execute: async (input) => {
+        const context = await contextBuilder(input);
+        const childAgentPromise = new Promise<
+          z.infer<
+            (typeof AgentsMap)[AgentTypes]['config']['finishToolOutputSchema']
+          >
+        >((resolve, reject) => {
+          try {
+            if (this.spawnChildAgentHandler) {
+              this.spawnChildAgentHandler(
+                agentType,
+                context,
+                (finishOutput) => {
+                  resolve(finishOutput);
+                },
+                (error) => {
+                  reject(error);
+                },
+              );
+            } else {
+              // No handler configured on parent agent, so we just resolve with undefined.
+              resolve(undefined);
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+        return await childAgentPromise;
+      },
+    };
+  }
+
+  /**
+   * =======================================================
+   * PRIVATE METHODS (INTERNAL USE ONLY)
+   * =======================================================
+   */
+
+  private async updateTitle(): Promise<void> {
+    // Check if a title update is needed
+    if (!this.config.generateTitles) {
+      return;
+    }
+
+    const modulo = Math.max(0, this.config.updateTitlesEveryNUserMessages ?? 0);
+    if (
+      (modulo === 0 && this.state.get().history.length !== 1) ||
+      (modulo > 0 &&
+        this.state.get().history.filter((message) => message.role === 'user')
+          .length %
+          modulo !==
+          0)
+    ) {
+      return;
+    }
+
+    const newTitle = await this.generateTitle(this.state.get().history);
+    this.state.set((draft) => {
+      draft.title = newTitle;
+    });
+    // We don't do persistence here, since that happens after a step is finished
+  }
+
+  private async summarizeAndOverrideHistory(): Promise<void> {
+    const uncompactedCount = Math.max(
+      5,
+      this.config.uncompactedMessagesToKeep ?? 5,
+    );
+    const uncompactedIndex =
+      this.state.get().history.length - 1 - uncompactedCount;
+
+    //Not enough messages to compact
+    if (uncompactedIndex < 0) return;
+
+    const lastCompactedMessageId =
+      this.state.get().history[
+        this.state.get().history.length - 1 - uncompactedCount
+      ]?.id;
+
+    // SHould never happen but whatever...
+    if (!lastCompactedMessageId) return;
+
+    const summarizedHistory = await this.summarizeChatHistory(
+      this.state.get().history.slice(0, uncompactedIndex),
+      lastCompactedMessageId,
+    );
+
+    this.state.set((draft) => {
+      draft.compactedHistory = summarizedHistory;
+      draft.lastCompactedMessageId = lastCompactedMessageId;
+    });
+    await this.saveState();
+  }
+
+  /**
+   * Updates the persisted state of the agent
+   */
+  private async saveState(): Promise<void> {
+    if (!this.config.persistent) return;
+
+    await this.state.persist();
+  }
+
+  /**
+   * Checks, if the agent should immediately run a new step after last step execution.
+   *
+   * Conditions for running a new step are:
+   *    - maxSteps is not set or the number of steps executed since last userMessage is less than maxSteps
+   *    - maxTime is not set or the time since last userMessage is less than maxTime
+   *    - onStepFinished returns true
+   *    - there are no open tool approval requests
+   *    - there are no unfinished tool calls
+   *    - a tool call was included in the last step
+   *    - there wasn't just one tool call to the "finish" tool
+   *
+   * @returns Whether the agent should run a new step based on the given conditions.
+   */
+  private shouldRunNewStep(
+    r: StepResult<TTools>,
+    userWantsToContinue: boolean,
+  ): boolean {
+    let stepsSinceLastMessage = 0;
+    let lastUserMessageTime = 0;
+    for (let i = this.state.get().history.length - 1; i >= 0; i--) {
+      if (this.state.get().history[i].role === 'assistant') {
+        stepsSinceLastMessage++;
+        continue;
+      } else if (this.state.get().history[i].role === 'user') {
+        lastUserMessageTime =
+          this.state
+            .get()
+            .history[i].metadata?.partsMetadata[0]?.startedAt?.getTime() ??
+          Date.now();
+        break;
+      }
+    }
+
+    // Check if the maximum number of steps has been reached
+    if (this.config.maxSteps && stepsSinceLastMessage >= this.config.maxSteps) {
+      return false;
+    }
+
+    // Check if the maximum time has been reached
+    if (
+      this.config.maxTime &&
+      Date.now() - lastUserMessageTime >= this.config.maxTime
+    ) {
+      return false;
+    }
+
+    //Also return a no-continue if one of the called tools is a "finish" tool and only the "finish" tool was called
+    if (r.toolCalls.length === 1 && r.toolCalls[0]!.toolName === 'finish')
+      return false;
+
+    // Check if there are any open tool approval requests
+    if (r.content.some((p) => p.type === 'tool-approval-request')) return false;
+
+    // If the user does not want to continue, we don't run a new step
+    if (!userWantsToContinue) return false;
+
+    // We assume that approved tool calls are executed and results are attached,
+    // because this is what AI-SDK with controlled tool execution promises us
+
+    // Check if the finish reason is not tool-calls (which means user intervention is needed)
+    if (r.finishReason !== 'tool-calls') return false;
+
+    return false;
+  }
+
+  /**
+   * Handles all the jobs that need to be done after a step is finished executing.
+   *
+   * @returns Whether the agent should run a new step based on the given conditions.
+   */
+  private async handlePostStep(result: StepResult<TTools>): Promise<boolean> {
+    await this.updateTitle();
+
+    // Save the agent state for recovery
+    await this.saveState();
+
+    const userWantsToContinue = (await this.onStepFinished(result)) ?? true;
+    const shouldRunNewStep = this.shouldRunNewStep(result, userWantsToContinue);
+
+    if (!shouldRunNewStep) {
+      this.onIdle();
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Handles the generation of context for a new step.
+   * Only used internally - calls all the configurable steps to got from History to Model Messages.
+   */
+  private async generateContextForNewStep(): Promise<ModelMessage[]> {
+    let messages = this.state.get().history;
+    // Apply compacted messages to the history if existing
+    const compactedHistory = this.state.get().compactedHistory;
+    const lastCompactedMessageId = this.state.get().lastCompactedMessageId;
+    if (compactedHistory && lastCompactedMessageId) {
+      const lastCompactedMessageIndex = messages.findIndex(
+        (msg) => msg.id === lastCompactedMessageId,
+      );
+
+      if (lastCompactedMessageIndex !== -1) {
+        messages = [
+          ...compactedHistory,
+          ...messages.slice(lastCompactedMessageIndex),
+        ];
+      }
+    }
+
+    // First, we transform/filter the full history into UI messages we actually want
+    const filteredUIMsgs = await this.transformMessagesBeforeStep(messages);
+
+    // Then, we fetch the system prompt
+    const systemPrompt = await this.getSystemPrompt(filteredUIMsgs);
+
+    // Then, we use the filtered UI messages and system prompt to transform to model messages
+    const modelMessages = await this.transformMessagesToModelMessages(
+      filteredUIMsgs,
+      systemPrompt,
+    );
+
+    // Then, we allow another step to modify the final model messages
+    const finalModelMessages =
+      await this.transformModelMessagesBeforeStep(modelMessages);
+
+    return finalModelMessages;
+  }
+
+  /**
+   * Checks if the message history is ready to be processed by the model
+   *
+   * We check for the following conditions:
+   *    - All non-provider tools with need for approval are executed and results are attached
+   *    - All open tool approval requests are responded to (either deny or accept) in the last message of the history
+   *
+   * @returns Whether the agent can run a new step based on the given conditions.
+   */
+  private canRunStep(): boolean {
+    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
+      return false;
+    }
+
+    const openToolCallRequests = this.state
+      .get()
+      .history.filter(
+        (msg) =>
+          msg.role === 'assistant' &&
+          msg.parts.some(
+            (p) =>
+              (p.type.startsWith('tool-') || p.type === 'dynamic-tool') &&
+              !(
+                (p as ToolUIPart).state === 'approval-responded' &&
+                !(p as ToolUIPart).approval?.approved
+              ) &&
+              (p as ToolUIPart).state !== 'output-available' &&
+              (p as ToolUIPart).state !== 'output-error',
+          ),
+      );
+    return openToolCallRequests.length === 0;
+  }
+
+  /**
+   * Should be executed after a user or toool approval message was added to the agent
+   */
+  private async runStep(): Promise<void> {
+    this.state.set((draft) => {
+      draft.isWorking = true;
+    });
+
+    if (!this.canRunStep()) return;
+
+    // Get the current model
+    const modelWithOptions = this.modelProviderService.getModelWithOptions(
+      this.state.get().activeModelId,
+      this.instanceId,
+    );
+
+    const modelMessages = await this.generateContextForNewStep();
+
+    const tools = {
+      ...(await this.getTools(this.messages)),
+      finish: this.getFinishTool(),
+    };
+
+    const resolvedConfig = {
+      ...this.config,
+      ...(await this.getModelSettings(this.messages)),
+    };
+
+    this.stepAbortController = new AbortController();
+
+    const stream = streamText({
+      model: modelWithOptions.model,
+      providerOptions: modelWithOptions.providerOptions,
+      headers: modelWithOptions.headers,
+      messages: modelMessages,
+      tools: tools,
+      timeout: resolvedConfig.maxTime
+        ? {
+            totalMs: resolvedConfig.maxTime,
+          }
+        : undefined,
+      maxRetries: resolvedConfig.maxRetries ?? 1,
+      maxOutputTokens: resolvedConfig.maxOutputTokens ?? 1000,
+      abortSignal: this.stepAbortController.signal,
+      onAbort: () => {
+        /* no-op */
+        this.state.set((draft) => {
+          draft.isWorking = false;
+        });
+      },
+      onFinish: async (result) => {
+        const shouldContinue = await this.handlePostStep(result);
+        this.stepAbortController = null;
+
+        this.state.set((draft) => {
+          draft.usedTokens = result.usage.totalTokens ?? 0;
+        });
+
+        // Check the current token usage. If necessary, summarize the chat history.
+        // We always check the token usage in relation to the currently selected model.
+        const compactionThreshold =
+          this.config.summarizeChatHistoryThreshold ?? 0.5;
+        if (
+          compactionThreshold >= 0 &&
+          this.state.get().usedTokens / modelWithOptions.contextWindowSize >
+            compactionThreshold
+        ) {
+          await this.summarizeAndOverrideHistory();
+        }
+
+        this.state.set((draft) => {
+          draft.isWorking = false;
+        });
+
+        if (shouldContinue) {
+          void this.runStep();
+        }
+      },
+      onError: (error) => {
+        this.logger.error(
+          `[BaseAgent:${this.instanceId}] Error running step: ${error}`,
+        );
+      },
+      experimental_repairToolCall: async (r) => {
+        // Haiku often returns the tool input as string instead of object - we try to parse it as object
+        // If the parsing fails, we simply return an invalid tool call
+        this.logger.debug('[AgentService] Repairing tool call', r.error);
+        this.telemetryService.captureException(r.error);
+        if (NoSuchToolError.isInstance(r.error)) return r.toolCall;
+
+        const foundTool = r.tools[r.toolCall.toolName];
+        if (!foundTool) return null;
+
+        try {
+          const input = JSON.parse(r.toolCall.input);
+          if (typeof input === 'string') {
+            const objectInput = JSON.parse(input); // Try to parse the input as object
+            if (typeof objectInput === 'object' && objectInput !== null)
+              return { ...r.toolCall, input: JSON.stringify(objectInput) };
+          } else return null; // If not a string, it already failed the initial parsing check, so we return null
+        } catch {
+          return null;
+        }
+        return null;
+      },
+      experimental_transform: smoothStream({
+        delayInMs: 10,
+        chunking: 'word',
+      }),
+      temperature: resolvedConfig.temperature,
+      topP: resolvedConfig.topP,
+      topK: resolvedConfig.topK,
+      presencePenalty: resolvedConfig.presencePenalty,
+      frequencyPenalty: resolvedConfig.frequencyPenalty,
+      stopSequences: resolvedConfig.stopSequences,
+      seed: resolvedConfig.seed,
+    });
+    try {
+      const uiStream = stream.toUIMessageStream<ChatMessage>({
+        generateMessageId: randomUUID,
+      });
+
+      await this.handleUiStream(uiStream);
+
+      // After the stream is finished, we check if the agent should run a new step (after emptying the queue and the approvals into the history)
+      if (this.state.get().queuedMessages.length > 0) {
+        void this.runStep();
+      }
+    } catch (err) {
+      this.logger.error(
+        `[BaseAgent:${this.instanceId}] Error running step: ${err}`,
+      );
+    }
+  }
+
+  private getFinishTool(): Tool | undefined {
+    if (!this.config.finishToolOutputSchema) return undefined;
+    return tool({
+      description:
+        'Mark the conversation as done/finished. You must use this tool to mark the work/task as being done. Use it after all other tool calls are done.',
+      inputSchema: this.config.finishToolOutputSchema,
+      execute: async (input) => {
+        return await this.finishToolHandler?.(input);
+      },
+    });
+  }
+
+  private async handleUiStream(
+    uiStream: AsyncIterableStream<InferUIMessageChunk<ChatMessage>>,
+  ): Promise<void> {
+    for await (const uiMessage of readUIMessageStream<ChatMessage>({
+      stream: uiStream,
+    })) {
+      this.state.set((draft) => {
+        const existingMessage =
+          draft.history.find((message) => message.id === uiMessage.id) ??
+          (() => {
+            draft.history.push(uiMessage);
+            return draft.history[draft.history.length - 1];
+          })();
+
+        // Add metadata for message creation
+        existingMessage.metadata ??= {
+          createdAt: new Date(),
+          partsMetadata: [],
+        };
+
+        // Add metadata for each part of the message
+        uiMessage.parts.forEach((part, index) => {
+          if (part.type === 'text' || part.type === 'reasoning') {
+            existingMessage.metadata!.partsMetadata[index] ??= {
+              startedAt: new Date(),
+              endedAt: undefined,
+            };
+            if (part.state === 'done') {
+              existingMessage.metadata!.partsMetadata[index].endedAt =
+                new Date();
+            }
+          }
+        });
+      });
+    }
+  }
+
+  private async internalStop(
+    stopReason: 'user-stopped' | 'user-flushed-queue' = 'user-stopped',
+  ): Promise<void> {
+    this.stepAbortController?.abort();
+    this.stepAbortController = null;
+
+    const toolCallAbortReason =
+      stopReason === 'user-stopped'
+        ? (this.config.stopToolCallAbortReason ??
+          'User stopped agent before tool call finished.')
+        : (this.config.flushQueueToolCallAbortReason ??
+          'User sent new message before tool call finished.');
+
+    const toolCallRequestApprovalAbortReason =
+      stopReason === 'user-stopped'
+        ? (this.config.stopToolCallRequestApprovalReason ??
+          'User stopped agent before tool call approval was granted.')
+        : (this.config.flushQueueToolCallRequestApprovalReason ??
+          'User sent new message before tool call approval was granted.');
+
+    this.state.set((draft) => {
+      const lastMsg = draft.history[draft.history.length - 1];
+
+      if (lastMsg.role !== 'assistant') return;
+
+      lastMsg.parts.forEach((p, index) => {
+        if (p.type === 'dynamic-tool' || p.type.startsWith('tool-')) {
+          const toolPart = p as ToolUIPart;
+          if (toolPart.state === 'approval-requested') {
+            // All tool call approvals should be rejected with the configured reason for abort.
+            const updatedToolPart: ToolUIPart = {
+              ...toolPart,
+              state: 'approval-responded',
+              approval: {
+                ...toolPart.approval,
+                approved: false,
+                reason: toolCallRequestApprovalAbortReason,
+              },
+            };
+            // @ts-expect-error - We know that the tool part is a ToolUIPart
+            lastMsg.parts[index] = updatedToolPart;
+          } else if (
+            toolPart.state !== 'output-available' &&
+            toolPart.state !== 'output-error'
+          ) {
+            // All tool calls that are still not done should be marked as failed with the configured abort reason.
+            const updatedToolPart: ToolUIPart = {
+              ...toolPart,
+              state: 'output-error',
+              approval: undefined,
+              errorText: toolCallAbortReason,
+            };
+            // @ts-expect-error - We know that the tool part is a ToolUIPart
+            lastMsg.parts[index] = updatedToolPart;
+          }
+        }
+      });
+    });
+  }
+}

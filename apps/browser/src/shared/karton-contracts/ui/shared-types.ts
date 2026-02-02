@@ -37,8 +37,30 @@ type BaseSettings = {
   modelDisplayName: string;
   modelDescription: string;
   modelContext: string;
+  modelContextRaw: number;
   headers?: Record<string, string>;
   thinkingEnabled?: boolean;
+  capabilities: {
+    inputModalities: {
+      text: boolean;
+      audio: boolean;
+      image: boolean;
+      video: boolean;
+      file: boolean;
+    };
+    outputModalities: {
+      text: boolean;
+      audio: boolean;
+      image: boolean;
+      video: boolean;
+      file: boolean;
+    };
+    toolCalling: boolean;
+    intelligence: {
+      canPlan: boolean; // Whether the model is intelligent enough to plan complex tasks.
+      canCode: boolean; // Whether the model is intelligent enough to code.
+    };
+  };
 };
 
 type AnthropicModelSettings = BaseSettings & {
@@ -55,6 +77,8 @@ type GoogleModelSettings = BaseSettings & {
   modelId: GoogleModelIds;
   providerOptions: GoogleGenerativeAIProviderOptions;
 };
+
+export type ModelCapabilities = BaseSettings['capabilities'];
 
 export type ModelSettings =
   | AnthropicModelSettings
@@ -528,6 +552,7 @@ export type BlamedHunk = StructuredPatchHunk & {
 };
 
 type FileDiffBase = {
+  isExternal: boolean;
   fileId: string;
   path: string;
 };

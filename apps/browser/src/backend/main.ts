@@ -5,6 +5,7 @@
 import { app } from 'electron';
 import { AuthService } from './services/auth';
 import { AgentService } from './services/agent/agent';
+import { AgentManagerService } from './services/agent-manager';
 import { UserExperienceService } from './services/experience';
 import { WorkspaceService } from './services/workspace';
 import { FilePickerService } from './services/file-picker';
@@ -42,6 +43,8 @@ import { readStagewiseMd } from './services/agent/prompt-builder/utils/read-stag
 import { readAgentsMd } from './services/agent/prompt-builder/utils/read-agents-md';
 import { STAGEWISE_MD_FILENAME } from './services/agent/generate-stagewise-md';
 import { resolve } from 'node:path';
+import { ModelProviderService } from './agents/model-provider';
+import type { AllToolsUnion } from '@stagewise/agent-tools';
 
 export type MainParameters = {
   launchOptions: {
@@ -640,7 +643,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     await authService.handleAuthCodeExchange(authCode, error);
   });
 
-  const _toolboxService = await ToolboxService.create(
+  const toolboxService = await ToolboxService.create(
     logger,
     uiKarton,
     globalConfigService,
@@ -675,7 +678,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
           rgBinaryBasePath: globalDataPathService.globalDataPath,
         });
         agentService.setClientRuntime(clientRuntime);
-        _toolboxService.setClientRuntime(clientRuntime);
+        toolboxService.setClientRuntime(clientRuntime);
         void _userExperienceService.saveRecentlyOpenedWorkspace({
           path: event.selectedPath,
           name: event.name,
@@ -688,7 +691,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         agentService.acceptAllPendingEdits();
         agentService.resetDiffHistory();
         agentService.setClientRuntime(null);
-        _toolboxService.setClientRuntime(null);
+        toolboxService.setClientRuntime(null);
         break;
     }
   });
@@ -794,6 +797,19 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     authService,
     windowLayoutService,
     globalDataPathService,
+  );
+
+  const modelProviderService = new ModelProviderService(
+    telemetryService,
+    authService,
+  );
+
+  const _agentManagerService = new AgentManagerService(
+    uiKarton,
+    telemetryService,
+    toolboxService,
+    logger,
+    modelProviderService,
   );
 
   // No need to unregister this callback, as it will be destroyed when the main app shuts down
