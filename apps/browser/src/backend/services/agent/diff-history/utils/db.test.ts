@@ -18,6 +18,7 @@ import {
   insertOperation,
   storeFileContent,
   getPendingOperationsForChatId,
+  getAllOperationsForChatId,
   storeLargeContent,
   streamContent,
   copyContentToPath,
@@ -589,6 +590,331 @@ describe('diff-history db utilities', () => {
       expect(pending[2].idx).toBe(3);
       expect(pending[3].filepath).toBe('/b.ts');
       expect(pending[3].idx).toBe(4);
+    });
+  });
+
+  // ===========================================================================
+  // getAllOperationsForChatId
+  // ===========================================================================
+
+  describe('getAllOperationsForChatId', () => {
+    /**
+     * Helper to create a snapshot and return its oid.
+     * Uses insertKeyframe directly to avoid storeFileContent's side effects.
+     */
+    function createSnapshot(content: string): string {
+      const buf = Buffer.from(content);
+      const oid = computeOid(buf);
+      insertKeyframe(db, oid, buf);
+      return oid;
+    }
+
+    it('returns empty array for chat with no operations', async () => {
+      // Chat-2 has no operations
+      const oidA = createSnapshot('content');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1', // chat-1, not chat-2
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '2');
+
+      expect(allOps).toHaveLength(0);
+    });
+
+    it('returns all session ops for simple pending session', async () => {
+      // Single session, chat-1 has one edit (same as getPending for pending)
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '1');
+
+      expect(allOps).toHaveLength(2);
+      expect(allOps[0].idx).toBe(1);
+      expect(allOps[0].operation).toBe('baseline');
+      expect(allOps[1].idx).toBe(2);
+      expect(allOps[1].operation).toBe('edit');
+    });
+
+    it('returns completed session ops (unlike getPending which returns empty)', async () => {
+      // Session is fully accepted - getPending returns [], but getAll returns the session
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '1');
+
+      // Should return all 3 ops from the completed session
+      expect(allOps).toHaveLength(3);
+      expect(allOps.map((op) => op.idx)).toEqual([1, 2, 3]);
+    });
+
+    it('returns ops from multiple sessions where chat participated', async () => {
+      // Session 1: completed
+      // Session 2: pending
+      // Both should be returned
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('session 1 edit');
+      const oidC = createSnapshot('session 2 edit');
+
+      // Session 1
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+      // Session 2
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'chat-1',
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '1');
+
+      // Should return all 5 ops from both sessions
+      expect(allOps).toHaveLength(5);
+      expect(allOps.map((op) => op.idx)).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('skips sessions where chat did not participate', async () => {
+      // Session 1: chat-1 participated
+      // Session 2: chat-2 participated (not chat-1)
+      // Session 3: chat-1 participated
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('session 1 edit');
+      const oidC = createSnapshot('session 2 edit');
+      const oidD = createSnapshot('session 3 edit');
+
+      // Session 1 (chat-1)
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+      // Session 2 (chat-2 only)
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'chat-2',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+      // Session 3 (chat-1)
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidD, {
+        operation: 'edit',
+        reason: 'tool-3',
+        contributor: 'chat-1',
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '1');
+
+      // Should return sessions 1 and 3 (idx 1-3 and 7-8), skip session 2 (idx 4-6)
+      expect(allOps).toHaveLength(5);
+      expect(allOps.map((op) => op.idx)).toEqual([1, 2, 3, 7, 8]);
+    });
+
+    it('handles multiple files where chat participated', async () => {
+      // Chat-1 edits /a.ts and /b.ts
+      const oidA1 = createSnapshot('a original');
+      const oidA2 = createSnapshot('a edited');
+      const oidB1 = createSnapshot('b original');
+      const oidB2 = createSnapshot('b edited');
+
+      // File /a.ts
+      insertOperation(db, '/a.ts', oidA1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidA2, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+
+      // File /b.ts
+      insertOperation(db, '/b.ts', oidB1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/b.ts', oidB2, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'chat-1',
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '1');
+
+      // Should return ops for both files
+      expect(allOps).toHaveLength(4);
+      const filepaths = [...new Set(allOps.map((op) => op.filepath))];
+      expect(filepaths).toContain('/a.ts');
+      expect(filepaths).toContain('/b.ts');
+    });
+
+    it('returns session ops when multiple chats edit same file', async () => {
+      // Both chat-1 and chat-2 edit in the same session
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edit by chat-1');
+      const oidC = createSnapshot('edit by chat-2');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'chat-2',
+      });
+
+      const opsChat1 = await getAllOperationsForChatId(db, '1');
+      const opsChat2 = await getAllOperationsForChatId(db, '2');
+
+      // Both chats participated in the session, both should get all 3 ops
+      expect(opsChat1).toHaveLength(3);
+      expect(opsChat2).toHaveLength(3);
+      expect(opsChat1.map((op) => op.idx)).toEqual([1, 2, 3]);
+      expect(opsChat2.map((op) => op.idx)).toEqual([1, 2, 3]);
+    });
+
+    it('only includes sessions where chat made an edit (not just baseline)', async () => {
+      // Session 1: chat-1 edited
+      // Session 2: chat-1 did NOT edit (only baseline ops exist, no edit by chat-1)
+      // This tests that baseline ops by 'user' don't count as chat participation
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('session 1 edit');
+
+      // Session 1 (chat-1 edited)
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+      // Session 2 (only user baseline, chat-2 edits but not chat-1)
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'chat-2',
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '1');
+
+      // Should only return session 1 (idx 1-3), not session 2
+      expect(allOps).toHaveLength(3);
+      expect(allOps.map((op) => op.idx)).toEqual([1, 2, 3]);
+    });
+
+    it('handles file with no init baseline gracefully', async () => {
+      // Edge case: operations exist but no init (shouldn't happen in practice)
+      // This shouldn't crash, just return empty since no sessions can be identified
+      const oidA = createSnapshot('content');
+
+      // Only insert an edit without init baseline
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'chat-1',
+      });
+
+      const allOps = await getAllOperationsForChatId(db, '1');
+
+      // No init means no sessions can be identified
+      expect(allOps).toHaveLength(0);
     });
   });
 

@@ -115,3 +115,5 @@ type EditMeta = {
 };
 
 export type OperationMeta = BaselineMeta | EditMeta;
+
+export type Contributor = EditMeta['contributor'];

@@ -306,14 +306,36 @@ export async function getPendingOperationsForChatId(
 }
 
 /**
- * Get all operations for a chat id.
- * Includes isExternal flag from joined snapshot.
+ * Get all operations for sessions where a chat participated.
+ * Returns operations from all sessions (not just pending) where the chat
+ * contributed at least one edit. This is used to compute FilesEditedSummary
+ * with contributor blame.
+ *
+ * A session is defined as the range from an 'init' baseline to the next 'init'
+ * baseline (exclusive), or to the latest operation if no next 'init' exists.
+ *
+ * @param db - Database connection
+ * @param chatId - The chat ID to find operations for
+ * @returns All operations from sessions where the chat contributed edits
  */
 export async function getAllOperationsForChatId(
   db: SnapshotDb,
   chatId: string,
 ): Promise<OperationWithExternal[]> {
-  const rows = await db
+  const contributor = `chat-${chatId}` as `chat-${ChatId}`;
+
+  // Step 1: Find all filepaths where chat-id contributed
+  const filepathRows = await db
+    .selectDistinct({ filepath: schema.operations.filepath })
+    .from(schema.operations)
+    .where(eq(schema.operations.contributor, contributor))
+    .all();
+
+  if (filepathRows.length === 0) return [];
+  const filepaths = filepathRows.map((r) => r.filepath);
+
+  // Step 2: Fetch all operations for those filepaths (with snapshot join)
+  const allOps = await db
     .select({
       idx: schema.operations.idx,
       filepath: schema.operations.filepath,
@@ -328,19 +350,63 @@ export async function getAllOperationsForChatId(
       schema.snapshots,
       eq(schema.operations.snapshot_oid, schema.snapshots.oid),
     )
-    .where(eq(schema.operations.contributor, `chat-${chatId}`))
-    .orderBy(schema.operations.idx)
+    .where(inArray(schema.operations.filepath, filepaths))
+    .orderBy(schema.operations.filepath, schema.operations.idx)
     .all();
 
-  return rows.map((row) => ({
-    idx: row.idx,
-    filepath: row.filepath,
-    operation: row.operation,
-    snapshot_oid: row.snapshot_oid,
-    reason: row.reason,
-    contributor: row.contributor,
-    isExternal: row.isExternal ?? false,
-  })) as OperationWithExternal[];
+  // Step 3: Group operations by filepath
+  const opsByFilepath = new Map<string, typeof allOps>();
+  for (const op of allOps) {
+    const existing = opsByFilepath.get(op.filepath) ?? [];
+    existing.push(op);
+    opsByFilepath.set(op.filepath, existing);
+  }
+
+  // Step 4: For each filepath, identify relevant sessions and collect ops
+  const result: OperationWithExternal[] = [];
+
+  for (const [, ops] of opsByFilepath) {
+    // Find all init indices (session boundaries)
+    const initIndices = ops
+      .filter((op) => op.reason === 'init')
+      .map((op) => op.idx);
+
+    // Process each session
+    for (let i = 0; i < initIndices.length; i++) {
+      const sessionStart = initIndices[i];
+      const sessionEnd =
+        initIndices[i + 1] !== undefined
+          ? initIndices[i + 1] - 1
+          : ops[ops.length - 1].idx;
+
+      // Get operations in this session range
+      const sessionOps = ops.filter(
+        (op) => op.idx >= sessionStart && op.idx <= sessionEnd,
+      );
+
+      // Check if chat-id contributed any edit in this session
+      const chatContributed = sessionOps.some(
+        (op) => op.contributor === contributor && op.operation === 'edit',
+      );
+
+      if (chatContributed) {
+        // Add all ops from this session to result
+        for (const op of sessionOps) {
+          result.push({
+            idx: op.idx,
+            filepath: op.filepath,
+            operation: op.operation,
+            snapshot_oid: op.snapshot_oid,
+            reason: op.reason,
+            contributor: op.contributor,
+            isExternal: op.isExternal ?? false,
+          } as OperationWithExternal);
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
