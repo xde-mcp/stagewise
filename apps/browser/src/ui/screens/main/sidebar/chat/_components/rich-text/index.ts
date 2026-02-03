@@ -34,7 +34,7 @@ export { ImageAttachment } from './nodes/image-attachment';
 export { ElementAttachment } from './nodes/element-attachment';
 export {
   TextClipAttachment,
-  extractTextClipsFromTiptapJson,
+  extractTextClipsFromTiptapContent,
 } from './nodes/text-clip-attachment';
 
 // Node view components (used by TipTap and view-only renderer)

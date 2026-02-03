@@ -13,7 +13,7 @@ import {
   useAttachmentMetadata,
   type AttachmentMetadata,
 } from '@ui/hooks/use-attachment-metadata';
-import { MessageElementsProvider } from '@ui/hooks/use-message-elements';
+import { MessageAttachmentsProvider } from '@ui/hooks/use-message-elements';
 import {
   ElementAttachmentView,
   ImageAttachmentView,
@@ -243,7 +243,7 @@ interface AttachmentLinkBaseProps {
 
 /**
  * Element attachment link - reuses ElementAttachmentView in view-only mode.
- * Wraps with MessageElementsProvider so the view can look up element data.
+ * Wraps with MessageAttachmentsProvider so the view can look up element data.
  */
 export const ElementAttachmentLink = ({
   id,
@@ -261,15 +261,15 @@ export const ElementAttachmentLink = ({
     return `${tagName}${domId}`;
   }, [id, element]);
 
-  // Provide element via context so ElementAttachmentView's useMessageElements() can find it
+  // Provide element via context so ElementAttachmentView can find it
   return (
-    <MessageElementsProvider elements={element ? [element] : []}>
+    <MessageAttachmentsProvider elements={element ? [element] : []}>
       <ElementAttachmentView
         viewOnly
         selected={false}
         node={{ attrs: { id, label } }}
       />
-    </MessageElementsProvider>
+    </MessageAttachmentsProvider>
   );
 };
 

@@ -9,6 +9,7 @@ import { getAttachmentAnchorText } from '@ui/components/streamdown';
 export const FileAttachment = createAttachmentNode<FileAttachmentAttrs>({
   name: 'fileAttachment',
   dataTag: 'data-file-attachment',
+  markdownProtocol: 'file',
   additionalAttributes: {
     validationError: {
       default: null,

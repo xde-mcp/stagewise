@@ -1,6 +1,7 @@
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, type Content } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Markdown } from '@tiptap/markdown';
 import { ModelSelect } from './model-select';
 import { ContextUsageRing } from './context-usage-ring';
 import { Button } from '@stagewise/stage-ui/components/button';
@@ -15,11 +16,10 @@ import {
 import {
   useCallback,
   useMemo,
-  useRef,
   useImperativeHandle,
-  forwardRef,
   useEffect,
   useLayoutEffect,
+  useRef,
 } from 'react';
 import {
   Tooltip,
@@ -30,25 +30,21 @@ import { HotkeyComboText } from '@/components/hotkey-combo-text';
 import { usePostHog } from 'posthog-js/react';
 import {
   configureAttachmentExtensions,
-  ALL_ATTACHMENT_NODE_NAMES,
   type AttachmentAttributes,
   type AttachmentType,
 } from './rich-text';
-
+import { useState } from 'react';
 // Re-export types for convenience
 export type { AttachmentAttributes, AttachmentType };
 
 export interface ChatInputProps {
   // Core controlled input
-  value?: string; // TipTap JSON content string
-  defaultValue?: string; // TipTap JSON content string
-  onChange?: (TipTapJsonContent: string) => void;
+  value?: Content; // TipTap JSON content string
+  defaultValue?: Content; // TipTap JSON content string
+  onChange?: (TipTapContent: Content) => void;
   onSubmit: () => void;
   disabled?: boolean;
   placeholder?: string;
-
-  // Initial JSON content (takes precedence over value for initialization)
-  initialJsonContent?: string;
 
   // Attachment count for display
   attachmentCount?: number;
@@ -76,6 +72,8 @@ export interface ChatInputProps {
 
   // Styling
   className?: string;
+
+  ref: React.RefObject<ChatInputHandle>;
 }
 
 export interface ChatInputHandle {
@@ -83,342 +81,312 @@ export interface ChatInputHandle {
   blur: () => void;
   /** Insert an attachment mention at the current cursor position */
   insertAttachment: (attrs: AttachmentAttributes) => void;
-  /** Get the plain text content with @attachments */
   getTextContent: () => string;
 }
 
-export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
-  function ChatInput(
-    {
-      value,
-      defaultValue,
-      onChange,
-      onSubmit,
-      disabled = false,
-      placeholder,
-      initialJsonContent,
+export const ChatInput = ({
+  value,
+  defaultValue,
+  onChange,
+  onSubmit,
+  disabled = false,
+  placeholder,
+  attachmentCount: _attachmentCount = 0,
 
-      attachmentCount: _attachmentCount = 0,
+  showModelSelect = true,
+  onModelChange,
 
-      showModelSelect = true,
-      onModelChange,
+  showContextUsageRing = false,
+  contextUsedPercentage = 0,
+  contextUsedKb = 0,
+  contextMaxKb = 0,
 
-      showContextUsageRing = false,
-      contextUsedPercentage = 0,
-      contextUsedKb = 0,
-      contextMaxKb = 0,
+  onFocus,
+  onBlur,
+  onEscape,
+  onPasteFiles,
+  onAttachmentRemoved,
 
-      onFocus,
-      onBlur,
-      onEscape,
-      onPasteFiles,
-      onAttachmentRemoved,
+  className,
+  ref,
+}: ChatInputProps) => {
+  const focusChatHotkeyText = HotkeyComboText({
+    action: HotkeyActions.CTRL_I,
+  });
 
-      className,
-    },
-    ref,
-  ) {
-    const focusChatHotkeyText = HotkeyComboText({
-      action: HotkeyActions.CTRL_I,
-    });
+  const resolvedPlaceholder =
+    placeholder ?? `Ask anything about this page ${focusChatHotkeyText}`;
 
-    const resolvedPlaceholder =
-      placeholder ?? `Ask anything about this page ${focusChatHotkeyText}`;
+  const [textContent, setTextContent] = useState<string>('');
 
-    const canSendMessage = useMemo(() => {
-      return !disabled && value.trim().length > 2;
-    }, [disabled, value]);
+  // Track if the last change was from the editor (internal) vs from props (external)
+  // This prevents the value effect from overwriting user edits
+  const isInternalChangeRef = useRef(false);
 
-    const handleSubmit = useCallback(() => {
-      if (canSendMessage) {
-        onSubmit();
-      }
-    }, [canSendMessage, onSubmit]);
+  const [internalValue, setInternalValue] = useState<Content | null>(
+    value ?? defaultValue ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+  );
+  useEffect(() => {
+    if (value !== undefined) {
+      setInternalValue(value);
+    }
+  }, [value]);
 
-    // Track last value for external sync
-    const _lastValueRef = useRef(value);
-
-    // Parse initial JSON content if provided, fallback to plain text
-    const getInitialContent = useCallback(() => {
-      if (initialJsonContent) {
-        try {
-          return JSON.parse(initialJsonContent);
-        } catch {
-          console.warn(
-            'Failed to parse initialJsonContent, falling back to plain text',
-          );
-        }
-      }
-      return value ? `<p>${value}</p>` : '';
-    }, [initialJsonContent, value]);
-
-    // TipTap editor setup
-    const editor = useEditor({
-      // Disable markdown parsing - treat **bold**, *italic*, etc. as literal characters
-      enableInputRules: false,
-      enablePasteRules: false,
-      extensions: [
-        StarterKit.configure({
-          // Disable block-level features we don't need for chat input
-          heading: false,
-          dropcursor: false,
-          bulletList: false,
-          orderedList: false,
-          codeBlock: false,
-          blockquote: false,
-          horizontalRule: false,
-          // Keep paragraph for line breaks
-          paragraph: {
-            HTMLAttributes: {
-              class: 'min-h-[1.5em]',
-            },
+  // TipTap editor setup
+  const editor = useEditor({
+    // Disable standard markdown parsing - treat **bold**, *italic*, etc. as literal characters
+    // but keep our custom attachment link parsing via Markdown extension
+    enableInputRules: false,
+    enablePasteRules: false,
+    extensions: [
+      StarterKit.configure({
+        // Disable block-level features we don't need for chat input
+        heading: false,
+        dropcursor: false,
+        bulletList: false,
+        orderedList: false,
+        codeBlock: false,
+        blockquote: false,
+        horizontalRule: false,
+        // Keep paragraph for line breaks
+        paragraph: {
+          HTMLAttributes: {
+            class: 'min-h-[1.5em]',
           },
-        }),
-        Placeholder.configure({
-          placeholder: resolvedPlaceholder,
-        }),
-        ...configureAttachmentExtensions({
-          onNodeDeleted: onAttachmentRemoved,
-        }),
-      ],
-      content: getInitialContent(),
-      editable: !disabled,
-      editorProps: {
-        attributes: {
-          class: cn(
-            'h-full w-full resize-none text-foreground text-sm outline-none',
-            'prose prose-sm max-w-none',
-            // Style paragraphs to not have extra margins
-            '[&_p]:m-0 [&_p]:leading-relaxed',
-          ),
         },
-        handleKeyDown: (_view, event) => {
-          // Handle Enter without Shift for submit
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            handleSubmit();
-            return true;
-          }
-          // Handle Escape
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            onEscape?.();
-            return true;
-          }
-          return false;
-        },
-        handlePaste: (_view, event) => {
-          const items = event.clipboardData?.items;
-          if (!items || !onPasteFiles) return false;
-
-          const files: File[] = [];
-          for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (item?.kind === 'file') {
-              const file = item.getAsFile();
-              if (file) files.push(file);
-            }
-          }
-
-          if (files.length > 0) {
-            event.preventDefault();
-            onPasteFiles(files);
-            return true;
-          }
-
-          return false;
-        },
-        // Prevent TipTap from handling drops - let parent elements handle via useDragDrop
-        handleDrop: () => true,
+      }),
+      Placeholder.configure({
+        placeholder: resolvedPlaceholder,
+      }),
+      ...configureAttachmentExtensions({
+        onNodeDeleted: onAttachmentRemoved,
+      }),
+      // Add Markdown extension for parsing/serializing attachment links
+      Markdown,
+    ],
+    content: internalValue,
+    editable: !disabled,
+    editorProps: {
+      attributes: {
+        class: cn(
+          'h-full w-full resize-none text-foreground text-sm outline-none',
+          'prose prose-sm max-w-none',
+          // Style paragraphs to not have extra margins
+          '[&_p]:m-0 [&_p]:leading-relaxed',
+        ),
       },
-      onUpdate: ({ editor: ed }) => {
-        onChange(JSON.stringify(ed.getJSON()));
+      handleKeyDown: (_view, event) => {
+        // Handle Enter without Shift for submit
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          handleSubmit();
+          return true;
+        }
+        // Handle Escape
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          onEscape?.();
+          return true;
+        }
+        return false;
       },
-      onFocus: () => {
-        onFocus?.();
-      },
-      onBlur: ({ event }) => {
-        onBlur?.(event);
-      },
-    });
+      handlePaste: (_view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items || !onPasteFiles) return false;
 
-    // Update editable state when disabled changes
-    // CRITICAL: Use useLayoutEffect to sync editor state BEFORE paint
-    // This prevents visual flicker when transitioning between edit/view modes
-    useLayoutEffect(() => {
-      if (editor) editor.setEditable(!disabled);
-    }, [editor, disabled]);
+        const files: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item?.kind === 'file') {
+            const file = item.getAsFile();
+            if (file) files.push(file);
+          }
+        }
 
-    // NOTE: Skip when disabled (view mode) to avoid overwriting JSON content
-    useEffect(() => {
-      // Only update if the value changed externally (not from editor onChange)
-      // and the editor exists
-      if (value !== undefined) {
-        editor?.commands.setContent(
-          value.length > 0 ? JSON.parse(value) : '<p></p>',
-        );
+        if (files.length > 0) {
+          event.preventDefault();
+          onPasteFiles(files);
+          return true;
+        }
+
+        return false;
+      },
+      // Prevent TipTap from handling drops - let parent elements handle via useDragDrop
+      handleDrop: () => true,
+    },
+    onUpdate: ({ editor: ed }) => {
+      const json = ed.getJSON();
+      setTextContent(ed.getText());
+      // Mark this as an internal change so the value effect doesn't interfere
+      isInternalChangeRef.current = true;
+      onChange?.(json);
+    },
+
+    onFocus: () => {
+      onFocus?.();
+    },
+    onBlur: ({ event }) => {
+      onBlur?.(event);
+    },
+  });
+
+  const canSendMessage = useMemo(() => {
+    return !disabled && textContent.trim().length > 2;
+  }, [disabled, textContent]);
+
+  const handleSubmit = useCallback(() => {
+    if (canSendMessage) {
+      onSubmit();
+    }
+  }, [canSendMessage, onSubmit]);
+
+  // Update editable state when disabled changes
+  // CRITICAL: Use useLayoutEffect to sync editor state BEFORE paint
+  // This prevents visual flicker when transitioning between edit/view modes
+  useLayoutEffect(() => {
+    if (editor) editor.setEditable(!disabled);
+  }, [editor, disabled]);
+
+  // Sync external value changes to editor - but ONLY for explicit resets (empty doc)
+  // We don't sync every value change because that causes feedback loops and race conditions
+  // The editor manages its own state; we only need to reset it when explicitly cleared
+  useEffect(() => {
+    // Skip if this is an internal change (from user editing or insertAttachment)
+    if (isInternalChangeRef.current) {
+      isInternalChangeRef.current = false;
+      return;
+    }
+
+    if (!editor || value === undefined) return;
+
+    // Check if this is an explicit reset to empty document
+    // This handles the case after sending a message when parent clears the input
+    const valueContent = (value as { content?: unknown[] })?.content;
+    const isEmptyDoc =
+      valueContent?.length === 1 &&
+      (valueContent[0] as { type?: string })?.type === 'paragraph' &&
+      !(valueContent[0] as { content?: unknown[] })?.content;
+
+    const currentDocSize = editor.state.doc.content.size;
+    const isCurrentlyEmpty = currentDocSize <= 2; // Empty doc has size 2
+
+    // Only reset if: value is empty AND editor is not already empty
+    // This prevents resetting during normal editing
+    if (isEmptyDoc && !isCurrentlyEmpty) {
+      editor.commands.setContent(value);
+    }
+  }, [value, editor]);
+
+  // NOTE: Previously had a MutationObserver here to fix cursor positioning around
+  // inline attachment badges by injecting zero-width spaces. However, this approach
+  // was fundamentally flawed because it modified the DOM directly without going
+  // through ProseMirror's transaction system, causing:
+  // 1. Document model desync (ProseMirror's model didn't match actual DOM)
+  // 2. "Position X out of range" errors on click/selection
+  // 3. Content loss when serializing (getJSON/getText read from corrupted model)
+  //
+  // The cursor positioning is now handled via CSS pseudo-elements (see EditorContent className)
+  // which provides visual spacing without corrupting ProseMirror's state.
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      editor?.commands.focus('end');
+    },
+    blur: () => {
+      editor?.commands.blur();
+    },
+    insertAttachment: (attrs: AttachmentAttributes) => {
+      if (editor) {
+        // Mark as internal change so valueEffect doesn't reset content
+        isInternalChangeRef.current = true;
+        editor.commands.insertAttachment(attrs);
       }
-    }, [value]);
+    },
+    getTextContent: () => {
+      if (!editor) return '';
+      return editor.getText();
+    },
+    clear: () => {
+      editor?.commands.clearContent();
+    },
+  }));
 
-    // We call this only once with the initial prop value
-    useEffect(() => {
-      if (defaultValue) {
-        editor?.commands.setContent(JSON.parse(defaultValue));
-      }
-    });
-
-    // Fix cursor positioning around inline attachment badges
-    // The browser's Selection API returns a zero rect when cursor is at element boundaries
-    // rather than inside a text node. We inject zero-width spaces to ensure proper cursor rendering.
-    useEffect(() => {
-      // Use the specific editor instance's DOM element instead of querySelector
-      // This ensures each editor has its own observer watching the correct element
-      const editorElement = editor?.view?.dom;
-      if (!editorElement) return;
-
-      // Build selector for all attachment node types
-      const attachmentSelectors = ALL_ATTACHMENT_NODE_NAMES.map(
-        (name) => `.react-renderer.node-${name}`,
-      ).join(', ');
-
-      const observer = new MutationObserver(() => {
-        editorElement
-          .querySelectorAll(attachmentSelectors)
-          .forEach((renderer) => {
-            // Fix BEFORE badge: ensure text node exists
-            const prev = renderer.previousSibling;
-            if (!prev || prev.nodeType !== 3) {
-              const textNode = document.createTextNode('\u200B');
-              renderer.parentNode?.insertBefore(textNode, renderer);
-            }
-
-            // Fix AFTER badge: ensure text node exists before separator or next badge
-            const next = renderer.nextSibling;
-            if (next && next.nodeType !== 3) {
-              // Check if next element is a ProseMirror separator or another attachment node
-              const isProblematic =
-                (next.nodeName === 'IMG' &&
-                  (next as Element).classList?.contains(
-                    'ProseMirror-separator',
-                  )) ||
-                ALL_ATTACHMENT_NODE_NAMES.some((name) =>
-                  (next as Element).classList?.contains(`node-${name}`),
-                );
-              if (isProblematic) {
-                const textNode = document.createTextNode('\u200B');
-                renderer.parentNode?.insertBefore(textNode, next);
-              }
-            }
-          });
-      });
-
-      observer.observe(editorElement, {
-        childList: true,
-        subtree: true,
-      });
-
-      return () => observer.disconnect();
-    }, [editor]);
-
-    // Expose methods via ref
-    useImperativeHandle(ref, () => ({
-      focus: () => {
-        editor?.commands.focus('end');
-      },
-      blur: () => {
-        editor?.commands.blur();
-      },
-      insertAttachment: (attrs: AttachmentAttributes) => {
-        if (editor) editor.commands.insertAttachment(attrs);
-      },
-      getTextContent: () => {
-        if (!editor) return '';
-        return editor.getText();
-      },
-      clear: () => {
-        editor?.commands.clearContent();
-      },
-    }));
-
-    return (
+  return (
+    <div className={cn('flex flex-1 flex-col items-stretch gap-1', className)}>
+      {/* Rich text input area */}
       <div
-        className={cn('flex flex-1 flex-col items-stretch gap-1', className)}
+        className={cn(
+          'relative h-full w-full',
+          // Only add padding when editable (not in view mode)
+          !disabled && 'pr-1',
+        )}
       >
-        {/* Rich text input area */}
-        <div
+        <EditorContent
+          editor={editor}
           className={cn(
-            'relative h-full w-full',
-            // Only add padding when editable (not in view mode)
-            !disabled && 'pr-1',
+            'h-full w-full',
+            // Editable mode: scrollbar and max-height constraints
+            !disabled && 'scrollbar-subtle max-h-64 overflow-y-auto',
+            // View mode: no overflow/scroll styling, natural content flow
+            disabled && 'overflow-visible',
+            // Placeholder styling (from @tiptap/extension-placeholder) - only for editable
+            !disabled &&
+              '[&_.tiptap_p.is-editor-empty:first-child]:before:pointer-events-none',
+            !disabled &&
+              '[&_.tiptap_p.is-editor-empty:first-child]:before:float-left',
+            !disabled && '[&_.tiptap_p.is-editor-empty:first-child]:before:h-0',
+            !disabled &&
+              '[&_.tiptap_p.is-editor-empty:first-child]:before:text-subtle-foreground',
+            !disabled &&
+              '[&_.tiptap_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
+            // Breathing room around the inline attachment nodes (all types)
+            '[&_.react-renderer.node-fileAttachment]:before:content-[""] [&_.react-renderer.node-fileAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-fileAttachment]:before:inline-block [&_.react-renderer.node-fileAttachment]:after:inline-block',
+            '[&_.react-renderer.node-fileAttachment]:before:w-0.5 [&_.react-renderer.node-fileAttachment]:after:w-0.5',
+            '[&_.react-renderer.node-imageAttachment]:before:content-[""] [&_.react-renderer.node-imageAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-imageAttachment]:before:inline-block [&_.react-renderer.node-imageAttachment]:after:inline-block',
+            '[&_.react-renderer.node-imageAttachment]:before:w-0.5 [&_.react-renderer.node-imageAttachment]:after:w-0.5',
+            '[&_.react-renderer.node-elementAttachment]:before:content-[""] [&_.react-renderer.node-elementAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-elementAttachment]:before:inline-block [&_.react-renderer.node-elementAttachment]:after:inline-block',
+            '[&_.react-renderer.node-elementAttachment]:before:w-0.5 [&_.react-renderer.node-elementAttachment]:after:w-0.5',
+            '[&_.react-renderer.node-textClipAttachment]:before:content-[""] [&_.react-renderer.node-textClipAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-textClipAttachment]:before:inline-block [&_.react-renderer.node-textClipAttachment]:after:inline-block',
+            '[&_.react-renderer.node-textClipAttachment]:before:w-0.5 [&_.react-renderer.node-textClipAttachment]:after:w-0.5',
           )}
-        >
-          <EditorContent
-            editor={editor}
-            className={cn(
-              'h-full w-full',
-              // Editable mode: scrollbar and max-height constraints
-              !disabled && 'scrollbar-subtle max-h-64 overflow-y-auto',
-              // View mode: no overflow/scroll styling, natural content flow
-              disabled && 'overflow-visible',
-              // Placeholder styling (from @tiptap/extension-placeholder) - only for editable
-              !disabled &&
-                '[&_.tiptap_p.is-editor-empty:first-child]:before:pointer-events-none',
-              !disabled &&
-                '[&_.tiptap_p.is-editor-empty:first-child]:before:float-left',
-              !disabled &&
-                '[&_.tiptap_p.is-editor-empty:first-child]:before:h-0',
-              !disabled &&
-                '[&_.tiptap_p.is-editor-empty:first-child]:before:text-subtle-foreground',
-              !disabled &&
-                '[&_.tiptap_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
-              // Breathing room around the inline attachment nodes (all types)
-              '[&_.react-renderer.node-fileAttachment]:before:content-[""] [&_.react-renderer.node-fileAttachment]:after:content-[""]',
-              '[&_.react-renderer.node-fileAttachment]:before:inline-block [&_.react-renderer.node-fileAttachment]:after:inline-block',
-              '[&_.react-renderer.node-fileAttachment]:before:w-0.5 [&_.react-renderer.node-fileAttachment]:after:w-0.5',
-              '[&_.react-renderer.node-imageAttachment]:before:content-[""] [&_.react-renderer.node-imageAttachment]:after:content-[""]',
-              '[&_.react-renderer.node-imageAttachment]:before:inline-block [&_.react-renderer.node-imageAttachment]:after:inline-block',
-              '[&_.react-renderer.node-imageAttachment]:before:w-0.5 [&_.react-renderer.node-imageAttachment]:after:w-0.5',
-              '[&_.react-renderer.node-elementAttachment]:before:content-[""] [&_.react-renderer.node-elementAttachment]:after:content-[""]',
-              '[&_.react-renderer.node-elementAttachment]:before:inline-block [&_.react-renderer.node-elementAttachment]:after:inline-block',
-              '[&_.react-renderer.node-elementAttachment]:before:w-0.5 [&_.react-renderer.node-elementAttachment]:after:w-0.5',
-              '[&_.react-renderer.node-textClipAttachment]:before:content-[""] [&_.react-renderer.node-textClipAttachment]:after:content-[""]',
-              '[&_.react-renderer.node-textClipAttachment]:before:inline-block [&_.react-renderer.node-textClipAttachment]:after:inline-block',
-              '[&_.react-renderer.node-textClipAttachment]:before:w-0.5 [&_.react-renderer.node-textClipAttachment]:after:w-0.5',
-            )}
-          />
-        </div>
-
-        {/* Controls area - only shown when not disabled and has content to show */}
-        {!disabled &&
-          (showModelSelect ||
-            (showContextUsageRing && contextUsedPercentage > 0)) && (
-            <div className="flex shrink-0 flex-row flex-wrap items-center justify-start gap-1 *:shrink-0">
-              {showModelSelect && (
-                <ModelSelect
-                  onModelChange={() => {
-                    // Defer focus until after popover closes using double rAF
-                    requestAnimationFrame(() => {
-                      requestAnimationFrame(() => {
-                        editor?.commands.focus('end');
-                        onModelChange?.();
-                      });
-                    });
-                  }}
-                />
-              )}
-              {showContextUsageRing && contextUsedPercentage > 0 && (
-                <ContextUsageRing
-                  percentage={contextUsedPercentage}
-                  usedKb={contextUsedKb}
-                  maxKb={contextMaxKb}
-                />
-              )}
-            </div>
-          )}
+        />
       </div>
-    );
-  },
-);
+
+      {/* Controls area - only shown when not disabled and has content to show */}
+      {!disabled &&
+        (showModelSelect ||
+          (showContextUsageRing && contextUsedPercentage > 0)) && (
+          <div className="flex shrink-0 flex-row flex-wrap items-center justify-start gap-1 *:shrink-0">
+            {showModelSelect && (
+              <ModelSelect
+                onModelChange={() => {
+                  // Defer focus until after popover closes using double rAF
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      editor?.commands.focus('end');
+                      onModelChange?.();
+                    });
+                  });
+                }}
+              />
+            )}
+            {showContextUsageRing && contextUsedPercentage > 0 && (
+              <ContextUsageRing
+                percentage={contextUsedPercentage}
+                usedKb={contextUsedKb}
+                maxKb={contextMaxKb}
+              />
+            )}
+          </div>
+        )}
+    </div>
+  );
+};
 
 export interface ChatInputActionsProps {
   /** Whether the agent is currently working (used to determine stop/send button visibility) */

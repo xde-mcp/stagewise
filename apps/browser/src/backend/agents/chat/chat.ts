@@ -40,11 +40,11 @@ export class ChatAgent extends BaseAgent<never, ToolSet> {
 
   protected getTools = async () => {
     return {
-      grepSearch: await this.toolbox.getTool('grepSearchTool', this.instanceId),
-      updateStagewiseMd: await this.toolbox.getTool(
-        'updateStagewiseMdTool',
-        this.instanceId,
-      ),
+      // grepSearch: await this.toolbox.getTool('grepSearchTool', this.instanceId),
+      // updateStagewiseMd: await this.toolbox.getTool(
+      //   'updateStagewiseMdTool',
+      //   this.instanceId,
+      // ),
       // TODO: Add more
     };
   };

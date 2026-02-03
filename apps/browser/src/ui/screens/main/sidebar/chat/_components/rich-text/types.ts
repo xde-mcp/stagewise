@@ -28,8 +28,12 @@ export interface FileAttachmentAttrs extends BaseAttachmentAttrs {
  * Attributes for image attachments.
  */
 export interface ImageAttachmentAttrs extends BaseAttachmentAttrs {
-  /** Data URL or blob URL for the image */
-  url: string;
+  /**
+   * Data URL or blob URL for the image.
+   * Optional in stored content (stripped to avoid duplication), required at runtime.
+   * When rendering/editing, look up from fileAttachments if not present.
+   */
+  url?: string;
   /** Validation error message if file is unsupported */
   validationError?: string;
 }
@@ -43,8 +47,12 @@ export interface ElementAttachmentAttrs extends BaseAttachmentAttrs {}
  * Attributes for text clip attachments (collapsed long text).
  */
 export interface TextClipAttachmentAttrs extends BaseAttachmentAttrs {
-  /** The full pasted text content */
-  content: string;
+  /**
+   * The full pasted text content.
+   * Optional in stored content (stripped to avoid duplication), required at runtime.
+   * When rendering/editing, look up from textClipAttachments if not present.
+   */
+  content?: string;
 }
 
 /**

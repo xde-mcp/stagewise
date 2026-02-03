@@ -31,6 +31,8 @@ export interface CreateAttachmentNodeConfig<TAttrs extends object = object> {
   name: string;
   /** The data attribute used to identify this node type in HTML (e.g., 'data-file-attachment') */
   dataTag: string;
+  /** The markdown protocol prefix (e.g., 'image', 'file', 'element', 'text-clip') */
+  markdownProtocol: string;
   /** Additional attributes specific to this attachment type */
   additionalAttributes?: {
     [K in keyof TAttrs]?: {
@@ -68,6 +70,7 @@ export function createAttachmentNode<TAttrs extends object = object>(
   const {
     name,
     dataTag,
+    markdownProtocol,
     additionalAttributes = {},
     NodeView,
     renderText: customRenderText,
@@ -141,6 +144,50 @@ export function createAttachmentNode<TAttrs extends object = object>(
         });
       }
       return `@${node.attrs.id}`;
+    },
+
+    // Markdown support: Use a custom tokenizer to recognize our attachment link syntax
+    // This runs during the lexing phase and creates custom tokens for our attachments
+    markdownTokenizer: {
+      name, // Use the node name as the token name
+      level: 'inline' as const,
+      // Start function helps the tokenizer find potential matches quickly
+      start(src: string) {
+        const pattern = `\\[\\]\\(${markdownProtocol}:`;
+        const result = src.match(new RegExp(pattern))?.index;
+        return result;
+      },
+      // Tokenize function parses our custom link syntax
+      tokenize(src: string) {
+        // Match empty link syntax with our protocol: [](protocol:id)
+        const pattern = `^\\[\\]\\(${markdownProtocol}:([^)]+)\\)`;
+        const match = src.match(new RegExp(pattern));
+        if (!match) return undefined;
+
+        return {
+          type: name, // This will be the token type that parseMarkdown receives
+          raw: match[0], // The full matched string
+          id: match[1], // Capture the ID from the protocol URL
+        };
+      },
+    },
+
+    // Parse the custom token created by our tokenizer
+    parseMarkdown(token: any) {
+      if (token.type !== name) return null;
+
+      return {
+        type: name,
+        attrs: {
+          id: token.id,
+          label: token.id, // Use ID as default label
+        },
+      };
+    },
+
+    // Markdown support: serialize attachment nodes back to markdown links
+    renderMarkdown(node: any) {
+      return `[](${markdownProtocol}:${node.attrs.id})`;
     },
 
     addNodeView() {

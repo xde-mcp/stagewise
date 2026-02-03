@@ -11,6 +11,7 @@ import { getAttachmentAnchorText } from '@ui/components/streamdown';
 export const ElementAttachment = createAttachmentNode<ElementAttachmentAttrs>({
   name: 'elementAttachment',
   dataTag: 'data-element-attachment',
+  markdownProtocol: 'element',
   NodeView: ElementAttachmentView,
   renderText: ({ node }) => {
     return getAttachmentAnchorText({

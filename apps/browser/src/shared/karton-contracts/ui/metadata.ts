@@ -53,7 +53,6 @@ const metadataSchema = z.object({
     })
     .optional(),
   rejectedEdits: z.array(z.string()).optional(),
-  tiptapJsonContent: z.string().optional(),
   fileAttachments: z.array(fileAttachmentSchema).optional(),
 });
 

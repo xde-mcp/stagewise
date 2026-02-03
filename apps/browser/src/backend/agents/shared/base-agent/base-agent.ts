@@ -807,7 +807,7 @@ export abstract class BaseAgent<
     return convertStagewiseUIToModelMessages(
       messages,
       systemPrompt,
-      await this.getTools(messages),
+      await this.getToolsForStep(),
     );
   }
 
@@ -1196,10 +1196,11 @@ export abstract class BaseAgent<
 
     const modelMessages = await this.generateContextForNewStep();
 
-    const tools = {
-      ...(await this.getTools(this.messages)),
-      finish: this.getFinishTool(),
-    };
+    const tools = await this.getToolsForStep();
+
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Executing step with tools: ${JSON.stringify(tools)}`,
+    );
 
     const resolvedConfig = {
       ...this.config,
@@ -1256,9 +1257,10 @@ export abstract class BaseAgent<
           void this.runStep();
         }
       },
-      onError: (error) => {
+      onError: (ev) => {
+        const error = ev.error as Error;
         this.logger.error(
-          `[BaseAgent:${this.instanceId}] Error running step: ${error}`,
+          `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
         );
       },
       experimental_repairToolCall: async (r) => {
@@ -1308,9 +1310,20 @@ export abstract class BaseAgent<
       }
     } catch (err) {
       this.logger.error(
-        `[BaseAgent:${this.instanceId}] Error running step: ${err}`,
+        `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
       );
     }
+  }
+
+  private async getToolsForStep(): Promise<ToolSet> {
+    const userTools = await this.getTools(this.messages);
+    const finishTool = this.getFinishTool()
+      ? { finish: this.getFinishTool() }
+      : {};
+    return {
+      ...userTools,
+      ...finishTool,
+    };
   }
 
   private getFinishTool(): Tool | undefined {
@@ -1338,6 +1351,8 @@ export abstract class BaseAgent<
             draft.history.push(uiMessage);
             return draft.history[draft.history.length - 1];
           })();
+
+        existingMessage.parts = uiMessage.parts;
 
         // Add metadata for message creation
         existingMessage.metadata ??= {

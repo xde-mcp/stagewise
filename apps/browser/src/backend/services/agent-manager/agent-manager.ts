@@ -134,6 +134,21 @@ export class AgentManagerService extends DisposableService {
       },
     );
     this.karton.registerServerProcedureHandler(
+      'agents.replaceUserMessage',
+      async (
+        _callingClientId: string,
+        instanceId: string,
+        userMessageId: string,
+        newMessage: ChatMessage & { role: 'user' },
+      ) => {
+        return await this.replaceUserMessage(
+          instanceId,
+          userMessageId,
+          newMessage,
+        );
+      },
+    );
+    this.karton.registerServerProcedureHandler(
       'agents.delete',
       async (_callingClientId: string, instanceId: string) => {
         await this.deleteAgent(instanceId);
@@ -455,6 +470,20 @@ export class AgentManagerService extends DisposableService {
     }
 
     await agent.revertToUserMessage(userMessageId, undoToolCalls);
+  }
+
+  public async replaceUserMessage(
+    instanceId: string,
+    userMessageId: string,
+    newMessage: ChatMessage & { role: 'user' },
+  ): Promise<string> {
+    const agent = this.activeAgents.get(instanceId);
+
+    if (!agent) {
+      throw new Error(`Agent with instance id ${instanceId} not found`);
+    }
+
+    return await agent.replaceUserMessage(userMessageId, newMessage);
   }
 
   private async updateInputState(instanceId: string, inputString: string) {

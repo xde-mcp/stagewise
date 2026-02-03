@@ -11,6 +11,7 @@ import { getAttachmentAnchorText } from '@ui/components/streamdown';
 export const ImageAttachment = createAttachmentNode<ImageAttachmentAttrs>({
   name: 'imageAttachment',
   dataTag: 'data-image-attachment',
+  markdownProtocol: 'image',
   additionalAttributes: {
     url: {
       default: null,

@@ -750,6 +750,11 @@ export type KartonContract = {
         userMessageId: string,
         undoToolCalls: boolean,
       ) => Promise<void>;
+      replaceUserMessage: (
+        agentId: string,
+        userMessageId: string,
+        newMessage: ChatMessage & { role: 'user' },
+      ) => Promise<string>;
       setActiveModelId: (agentId: string, modelId: ModelId) => Promise<void>;
     };
     toolbox: {

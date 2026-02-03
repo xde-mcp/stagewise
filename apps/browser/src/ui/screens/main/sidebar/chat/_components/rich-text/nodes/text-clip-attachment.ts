@@ -1,4 +1,9 @@
-import { Node, mergeAttributes } from '@tiptap/core';
+import {
+  type Content,
+  type JSONContent,
+  Node,
+  mergeAttributes,
+} from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { generateId } from 'ai';
@@ -6,11 +11,11 @@ import { TextClipAttachmentView } from './text-clip-attachment-view';
 import {
   type AttachmentNodeOptions,
   type AttachmentType,
-  type TextClipAttachmentAttrs,
   ALL_ATTACHMENT_NODE_NAMES,
   NODE_NAME_TO_TYPE,
 } from '../types';
 import { getAttachmentAnchorText } from '@ui/components/streamdown';
+import type { TextClipAttachment as TextClipAttachmentMetadata } from '@shared/karton-contracts/ui/metadata';
 
 /** Minimum character length for text to be converted to a text clip on paste */
 const TEXT_CLIP_THRESHOLD = 100;
@@ -20,17 +25,16 @@ const TEXT_CLIP_THRESHOLD = 100;
  * Used to collect all text clips before sending a message so the agent
  * can correlate @{id} references with the full text content.
  *
- * @param jsonContent - Serialized TipTap JSON content string
+ * @param doc - TipTap content
  * @returns Array of text clip attachment data (id, label, content)
  */
-export function extractTextClipsFromTiptapJson(
-  jsonContent: string | undefined,
-): TextClipAttachmentAttrs[] {
-  if (!jsonContent) return [];
+export function extractTextClipsFromTiptapContent(
+  doc: Content | undefined,
+): TextClipAttachmentMetadata[] {
+  if (!doc || typeof doc === 'string') return [];
 
   try {
-    const doc = JSON.parse(jsonContent);
-    const clips: TextClipAttachmentAttrs[] = [];
+    const clips: TextClipAttachmentMetadata[] = [];
 
     const traverse = (node: {
       type?: string;
@@ -56,7 +60,7 @@ export function extractTextClipsFromTiptapJson(
         );
     };
 
-    traverse(doc);
+    traverse(doc as JSONContent);
     return clips;
   } catch {
     return [];
@@ -155,6 +159,48 @@ export const TextClipAttachment = Node.create<AttachmentNodeOptions>({
       type: 'textClip',
       id: node.attrs.id,
     });
+  },
+
+  // Markdown support: Use a custom tokenizer to recognize our text-clip link syntax
+  markdownTokenizer: {
+    name: 'textClipAttachment',
+    level: 'inline' as const,
+    // Start function helps the tokenizer find potential matches quickly
+    start(src: string) {
+      return src.match(/\[\]\(text-clip:/)?.index;
+    },
+    // Tokenize function parses our custom link syntax
+    tokenize(src: string) {
+      // Match empty link syntax with text-clip protocol: [](text-clip:id)
+      const match = src.match(/^\[\]\(text-clip:([^)]+)\)/);
+      if (!match) return undefined;
+
+      return {
+        type: 'textClipAttachment',
+        raw: match[0],
+        id: match[1],
+      };
+    },
+  },
+
+  // Parse the custom token created by our tokenizer
+  parseMarkdown(token: any) {
+    if (token.type !== 'textClipAttachment') return null;
+
+    return {
+      type: 'textClipAttachment',
+      attrs: {
+        id: token.id,
+        label: token.id,
+        // Note: content will be empty here and needs to be rehydrated from metadata
+        content: '',
+      },
+    };
+  },
+
+  // Markdown support: serialize text clip nodes back to markdown links
+  renderMarkdown(node: any) {
+    return `[](text-clip:${node.attrs.id})`;
   },
 
   addNodeView() {

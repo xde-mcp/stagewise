@@ -4,8 +4,7 @@ import { usePostHog } from 'posthog-js/react';
 import { getTruncatedFileUrl } from '@ui/utils';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
-import { useMessageEditState } from '@ui/hooks/use-message-edit-state';
-import { useMessageElements } from '@ui/hooks/use-message-elements';
+import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { PreviewCardContent } from '@stagewise/stage-ui/components/preview-card';
@@ -23,6 +22,7 @@ import {
   AttachmentBadge,
   AttachmentBadgeWrapper,
 } from '../view-utils';
+import type { SelectedElement } from '@shared/selected-elements';
 
 const displayedAttributes = [
   'id',
@@ -54,39 +54,13 @@ function isUrl(value: string): boolean {
 
 /**
  * Preview card content showing detailed element information.
+ * Element is passed from parent to avoid duplicate lookup.
  */
 function ElementPreviewContent({
-  selectedElementId,
+  element: selectedElement,
 }: {
-  selectedElementId: string;
+  element: SelectedElement | undefined;
 }) {
-  // Get elements from Karton state
-  const selectedElements = useKartonState((s) => s.browser.selectedElements);
-
-  // Get elements from edit state context (for elements that exist only locally during editing)
-  const { activeEditMessageId } = useMessageEditState();
-
-  // Get elements from message scope context (for view mode - from message metadata)
-  const { elements: messageElements } = useMessageElements();
-
-  const selectedElement = useMemo(() => {
-    // First check Karton state
-    const fromKarton = selectedElements?.find(
-      (element) => element.stagewiseId === selectedElementId,
-    );
-    if (fromKarton) return fromKarton;
-
-    // Finally, check the message scope context (view mode - from message metadata)
-    return messageElements.find(
-      (element) => element.stagewiseId === selectedElementId,
-    );
-  }, [
-    selectedElements,
-    selectedElementId,
-    activeEditMessageId,
-    messageElements,
-  ]);
-
   const posthog = usePostHog();
   const openInIdeSelection = useKartonState(
     (s) => s.globalConfig.openFilesInIde,
@@ -369,20 +343,38 @@ function ElementPreviewContent({
  * Custom NodeView for element attachments (selected DOM elements).
  * Displays the element with a selector icon and shows a preview card
  * with element details on hover.
+ * Looks up element data from context to get the proper label.
  */
 export function ElementAttachmentView(props: AttachmentNodeViewProps) {
   const attrs = props.node.attrs as ElementAttachmentAttrs;
 
   const isEditable = !('viewOnly' in props);
 
+  // Look up element data from context
+  const { elements } = useMessageAttachments();
+  const element = useMemo(
+    () => elements.find((el) => el.stagewiseId === attrs.id),
+    [elements, attrs.id],
+  );
+
+  // Prefer context data (saved attachments), fall back to attrs (new attachments being composed)
+  const label = useMemo(() => {
+    if (element) {
+      const tagName = (element.nodeType || element.tagName || '').toLowerCase();
+      const domId = element.attributes?.id ? `#${element.attributes.id}` : '';
+      return `${tagName}${domId}` || attrs.label;
+    }
+    return attrs.label;
+  }, [element, attrs.label]);
+
   const displayLabel = useMemo(
-    () => truncateLabel(attrs.label, attrs.id),
-    [attrs.label, attrs.id],
+    () => truncateLabel(label, attrs.id),
+    [label, attrs.id],
   );
 
   const icon = <SquareDashedMousePointer className="size-3 shrink-0" />;
 
-  const previewContent = <ElementPreviewContent selectedElementId={attrs.id} />;
+  const previewContent = <ElementPreviewContent element={element} />;
 
   return (
     <AttachmentBadgeWrapper

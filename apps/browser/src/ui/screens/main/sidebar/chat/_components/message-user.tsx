@@ -1,19 +1,15 @@
 import {
-  fileUIPartToFileAttachment,
   fileAttachmentToFileUIPart,
   selectedElementToAttachmentAttributes,
 } from '@/utils/attachment-conversions';
+import { markdownToTipTapContent } from '@/utils/tiptap-content-utils';
 import { cn, collectUserMessageMetadata } from '@/utils';
-import type {
-  ChatMessage,
-  TextUIPart,
-  FileUIPart,
-} from '@shared/karton-contracts/ui';
+import type { ChatMessage, FileUIPart } from '@shared/karton-contracts/ui';
 import { useMemo, useCallback, memo, useState, useRef, useEffect } from 'react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useEventListener } from '@/hooks/use-event-listener';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
-import { MessageElementsProvider } from '@/hooks/use-message-elements';
+import { MessageAttachmentsProvider } from '@/hooks/use-message-elements';
 import { useFileAttachments } from '@/hooks/use-file-attachments';
 import { useDragDrop } from '@/hooks/use-drag-drop';
 import { useElementSelectionWatcher } from '@/hooks/use-element-selection-watcher';
@@ -37,6 +33,7 @@ import { ChatInputViewOnly } from './chat-input-view-only';
 import { generateId } from 'ai';
 import type { AttachmentType } from './rich-text';
 import { useOpenAgent } from '@/hooks/use-open-chat';
+import type { Content } from '@tiptap/core';
 
 type UserMessage = ChatMessage & { role: 'user' };
 
@@ -66,10 +63,9 @@ export const MessageUser = memo(
     const { registerEditMode, unregisterEditMode } = useMessageEditState();
 
     // Procedures and state
-    const revertToUserMessage = useKartonProcedure(
-      (p) => p.agents.revertToUserMessage,
+    const replaceUserMessage = useKartonProcedure(
+      (p) => p.agents.replaceUserMessage,
     );
-    const sendUserMessage = useKartonProcedure((p) => p.agents.sendUserMessage);
     const [openAgent] = useOpenAgent();
     const isWorking = useKartonState(
       (s) => s.agents.instances[openAgent]?.state.isWorking || false,
@@ -119,21 +115,8 @@ export const MessageUser = memo(
     // Edit mode state with mention IDs
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     // Store tiptap content when submit is clicked (before confirmation popover)
-    const [pendingTiptapContent, setPendingTiptapContent] = useState<
-      string | null
-    >(null);
-
-    // Extract text content from message
-    const textContent = useMemo(() => {
-      return msg.parts
-        .filter((part) => part.type === 'text')
-        .map((part) => (part as TextUIPart).text)
-        .join('\n');
-    }, [msg.parts]);
-
-    const fileUIParts = useMemo(() => {
-      return msg.parts.filter((part) => part.type === 'file');
-    }, [msg.parts]);
+    const [pendingTiptapContent, setPendingTiptapContent] =
+      useState<Content | null>(null);
 
     // User messages should not be empty in normal usage
     const isEmptyMessage = useMemo(() => {
@@ -147,10 +130,17 @@ export const MessageUser = memo(
     // Can edit when not working and message has an ID
     const canEdit = !isWorking && !!msg.id;
 
-    // Get TipTap JSON content from message metadata
-    const tiptapJsonContent = msg.metadata?.tiptapJsonContent as
-      | string
-      | undefined;
+    // Extract markdown text from message parts
+    const markdownText = useMemo(() => {
+      const textPart = msg.parts.find((part) => part.type === 'text');
+      return textPart?.type === 'text' ? textPart.text : '';
+    }, [msg.parts]);
+
+    // Convert markdown to TipTap JSON for view mode (memoized to avoid re-conversion on every render)
+    const viewModeTipTapContent = useMemo(
+      () => markdownToTipTapContent(markdownText),
+      [markdownText],
+    );
 
     // Start editing - initialize the editor with message content
     const handleStartEditing = useCallback(() => {
@@ -173,23 +163,27 @@ export const MessageUser = memo(
       // Clear Karton state for new element selections
       clearSelectedElements();
 
-      // Convert existing file attachments to FileAttachment format
-      const fileAttachments = fileUIParts
-        .map(fileUIPartToFileAttachment)
-        .filter((a): a is NonNullable<typeof a> => a !== null);
-      setEditedFileAttachments(fileAttachments);
+      // Use file attachments directly from message metadata (preserves original IDs)
+      // Note: msg.parts only contains text, files are stored in metadata.fileAttachments
+      const existingFileAttachments = msg.metadata?.fileAttachments ?? [];
+
+      setEditedFileAttachments(existingFileAttachments);
 
       setIsEditing(true);
-      setPendingTiptapContent(tiptapJsonContent);
+
+      // Convert markdown text to TipTap JSON
+      // Attachment data is looked up from context, not embedded in TipTap content
+      const tiptapContent = markdownToTipTapContent(markdownText);
+      setPendingTiptapContent(tiptapContent);
 
       // Focus the editor (will be available after state update triggers re-render)
       setTimeout(() => chatInputRef.current?.focus(), 0);
     }, [
       canEdit,
       editMessageId,
-      textContent,
-      fileUIParts,
+      msg.metadata?.fileAttachments,
       clearSelectedElements,
+      markdownText,
     ]);
 
     // Cancel editing
@@ -206,18 +200,18 @@ export const MessageUser = memo(
 
     // Submit triggers confirmation
     const handleSubmitEdit = useCallback(() => {
-      if (chatInputRef.current?.getTextContent().trim().length <= 2) return;
+      const textContent = chatInputRef.current?.getTextContent().trim();
+      if ((textContent?.length ?? 0) <= 2) return;
       setIsConfirmOpen(true);
     }, []);
 
     // Confirm and execute the edit
     const handleConfirmEdit = useCallback(async () => {
-      if (!msg.id || !openAgent) return;
+      if (!msg.id || !openAgent) {
+        return;
+      }
 
       try {
-        // First, revert the history (( for now we also revert tool calls)
-        await revertToUserMessage(openAgent, msg.id, true);
-
         const combinedSelectedElements = [
           ...selectedElementsFromWebcontents,
           ...selectedElementsFromEditor,
@@ -228,52 +222,72 @@ export const MessageUser = memo(
           editedFileAttachments.map(fileAttachmentToFileUIPart),
         );
 
-        // Collect metadata for selected elements and text clips
+        // Collect metadata for selected elements
+        // Note: textClipAttachments from extractTextClipsFromTiptapContent will have empty content
+        // because the TipTap JSON only stores IDs (content is looked up from context at render time)
         const metadata = collectUserMessageMetadata(
           combinedSelectedElements,
           pendingTiptapContent,
         );
 
-        await sendUserMessage(openAgent, {
+        // Preserve original text clip data from message metadata
+        // The TipTap content only has IDs, so we need to look up the full content from the original
+        const originalTextClips = msg.metadata?.textClipAttachments ?? [];
+        const textClipIdsInContent = new Set(
+          (metadata.textClipAttachments ?? []).map((tc) => tc.id),
+        );
+        const preservedTextClips = originalTextClips.filter((tc) =>
+          textClipIdsInContent.has(tc.id),
+        );
+
+        if (!chatInputRef.current) {
+          return;
+        }
+
+        const markdownText = chatInputRef.current.getTextContent().trim();
+
+        // Single atomic operation - replaces old message with new one
+        // This prevents race conditions where the component unmounts between
+        // revert and send operations
+        // Note: We no longer store tipTapContent - the text part contains markdown
+        // with attachment links (e.g., [](image:abc123))
+        await replaceUserMessage(openAgent, msg.id, {
           id: generateId(),
           parts: [
             ...fileParts,
             {
               type: 'text' as const,
-              text: chatInputRef.current!.getTextContent().trim(),
+              text: markdownText,
             },
           ],
           role: 'user',
           metadata: {
             ...metadata,
-            tiptapJsonContent: pendingTiptapContent,
+            fileAttachments: editedFileAttachments,
+            // Use preserved text clips with full content from original message
+            textClipAttachments:
+              preservedTextClips.length > 0 ? preservedTextClips : undefined,
           },
         });
 
         // Dispatch event to force scroll to bottom in chat history
         window.dispatchEvent(new Event('chat-message-sent'));
 
-        // Reset edit state (clearFileAttachments handles blob URL cleanup)
-        setIsEditing(false);
-        clearFileAttachments();
-        setIsConfirmOpen(false);
-        setElementSelectionActive(false);
-        clearSelectedElements();
-        setSelectedElementsFromEditor([]);
-        setPendingTiptapContent(null);
+        // Note: State cleanup is minimal since component will unmount after replaceUserMessage
+        // The atomic operation completes before state updates trigger re-render
       } catch (error) {
         console.warn('Failed to edit message:', error);
+        // On error, close popover but stay in edit mode so user can retry
+        setIsConfirmOpen(false);
       }
     }, [
       msg.id,
       openAgent,
-      revertToUserMessage,
-      sendUserMessage,
+      replaceUserMessage,
       selectedElementsFromWebcontents,
+      selectedElementsFromEditor,
       editedFileAttachments,
-      setElementSelectionActive,
-      clearSelectedElements,
-      clearFileAttachments,
+      pendingTiptapContent,
     ]);
 
     // Handle files pasted in editor
@@ -475,11 +489,26 @@ export const MessageUser = memo(
       selectedElementsFromWebcontents,
     ]);
 
+    // File attachments: use edited state during editing, otherwise from metadata
+    const allFileAttachments = useMemo(() => {
+      if (isEditing) {
+        return editedFileAttachments;
+      }
+      return msg.metadata?.fileAttachments ?? [];
+    }, [isEditing, editedFileAttachments, msg.metadata?.fileAttachments]);
+
+    // Text clip attachments: always from metadata (not editable separately)
+    const allTextClipAttachments = msg.metadata?.textClipAttachments;
+
     if (isEmptyMessage && !isLastMessage) return null;
 
     // Conditional rendering: view-only mode uses lightweight renderer, edit mode uses full TipTap
     return (
-      <MessageElementsProvider elements={allAvailableElements}>
+      <MessageAttachmentsProvider
+        elements={allAvailableElements}
+        fileAttachments={allFileAttachments}
+        textClipAttachments={allTextClipAttachments}
+      >
         <div
           className={cn('flex w-full flex-col gap-1')}
           onDrop={isEditing ? editDragHandlers.onDropBubble : undefined} // Reset drag state, let event bubble to ChatPanel
@@ -525,8 +554,7 @@ export const MessageUser = memo(
                 {/* View mode: lightweight static renderer */}
                 {!isEditing && (
                   <ChatInputViewOnly
-                    tiptapJsonContent={tiptapJsonContent}
-                    textContent={textContent}
+                    tipTapContent={viewModeTipTapContent}
                     className="w-full"
                   />
                 )}
@@ -535,7 +563,7 @@ export const MessageUser = memo(
                   <>
                     <ChatInput
                       ref={chatInputRef}
-                      defaultValue={tiptapJsonContent}
+                      defaultValue={pendingTiptapContent}
                       onChange={setPendingTiptapContent}
                       onSubmit={handleSubmitEdit}
                       onEscape={handleCancelEditing}
@@ -612,7 +640,7 @@ export const MessageUser = memo(
             </div>
           </div>
         </div>
-      </MessageElementsProvider>
+      </MessageAttachmentsProvider>
     );
   },
   // Custom comparison to prevent re-renders when message object references change
@@ -620,12 +648,6 @@ export const MessageUser = memo(
     if (prevProps.message.id !== nextProps.message.id) return false;
     if (prevProps.isLastMessage !== nextProps.isLastMessage) return false;
     if (!!prevProps.measureRef !== !!nextProps.measureRef) return false;
-    // Check if tiptapJsonContent changed (used for TipTap initialization)
-    if (
-      prevProps.message.metadata?.tiptapJsonContent !==
-      nextProps.message.metadata?.tiptapJsonContent
-    )
-      return false;
     if (prevProps.message.parts.length !== nextProps.message.parts.length)
       return false;
 

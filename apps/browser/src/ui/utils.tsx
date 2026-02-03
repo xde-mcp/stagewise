@@ -1,11 +1,12 @@
 import type { UserMessageMetadata } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
-import { extractTextClipsFromTiptapJson } from '@ui/screens/main/sidebar/chat/_components/rich-text';
+import { extractTextClipsFromTiptapContent } from '@ui/screens/main/sidebar/chat/_components/rich-text';
 
 import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
 import type { FileAttachment } from '@shared/karton-contracts/ui/metadata';
+import type { Content } from '@tiptap/core';
 
 const customTwMerge = extendTailwindMerge({
   extend: {
@@ -51,11 +52,11 @@ export async function fileToDataUrl(file: File): Promise<string> {
 
 export const collectUserMessageMetadata = (
   selectedElements: SelectedElement[],
-  tiptapJsonContent?: string,
+  tiptapContent?: Content,
 ): UserMessageMetadata => {
   // Extract text clip attachments from TipTap content
   // These are collapsed long texts that show as @{id} in plain text
-  const textClipAttachments = extractTextClipsFromTiptapJson(tiptapJsonContent);
+  const textClipAttachments = extractTextClipsFromTiptapContent(tiptapContent);
 
   return {
     createdAt: new Date(),

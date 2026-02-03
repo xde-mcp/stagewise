@@ -7,6 +7,7 @@ import {
   ImageAttachmentView,
   TextClipAttachmentView,
 } from './rich-text';
+import type { Content } from '@tiptap/core';
 
 /**
  * TipTap document structure types for parsing JSON content.
@@ -24,10 +25,8 @@ interface TiptapDoc {
 }
 
 export interface ChatInputViewOnlyProps {
-  /** TipTap JSON content string */
-  tiptapJsonContent?: string;
-  /** Fallback plain text content (used if no JSON content) */
-  textContent?: string;
+  /** TipTap JSON content */
+  tipTapContent?: Content;
   /** Additional CSS classes */
   className?: string;
 }
@@ -40,11 +39,13 @@ export interface ChatInputViewOnlyProps {
  * the performance overhead of creating full TipTap editor instances for
  * every message in the chat history.
  *
+ * Attachment data (URLs, content) is looked up from context by the attachment
+ * view components using MessageAttachmentsProvider.
+ *
  * Includes max-height constraint with fade mask when content overflows.
  */
 export function ChatInputViewOnly({
-  tiptapJsonContent,
-  textContent,
+  tipTapContent,
   className,
 }: ChatInputViewOnlyProps) {
   // Container ref for overflow fade effect
@@ -60,18 +61,9 @@ export function ChatInputViewOnly({
     fadeDistances: { top: 0, bottom: 16 },
   });
 
-  const doc = useMemo((): TiptapDoc | null => {
-    if (!tiptapJsonContent) return null;
-    try {
-      return JSON.parse(tiptapJsonContent) as TiptapDoc;
-    } catch {
-      return null;
-    }
-  }, [tiptapJsonContent]);
-
   // If no valid JSON content, render plain text fallback
-  if (!doc && !textContent) return null;
-  else if (!doc)
+  if (!tipTapContent) return null;
+  else if (typeof tipTapContent === 'string') {
     return (
       <div
         ref={setContainer}
@@ -81,9 +73,10 @@ export function ChatInputViewOnly({
         )}
         style={maskStyle}
       >
-        <p className="m-0 min-h-[1.5em] leading-relaxed">{textContent}</p>
+        <p className="m-0 min-h-[1.5em] leading-relaxed">{tipTapContent}</p>
       </div>
     );
+  }
 
   return (
     <div
@@ -99,7 +92,7 @@ export function ChatInputViewOnly({
       )}
       style={maskStyle}
     >
-      {doc.content?.map((node, index) => (
+      {(tipTapContent as TiptapDoc).content.map((node, index) => (
         <RenderNode key={getNodeKey(node, index)} node={node} />
       ))}
     </div>
@@ -119,6 +112,7 @@ function getNodeKey(node: TiptapNode, index: number): string {
 
 /**
  * Recursively renders a TipTap node as React elements.
+ * Attachment views look up their data from context (MessageAttachmentsProvider).
  */
 function RenderNode({ node }: { node: TiptapNode }): React.ReactNode {
   switch (node.type) {
@@ -147,6 +141,7 @@ function RenderNode({ node }: { node: TiptapNode }): React.ReactNode {
       );
 
     case 'imageAttachment':
+      // ImageAttachmentView looks up URL from context
       return (
         <ImageAttachmentView
           viewOnly
@@ -165,6 +160,7 @@ function RenderNode({ node }: { node: TiptapNode }): React.ReactNode {
       );
 
     case 'textClipAttachment':
+      // TextClipAttachmentView looks up content from context
       return (
         <TextClipAttachmentView
           viewOnly

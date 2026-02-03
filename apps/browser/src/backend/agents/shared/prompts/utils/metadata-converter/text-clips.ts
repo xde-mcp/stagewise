@@ -12,18 +12,14 @@ import specialTokens from '../special-tokens.js';
  */
 export function textClipToContextSnippet(textClip: TextClipAttachment): string {
   return xml({
-    [specialTokens.userMsgAttachmentXmlTag]: [
-      {
-        _attr: {
-          type: 'text-clip',
-          id: textClip.id,
-          label: textClip.label,
-          'character-count': textClip.content.length,
-        },
+    [specialTokens.userMsgAttachmentXmlTag]: {
+      _attr: {
+        type: 'text-clip',
+        id: textClip.id,
+        label: textClip.label,
+        'character-count': textClip.content.length,
       },
-      {
-        _cdata: textClip.content,
-      },
-    ],
+      _cdata: textClip.content,
+    },
   });
 }

@@ -19,6 +19,7 @@ import type {
   AttachmentNodeViewProps,
 } from '../types';
 import { BadgeContainer, AttachmentBadgeWrapper } from '../view-utils';
+import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 
 /**
  * Truncates text content for display in the badge.
@@ -94,15 +95,24 @@ function TextPreviewContent({ content }: { content: string }) {
  * - Hover tooltip showing preview of the full text
  * - Expand button to resolve/convert back to plain text
  * - Delete button to remove the attachment
+ * Looks up attachment data (content) from context by ID.
  */
 export function TextClipAttachmentView(props: AttachmentNodeViewProps) {
   const attrs = props.node.attrs as TextClipAttachmentAttrs;
   const isEditable = !('viewOnly' in props);
 
-  const displayLabel = useMemo(
-    () => truncateContent(attrs.content),
-    [attrs.content],
+  // Look up full attachment data from context
+  const { textClipAttachments } = useMessageAttachments();
+  const attachment = useMemo(
+    () => textClipAttachments.find((t) => t.id === attrs.id),
+    [textClipAttachments, attrs.id],
   );
+
+  // Prefer context data (saved attachments), fall back to attrs (new attachments being composed)
+  const content = attachment?.content ?? attrs.content ?? '';
+  const _label = attachment?.label ?? attrs.label;
+
+  const displayLabel = useMemo(() => truncateContent(content), [content]);
 
   const handleExpand = useCallback(() => {
     // Use the resolveTextClip command defined in the extension
@@ -192,7 +202,7 @@ export function TextClipAttachmentView(props: AttachmentNodeViewProps) {
   );
 
   // Preview content for the hover card
-  const previewContent = <TextPreviewContent content={attrs.content} />;
+  const previewContent = <TextPreviewContent content={content} />;
 
   return (
     <AttachmentBadgeWrapper

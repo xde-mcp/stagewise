@@ -1,47 +1,66 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { SelectedElement } from '@shared/selected-elements';
+import type {
+  FileAttachment,
+  TextClipAttachment,
+} from '@shared/karton-contracts/ui/metadata';
 
 /**
- * Context for providing selected elements within a message scope.
- * This allows child components (like InlineAttachmentBadge) to access
- * the message's selected elements without prop drilling.
+ * Context for providing all attachment data within a message scope.
+ * This allows child components (attachment views) to access attachment data
+ * without prop drilling or rehydration.
  *
- * In view mode, elements come from message metadata (selectedPreviewElements).
- * In edit mode, elements come from local state + Karton state.
+ * In view mode, data comes from message metadata.
+ * In edit mode, data comes from local state + Karton state.
  */
 
-interface MessageElementsContext {
-  /** Selected elements available in this message's scope */
+interface MessageAttachmentsContext {
+  /** Selected DOM elements */
   elements: SelectedElement[];
+  /** File/image attachments with URLs */
+  fileAttachments: FileAttachment[];
+  /** Text clip attachments with content */
+  textClipAttachments: TextClipAttachment[];
 }
 
-const MessageElementsContext = createContext<MessageElementsContext>({
+const MessageAttachmentsContext = createContext<MessageAttachmentsContext>({
   elements: [],
+  fileAttachments: [],
+  textClipAttachments: [],
 });
 
-interface MessageElementsProviderProps {
+interface MessageAttachmentsProviderProps {
   children: ReactNode;
-  /** Elements to provide to children */
+  /** Selected DOM elements */
   elements: SelectedElement[];
+  /** File/image attachments */
+  fileAttachments?: FileAttachment[];
+  /** Text clip attachments */
+  textClipAttachments?: TextClipAttachment[];
 }
 
-export function MessageElementsProvider({
+export function MessageAttachmentsProvider({
   children,
   elements,
-}: MessageElementsProviderProps) {
-  const value = useMemo(() => ({ elements }), [elements]);
+  fileAttachments = [],
+  textClipAttachments = [],
+}: MessageAttachmentsProviderProps) {
+  const value = useMemo(
+    () => ({ elements, fileAttachments, textClipAttachments }),
+    [elements, fileAttachments, textClipAttachments],
+  );
 
   return (
-    <MessageElementsContext.Provider value={value}>
+    <MessageAttachmentsContext.Provider value={value}>
       {children}
-    </MessageElementsContext.Provider>
+    </MessageAttachmentsContext.Provider>
   );
 }
 
 /**
- * Hook to access the selected elements in the current message scope.
- * Returns an empty array if used outside of a MessageElementsProvider.
+ * Hook to access all attachment data in the current message scope.
+ * Returns empty arrays if used outside of a MessageAttachmentsProvider.
  */
-export function useMessageElements() {
-  return useContext(MessageElementsContext);
+export function useMessageAttachments() {
+  return useContext(MessageAttachmentsContext);
 }
