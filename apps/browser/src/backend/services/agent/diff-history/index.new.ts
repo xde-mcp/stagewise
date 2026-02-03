@@ -1,4 +1,5 @@
 import { DisposableService } from '@/services/disposable';
+import { isBinaryFile } from 'isbinaryfile';
 import path from 'node:path';
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
 import { type Client, createClient } from '@libsql/client';
@@ -8,12 +9,23 @@ import type { Logger } from '@/services/logger';
 import fs from 'node:fs/promises';
 import type { KartonService } from '@/services/karton';
 import type { GlobalDataPathService } from '@/services/global-data-path';
-import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
+import {
+  type FileDiff,
+  MAX_DIFF_TEXT_FILE_SIZE,
+} from '@shared/karton-contracts/ui/shared-types';
 import {
   getAllOperationsForAgentInstanceId,
+  getAllPendingOperations,
   getPendingOperationsForAgentInstanceId,
   insertOperation,
+  copyContentToPath,
   retrieveContentsForOids,
+  retrieveContentForOid,
+  copyOperationsUpToInitBaseline,
+  getUndoTargetForToolCallsByFilePath,
+  storeFileContent,
+  storeLargeContent,
+  hasPendingEditsForFilepath,
 } from './utils/db';
 import {
   acceptAndRejectHunks as acceptAndRejectHunksUtils,
@@ -22,24 +34,38 @@ import {
   type OperationWithContent,
   segmentFileOperationsIntoGenerations,
 } from './utils/diff';
-import type { Operation } from './schema';
+import type { Operation, OperationMeta } from './schema';
 import type { OperationWithExternal } from './utils/db';
+import { createReadStream } from 'node:fs';
 
-// GLOBAL!!!
+type AgentFileEdit = {
+  agentInstanceId: string;
+  path: string;
+  toolCallId: string;
+} & (
+  | {
+      isExternal: false;
+      contentBefore: string | null;
+      contentAfter: string | null;
+    }
+  | {
+      isExternal: true;
+      tempPathToBeforeContent: string | null;
+      tempPathToAfterContent: string | null;
+    }
+);
 
 export class DiffHistoryService extends DisposableService {
   private readonly logger: Logger;
   private readonly uiKarton: KartonService;
   private readonly globalDataPathsService: GlobalDataPathService;
   private watcher: FSWatcher | null = null;
-  private filesLockedByAgent: Set<string> = new Set();
+  private filesIgnoredByWatcher: Set<string> = new Set();
   private currentlyWatchedFiles: Set<string> = new Set();
   private dbDriver: Client;
   private db: LibSQLDatabase<typeof schema>;
   private activeAgentInstanceIds: string[];
-  private editSummariesByAgentInstanceId: Map<string, FileDiff[]> = new Map();
-  private pendingFileDiffsByAgentInstanceId: Map<string, FileDiff[]> =
-    new Map();
+  private blobsDir: string;
 
   private constructor(
     logger: Logger,
@@ -58,6 +84,10 @@ export class DiffHistoryService extends DisposableService {
     this.dbDriver = createClient({ url: `file:${dbPath}`, intMode: 'bigint' });
     this.db = drizzle(this.dbDriver, { schema });
     this.activeAgentInstanceIds = activeAgentInstanceIds;
+    this.blobsDir = path.join(
+      globalDataPathService.globalDataPath,
+      'diff-history-blobs',
+    );
   }
 
   public static async create(
@@ -77,6 +107,38 @@ export class DiffHistoryService extends DisposableService {
     return instance;
   }
   private async initialize(): Promise<void> {
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.acceptHunks',
+      async (_callingClientId: string, hunkIds: string[]) => {
+        await this.acceptAndRejectHunks(hunkIds, []);
+      },
+    );
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.rejectHunks',
+      async (_callingClientId: string, hunkIds: string[]) => {
+        await this.acceptAndRejectHunks([], hunkIds);
+      },
+    );
+
+    const storeFileAndAddOperation = async (
+      path: string,
+      meta: OperationMeta,
+    ) => {
+      const stats = await fs.stat(path);
+      let isExternal = false;
+      // If file is too large, do **not** create a buffer and store as external
+      if (stats.size > MAX_DIFF_TEXT_FILE_SIZE)
+        return await this.storeExternalFile(path, meta);
+
+      const fileContent = await fs.readFile(path, 'utf8');
+      const bufferContent = Buffer.from(fileContent, 'utf8');
+      if (await isBinaryFile(bufferContent)) isExternal = true;
+
+      if (!isExternal)
+        await storeFileContent(this.db, path, bufferContent, meta);
+      else await this.storeExternalFile(path, meta);
+    };
+
     this.watcher = chokidar
       .watch([], {
         persistent: true,
@@ -84,40 +146,36 @@ export class DiffHistoryService extends DisposableService {
         ignoreInitial: true,
       })
       .on('change', async (path) => {
-        if (this.filesLockedByAgent.has(path)) return;
-
+        if (this.filesIgnoredByWatcher.has(path)) return;
+        // No need to check for 'init' baseline - files are only tracked when they have pending edits
+        // (and thus have an init baseline)
         try {
-          const _fileContent = await fs.readFile(path, 'utf8');
-          // TODO: Add user-edit to db
-          //   this.pushSnapshot('USER_SAVE', newFiles, []);
+          await storeFileAndAddOperation(path, {
+            operation: 'edit',
+            contributor: 'user',
+            reason: 'user-save',
+          });
         } catch (error) {
           this.logError(`[DiffHistory] Failed to read file: ${path}`, error);
           return;
         }
         this.logDebug(`File changed: ${path}`);
       })
-      .on('unlink', (path) => {
-        if (this.filesLockedByAgent.has(path)) return;
-        // TODO: Add user-edit with snapshot_oid=null to db (deletion)
+      .on('unlink', async (path) => {
+        if (this.filesIgnoredByWatcher.has(path)) return;
+        // Add 'null' edit op to mark that the file was deleted
+        await insertOperation(this.db, path, null, {
+          operation: 'edit',
+          contributor: 'user',
+          reason: 'user-save',
+        });
         this.logDebug(`File unlinked: ${path}`);
-      })
-      .on('add', (_path) => {
-        // File is now being watched
       });
+
     for (const agentInstanceId of this.activeAgentInstanceIds) {
       try {
-        const summary =
-          await this.getEditSummaryForAgentInstanceId(agentInstanceId);
-        this.editSummariesByAgentInstanceId.set(agentInstanceId, summary);
-        const pendingDiffs =
-          await this.getPendingFileDiffsForAgentInstanceId(agentInstanceId);
-        this.pendingFileDiffsByAgentInstanceId.set(
-          agentInstanceId,
-          pendingDiffs,
-        );
-        pendingDiffs.forEach((diff) => {
-          this.watcher?.add(diff.path);
-        });
+        await this.updateDiffKartonState(agentInstanceId);
+        await this.updateWatcher();
       } catch (error) {
         this.logError(
           `[DiffHistory] Failed to get edit summary for agent instance ${agentInstanceId}`,
@@ -127,38 +185,332 @@ export class DiffHistoryService extends DisposableService {
     }
   }
 
+  /**
+   * Registers an agent edit in the diff-db and updates the diff karton state.
+   * **The caller is responsible for detecting binaries/ blobs and providing before/ after content accordingly.**
+   * Binary content will be provided as temporary paths to files - the caller is responsible for cleaning up the temporary
+   * files after the edit is registered.
+   *
+   * **To mark a deletion:**
+   * - set 'before*' to content and 'after*' to null
+   *
+   * **To mark a creation:**
+   * - set 'before*' to null and 'after*' to content
+   *
+   * **For regular file edits:**
+   * - set 'before*' to content and 'after*' to content
+   *
+   * @param edit - The edit to register
+   * @returns void
+   */
+  public async registerAgentEdit(edit: AgentFileEdit) {
+    // If path is null, it's a newly created blob
+    const hasPendingEdits = edit.path
+      ? await hasPendingEditsForFilepath(this.db, edit.path)
+      : false;
+    const needsInitBaseline = !hasPendingEdits;
+    const initMeta = {
+      operation: 'baseline',
+      contributor: 'user',
+      reason: 'init',
+    } as const;
+    // If it's a blob and it's not pending (doesn't have an init baseline) and had content before,
+    // store the content before as an init baseline
+    if (needsInitBaseline && edit.isExternal && edit.tempPathToBeforeContent) {
+      const asyncIterableBuffer = createReadStream(
+        edit.tempPathToBeforeContent,
+      );
+      await storeLargeContent(
+        this.db,
+        this.blobsDir,
+        asyncIterableBuffer,
+        edit.path,
+        initMeta,
+      );
+    }
+    // If it's a file and it's not pending (doesn't have an init baseline) and had content before,
+    // store the content before as an init baseline
+    if (needsInitBaseline && !edit.isExternal && edit.contentBefore !== null) {
+      await storeFileContent(
+        this.db,
+        edit.path,
+        Buffer.from(edit.contentBefore, 'utf8'),
+        initMeta,
+      );
+    }
+    // If no baseline exists and no previous content, add an init baseline op with null oid to mark the file as new
+    if (
+      needsInitBaseline &&
+      ((edit.isExternal && edit.tempPathToBeforeContent == null) ||
+        (!edit.isExternal && edit.contentBefore == null))
+    ) {
+      await insertOperation(this.db, edit.path, null, initMeta);
+    }
+    // Tracking edit ops:
+    // If the file was deleted (external or not), add an edit op with null oid to mark the file as deleted
+    const editMeta = {
+      operation: 'edit',
+      contributor: `agent-${edit.agentInstanceId}`,
+      reason: `tool-${edit.toolCallId}`,
+    } as const;
+    if (
+      (edit.isExternal && edit.tempPathToAfterContent === null) ||
+      (!edit.isExternal && edit.contentAfter === null)
+    ) {
+      await insertOperation(this.db, edit.path, null, editMeta);
+    }
+    // If it's a blob and it's not deleted, store the new content as an edit op
+    if (edit.isExternal && edit.tempPathToAfterContent !== null) {
+      const asyncIterableBuffer = createReadStream(edit.tempPathToAfterContent);
+      await storeLargeContent(
+        this.db,
+        this.blobsDir,
+        asyncIterableBuffer,
+        edit.path,
+        editMeta,
+      );
+    }
+    // If it's a file and it's not deleted, store the new content as an edit op
+    if (!edit.isExternal && edit.contentAfter !== null) {
+      await storeFileContent(
+        this.db,
+        edit.path,
+        Buffer.from(edit.contentAfter, 'utf8'),
+        editMeta,
+      );
+    }
+
+    await this.updateDiffKartonState(edit.agentInstanceId);
+    await this.updateWatcher();
+  }
+
+  private async updateDiffKartonState(agentInstanceId: string): Promise<{
+    pendingFileDiffs: FileDiff[];
+    editSummary: FileDiff[];
+  }> {
+    if (!this.uiKarton.state.toolbox[agentInstanceId])
+      this.uiKarton.setState((draft) => {
+        draft.toolbox[agentInstanceId] = {
+          pendingFileDiffs: [],
+          editSummary: [],
+        };
+      });
+
+    const pendingFileDiffs =
+      await this.getPendingFileDiffsForAgentInstanceId(agentInstanceId);
+    this.uiKarton.setState((draft) => {
+      draft.toolbox[agentInstanceId].pendingFileDiffs = pendingFileDiffs;
+    });
+    const editSummary =
+      await this.getEditSummaryForAgentInstanceId(agentInstanceId);
+    this.uiKarton.setState((draft) => {
+      draft.toolbox[agentInstanceId].editSummary = editSummary;
+    });
+    return { pendingFileDiffs, editSummary };
+  }
+
+  private async updateWatcher(): Promise<void> {
+    const pendingDiffs = await getAllPendingOperations(this.db);
+    const pendingSet = new Set(pendingDiffs.map((diff) => diff.filepath));
+    const needsToBeWatched = pendingDiffs
+      .filter((diff) => !this.currentlyWatchedFiles.has(diff.filepath))
+      .map((diff) => diff.filepath);
+    const needsToBeUnwatched = [...this.currentlyWatchedFiles].filter(
+      (path) => !pendingSet.has(path),
+    );
+    needsToBeWatched.forEach((path) => {
+      this.watcher?.add(path);
+      this.currentlyWatchedFiles.add(path);
+    });
+    needsToBeUnwatched.forEach((path) => {
+      this.watcher?.unwatch(path);
+      this.currentlyWatchedFiles.delete(path);
+    });
+  }
+
   private async acceptAndRejectHunks(
-    agentInstanceId: string, // Need to remove
     hunkIdsToAccept: string[],
     hunkIdsToReject: string[],
   ) {
-    const pendingDiffs =
-      this.pendingFileDiffsByAgentInstanceId.get(agentInstanceId);
-    if (!pendingDiffs) return;
+    const pendingOperations = await getAllPendingOperations(this.db);
+    const pendingDiffs = await this.getFileDiffForOperations(pendingOperations);
 
     const { result, failedAcceptedHunkIds, failedRejectedHunkIds } =
       acceptAndRejectHunksUtils(pendingDiffs, hunkIdsToAccept, hunkIdsToReject);
+    this.logError(
+      `[DiffHistory] Failed to accept hunks: ${failedAcceptedHunkIds?.join(', ')}`,
+      failedAcceptedHunkIds,
+    );
+    this.logError(
+      `[DiffHistory] Failed to reject hunks: ${failedRejectedHunkIds?.join(', ')}`,
+      failedRejectedHunkIds,
+    );
     for (const [filePath, fileResult] of Object.entries(result)) {
-      if (fileResult.isExternal && fileResult.newBaselineOid !== undefined) {
-        insertOperation(this.db, filePath, fileResult.newBaselineOid, {
-          operation: 'baseline',
-          contributor: 'user',
-          reason: 'accept',
-        });
-      }
-      if (!fileResult.isExternal && fileResult.newBaseline) {
-      }
-      if (fileResult.isExternal && fileResult.newCurrentOid !== undefined) {
-      }
-      if (!fileResult.isExternal && fileResult.newCurrent) {
-      }
+      if (fileResult.isExternal && fileResult.newBaselineOid !== undefined)
+        await this.doAccept(filePath, fileResult.newBaselineOid);
+
+      if (fileResult.isExternal && fileResult.newCurrentOid !== undefined)
+        await this.doReject(
+          filePath,
+          fileResult.newCurrentOid,
+          fileResult.isExternal,
+        );
+
+      if (!fileResult.isExternal && fileResult.newBaseline !== undefined)
+        await this.doAccept(filePath, fileResult.newBaseline);
+
+      if (!fileResult.isExternal && fileResult.newCurrent !== undefined)
+        await this.doReject(
+          filePath,
+          fileResult.newCurrent,
+          fileResult.isExternal,
+        );
     }
+
+    for (const agentInstanceId of this.activeAgentInstanceIds)
+      await this.updateDiffKartonState(agentInstanceId);
+
+    await this.updateWatcher();
   }
 
-  private async restoreToolCallIds(
-    _agentInstanceId: string,
-    _toolCallIds: string[],
-  ): Promise<void> {}
+  private async storeExternalFile(filePath: string, meta: OperationMeta) {
+    const asyncIterableBuffer = createReadStream(filePath);
+    const oid = await storeLargeContent(
+      this.db,
+      this.blobsDir,
+      asyncIterableBuffer,
+      filePath,
+      meta,
+    );
+    return oid;
+  }
+
+  private async doReject(
+    filePath: string,
+    newCurrentOid: string | null,
+    isExternal: boolean,
+  ) {
+    // Lock file to prevent watcher from treating this write as a user change
+    this.ignoreFileForWatcher(filePath);
+
+    try {
+      // Copy content from blob to file system
+      if (isExternal && newCurrentOid !== null) {
+        await copyContentToPath(this.blobsDir, newCurrentOid, filePath);
+      } else if (!isExternal && newCurrentOid !== null) {
+        const content = await retrieveContentForOid(this.db, newCurrentOid);
+        if (content) await fs.writeFile(filePath, content, 'utf8');
+      } else {
+        await fs.unlink(filePath);
+      }
+    } catch (error) {
+      this.logError(`[DiffHistory] Failed to write file: ${filePath}`, error);
+    } finally {
+      // Unlock after a small delay to allow chokidar to see and ignore the event
+      setTimeout(() => this.unignoreFileForWatcher(filePath), 500);
+    }
+
+    await insertOperation(this.db, filePath, newCurrentOid, {
+      operation: 'edit',
+      contributor: 'user',
+      reason: 'reject',
+    });
+  }
+
+  private async doAccept(filePath: string, newBaselineOid: string | null) {
+    await insertOperation(this.db, filePath, newBaselineOid, {
+      operation: 'baseline',
+      contributor: 'user',
+      reason: 'accept',
+    });
+  }
+
+  /**
+   * Undoes the given tool calls by restoring files to the state BEFORE
+   * the earliest tool-call operation for each affected file.
+   *
+   * For each file affected by any of the tool calls:
+   * 1. Finds the operation immediately before the earliest tool-call
+   * 2. Copies operations from baseline up to that point
+   * 3. Writes the restored content to disk
+   * 4. If restored to an init baseline, adds a user-save edit to close the session
+   *
+   * @param toolCallIds - The tool call IDs to undo
+   * @returns void
+   */
+  public async undoToolCalls(
+    toolCallIds: string[],
+    agentInstanceId?: string,
+  ): Promise<void> {
+    const undoTargets = await getUndoTargetForToolCallsByFilePath(
+      this.db,
+      toolCallIds,
+      agentInstanceId,
+    );
+
+    for (const [filePath, targetOp] of Object.entries(undoTargets)) {
+      // Copy operations from init baseline up to the undo target
+      const copiedOp = await copyOperationsUpToInitBaseline(
+        this.db,
+        filePath,
+        targetOp.idx,
+      );
+
+      if (!copiedOp) {
+        this.logError(
+          `[DiffHistory] Failed to copy operations for ${filePath} - no init baseline found`,
+          null,
+        );
+        continue;
+      }
+
+      // Lock file to prevent watcher from treating this write as a user change
+      this.ignoreFileForWatcher(filePath);
+
+      try {
+        // Write the restored content to disk
+        if (copiedOp.snapshot_oid === null) {
+          await fs.unlink(filePath);
+        } else if (copiedOp.isExternal) {
+          await copyContentToPath(
+            this.blobsDir,
+            copiedOp.snapshot_oid,
+            filePath,
+          );
+        } else {
+          const content = await retrieveContentForOid(
+            this.db,
+            copiedOp.snapshot_oid,
+          );
+          if (content) await fs.writeFile(filePath, content, 'utf8');
+        }
+
+        // Handle init baseline edge case:
+        // If we restored to an init baseline, we need to add a user-save edit
+        // with the same snapshot_oid to close the session (make b_n == e_n)
+        // Otherwise it would appear as having pending edits.
+        if (targetOp.operation === 'baseline' && targetOp.reason === 'init')
+          await insertOperation(this.db, filePath, targetOp.snapshot_oid, {
+            operation: 'edit',
+            contributor: 'user',
+            reason: 'user-save',
+          });
+      } catch (error) {
+        this.logError(
+          `[DiffHistory] Failed to undo tool calls for ${filePath}`,
+          error,
+        );
+      } finally {
+        // Unlock after a small delay to allow chokidar to see and ignore the event
+        setTimeout(() => this.unignoreFileForWatcher(filePath), 500);
+      }
+    }
+    if (agentInstanceId) await this.updateDiffKartonState(agentInstanceId);
+    else
+      for (const agentInstanceId of this.activeAgentInstanceIds)
+        await this.updateDiffKartonState(agentInstanceId);
+    await this.updateWatcher();
+  }
 
   private async getEditSummaryForAgentInstanceId(
     agentInstanceId: string,
@@ -225,10 +577,19 @@ export class DiffHistoryService extends DisposableService {
     return o;
   }
 
-  protected onTeardown(): Promise<void> | void {}
+  protected onTeardown(): Promise<void> | void {
+    this.watcher?.close();
+    this.dbDriver.close();
+    this.filesIgnoredByWatcher.clear();
+    this.uiKarton.removeServerProcedureHandler('toolbox.acceptHunks');
+    this.uiKarton.removeServerProcedureHandler('toolbox.rejectHunks');
+  }
 
-  public unlockFileForAgent(path: string): void {
-    this.filesLockedByAgent.delete(path);
+  public ignoreFileForWatcher(path: string): void {
+    this.filesIgnoredByWatcher.add(path);
+  }
+  public unignoreFileForWatcher(path: string): void {
+    this.filesIgnoredByWatcher.delete(path);
   }
 
   private logError(error: string, e: unknown) {

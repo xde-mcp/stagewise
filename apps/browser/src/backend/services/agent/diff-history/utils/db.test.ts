@@ -19,11 +19,13 @@ import {
   storeFileContent,
   getPendingOperationsForAgentInstanceId,
   getAllOperationsForAgentInstanceId,
+  getAllPendingOperations,
   storeLargeContent,
   streamContent,
   copyContentToPath,
   retrieveContentsForOids,
-  copyOperationsUpToBaseline,
+  copyOperationsUpToInitBaseline,
+  getUndoTargetForToolCallsByFilePath,
 } from './db';
 
 type SnapshotDb = LibSQLDatabase<typeof schema>;
@@ -924,6 +926,384 @@ describe('diff-history db utilities', () => {
     });
   });
 
+  // ===========================================================================
+  // getAllPendingOperations
+  // ===========================================================================
+
+  describe('getAllPendingOperations', () => {
+    /**
+     * Helper to create a snapshot and return its oid.
+     * Uses insertKeyframe directly to avoid storeFileContent's side effects.
+     */
+    function createSnapshot(content: string): string {
+      const buf = Buffer.from(content);
+      const oid = computeOid(buf);
+      insertKeyframe(db, oid, buf);
+      return oid;
+    }
+
+    it('returns empty array when no operations exist', async () => {
+      const pending = await getAllPendingOperations(db);
+      expect(pending).toHaveLength(0);
+    });
+
+    it('returns empty array when all files are fully accepted', async () => {
+      // File /a.ts: fully accepted
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+
+      const pending = await getAllPendingOperations(db);
+      expect(pending).toHaveLength(0);
+    });
+
+    it('returns pending operations for a single pending file', async () => {
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      expect(pending).toHaveLength(2);
+      expect(pending[0].idx).toBe(1);
+      expect(pending[0].operation).toBe('baseline');
+      expect(pending[1].idx).toBe(2);
+      expect(pending[1].operation).toBe('edit');
+    });
+
+    it('returns pending operations for multiple pending files', async () => {
+      // File /a.ts: pending
+      const oidA1 = createSnapshot('a original');
+      const oidA2 = createSnapshot('a edited');
+
+      // File /b.ts: pending
+      const oidB1 = createSnapshot('b original');
+      const oidB2 = createSnapshot('b edited');
+
+      insertOperation(db, '/a.ts', oidA1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidA2, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+      insertOperation(db, '/b.ts', oidB1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/b.ts', oidB2, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-2',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      expect(pending).toHaveLength(4);
+      const filepaths = [...new Set(pending.map((op) => op.filepath))];
+      expect(filepaths).toContain('/a.ts');
+      expect(filepaths).toContain('/b.ts');
+    });
+
+    it('returns only pending files when some are accepted', async () => {
+      // File /a.ts: pending
+      const oidA1 = createSnapshot('a original');
+      const oidA2 = createSnapshot('a edited');
+
+      // File /b.ts: fully accepted (not pending)
+      const oidB1 = createSnapshot('b original');
+      const oidB2 = createSnapshot('b edited');
+
+      // File /a.ts - pending
+      insertOperation(db, '/a.ts', oidA1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidA2, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+
+      // File /b.ts - fully accepted
+      insertOperation(db, '/b.ts', oidB1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/b.ts', oidB2, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-2',
+      });
+      insertOperation(db, '/b.ts', oidB2, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      // Should only return /a.ts operations
+      expect(pending).toHaveLength(2);
+      expect(pending.every((op) => op.filepath === '/a.ts')).toBe(true);
+    });
+
+    it('returns pending operations from multiple agents on same file', async () => {
+      // Both agent-1 and agent-2 edit /a.ts (still pending)
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edit by agent-1');
+      const oidC = createSnapshot('edit by agent-2');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-2',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      expect(pending).toHaveLength(3);
+      expect(pending.map((op) => op.idx)).toEqual([1, 2, 3]);
+      // Verify different contributors are included
+      const contributors = pending.map((op) => op.contributor);
+      expect(contributors).toContain('agent-1');
+      expect(contributors).toContain('agent-2');
+    });
+
+    it('returns only current session when previous session ended', async () => {
+      // Session 1: completed
+      // Session 2: pending
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('first edit');
+      const oidC = createSnapshot('second edit');
+
+      // Session 1
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+      // Session 2
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-1',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      // Should only return session 2 (idx 4, 5)
+      expect(pending).toHaveLength(2);
+      expect(pending[0].idx).toBe(4);
+      expect(pending[1].idx).toBe(5);
+    });
+
+    it('handles partial accept (still pending)', async () => {
+      // Partial accept - baseline moved but not equal to edit
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+      const oidC = createSnapshot('partially accepted');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      expect(pending).toHaveLength(3);
+      expect(pending.map((op) => op.idx)).toEqual([1, 2, 3]);
+    });
+
+    it('includes operations after user reject', async () => {
+      // Agent edits, user rejects part
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited by agent');
+      const oidC = createSnapshot('after user reject');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'reject',
+        contributor: 'user',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      expect(pending).toHaveLength(3);
+      // Latest baseline is A, latest edit is C, A != C -> pending
+    });
+
+    it('operations are ordered by filepath then idx', async () => {
+      // Create operations for multiple files
+      const oidA = createSnapshot('a content');
+      const oidB = createSnapshot('b content');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+      insertOperation(db, '/b.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/b.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-2',
+      });
+
+      const pending = await getAllPendingOperations(db);
+
+      // Should be ordered: /a.ts (1, 2), then /b.ts (3, 4)
+      expect(pending).toHaveLength(4);
+      expect(pending[0].filepath).toBe('/a.ts');
+      expect(pending[0].idx).toBe(1);
+      expect(pending[1].filepath).toBe('/a.ts');
+      expect(pending[1].idx).toBe(2);
+      expect(pending[2].filepath).toBe('/b.ts');
+      expect(pending[2].idx).toBe(3);
+      expect(pending[3].filepath).toBe('/b.ts');
+      expect(pending[3].idx).toBe(4);
+    });
+
+    it('returns same results regardless of which agent is queried', async () => {
+      // Both agent-1 and agent-2 have pending edits on different files
+      // getAllPendingOperations should return ALL of them
+      const oidA1 = createSnapshot('a original');
+      const oidA2 = createSnapshot('a edited');
+      const oidB1 = createSnapshot('b original');
+      const oidB2 = createSnapshot('b edited');
+
+      // File /a.ts - agent-1 edited
+      insertOperation(db, '/a.ts', oidA1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidA2, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      });
+
+      // File /b.ts - agent-2 edited
+      insertOperation(db, '/b.ts', oidB1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/b.ts', oidB2, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-2',
+      });
+
+      const allPending = await getAllPendingOperations(db);
+      const agent1Pending = await getPendingOperationsForAgentInstanceId(
+        db,
+        '1',
+      );
+      const agent2Pending = await getPendingOperationsForAgentInstanceId(
+        db,
+        '2',
+      );
+
+      // getAllPendingOperations should return ALL 4 operations
+      expect(allPending).toHaveLength(4);
+
+      // getPendingOperationsForAgentInstanceId returns only files where that agent contributed
+      expect(agent1Pending).toHaveLength(2);
+      expect(agent1Pending.every((op) => op.filepath === '/a.ts')).toBe(true);
+
+      expect(agent2Pending).toHaveLength(2);
+      expect(agent2Pending.every((op) => op.filepath === '/b.ts')).toBe(true);
+    });
+  });
+
   describe('LFS (Large File Storage)', () => {
     let blobsDir: string;
 
@@ -1149,17 +1529,17 @@ describe('diff-history db utilities', () => {
     });
   });
 
-  describe('copyOperationsUpToBaseline (revert)', () => {
+  describe('copyOperationsUpToInitBaseline (revert)', () => {
     const filepath = '/revert/test.ts';
 
-    it('copies operations from baseline to target operation', async () => {
+    it('copies operations from init baseline to target idx', async () => {
       // Setup: Create a sequence of operations
-      // idx 0: baseline (init)
-      // idx 1: edit (tool-1, agent-1)
-      // idx 2: edit (tool-2, agent-1)
-      // idx 3: baseline (accept)
-      // idx 4: baseline (init) - new session
-      // idx 5: edit (tool-3, agent-1)
+      // idx 1: baseline (init)
+      // idx 2: edit (tool-1, agent-1)
+      // idx 3: edit (tool-2, agent-1)
+      // idx 4: baseline (accept)
+      // idx 5: baseline (init) - new session
+      // idx 6: edit (tool-3, agent-1)
 
       const content0 = Buffer.from('initial content');
       const content1 = Buffer.from('after tool-1');
@@ -1188,42 +1568,38 @@ describe('diff-history db utilities', () => {
         operation: 'baseline',
         contributor: 'user',
         reason: 'init',
-      });
+      }); // idx 1
       insertOperation(db, filepath, oid1, {
         operation: 'edit',
         contributor: 'agent-1',
         reason: 'tool-1',
-      });
+      }); // idx 2
       insertOperation(db, filepath, oid2, {
         operation: 'edit',
         contributor: 'agent-1',
         reason: 'tool-2',
-      });
+      }); // idx 3
       insertOperation(db, filepath, oid3, {
         operation: 'baseline',
         contributor: 'user',
         reason: 'accept',
-      });
+      }); // idx 4
       insertOperation(db, filepath, oid4, {
         operation: 'baseline',
         contributor: 'user',
         reason: 'init',
-      });
+      }); // idx 5
       insertOperation(db, filepath, oid5, {
         operation: 'edit',
         contributor: 'agent-1',
         reason: 'tool-3',
-      });
+      }); // idx 6
 
-      // Revert to tool-2 (should copy idx 1-3 to new idx 7-9)
-      const resultOid = await copyOperationsUpToBaseline(
-        db,
-        filepath,
-        'tool-2',
-        'agent-1',
-      );
+      // Revert to idx 3 (tool-2 edit) - should copy from init baseline idx 1-3 to new idx 7-9
+      const resultOp = await copyOperationsUpToInitBaseline(db, filepath, 3);
 
-      expect(resultOid).toBe(oid2);
+      expect(resultOp).not.toBeNull();
+      expect(resultOp!.snapshot_oid).toBe(oid2);
 
       // Check the history - should now have 9 operations
       const history = await getOperationHistory(db, filepath);
@@ -1246,33 +1622,8 @@ describe('diff-history db utilities', () => {
       expect(history[8].snapshot_oid).toBe(oid2);
     });
 
-    it('returns null when target operation not found', async () => {
-      const content = Buffer.from('some content');
-      const oid = computeOid(content);
-      insertKeyframe(db, oid, content);
-
-      insertOperation(db, filepath, oid, {
-        operation: 'baseline',
-        contributor: 'user',
-        reason: 'init',
-      });
-
-      const result = await copyOperationsUpToBaseline(
-        db,
-        filepath,
-        'tool-nonexistent',
-        'agent-1',
-      );
-
-      expect(result).toBeNull();
-
-      // History should be unchanged
-      const history = await getOperationHistory(db, filepath);
-      expect(history).toHaveLength(1);
-    });
-
-    it('returns null when no previous baseline exists', async () => {
-      // Only an edit operation, no baseline before it
+    it('returns null when no init baseline exists at or before target idx', async () => {
+      // Only an edit operation, no init baseline before it
       const content = Buffer.from('edit without baseline');
       const oid = computeOid(content);
       insertKeyframe(db, oid, content);
@@ -1281,20 +1632,15 @@ describe('diff-history db utilities', () => {
         operation: 'edit',
         contributor: 'agent-1',
         reason: 'tool-1',
-      });
+      }); // idx 1
 
-      const result = await copyOperationsUpToBaseline(
-        db,
-        filepath,
-        'tool-1',
-        'agent-1',
-      );
+      const result = await copyOperationsUpToInitBaseline(db, filepath, 1);
 
       expect(result).toBeNull();
     });
 
-    it('copies only the relevant block for the matching operation', async () => {
-      // Setup with two different agents
+    it('copies only up to the specified target idx', async () => {
+      // Setup with multiple edits
       const content0 = Buffer.from('baseline');
       const content1 = Buffer.from('agent-1 edit');
       const content2 = Buffer.from('agent-2 edit');
@@ -1311,27 +1657,23 @@ describe('diff-history db utilities', () => {
         operation: 'baseline',
         contributor: 'user',
         reason: 'init',
-      });
+      }); // idx 1
       insertOperation(db, filepath, oid1, {
         operation: 'edit',
         contributor: 'agent-1',
         reason: 'tool-a',
-      });
+      }); // idx 2
       insertOperation(db, filepath, oid2, {
         operation: 'edit',
         contributor: 'agent-2',
         reason: 'tool-b',
-      });
+      }); // idx 3
 
-      // Revert to agent-1's tool-a (should copy idx 1-2, not include idx 3)
-      const resultOid = await copyOperationsUpToBaseline(
-        db,
-        filepath,
-        'tool-a',
-        'agent-1',
-      );
+      // Revert to idx 2 (tool-a edit) - should copy idx 1-2, not include idx 3
+      const resultOp = await copyOperationsUpToInitBaseline(db, filepath, 2);
 
-      expect(resultOid).toBe(oid1);
+      expect(resultOp).not.toBeNull();
+      expect(resultOp!.snapshot_oid).toBe(oid1);
 
       const history = await getOperationHistory(db, filepath);
       expect(history).toHaveLength(5); // 3 original + 2 copied
@@ -1344,6 +1686,507 @@ describe('diff-history db utilities', () => {
       expect(history[4].idx).toBe(5);
       expect(history[4].snapshot_oid).toBe(oid1);
       expect(history[4].reason).toBe('tool-a');
+    });
+
+    it('can copy to an init baseline operation directly', async () => {
+      // When undoing to an init baseline, we copy just the baseline
+      const content0 = Buffer.from('original');
+      const content1 = Buffer.from('edited');
+
+      const oid0 = computeOid(content0);
+      const oid1 = computeOid(content1);
+
+      insertKeyframe(db, oid0, content0);
+      insertKeyframe(db, oid1, content1);
+
+      insertOperation(db, filepath, oid0, {
+        operation: 'baseline',
+        contributor: 'user',
+        reason: 'init',
+      }); // idx 1
+      insertOperation(db, filepath, oid1, {
+        operation: 'edit',
+        contributor: 'agent-1',
+        reason: 'tool-1',
+      }); // idx 2
+
+      // Copy up to idx 1 (the init baseline itself)
+      const resultOp = await copyOperationsUpToInitBaseline(db, filepath, 1);
+
+      expect(resultOp).not.toBeNull();
+      expect(resultOp!.snapshot_oid).toBe(oid0);
+      expect(resultOp!.operation).toBe('baseline');
+      expect(resultOp!.reason).toBe('init');
+
+      const history = await getOperationHistory(db, filepath);
+      expect(history).toHaveLength(3); // 2 original + 1 copied
+
+      // Copied operation should be idx 3 (just the baseline)
+      expect(history[2].idx).toBe(3);
+      expect(history[2].snapshot_oid).toBe(oid0);
+      expect(history[2].reason).toBe('init');
+      expect(history[2].operation).toBe('baseline');
+    });
+
+    it('copies from init baseline even when accept baseline exists between init and target', async () => {
+      // This is the key test - verifies we use init baseline, not just any baseline
+      // idx 1: baseline (init) - oid0
+      // idx 2: edit (tool-1) - oid1
+      // idx 3: baseline (accept) - oid1 (accepted tool-1)
+      // idx 4: edit (tool-2) - oid2
+      // We undo to idx 3 (accept baseline) - should copy from idx 1 (init), not just idx 3
+
+      const content0 = Buffer.from('original');
+      const content1 = Buffer.from('after tool-1');
+      const content2 = Buffer.from('after tool-2');
+
+      const oid0 = computeOid(content0);
+      const oid1 = computeOid(content1);
+      const oid2 = computeOid(content2);
+
+      insertKeyframe(db, oid0, content0);
+      insertKeyframe(db, oid1, content1);
+      insertKeyframe(db, oid2, content2);
+
+      insertOperation(db, filepath, oid0, {
+        operation: 'baseline',
+        contributor: 'user',
+        reason: 'init',
+      }); // idx 1
+      insertOperation(db, filepath, oid1, {
+        operation: 'edit',
+        contributor: 'agent-1',
+        reason: 'tool-1',
+      }); // idx 2
+      insertOperation(db, filepath, oid1, {
+        operation: 'baseline',
+        contributor: 'user',
+        reason: 'accept',
+      }); // idx 3 - accept baseline
+      insertOperation(db, filepath, oid2, {
+        operation: 'edit',
+        contributor: 'agent-1',
+        reason: 'tool-2',
+      }); // idx 4
+
+      // Undo to idx 3 (accept baseline) - should copy from init (idx 1), not accept (idx 3)
+      const resultOp = await copyOperationsUpToInitBaseline(db, filepath, 3);
+
+      expect(resultOp).not.toBeNull();
+
+      const history = await getOperationHistory(db, filepath);
+      // Should have 4 original + 3 copied (init + tool-1 + accept) = 7
+      expect(history).toHaveLength(7);
+
+      // Verify the copied operations start from init baseline
+      expect(history[4].idx).toBe(5);
+      expect(history[4].operation).toBe('baseline');
+      expect(history[4].reason).toBe('init');
+      expect(history[4].snapshot_oid).toBe(oid0);
+
+      expect(history[5].idx).toBe(6);
+      expect(history[5].operation).toBe('edit');
+      expect(history[5].reason).toBe('tool-1');
+      expect(history[5].snapshot_oid).toBe(oid1);
+
+      expect(history[6].idx).toBe(7);
+      expect(history[6].operation).toBe('baseline');
+      expect(history[6].reason).toBe('accept');
+      expect(history[6].snapshot_oid).toBe(oid1);
+    });
+  });
+
+  // ===========================================================================
+  // getUndoTargetForToolCallsByFilePath
+  // ===========================================================================
+
+  describe('getUndoTargetForToolCallsByFilePath', () => {
+    /**
+     * Helper to create a snapshot and return its oid.
+     */
+    function createSnapshot(content: string): string {
+      const buf = Buffer.from(content);
+      const oid = computeOid(buf);
+      insertKeyframe(db, oid, buf);
+      return oid;
+    }
+
+    it('returns empty object when no tool-call IDs provided', async () => {
+      const result = await getUndoTargetForToolCallsByFilePath(db, []);
+      expect(result).toEqual({});
+    });
+
+    it('returns empty object when tool-call IDs have no matching operations', async () => {
+      // Create some operations with different tool-call IDs
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      });
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-existing',
+        contributor: 'agent-1',
+      });
+
+      // Query for non-existent tool-call IDs
+      const result = await getUndoTargetForToolCallsByFilePath(db, [
+        'nonexistent-1',
+        'nonexistent-2',
+      ]);
+
+      expect(result).toEqual({});
+    });
+
+    it('returns operation BEFORE tool-call for single tool-call ID on single file', async () => {
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 2
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1']);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      expect(result['/a.ts']).toBeDefined();
+      // Should return the op BEFORE tool-1 (the init baseline at idx 1)
+      expect(result['/a.ts'].idx).toBe(1);
+      expect(result['/a.ts'].reason).toBe('init');
+      expect(result['/a.ts'].operation).toBe('baseline');
+      expect(result['/a.ts'].filepath).toBe('/a.ts');
+    });
+
+    it('returns operation BEFORE earliest tool-call when same tool-call modified file multiple times', async () => {
+      // This can happen if a tool-call performs multiple edits
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('first edit');
+      const oidC = createSnapshot('second edit');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 2
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-1', // Same tool-call ID
+        contributor: 'agent-1',
+      }); // idx 3
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1']);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      // Should return the op BEFORE the earliest tool-1 (the init baseline at idx 1)
+      expect(result['/a.ts'].idx).toBe(1);
+      expect(result['/a.ts'].reason).toBe('init');
+    });
+
+    it('returns operation BEFORE earliest tool-call across multiple tool-call IDs for same file', async () => {
+      // Multiple tool-calls all modified /a.ts, should return op before the earliest one
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('tool-1 edit');
+      const oidC = createSnapshot('tool-2 edit');
+      const oidD = createSnapshot('tool-3 edit');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 2 - earliest tool-call
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-1',
+      }); // idx 3
+      insertOperation(db, '/a.ts', oidD, {
+        operation: 'edit',
+        reason: 'tool-3',
+        contributor: 'agent-1',
+      }); // idx 4
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, [
+        '1',
+        '2',
+        '3',
+      ]);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      // Should return op BEFORE earliest tool-call (init baseline at idx 1)
+      expect(result['/a.ts'].idx).toBe(1);
+      expect(result['/a.ts'].reason).toBe('init');
+    });
+
+    it('returns operation BEFORE earliest tool-call per file when multiple files affected', async () => {
+      const oidA1 = createSnapshot('a original');
+      const oidA2 = createSnapshot('a edited');
+      const oidB1 = createSnapshot('b original');
+      const oidB2 = createSnapshot('b edited');
+
+      // File /a.ts - tool-1 at idx 2
+      insertOperation(db, '/a.ts', oidA1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidA2, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 2
+
+      // File /b.ts - tool-2 at idx 4
+      insertOperation(db, '/b.ts', oidB1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 3
+      insertOperation(db, '/b.ts', oidB2, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-1',
+      }); // idx 4
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1', '2']);
+
+      expect(Object.keys(result)).toHaveLength(2);
+
+      // /a.ts should return op BEFORE tool-1 (init baseline at idx 1)
+      expect(result['/a.ts']).toBeDefined();
+      expect(result['/a.ts'].idx).toBe(1);
+      expect(result['/a.ts'].reason).toBe('init');
+
+      // /b.ts should return op BEFORE tool-2 (init baseline at idx 3)
+      expect(result['/b.ts']).toBeDefined();
+      expect(result['/b.ts'].idx).toBe(3);
+      expect(result['/b.ts'].reason).toBe('init');
+    });
+
+    it('handles mixed scenario: some tool-calls have operations, some do not', async () => {
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('edited');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 2
+
+      // Query for existing tool-1 and non-existent tool-999
+      const result = await getUndoTargetForToolCallsByFilePath(db, [
+        '1',
+        '999',
+      ]);
+
+      // Should only return /a.ts with the op BEFORE tool-1
+      expect(Object.keys(result)).toHaveLength(1);
+      expect(result['/a.ts'].idx).toBe(1);
+      expect(result['/a.ts'].reason).toBe('init');
+    });
+
+    it('handles multiple files with different earliest tool-calls', async () => {
+      // /a.ts: tool-2 is earliest (tool-1 came later due to interleaving)
+      // /b.ts: tool-1 is earliest
+      const oidA1 = createSnapshot('a original');
+      const oidA2 = createSnapshot('a tool-2 edit');
+      const oidA3 = createSnapshot('a tool-1 edit');
+      const oidB1 = createSnapshot('b original');
+      const oidB2 = createSnapshot('b tool-1 edit');
+      const oidB3 = createSnapshot('b tool-2 edit');
+
+      // Setup interleaved operations
+      insertOperation(db, '/a.ts', oidA1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidA2, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-1',
+      }); // idx 2 - earliest tool-call for /a.ts
+      insertOperation(db, '/b.ts', oidB1, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 3
+      insertOperation(db, '/b.ts', oidB2, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 4 - earliest tool-call for /b.ts
+      insertOperation(db, '/a.ts', oidA3, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 5 - later tool-1 for /a.ts
+      insertOperation(db, '/b.ts', oidB3, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-1',
+      }); // idx 6 - later tool-2 for /b.ts
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1', '2']);
+
+      expect(Object.keys(result)).toHaveLength(2);
+
+      // /a.ts should return op BEFORE tool-2 (init baseline at idx 1)
+      expect(result['/a.ts'].idx).toBe(1);
+      expect(result['/a.ts'].reason).toBe('init');
+
+      // /b.ts should return op BEFORE tool-1 (init baseline at idx 3)
+      expect(result['/b.ts'].idx).toBe(3);
+      expect(result['/b.ts'].reason).toBe('init');
+    });
+
+    it('includes isExternal flag from joined snapshot', async () => {
+      const content = Buffer.from('content');
+      const oid = computeOid(content);
+      insertKeyframe(db, oid, content, false); // Non-external
+
+      insertOperation(db, '/a.ts', oid, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oid, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 2
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1']);
+
+      // Should return the init baseline (before tool-1) with isExternal flag
+      expect(result['/a.ts'].idx).toBe(1);
+      expect(result['/a.ts'].isExternal).toBe(false);
+    });
+
+    it('returns before-op for operations from different agents', async () => {
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('agent-1 edit');
+      const oidC = createSnapshot('agent-2 edit');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 2
+      insertOperation(db, '/b.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 3
+      insertOperation(db, '/b.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-2',
+        contributor: 'agent-2',
+      }); // idx 4
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1', '2']);
+
+      expect(Object.keys(result)).toHaveLength(2);
+      // Both should return the init baselines (contributor is 'user')
+      expect(result['/a.ts'].contributor).toBe('user');
+      expect(result['/b.ts'].contributor).toBe('user');
+      expect(result['/a.ts'].reason).toBe('init');
+      expect(result['/b.ts'].reason).toBe('init');
+    });
+
+    it('returns user-save edit when it exists between init and tool-call', async () => {
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('user save');
+      const oidC = createSnapshot('tool edit');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'user-save',
+        contributor: 'user',
+      }); // idx 2
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 3
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1']);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      // Should return the user-save edit (immediately before tool-1)
+      expect(result['/a.ts'].idx).toBe(2);
+      expect(result['/a.ts'].reason).toBe('user-save');
+      expect(result['/a.ts'].operation).toBe('edit');
+    });
+
+    it('returns accept baseline when it exists before tool-call', async () => {
+      const oidA = createSnapshot('original');
+      const oidB = createSnapshot('first tool edit');
+      const oidC = createSnapshot('accepted');
+      const oidD = createSnapshot('second tool edit');
+
+      insertOperation(db, '/a.ts', oidA, {
+        operation: 'baseline',
+        reason: 'init',
+        contributor: 'user',
+      }); // idx 1
+      insertOperation(db, '/a.ts', oidB, {
+        operation: 'edit',
+        reason: 'tool-old',
+        contributor: 'agent-1',
+      }); // idx 2 - not in our undo list
+      insertOperation(db, '/a.ts', oidC, {
+        operation: 'baseline',
+        reason: 'accept',
+        contributor: 'user',
+      }); // idx 3
+      insertOperation(db, '/a.ts', oidD, {
+        operation: 'edit',
+        reason: 'tool-1',
+        contributor: 'agent-1',
+      }); // idx 4
+
+      const result = await getUndoTargetForToolCallsByFilePath(db, ['1']);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      // Should return the accept baseline (immediately before tool-1)
+      expect(result['/a.ts'].idx).toBe(3);
+      expect(result['/a.ts'].reason).toBe('accept');
+      expect(result['/a.ts'].operation).toBe('baseline');
     });
   });
 });

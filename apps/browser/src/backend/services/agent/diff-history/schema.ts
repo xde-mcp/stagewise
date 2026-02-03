@@ -39,7 +39,9 @@ export const operations = sqliteTable(
     }), // null = file doesn't exist (deleted or didn't exist for baseline)
     reason: text('reason')
       .notNull()
-      .$type<'init' | `tool-${ToolCallId}` | 'accept' | 'reject'>(),
+      .$type<
+        'init' | `tool-${ToolCallId}` | 'accept' | 'reject' | 'user-save'
+      >(),
     contributor: text('contributor')
       .notNull()
       .$type<'user' | `agent-${AgentInstanceId}`>(),
@@ -88,13 +90,13 @@ type NewBaselineOperation = NewOperationBase & {
 type EditOperation = OperationBase & {
   operation: 'edit';
   contributor: 'user' | `agent-${AgentInstanceId}`;
-  reason: 'reject' | `tool-${ToolCallId}`;
+  reason: 'reject' | `tool-${ToolCallId}` | 'user-save';
 };
 
 type NewEditOperation = NewOperationBase & {
   operation: 'edit';
   contributor: 'user' | `agent-${AgentInstanceId}`;
-  reason: 'reject' | `tool-${ToolCallId}`;
+  reason: 'reject' | `tool-${ToolCallId}` | 'user-save';
 };
 
 // Discriminated union exports (same export signature as before)
@@ -111,7 +113,7 @@ type BaselineMeta = {
 type EditMeta = {
   operation: 'edit';
   contributor: 'user' | `agent-${AgentInstanceId}`;
-  reason: 'reject' | `tool-${ToolCallId}`;
+  reason: 'reject' | `tool-${ToolCallId}` | 'user-save';
 };
 
 export type OperationMeta = BaselineMeta | EditMeta;

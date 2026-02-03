@@ -566,3 +566,5 @@ export type ExternalFileResult = {
 };
 
 export type FileResult = TextFileResult | ExternalFileResult;
+
+export const MAX_DIFF_TEXT_FILE_SIZE = 2 * 1024 * 1024; // 2MB
