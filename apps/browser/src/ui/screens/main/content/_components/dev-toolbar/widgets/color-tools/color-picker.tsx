@@ -32,8 +32,11 @@ import {
   type InternalColor,
 } from './color-utils';
 import { IconCheck2Fill18 } from 'nucleo-ui-fill-18';
-import { Tabs, TabsList } from '@stagewise/stage-ui/components/tabs';
-import { Tabs as TabsBase } from '@base-ui/react/tabs';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@stagewise/stage-ui/components/tabs';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -680,53 +683,13 @@ export function ColorPicker({ tabId, getScreenshot }: ColorPickerProps) {
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
-          className="mt-2 w-full gap-2"
+          className="mt-2 w-full"
         >
-          <TabsList className="grid w-full grid-cols-4 justify-center rounded-full bg-derived-darker-subtle p-0.5">
-            <TabsBase.Tab
-              value="hex"
-              className={cn(
-                'h-full rounded-full p-0.5 font-medium text-xs transition-colors',
-                activeTab === 'hex'
-                  ? 'bg-derived-lighter text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              HEX
-            </TabsBase.Tab>
-            <TabsBase.Tab
-              value="rgb"
-              className={cn(
-                'h-full rounded-full p-0.5 font-medium text-xs transition-colors',
-                activeTab === 'rgb'
-                  ? 'bg-derived-lighter text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              RGB
-            </TabsBase.Tab>
-            <TabsBase.Tab
-              value="hsl"
-              className={cn(
-                'h-full rounded-full p-0.5 font-medium text-xs transition-colors',
-                activeTab === 'hsl'
-                  ? 'bg-derived-lighter text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              HSL
-            </TabsBase.Tab>
-            <TabsBase.Tab
-              value="oklch"
-              className={cn(
-                'h-full rounded-full p-0.5 font-medium text-xs transition-colors',
-                activeTab === 'oklch'
-                  ? 'bg-derived-lighter text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              OKLCH
-            </TabsBase.Tab>
+          <TabsList className="grid-cols-4">
+            <TabsTrigger value="hex">HEX</TabsTrigger>
+            <TabsTrigger value="rgb">RGB</TabsTrigger>
+            <TabsTrigger value="hsl">HSL</TabsTrigger>
+            <TabsTrigger value="oklch">OKLCH</TabsTrigger>
           </TabsList>
         </Tabs>
 

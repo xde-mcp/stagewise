@@ -1,14 +1,12 @@
 import { Tabs as TabsBase } from '@base-ui/react/tabs';
 import { cn } from '../lib/utils';
-import { buttonVariants } from './button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip';
 
 export type TabsProps = React.ComponentProps<typeof TabsBase.Root>;
 export const Tabs = ({ className, ...props }: TabsProps) => {
   return (
     <TabsBase.Root
       {...props}
-      className={cn('flex flex-col items-start gap-6', className)}
+      className={cn('flex flex-col items-start gap-2', className)}
     />
   );
 };
@@ -19,7 +17,7 @@ export const TabsList = ({ className, children, ...props }: TabsListProps) => {
     <TabsBase.List
       {...props}
       className={cn(
-        '-ml-0.5 flex w-auto shrink-0 flex-row items-center justify-between gap-2 overflow-hidden rounded-full p-1',
+        'grid w-full auto-cols-fr grid-flow-col justify-center rounded-full bg-derived-darker-subtle p-0.5',
         className,
       )}
     >
@@ -28,49 +26,27 @@ export const TabsList = ({ className, children, ...props }: TabsListProps) => {
   );
 };
 
-export type TabsTriggerProps = Omit<
-  React.ComponentProps<typeof TabsBase.Tab>,
-  'children'
-> & {
-  icon?: React.ReactNode;
-  title: string | React.ReactNode;
-};
+export type TabsTriggerProps = React.ComponentProps<typeof TabsBase.Tab>;
 export const TabsTrigger = ({
   className,
-  icon,
-  title,
+  children,
   ...props
 }: TabsTriggerProps) => {
   return (
-    <Tooltip>
-      <TooltipTrigger>
-        <TabsBase.Tab
-          {...props}
-          className={(state) =>
-            cn(
-              buttonVariants({
-                variant: state.active ? 'primary' : 'ghost',
-                size: state.active ? 'md' : 'icon-md',
-              }),
-              'group/tabstab w-[calc-size(auto,size)] min-w-10 rounded-full transition-[width,color,padding] duration-200 ease-out',
-              className,
-            )
-          }
-        >
-          {icon}
-          {title && (
-            <span
-              className={cn(
-                'hidden w-0 overflow-hidden whitespace-nowrap group-aria-selected/tabstab:w-auto md:block',
-              )}
-            >
-              {title}
-            </span>
-          )}
-        </TabsBase.Tab>
-      </TooltipTrigger>
-      <TooltipContent>{title as string}</TooltipContent>
-    </Tooltip>
+    <TabsBase.Tab
+      {...props}
+      className={(state) =>
+        cn(
+          'h-full rounded-full px-2 py-1 font-medium text-xs transition-colors',
+          state.active
+            ? 'bg-derived-lighter text-primary-foreground'
+            : 'text-muted-foreground hover:text-foreground',
+          typeof className === 'function' ? className(state) : className,
+        )
+      }
+    >
+      {children}
+    </TabsBase.Tab>
   );
 };
 
@@ -80,7 +56,9 @@ export const TabsContent = ({ className, ...props }: TabsContentProps) => {
     <TabsBase.Panel
       {...props}
       className={cn(
-        'data-hidden:data-[activation-direction=right]:-translate-x-10 data-starting-style:data-[activation-direction=left]:-translate-x-4 data-ending-style:data-[activation-direction=right]:-translate-x-4 transition-all duration-300 ease-out data-[starting-style]:data-activation-direction=right:translate-x-4 data-ending-style:data-[activation-direction=left]:translate-x-4 data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:blur-sm data-starting-style:blur-sm',
+        'transition-all duration-300 ease-out',
+        'data-ending-style:opacity-0 data-starting-style:opacity-0',
+        'data-ending-style:blur-sm data-starting-style:blur-sm',
         className,
       )}
     />

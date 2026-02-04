@@ -7,8 +7,11 @@ import {
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { ChevronDownIcon } from 'lucide-react';
-import { Tabs, TabsList } from '@stagewise/stage-ui/components/tabs';
-import { Tabs as TabsBase } from '@base-ui/react/tabs';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@stagewise/stage-ui/components/tabs';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 
 type HistogramMode = 'lightness' | 'rgb';
@@ -220,31 +223,11 @@ export function ColorHistogram({ tabId, getScreenshot }: HistogramProps) {
         <Tabs
           value={activeMode}
           onValueChange={handleModeChange}
-          className="w-full gap-2"
+          className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-2 justify-center rounded-full bg-derived-darker-subtle p-0.5">
-            <TabsBase.Tab
-              value="lightness"
-              className={cn(
-                'h-full rounded-full p-0.5 font-medium text-xs transition-colors',
-                activeMode === 'lightness'
-                  ? 'bg-derived-lighter text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Lightness
-            </TabsBase.Tab>
-            <TabsBase.Tab
-              value="rgb"
-              className={cn(
-                'h-full rounded-full p-0.5 font-medium text-xs transition-colors',
-                activeMode === 'rgb'
-                  ? 'bg-derived-lighter text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              RGB
-            </TabsBase.Tab>
+          <TabsList className="grid-cols-2">
+            <TabsTrigger value="lightness">Lightness</TabsTrigger>
+            <TabsTrigger value="rgb">RGB</TabsTrigger>
           </TabsList>
         </Tabs>
 
