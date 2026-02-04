@@ -5,7 +5,10 @@ import {
   IconHistoryFill18,
   IconPlusFill18,
 } from 'nucleo-ui-fill-18';
-import { IconTrash2Outline24 } from 'nucleo-core-outline-24';
+import {
+  IconTrash2Outline24,
+  IconGear2Outline24,
+} from 'nucleo-core-outline-24';
 import {
   Tooltip,
   TooltipContent,
@@ -16,6 +19,7 @@ import {
   SearchableSelect,
   type SearchableSelectItem,
 } from '@stagewise/stage-ui/components/searchable-select';
+import { Select, type SelectItem } from '@stagewise/stage-ui/components/select';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import TimeAgo from 'react-timeago';
 import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
@@ -43,6 +47,14 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const isWorking = useKartonState((s) => s.agentChat?.isWorking);
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
+  const openWorkspace = useKartonProcedure((p) => p.workspace.open);
+
+  // Workspace state
+  const workspaceStatus = useKartonState((s) => s.workspaceStatus);
+  const workspaceConnected = workspaceStatus === 'open';
+  const recentlyOpenedWorkspaces = useKartonState(
+    (s) => s.userExperience.storedExperienceData.recentlyOpenedWorkspaces,
+  );
 
   // Tick every minute to refresh time-ago labels and groupings
   const [timeTick, setTimeTick] = useState(0);
@@ -171,6 +183,83 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     [activeChatId, isWorking, switchChat, loadMoreChats, getDraft],
   );
 
+  // Build menu items for the options dropdown
+  const menuItems = useMemo((): SelectItem[] => {
+    const items: SelectItem[] = [];
+
+    // Show workspace options when not connected
+    if (!workspaceConnected) {
+      // Add recent workspaces (max 3, sorted by most recent)
+      const sortedWorkspaces = [...recentlyOpenedWorkspaces]
+        .sort((a, b) => b.openedAt - a.openedAt)
+        .slice(0, 3);
+
+      for (const workspace of sortedWorkspaces) {
+        items.push({
+          value: `workspace:${workspace.path}`,
+          label: (
+            <span className="flex w-full items-baseline gap-2">
+              <span className="truncate">{workspace.name}</span>
+              <span className="shrink-0 text-subtle-foreground text-xs">
+                <TimeAgo
+                  date={workspace.openedAt}
+                  formatter={minimalFormatter}
+                  live={false}
+                />
+              </span>
+            </span>
+          ),
+          description: (
+            <span className="truncate text-subtle-foreground" dir="rtl">
+              <span dir="ltr">{workspace.path}</span>
+            </span>
+          ),
+          group: 'Connected workspaces',
+        });
+      }
+
+      // Add "Connect a new workspace" option
+      items.push({
+        value: 'open-folder',
+        label: (
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <IconPlusFill18 className="size-3.5" />
+            <span>Connect a new workspace</span>
+          </span>
+        ),
+        group: 'Connected workspaces',
+      });
+    }
+
+    // Always show Settings under General
+    items.push({
+      value: 'settings',
+      label: (
+        <span className="flex items-center gap-1.5">
+          <IconGear2Outline24 className="size-3.5 text-muted-foreground" />
+          <span>Settings</span>
+        </span>
+      ),
+      group: 'General',
+    });
+
+    return items;
+  }, [workspaceConnected, recentlyOpenedWorkspaces, minimalFormatter]);
+
+  // Handle menu selection
+  const handleMenuSelect = useCallback(
+    (value: string | null) => {
+      if (!value) return;
+
+      if (value.startsWith('workspace:')) {
+        const path = value.replace('workspace:', '');
+        void openWorkspace(path);
+      } else if (value === 'open-folder') void openWorkspace(undefined);
+      else if (value === 'settings') createTab(SETTINGS_PAGE_URL, true);
+    },
+    [openWorkspace, createTab],
+  );
+
   return (
     <div
       className={cn(
@@ -232,21 +321,33 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
               )}
             />
           )}
-          <Tooltip>
-            <TooltipTrigger>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => {
-                  createTab(SETTINGS_PAGE_URL, true);
-                }}
-                className="app-no-drag"
-              >
-                <IconDotsFill18 className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Settings</TooltipContent>
-          </Tooltip>
+          <Select
+            items={menuItems}
+            value={null}
+            onValueChange={handleMenuSelect}
+            side="bottom"
+            sideOffset={8}
+            popupClassName="max-w-64"
+            size="xs"
+            showItemIndicator={false}
+            customTrigger={(triggerProps) => (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    {...triggerProps}
+                    variant="ghost"
+                    size="icon-xs"
+                    className="app-no-drag shrink-0"
+                  >
+                    <IconDotsFill18 className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <span>More options</span>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          />
         </div>
       )}
     </div>

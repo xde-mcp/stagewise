@@ -236,6 +236,12 @@ export interface SelectProps<
    * @default true
    */
   modal?: boolean;
+
+  /**
+   * Whether to show the checkmark indicator for selected items
+   * @default true
+   */
+  showItemIndicator?: boolean;
 }
 
 // ============================================================================
@@ -306,6 +312,7 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
     defaultOpen,
     onOpenChange,
     modal,
+    showItemIndicator = true,
   }: SelectProps<Value, Multiple>,
   ref: React.ForwardedRef<HTMLButtonElement>,
 ) {
@@ -550,26 +557,33 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
                             value={item.value as any}
                             disabled={item.disabled}
                             className={cn(
-                              'grid w-full min-w-24 shrink-0 cursor-default select-none gap-2 rounded-md outline-none',
-                              'grid-cols-[0.75rem_1fr]',
+                              'w-full min-w-36 shrink-0 cursor-default select-none rounded-md outline-none',
                               'text-foreground transition-colors duration-150 ease-out',
                               'hover:bg-surface-1 data-[highlighted]:bg-surface-1',
                               'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
                               hasDescription ? 'items-start' : 'items-center',
                               sizes.item[size],
                               itemClassName,
+                              // Grid layout only when showing indicator
+                              showItemIndicator &&
+                                'grid grid-cols-[0.75rem_1fr] gap-2',
+                              !showItemIndicator && 'flex',
                             )}
                           >
-                            <SelectBase.ItemIndicator
-                              className={cn(
-                                'col-start-1 shrink-0',
-                                hasDescription && 'mt-0.5',
-                              )}
-                            >
-                              <IconCheckFill18 className="size-full text-muted-foreground" />
-                            </SelectBase.ItemIndicator>
+                            {showItemIndicator && (
+                              <SelectBase.ItemIndicator
+                                className={cn(
+                                  'col-start-1 shrink-0',
+                                  hasDescription && 'mt-0.5',
+                                )}
+                              >
+                                <IconCheckFill18 className="size-full text-muted-foreground" />
+                              </SelectBase.ItemIndicator>
+                            )}
 
-                            <SelectBase.ItemText className="col-start-2">
+                            <SelectBase.ItemText
+                              className={cn(showItemIndicator && 'col-start-2')}
+                            >
                               {renderItemContent(item)}
                             </SelectBase.ItemText>
                           </SelectBase.Item>
