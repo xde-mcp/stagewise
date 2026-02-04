@@ -305,3 +305,25 @@ export interface RemoveSearchEngineResult {
   success: boolean;
   error?: string;
 }
+
+/** Information about a single context file */
+export interface ContextFileInfo {
+  /** Whether the file exists */
+  exists: boolean;
+  /** Absolute path to the file (null if workspace not loaded) */
+  path: string | null;
+  /** File content (null if file doesn't exist or couldn't be read) */
+  content: string | null;
+}
+
+/** Result of getContextFiles procedure */
+export interface ContextFilesResult {
+  /** Whether a workspace is currently loaded */
+  workspaceLoaded: boolean;
+  /** Workspace root path (null if no workspace loaded) */
+  workspacePath: string | null;
+  /** STAGEWISE.md file info (auto-generated project analysis) */
+  stagewiseMd: ContextFileInfo;
+  /** AGENTS.md file info (user-created coding guidelines) */
+  agentsMd: ContextFileInfo;
+}

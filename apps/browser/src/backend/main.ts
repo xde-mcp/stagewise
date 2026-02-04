@@ -38,6 +38,10 @@ import { ensureRipgrepInstalled } from '@stagewise/agent-runtime-node';
 import { shell } from 'electron';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { ToolboxService } from './services/toolbox';
+import { readStagewiseMd } from './services/agent/prompt-builder/utils/read-stagewise-md';
+import { readAgentsMd } from './services/agent/prompt-builder/utils/read-agents-md';
+import { STAGEWISE_MD_FILENAME } from './services/agent/generate-stagewise-md';
+import { resolve } from 'node:path';
 
 export type MainParameters = {
   launchOptions: {
@@ -722,6 +726,65 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       windowLayoutService.trustCertificateAndReload(tabId, origin);
     },
   );
+
+  // Wire up context files handler for agent settings page
+  pagesService.setGetContextFilesHandler(async () => {
+    if (!workspaceService.isLoaded) {
+      return {
+        workspaceLoaded: false,
+        workspacePath: null,
+        stagewiseMd: { exists: false, path: null, content: null },
+        agentsMd: { exists: false, path: null, content: null },
+      };
+    }
+
+    const workspacePath = workspaceService.path;
+    const stagewiseMdDataPath = uiKarton.state.workspace?.paths.data ?? null;
+
+    // Read STAGEWISE.md from workspace data path
+    let stagewiseMdInfo: {
+      exists: boolean;
+      path: string | null;
+      content: string | null;
+    } = { exists: false, path: null, content: null };
+    if (stagewiseMdDataPath) {
+      const stagewiseMdFullPath = resolve(
+        stagewiseMdDataPath,
+        STAGEWISE_MD_FILENAME,
+      );
+      const stagewiseMdContent = await readStagewiseMd(stagewiseMdDataPath);
+      stagewiseMdInfo = {
+        exists: stagewiseMdContent !== null,
+        path: stagewiseMdFullPath,
+        content: stagewiseMdContent,
+      };
+    }
+
+    // Read AGENTS.md from workspace root
+    let agentsMdInfo: {
+      exists: boolean;
+      path: string | null;
+      content: string | null;
+    } = { exists: false, path: null, content: null };
+    const clientRuntime = new ClientRuntimeNode({
+      workingDirectory: workspacePath,
+      rgBinaryBasePath: globalDataPathService.globalDataPath,
+    });
+    const agentsMdContent = await readAgentsMd(clientRuntime);
+    const agentsMdFullPath = resolve(workspacePath, 'AGENTS.md');
+    agentsMdInfo = {
+      exists: agentsMdContent !== null,
+      path: agentsMdFullPath,
+      content: agentsMdContent,
+    };
+
+    return {
+      workspaceLoaded: true,
+      workspacePath,
+      stagewiseMd: stagewiseMdInfo,
+      agentsMd: agentsMdInfo,
+    };
+  });
 
   const agentService = await AgentService.create(
     logger,

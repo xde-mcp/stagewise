@@ -17,6 +17,7 @@ import type {
   InspirationWebsite,
   StoredExperienceData,
   WorkspaceStatus,
+  ContextFilesResult,
 } from './types';
 import type { UserPreferences, Patch, GlobalConfig } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
@@ -121,6 +122,11 @@ export type PagesApiContract = {
     trustCertificateAndReload: (tabId: string, origin: string) => Promise<void>;
     /** Set the global config (e.g., preferred IDE for opening files) */
     setGlobalConfig: (config: GlobalConfig) => Promise<void>;
+    /**
+     * Get context files info (STAGEWISE.md, AGENTS.md) for the current workspace.
+     * Returns null if no workspace is loaded.
+     */
+    getContextFiles: () => Promise<ContextFilesResult>;
   };
 };
 

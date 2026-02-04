@@ -37,6 +37,7 @@ import type {
   PendingEditsResult,
   AddSearchEngineInput,
   InspirationWebsite,
+  ContextFilesResult,
 } from '@shared/karton-contracts/pages-api/types';
 import { DisposableService } from './disposable';
 
@@ -91,6 +92,7 @@ export class PagesService extends DisposableService {
     origin: string,
   ) => Promise<void>;
   private setGlobalConfigHandler?: (config: GlobalConfig) => Promise<void>;
+  private getContextFilesHandler?: () => Promise<ContextFilesResult>;
 
   private constructor(
     logger: Logger,
@@ -1013,6 +1015,25 @@ export class PagesService extends DisposableService {
         await this.setGlobalConfigHandler(config);
       },
     );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'getContextFiles',
+      async (_callingClientId: string): Promise<ContextFilesResult> => {
+        if (!this.getContextFilesHandler) {
+          this.logger.warn(
+            '[PagesService] getContextFiles called but no handler is set',
+          );
+          // Return a default response indicating no workspace
+          return {
+            workspaceLoaded: false,
+            workspacePath: null,
+            stagewiseMd: { exists: false, path: null, content: null },
+            agentsMd: { exists: false, path: null, content: null },
+          };
+        }
+        return await this.getContextFilesHandler();
+      },
+    );
   }
 
   /**
@@ -1188,6 +1209,16 @@ export class PagesService extends DisposableService {
   }
 
   /**
+   * Set the handler for getting context files (STAGEWISE.md, AGENTS.md).
+   * This should be called by main.ts to wire up workspace context retrieval.
+   */
+  public setGetContextFilesHandler(
+    handler: () => Promise<ContextFilesResult>,
+  ): void {
+    this.getContextFilesHandler = handler;
+  }
+
+  /**
    * Sync global config state to the Pages API Karton state.
    * Called by main.ts when global config changes.
    */
@@ -1331,6 +1362,7 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('openWorkspace');
     this.kartonServer.removeServerProcedureHandler('trustCertificateAndReload');
     this.kartonServer.removeServerProcedureHandler('setGlobalConfig');
+    this.kartonServer.removeServerProcedureHandler('getContextFiles');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');
@@ -1347,6 +1379,7 @@ export class PagesService extends DisposableService {
     this.userExperienceService = undefined;
     this.openWorkspaceHandler = undefined;
     this.trustCertificateAndReloadHandler = undefined;
+    this.getContextFilesHandler = undefined;
 
     await this.transport.close();
     this.logger.debug('[PagesService] Teardown complete');
