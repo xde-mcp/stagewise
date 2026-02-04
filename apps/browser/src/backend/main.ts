@@ -25,6 +25,7 @@ import { HistoryService } from './services/history';
 import { FaviconService } from './services/favicon';
 import { WebDataService } from './services/webdata';
 import { DownloadsService } from './services/download-manager';
+import { DiffHistoryService } from './services/agent/diff-history/index.new';
 import { AutoUpdateService } from './services/auto-update';
 import { DevToolAPIService } from './services/dev-tool-api';
 import {
@@ -36,6 +37,7 @@ import { OmniboxSuggestionsService } from './services/omnibox-suggestions';
 import { ensureRipgrepInstalled } from '@stagewise/agent-runtime-node';
 import { shell } from 'electron';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
+import { ToolboxService } from './services/toolbox';
 
 export type MainParameters = {
   launchOptions: {
@@ -100,6 +102,13 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     preferencesService,
   );
   const uiKarton = windowLayoutService.uiKarton;
+
+  const diffHistoryService = await DiffHistoryService.create(
+    logger,
+    uiKarton,
+    globalDataPathService,
+    [], // TODO: Ask Glenn which agent instance ids to watch
+  );
 
   // Connect PreferencesService to Karton for reactive sync
   preferencesService.connectKarton(uiKarton, pagesService);
@@ -627,6 +636,17 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     await authService.handleAuthCodeExchange(authCode, error);
   });
 
+  const _toolboxService = await ToolboxService.create(
+    logger,
+    uiKarton,
+    globalConfigService,
+    diffHistoryService,
+    windowLayoutService,
+    authService,
+    telemetryService,
+    globalDataPathService,
+  );
+
   const workspaceService = await WorkspaceService.create(
     logger,
     filePickerService,
@@ -651,6 +671,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
           rgBinaryBasePath: globalDataPathService.globalDataPath,
         });
         agentService.setClientRuntime(clientRuntime);
+        _toolboxService.setClientRuntime(clientRuntime);
         void _userExperienceService.saveRecentlyOpenedWorkspace({
           path: event.selectedPath,
           name: event.name,
@@ -663,6 +684,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         agentService.acceptAllPendingEdits();
         agentService.resetDiffHistory();
         agentService.setClientRuntime(null);
+        _toolboxService.setClientRuntime(null);
         break;
     }
   });
@@ -802,6 +824,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     webDataService.teardown();
     historyService.teardown();
     faviconService.teardown();
+    diffHistoryService.teardown();
     logger.debug('[Main] Services shut down');
   };
 

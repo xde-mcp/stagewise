@@ -3,6 +3,7 @@ import { createReadStream, createWriteStream } from 'node:fs';
 import { rename, mkdir } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import * as path from 'node:path';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import type {
   OperationMeta,
   Operation,
@@ -11,7 +12,6 @@ import type {
 } from '../schema';
 import { eq, and, desc, or, gte, sql, inArray } from 'drizzle-orm';
 import type { LibSQLDatabase } from 'drizzle-orm/libsql';
-import * as zstd from '@bokuweb/zstd-wasm';
 import * as fossilDelta from 'fossil-delta';
 import * as schema from '../schema';
 
@@ -22,17 +22,6 @@ type SnapshotDb = LibSQLDatabase<typeof schema>;
  * Used when queries join operations with snapshots to include LFS status.
  */
 export type OperationWithExternal = Operation & { isExternal: boolean };
-
-let zstdInitialized = false;
-
-/**
- * Initialize zstd-wasm. Must be called once before using compression functions.
- */
-export async function initCompression(): Promise<void> {
-  if (zstdInitialized) return;
-  await zstd.init();
-  zstdInitialized = true;
-}
 
 /**
  * Compute SHA-256 hash of content, returning hex string.
@@ -90,9 +79,7 @@ export function insertKeyframe(
   content: Buffer,
   isExternal = false,
 ): void {
-  const payload = isExternal
-    ? Buffer.alloc(0)
-    : Buffer.from(zstd.compress(content, 3));
+  const payload = isExternal ? Buffer.alloc(0) : gzipSync(content);
 
   db.insert(schema.snapshots)
     .values({
@@ -158,7 +145,7 @@ export async function retrieveContentForOid(
   // Return null for external snapshots - caller should use streamContent
   if (keyframe.is_external) return null;
 
-  let content = Buffer.from(zstd.decompress(keyframe.payload));
+  let content = gunzipSync(keyframe.payload);
 
   // Apply deltas in reverse order (newest to oldest)
   while (chain.length > 0) {

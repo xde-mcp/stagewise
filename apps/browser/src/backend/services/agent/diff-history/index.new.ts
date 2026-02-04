@@ -37,6 +37,9 @@ import {
 import type { Operation, OperationMeta } from './schema';
 import type { OperationWithExternal } from './utils/db';
 import { createReadStream } from 'node:fs';
+import { migrateDatabase } from '@/utils/migrate-database';
+import { registry, schemaVersion } from './migrations';
+import initSql from './schema.sql?raw';
 
 type AgentFileEdit = {
   agentInstanceId: string;
@@ -107,6 +110,21 @@ export class DiffHistoryService extends DisposableService {
     return instance;
   }
   private async initialize(): Promise<void> {
+    // Run database migrations
+    try {
+      await migrateDatabase({
+        db: this.db,
+        client: this.dbDriver,
+        registry,
+        initSql,
+        schemaVersion,
+      });
+      this.logDebug('Database migrated successfully');
+    } catch (error) {
+      this.logError('Failed to migrate database', error);
+      throw error;
+    }
+
     this.uiKarton.registerServerProcedureHandler(
       'toolbox.acceptHunks',
       async (_callingClientId: string, hunkIds: string[]) => {

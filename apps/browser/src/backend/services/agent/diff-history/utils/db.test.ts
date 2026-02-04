@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createClient, type Client } from '@libsql/client';
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
 import fs from 'node:fs';
@@ -9,7 +9,6 @@ import * as schema from '../schema';
 import initSchemaSql from '../schema.sql?raw';
 import { migrateDatabase } from '../../../../utils/migrate-database';
 import {
-  initCompression,
   computeOid,
   getSnapshot,
   insertKeyframe,
@@ -71,11 +70,6 @@ describe('diff-history db utilities', () => {
   let db: SnapshotDb;
   let dbPath: string;
 
-  // Initialize zstd-wasm once before all tests
-  beforeAll(async () => {
-    await initCompression();
-  });
-
   beforeEach(async () => {
     const testDb = createTestDb();
     client = testDb.client;
@@ -98,11 +92,6 @@ describe('diff-history db utilities', () => {
   });
 
   describe('compression and hashing', () => {
-    it('initCompression() initializes without error', async () => {
-      // Already called in beforeAll, calling again should be idempotent
-      await expect(initCompression()).resolves.toBeUndefined();
-    });
-
     it('computeOid() produces consistent SHA-256 hex strings', () => {
       const content = Buffer.from('hello world');
       const oid1 = computeOid(content);
