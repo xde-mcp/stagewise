@@ -23,7 +23,6 @@ import { Select, type SelectItem } from '@stagewise/stage-ui/components/select';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import TimeAgo from 'react-timeago';
 import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
-import type { ChatSummary } from '@shared/karton-contracts/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
@@ -31,14 +30,19 @@ import { HotkeyComboText } from '@/components/hotkey-combo-text';
 import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
 import { useChatDraft } from '@/hooks/use-chat-draft';
 import { useOpenAgent } from '@/hooks/use-open-chat';
+import type { AgentHistoryEntry } from '@shared/karton-contracts/ui/agent';
 
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createAgent = useKartonProcedure((p) => p.agents.create);
-  const deleteChat = useKartonProcedure((p) => p.agents.delete);
-  const getAgentsList = useKartonProcedure((p) => p.agents.getAgentsList);
+  const resumeAgent = useKartonProcedure((p) => p.agents.resume);
+  const deleteAgent = useKartonProcedure((p) => p.agents.delete);
+  const getAgentsHistoryList = useKartonProcedure(
+    (p) => p.agents.getAgentsHistoryList,
+  );
   const platform = useKartonState((s) => s.appInfo.platform);
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
   const [openAgent, setOpenAgent] = useOpenAgent();
+  const activeAgents = useKartonState((s) => s.agents.instances);
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
   const openWorkspace = useKartonProcedure((p) => p.workspace.open);
@@ -57,17 +61,50 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     return () => clearInterval(interval);
   }, []);
 
+  const activeAgentsList = useMemo(() => {
+    return Object.entries(activeAgents).map(([id, agent]) => ({
+      id: id,
+      title: agent.state.title,
+      createdAt: agent.state.history[0]?.metadata?.createdAt ?? new Date(0),
+      lastMessageAt:
+        agent.state.history[agent.state.history.length - 1]?.metadata
+          ?.createdAt ?? new Date(),
+      messageCount: agent.state.history.length,
+      parentAgentInstanceId: agent.parentAgentInstanceId,
+    }));
+  }, [activeAgents]);
   const [agentsList, setAgentsList] = useState<
-    Awaited<ReturnType<typeof getAgentsList>>
+    Awaited<ReturnType<typeof getAgentsHistoryList>>
   >([]);
+
+  // Only fetch agents history list when there's at least one active agent.
+  // This ensures the AgentManager's persistence DB is fully initialized
+  // (the default agent is only created after DB init completes).
+  const hasActiveAgents = Object.keys(activeAgents).length > 0;
+
   useEffect(() => {
-    void getAgentsList(0, 200).then(setAgentsList);
+    // Wait until we have at least one active agent before fetching history
+    if (!hasActiveAgents) {
+      return;
+    }
+    getAgentsHistoryList(0, 200).then((a) => {
+      setAgentsList(
+        a.filter((agent) => !Object.keys(activeAgents).includes(agent.id)),
+      );
+    });
     // TODO: Later, we can add pagination...
-  }, []);
+  }, [activeAgents, hasActiveAgents]);
+
+  // If the open agent isn't active anymore, we need to update the open agent to the first active agent.
+  useEffect(() => {
+    if (!Object.keys(activeAgents).includes(openAgent)) {
+      setOpenAgent(Object.keys(activeAgents)[0]);
+    }
+  }, [openAgent, activeAgents]);
 
   const showChatListButton = useMemo(() => {
-    return agentsList.length > 1;
-  }, [agentsList]);
+    return agentsList.length + Object.keys(activeAgents).length > 1;
+  }, [agentsList, activeAgents]);
 
   const showNewChatButton = useMemo(() => {
     return openAgent !== null;
@@ -77,11 +114,11 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     // Sort by updatedAt descending so most recent chats appear first
     const sorted = [...agentsList].sort(
       (a, b) =>
-        new Date(b.lastMessageTimestamp).getTime() -
-        new Date(a.lastMessageTimestamp).getTime(),
+        new Date(b.lastMessageAt).getTime() -
+        new Date(a.lastMessageAt).getTime(),
     );
-    return groupChatsByTime(sorted);
-  }, [agentsList, timeTick]);
+    return { 'Active agents': activeAgentsList, ...groupChatsByTime(sorted) };
+  }, [agentsList, timeTick, activeAgentsList]);
 
   const minimalFormatter = useMemo(
     () =>
@@ -116,29 +153,29 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   // Convert grouped chats to flat items with group property for SearchableSelect
   const chatSelectItems = useMemo((): SearchableSelectItem[] => {
     const items: SearchableSelectItem[] = [];
-    for (const [label, groupChats] of Object.entries(groupedChats)) {
-      for (const chat of groupChats) {
+    for (const [label, groupedAgents] of Object.entries(groupedChats)) {
+      for (const agent of groupedAgents) {
         items.push({
-          value: chat.id,
+          value: agent.id,
           label: (
             <span className="flex w-full items-center gap-2">
-              <span className="truncate">{chat.title}</span>
+              <span className="truncate">{agent.title}</span>
               <span className="shrink-0 text-subtle-foreground text-xs">
                 <TimeAgo
-                  date={chat.updatedAt}
+                  date={agent.lastMessageAt}
                   formatter={minimalFormatter}
                   live={false}
                 />
               </span>
             </span>
           ),
-          searchText: chat.title,
+          searchText: agent.title,
           group: label,
           action: {
             icon: <IconTrash2Outline24 className="size-3" />,
             onClick: (value, e) => {
               e.stopPropagation();
-              void deleteChat(value);
+              void deleteAgent(value).catch((e) => console.error(e));
               setAgentsList(agentsList.filter((agent) => agent.id !== value));
             },
             showOnHover: true,
@@ -158,31 +195,34 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       });
     }
     return items;
-  }, [groupedChats, deleteChat, minimalFormatter]);
+  }, [groupedChats, deleteAgent, minimalFormatter]);
 
   // Helper to create a new chat and focus the input
   const createAgentAndFocus = useCallback(async () => {
-    await createAgent();
-    void getAgentsList(0, 200).then(setAgentsList);
+    const newAgent = await createAgent();
+    setOpenAgent(newAgent);
+    void getAgentsHistoryList(0, 200).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [createAgent, getAgentsList]);
+  }, [createAgent, getAgentsHistoryList]);
 
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {
     if (showNewChatButton) void createAgentAndFocus();
   }, HotkeyActions.CTRL_N);
 
-  const handleChatSelect = useCallback(
+  const handleAgentSelect = useCallback(
     (value: string | null) => {
       if (!value) return;
       if (value === '__load_more__') {
-        void getAgentsList(agentsList.length, 200).then((res) => {
+        void getAgentsHistoryList(agentsList.length, 200).then((res) => {
           setAgentsList([...agentsList, ...res]);
         });
         return;
       }
       if (value !== openAgent) {
-        setOpenAgent(value);
+        resumeAgent(value).then(() => {
+          setOpenAgent(value);
+        });
       }
     },
     [openAgent, setOpenAgent, getDraft],
@@ -290,7 +330,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 <span>
-                  Create new chat (
+                  Create new agent (
                   <HotkeyComboText action={HotkeyActions.CTRL_N} />)
                 </span>
               </TooltipContent>
@@ -300,7 +340,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             <SearchableSelect
               items={chatSelectItems}
               value={openAgent}
-              onValueChange={handleChatSelect}
+              onValueChange={handleAgentSelect}
               side="bottom"
               sideOffset={8}
               size="xs"
@@ -364,13 +404,8 @@ type TimeAgoLabel = string;
  * @returns Grouped chats by time label, each group containing an array of ChatSummary
  */
 function groupChatsByTime(
-  agentsList: {
-    id: string;
-    title: string;
-    createdAt: Date;
-    lastMessageTimestamp: Date;
-  }[],
-): Record<TimeAgoLabel, ChatSummary[]> {
+  agentsList: AgentHistoryEntry[],
+): Record<TimeAgoLabel, AgentHistoryEntry[]> {
   // Helper function to get time label for a chat
   // Uses calendar-day boundaries (midnight in user's timezone) instead of
   // absolute time differences for more intuitive "Yesterday" grouping
@@ -420,17 +455,12 @@ function groupChatsByTime(
   }
 
   // Group chats by time label (chatList is already sorted by updatedAt desc)
-  const grouped: Record<string, ChatSummary[]> = {};
+  const grouped: Record<string, AgentHistoryEntry[]> = {};
 
   for (const agent of agentsList) {
-    const label = getTimeLabel(agent.lastMessageTimestamp);
+    const label = getTimeLabel(agent.lastMessageAt);
     if (!grouped[label]) grouped[label] = [];
-    grouped[label].push({
-      id: agent.id,
-      title: agent.title,
-      createdAt: new Date(),
-      updatedAt: agent.lastMessageTimestamp,
-    });
+    grouped[label].push(agent);
   }
 
   return grouped;

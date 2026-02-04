@@ -476,6 +476,7 @@ export function ChatPanelFooter() {
         onDrop={dragHandlers.onDropBubble} // Reset drag state, let event bubble to ChatPanel
       >
         <ChatInput
+          key={openAgent}
           ref={chatInputRef}
           value={optimisticChatInputState}
           onChange={updateChatInputState}

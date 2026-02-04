@@ -32,6 +32,7 @@ export class ChatAgent extends BaseAgent<never, ToolSet> {
     allowUserInput: true,
     generateTitles: true,
     finishToolOutputSchema: undefined,
+    updateTitlesEveryNUserMessages: 5,
   };
 
   protected getSystemPrompt = (): string => {

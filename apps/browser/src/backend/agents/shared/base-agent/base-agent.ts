@@ -283,7 +283,7 @@ export abstract class BaseAgent<
   /**
    * Access the static agentType from the subclass.
    */
-  protected get agentType(): AgentTypes {
+  public get agentType(): AgentTypes {
     return (
       this.constructor as unknown as BaseAgentStatic<TFinishToolOutputSchema>
     ).agentType;
@@ -717,12 +717,10 @@ export abstract class BaseAgent<
         this.modelProviderService,
         this.instanceId,
       );
-    } catch (error) {
+    } catch (e) {
+      const error = e as Error;
       this.logger.error(
-        `[BaseAgent:${this.instanceId}] Failed to generate title`,
-        {
-          error,
-        },
+        `[BaseAgent:${this.instanceId}] Failed to generate title. Error: ${error.message}, Stack: ${error.stack}`,
       );
       return this.state.get().title;
     }
@@ -957,19 +955,22 @@ export abstract class BaseAgent<
       return;
     }
 
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Updating title for agent. Agent Type: ${this.agentType}`,
+    );
+
     const modulo = Math.max(0, this.config.updateTitlesEveryNUserMessages ?? 0);
-    if (
-      (modulo === 0 && this.state.get().history.length !== 1) ||
-      (modulo > 0 &&
-        this.state.get().history.filter((message) => message.role === 'user')
-          .length %
-          modulo !==
-          0)
-    ) {
+    const userMsgCount = this.state
+      .get()
+      .history.filter((message) => message.role === 'user').length;
+    if (userMsgCount !== 1 && userMsgCount % modulo !== 0) {
       return;
     }
 
     const newTitle = await this.generateTitle(this.state.get().history);
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] New title generated: ${newTitle}`,
+    );
     this.state.set((draft) => {
       draft.title = newTitle;
     });
@@ -1088,6 +1089,10 @@ export abstract class BaseAgent<
    * @returns Whether the agent should run a new step based on the given conditions.
    */
   private async handlePostStep(result: StepResult<TTools>): Promise<boolean> {
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Handling post step. Agent Type: ${this.agentType}`,
+    );
+
     await this.updateTitle();
 
     // Save the agent state for recovery
@@ -1097,9 +1102,16 @@ export abstract class BaseAgent<
     const shouldRunNewStep = this.shouldRunNewStep(result, userWantsToContinue);
 
     if (!shouldRunNewStep) {
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Not running new step. Agent Type: ${this.agentType}`,
+      );
       this.onIdle();
       return false;
     }
+
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Running new step. Agent Type: ${this.agentType}`,
+    );
 
     return true;
   }
@@ -1380,7 +1392,9 @@ export abstract class BaseAgent<
   private async internalStop(
     stopReason: 'user-stopped' | 'user-flushed-queue' = 'user-stopped',
   ): Promise<void> {
-    this.stepAbortController?.abort();
+    try {
+      this.stepAbortController?.abort();
+    } catch {}
     this.stepAbortController = null;
 
     const toolCallAbortReason =
@@ -1400,7 +1414,7 @@ export abstract class BaseAgent<
     this.state.set((draft) => {
       const lastMsg = draft.history[draft.history.length - 1];
 
-      if (lastMsg.role !== 'assistant') return;
+      if (lastMsg?.role !== 'assistant') return;
 
       lastMsg.parts.forEach((p, index) => {
         if (p.type === 'dynamic-tool' || p.type.startsWith('tool-')) {

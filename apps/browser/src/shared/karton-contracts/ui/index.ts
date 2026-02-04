@@ -34,7 +34,7 @@ import {
   configurablePermissionTypes,
 } from './shared-types';
 import type { PageTransition, DownloadState } from '../pages-api/types';
-import type { AgentState, AgentTypes } from './agent';
+import type { AgentState, AgentTypes, AgentHistoryEntry } from './agent';
 
 export type ChatMessage = UIMessage<UserMessageMetadata, UIDataTypes, UITools>;
 
@@ -512,7 +512,6 @@ export type AppState = {
         requiredModelCapabilities: ModelSettings['capabilities'];
         allowUserInput: boolean;
         parentAgentInstanceId: string | null;
-        childAgentInstanceIds: string[];
         state: AgentState;
       };
     };
@@ -715,18 +714,13 @@ export type KartonContract = {
     };
     agents: {
       create: () => Promise<string>;
+      resume: (agentId: string) => Promise<void>;
       delete: (agentId: string) => Promise<void>;
-      getAgentsList: (
+      getAgentsHistoryList: (
         offset: number,
         limit: number,
-      ) => Promise<
-        {
-          id: string;
-          title: string;
-          createdAt: Date;
-          lastMessageTimestamp: Date;
-        }[]
-      >;
+        searchString?: string,
+      ) => Promise<AgentHistoryEntry[]>;
       updateInputState: (agentId: string, inputState: string) => Promise<void>;
       sendUserMessage: (
         agentId: string,

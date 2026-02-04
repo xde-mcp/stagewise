@@ -1,14 +1,12 @@
 import {
   type ModelMessage,
   generateText,
-  Output,
   convertToModelMessages,
   type UserModelMessage,
   type ToolSet,
 } from 'ai';
 import type { ChatMessage, SelectedElement } from '@shared/karton-contracts/ui';
 import type { ModelProviderService } from '@/agents/model-provider';
-import { z } from 'zod';
 import {
   relevantCodebaseFilesToContextSnippet,
   selectedElementToContextSnippet,
@@ -189,34 +187,42 @@ export const generateSimpleTitle = async (
     `${agentInstanceId}_title`,
   );
 
+  const messageList = messages
+    .filter(
+      (message) => message.role === 'user' || message.role === 'assistant',
+    )
+    .slice(-10)
+    .map(
+      (message) =>
+        `${message.role}: ${message.parts.map((part) => (part.type === 'text' ? part.text.replace(/[\n\r]+/g, '  ').slice(0, 200) : `(ATTACHED ${part.type})`)).join(' ')}`,
+    )
+    .join('\n');
+
   const title = await generateText({
     model: modelWithOptions.model,
-    providerOptions: modelWithOptions.providerOptions,
+    providerOptions: {
+      ...modelWithOptions.providerOptions,
+      anthropic: { thinking: { type: 'disabled' } },
+    },
     headers: modelWithOptions.headers,
     messages: [
       {
         role: 'system',
-        content: `Summarize the current conversation topic into a very short and precise title with maximum 7 words.`,
+        content: `Summarize the current intention of the user into a very short and precise title with a maximum 7 words. Only output the short title, nothing else. Don't use markdown formatting. Output a single, raw, simple sentence. Don't mention "user" or "assistant". Write from the perspective of the user.`,
       },
       {
         role: 'user',
-        content: messages
-          .filter(
-            (message) =>
-              message.role === 'user' || message.role === 'assistant',
-          )
-          .slice(-5, 0)
-          .map(
-            (message) =>
-              `${message.role}: ${message.parts.map((part) => (part.type === 'text' ? part.text.replace(/[\n\r]+/g, '  ').slice(0, 200) : `(ATTACHED ${part.type})`)).join(' ')}`,
-          )
-          .join('\n'),
+        content: [
+          {
+            type: 'text',
+            text: `Extract a title for the user's current intent from the following conversation:\n<conversation>\n${messageList}\n</convesation>\n\nSummarize into a single short sentence.`,
+          },
+        ],
       },
     ],
-    temperature: 0.1,
+    temperature: 0.3,
     maxOutputTokens: 100,
-    output: Output.object({ schema: z.string().min(1).max(200) }),
-  }).then((result) => result.output);
+  }).then((result) => result.text);
 
   return title;
 };

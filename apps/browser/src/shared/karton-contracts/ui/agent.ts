@@ -21,3 +21,12 @@ export type ToolboxState = {
   pendingFiles: string[];
   // Later on, tool calls that involve interaction with the user should also be placed here!!!
 };
+
+export type AgentHistoryEntry = {
+  id: string; // agent instance ID
+  title: string; // agent title
+  createdAt: Date; // agent creation timestamp
+  lastMessageAt: Date; // last message timestamp
+  messageCount: number; // number of messages in the agent's history
+  parentAgentInstanceId: string | null; // parent agent instance ID
+};

@@ -806,6 +806,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   const _agentManagerService = new AgentManagerService(
     uiKarton,
+    globalDataPathService,
     telemetryService,
     toolboxService,
     logger,
