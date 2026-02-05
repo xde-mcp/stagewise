@@ -124,8 +124,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    // Note: captureDominantly is intentionally false to allow omnibox
-    // Ctrl+N/P navigation to intercept on Windows (Chrome-like behavior)
+    captureDominantly: false, // FALSE: Allows 'Down' navigation in lists on Windows/Linux
   },
   [HotkeyActions.CTRL_J]: {
     keyComboDefault: 'Ctrl+J',
@@ -135,6 +134,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
+    captureDominantly: true, // Browser Downloads Page -> Reserved
   },
 
   // tab & window navigation
@@ -205,7 +205,7 @@ export const hotkeyActionDefinitions: Record<
       ev.altKey &&
       !ev.shiftKey &&
       !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: true, // Mac tab switch is always reserved
   },
   [HotkeyActions.CTRL_PAGE_UP]: {
     keyComboDefault: 'Ctrl+PageUp',
@@ -215,14 +215,14 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: true, // Tab switching is always reserved
   },
   [HotkeyActions.CTRL_SHIFT_TAB]: {
     keyComboDefault: 'Ctrl+Shift+Tab',
     keyComboMac: '⇧⌘Tab',
     isEventMatching: (ev, _platform) =>
       ev.code === 'Tab' && ev.ctrlKey && ev.shiftKey && !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: true, // Tab switching is always reserved
   },
   [HotkeyActions.CMD_OPTION_ARROW_LEFT]: {
     keyComboDefault: 'Ctrl+PageUp',
@@ -234,7 +234,7 @@ export const hotkeyActionDefinitions: Record<
       ev.altKey &&
       !ev.shiftKey &&
       !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: true, // Mac tab switch is always reserved
   },
   [HotkeyActions.CTRL_1]: {
     keyComboDefault: 'Ctrl+1',
@@ -244,7 +244,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: true, // Numbered tab switching is reserved
   },
   [HotkeyActions.CTRL_2]: {
     keyComboDefault: 'Ctrl+2',
@@ -254,7 +254,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: true, // Numbered tab switching is reserved
   },
   [HotkeyActions.CTRL_3]: {
     keyComboDefault: 'Ctrl+3',
@@ -341,7 +341,7 @@ export const hotkeyActionDefinitions: Record<
           !ev.shiftKey &&
           !ev.metaKey &&
           !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: false,
   },
   [HotkeyActions.CMD_ARROW_LEFT]: {
     keyComboDefault: 'Alt+←',
@@ -351,7 +351,7 @@ export const hotkeyActionDefinitions: Record<
       (platform === 'mac'
         ? ev.metaKey && !ev.shiftKey && !ev.altKey && !ev.ctrlKey
         : ev.altKey && !ev.shiftKey && !ev.metaKey && !ev.ctrlKey),
-    captureDominantly: true,
+    captureDominantly: false,
   },
   [HotkeyActions.ALT_ARROW_LEFT]: {
     keyComboDefault: 'Alt+←',
@@ -362,7 +362,7 @@ export const hotkeyActionDefinitions: Record<
       !ev.shiftKey &&
       !ev.metaKey &&
       !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: false,
   },
   [HotkeyActions.CMD_BRACKET_RIGHT]: {
     keyComboDefault: 'Alt+→',
@@ -379,7 +379,7 @@ export const hotkeyActionDefinitions: Record<
           !ev.shiftKey &&
           !ev.metaKey &&
           !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: false,
   },
   [HotkeyActions.CMD_ARROW_RIGHT]: {
     keyComboDefault: 'Alt+→',
@@ -389,7 +389,7 @@ export const hotkeyActionDefinitions: Record<
       (platform === 'mac'
         ? ev.metaKey && !ev.shiftKey && !ev.altKey && !ev.ctrlKey
         : ev.altKey && !ev.shiftKey && !ev.metaKey && !ev.ctrlKey),
-    captureDominantly: true,
+    captureDominantly: false,
   },
   [HotkeyActions.ALT_ARROW_RIGHT]: {
     keyComboDefault: 'Alt+→',
@@ -400,7 +400,7 @@ export const hotkeyActionDefinitions: Record<
       !ev.shiftKey &&
       !ev.metaKey &&
       !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: false,
   },
   [HotkeyActions.CMD_SHIFT_H]: {
     keyComboDefault: 'Ctrl+Shift+H',
@@ -410,7 +410,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: false,
   },
   [HotkeyActions.CTRL_L]: {
     keyComboDefault: 'Ctrl+L',
@@ -454,7 +454,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: false, // Allow apps to handle soft reload
   },
   [HotkeyActions.F5]: {
     keyComboDefault: 'F5',
@@ -465,7 +465,7 @@ export const hotkeyActionDefinitions: Record<
       !ev.altKey &&
       !ev.metaKey &&
       !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: false, // Allow apps to handle soft reload
   },
   [HotkeyActions.CTRL_SHIFT_R]: {
     keyComboDefault: 'Ctrl+Shift+R',
@@ -478,7 +478,7 @@ export const hotkeyActionDefinitions: Record<
     captureDominantly: true,
   },
 
-  // search, etc.
+  // search, etc. (Not Reserved - Apps like Google Docs/VSCode need this)
   [HotkeyActions.CTRL_F]: {
     keyComboDefault: 'Ctrl+F',
     keyComboMac: '⌘F',
@@ -487,7 +487,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: false, // Allow apps to use their own find
   },
   [HotkeyActions.F3]: {
     keyComboDefault: 'F3',
@@ -498,7 +498,7 @@ export const hotkeyActionDefinitions: Record<
       !ev.altKey &&
       !ev.metaKey &&
       !ev.ctrlKey,
-    captureDominantly: true,
+    captureDominantly: false, // Allow apps to use their own find
   },
   [HotkeyActions.CTRL_G]: {
     keyComboDefault: 'Ctrl+G',
@@ -508,7 +508,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       !ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: false, // Allow apps to use their own find next
   },
   [HotkeyActions.CTRL_SHIFT_G]: {
     keyComboDefault: 'Ctrl+Shift+G',
@@ -518,7 +518,7 @@ export const hotkeyActionDefinitions: Record<
       isPrimaryModifierPressed(ev, platform) &&
       ev.shiftKey &&
       !ev.altKey,
-    captureDominantly: true,
+    captureDominantly: false, // Allow apps to use their own find previous
   },
 
   // dev tools
