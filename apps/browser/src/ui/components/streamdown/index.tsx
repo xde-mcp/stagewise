@@ -132,6 +132,65 @@ const StreamdownProvider = ({
 };
 
 /**
+ * URL-encodes color values in color links to prevent markdown parsing issues.
+ * CSS color functions like rgba(0, 0, 0) contain parentheses that conflict
+ * with markdown link syntax [text](url). This function finds color links using
+ * balanced parentheses detection and URL-encodes the color value.
+ *
+ * Example: [](color:rgba(0, 0, 0)) -> [](color:rgba%280%2C%200%2C%200%29)
+ */
+const encodeColorLinksForMarkdown = (markdown: string): string => {
+  const colorLinkPattern = /\[([^\]]*)\]\(color:/g;
+  let result = '';
+  let lastIndex = 0;
+  let match: RegExpExecArray | null = colorLinkPattern.exec(markdown);
+
+  while (match !== null) {
+    const linkTextContent = match[1];
+    const colorStartIndex = match.index + match[0].length;
+
+    // Find the end of the color value using balanced parentheses
+    let depth = 1; // We're inside the outer ( of [](
+    let colorEndIndex = -1;
+
+    for (let i = colorStartIndex; i < markdown.length; i++) {
+      const char = markdown[i];
+      if (char === '(') depth++;
+      if (char === ')') {
+        depth--;
+        if (depth === 0) {
+          colorEndIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (colorEndIndex === -1) {
+      // Unclosed link (probably still streaming), skip encoding this one
+      match = colorLinkPattern.exec(markdown);
+      continue;
+    }
+
+    // Extract and encode the color value
+    const colorValue = markdown.slice(colorStartIndex, colorEndIndex);
+    const encodedColorValue = encodeURIComponent(colorValue);
+
+    // Build the replacement: everything up to match, then encoded link
+    result += markdown.slice(lastIndex, match.index);
+    result += `[${linkTextContent}](color:${encodedColorValue})`;
+    lastIndex = colorEndIndex + 1;
+
+    // Reset regex lastIndex to continue after this link and get next match
+    colorLinkPattern.lastIndex = colorEndIndex + 1;
+    match = colorLinkPattern.exec(markdown);
+  }
+
+  // Append any remaining content
+  result += markdown.slice(lastIndex);
+  return result;
+};
+
+/**
  * Preprocesses markdown to handle incomplete attachment links during streaming.
  * Converts incomplete markdown like [](wsfile:/path without closing ) to valid markdown.
  *
@@ -142,13 +201,16 @@ const StreamdownProvider = ({
  * function efficiently returns the input unchanged.
  */
 const preprocessMarkdown = (markdown: string): string => {
+  // First, encode color links to handle parentheses in CSS color functions
+  let processed = encodeColorLinksForMarkdown(markdown);
+
   // Detect incomplete attachment links at the end of the string
   // Pattern: [any-text](prefix:... without closing )
   // Supports: wsfile:, element:, image:, file:, text-clip:, color:
   const incompleteAttachmentLinkRegex =
     /\[([^\]]*)\]\((wsfile|element|image|file|text-clip|color):([^)]*?)$/;
 
-  return markdown.replace(
+  processed = processed.replace(
     incompleteAttachmentLinkRegex,
     (_match, linkText, prefix, partialContent) => {
       // For wsfile links, add incomplete marker for special handling
@@ -161,6 +223,8 @@ const preprocessMarkdown = (markdown: string): string => {
       return `[${linkText}](${prefix}:${partialContent})`;
     },
   );
+
+  return processed;
 };
 
 export const Streamdown = ({

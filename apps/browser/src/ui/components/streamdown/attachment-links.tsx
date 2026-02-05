@@ -118,7 +118,11 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
   { prefix: 'image:', parse: (rest) => ({ type: 'image', id: rest }) },
   { prefix: 'file:', parse: (rest) => ({ type: 'file', id: rest }) },
   { prefix: 'text-clip:', parse: (rest) => ({ type: 'textClip', id: rest }) },
-  { prefix: 'color:', parse: (rest) => ({ type: 'color', color: rest }) },
+  {
+    prefix: 'color:',
+    // Decode URL-encoded color values (encoded in preprocessMarkdown to handle parens)
+    parse: (rest) => ({ type: 'color', color: decodeURIComponent(rest) }),
+  },
   {
     prefix: 'wsfile:',
     parse: (rest) => {

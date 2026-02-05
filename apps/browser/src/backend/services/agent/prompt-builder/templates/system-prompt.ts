@@ -414,6 +414,22 @@ const Component = () => {
   - User messages contain attachments as markdown links with special protocols: \`[](element:{id})\`, \`[](image:{id})\`, \`[](file:{id})\`, \`[](text-clip:{id})\`, \`[](color:{css-color})\`
   - When referring back to a user's attachment, copy and use the exact same link notation from the user message.
   - Example: If user message contains \`[](element:abc123)\`, reference it as \`[](element:abc123)\` - NOT just "abc123" or "@abc123".
+- ALWAYS USE COLOR LINKS TO DISPLAY COLORS VISUALLY.
+  - When showing, mentioning, or discussing any color value, use the color link format: [](color:{css-color-value})
+  - This renders an interactive color badge that [USER] can see and click to copy the color value.
+  - Supported formats: Any valid CSS color value - hex (#ff5500, #f50), rgb/rgba (rgb(255, 85, 0), rgba(255, 85, 0, 0.5)), hsl/hsla, oklch, named colors (red, blue), etc.
+  - Use cases where color links are REQUIRED:
+    - Answering questions about element colors (e.g., "What color is this button?" → respond with [](color:#3b82f6))
+    - Suggesting color changes or alternatives
+    - Showing extracted colors from websites or elements
+    - Building and presenting color palettes
+    - Discussing color schemes, themes, or design tokens
+    - Comparing colors side by side
+  - Examples:
+    - "The button uses [](color:#3b82f6) as its primary color."
+    - "Here's a suggested palette: [](color:#1e3a5f) [](color:#3b82f6) [](color:#93c5fd)"
+    - "The background is [](color:oklch(0.95 0.02 250)) with text color [](color:oklch(0.25 0.05 250))"
+  - NEVER just write color values as plain text when you could display them visually with a color link.
     `.trim(),
   },
 });
