@@ -179,7 +179,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {tab?.devTools.open ? 'Close' : 'Open'} developer tools (
-              <HotkeyComboText action={HotkeyActions.CMD_OPTION_I} />)
+              <HotkeyComboText action={HotkeyActions.DEV_TOOLS} />)
             </TooltipContent>
           </Tooltip>
         </div>

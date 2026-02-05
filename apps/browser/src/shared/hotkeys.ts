@@ -1,11 +1,239 @@
 export type Platform = 'mac' | 'windows' | 'linux';
 
-export interface HotkeyActionDefinition {
-  keyComboDefault: string;
-  keyComboMac: string;
-  isEventMatching: (ev: KeyboardEvent, platform: Platform) => boolean;
+/**
+ * Declarative hotkey definition using accelerator syntax.
+ * Follows industry standards (Electron, VS Code, Chrome).
+ */
+export interface HotkeyDefinition {
+  /** Cross-platform accelerator string (e.g., "Mod+T", "Mod+Shift+F") */
+  accelerator: string;
+  /** Optional Mac-specific override (e.g., "Mod+Alt+I" for DevTools) */
+  mac?: string;
+  /** Additional accelerators that trigger the same action (e.g., ["F5"] for reload) */
+  aliases?: string[];
+  /** Mac-specific aliases */
+  macAliases?: string[];
+  /** If true, captures in capture phase to override web content handlers */
   captureDominantly?: boolean;
 }
+
+/**
+ * Semantic hotkey action identifiers.
+ * Names describe the action, not the key combination.
+ */
+export enum HotkeyActions {
+  // Stagewise specific
+  TOGGLE_CONTEXT_SELECTOR = 'toggle_context_selector',
+  NEW_CHAT = 'new_chat',
+  DOWNLOADS = 'downloads',
+
+  // Tab & window navigation
+  NEW_TAB = 'new_tab',
+  RESTORE_TAB = 'restore_tab',
+  CLOSE_TAB = 'close_tab',
+  CLOSE_WINDOW = 'close_window',
+  NEXT_TAB = 'next_tab',
+  PREV_TAB = 'prev_tab',
+  FOCUS_TAB_1 = 'focus_tab_1',
+  FOCUS_TAB_2 = 'focus_tab_2',
+  FOCUS_TAB_3 = 'focus_tab_3',
+  FOCUS_TAB_4 = 'focus_tab_4',
+  FOCUS_TAB_5 = 'focus_tab_5',
+  FOCUS_TAB_6 = 'focus_tab_6',
+  FOCUS_TAB_7 = 'focus_tab_7',
+  FOCUS_TAB_8 = 'focus_tab_8',
+  FOCUS_TAB_LAST = 'focus_tab_last',
+
+  // History navigation
+  HISTORY_BACK = 'history_back',
+  HISTORY_FORWARD = 'history_forward',
+  HOME_PAGE = 'home_page',
+
+  // URL bar
+  FOCUS_URL_BAR = 'focus_url_bar',
+
+  // Page navigation
+  RELOAD = 'reload',
+  HARD_RELOAD = 'hard_reload',
+
+  // Search
+  FIND_IN_PAGE = 'find_in_page',
+  FIND_NEXT = 'find_next',
+  FIND_PREV = 'find_prev',
+
+  // Dev tools
+  DEV_TOOLS = 'dev_tools',
+
+  // Zoom
+  ZOOM_IN = 'zoom_in',
+  ZOOM_OUT = 'zoom_out',
+  ZOOM_RESET = 'zoom_reset',
+}
+
+/**
+ * Hotkey definitions using declarative accelerator syntax.
+ * Mod = Cmd on Mac, Ctrl on Windows/Linux
+ * Alt/Option = Alt key on all platforms
+ * Ctrl = Explicit Ctrl key (for Ctrl+Tab which uses actual Ctrl on all platforms)
+ */
+export const hotkeyDefinitions: Record<HotkeyActions, HotkeyDefinition> = {
+  // Stagewise specific
+  [HotkeyActions.TOGGLE_CONTEXT_SELECTOR]: {
+    accelerator: 'Mod+I',
+    captureDominantly: true,
+  },
+  [HotkeyActions.NEW_CHAT]: {
+    accelerator: 'Mod+N',
+    captureDominantly: false, // Allows 'Down' navigation in lists on Windows/Linux
+  },
+  [HotkeyActions.DOWNLOADS]: {
+    accelerator: 'Mod+J',
+    captureDominantly: true,
+  },
+
+  // Tab & window navigation
+  [HotkeyActions.NEW_TAB]: {
+    accelerator: 'Mod+T',
+    captureDominantly: true,
+  },
+  [HotkeyActions.RESTORE_TAB]: {
+    accelerator: 'Mod+Shift+T',
+    captureDominantly: true,
+  },
+  [HotkeyActions.CLOSE_TAB]: {
+    accelerator: 'Mod+W',
+    captureDominantly: true,
+  },
+  [HotkeyActions.CLOSE_WINDOW]: {
+    accelerator: 'Mod+Shift+W',
+    captureDominantly: true,
+  },
+  [HotkeyActions.NEXT_TAB]: {
+    // Ctrl+Tab works on all platforms (explicit Ctrl, not Mod)
+    accelerator: 'Ctrl+Tab',
+    aliases: ['Mod+PageDown'],
+    mac: 'Mod+Alt+ArrowRight',
+    macAliases: ['Ctrl+Tab', 'Mod+PageDown'],
+    captureDominantly: true,
+  },
+  [HotkeyActions.PREV_TAB]: {
+    accelerator: 'Ctrl+Shift+Tab',
+    aliases: ['Mod+PageUp'],
+    mac: 'Mod+Alt+ArrowLeft',
+    macAliases: ['Ctrl+Shift+Tab', 'Mod+PageUp'],
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_1]: {
+    accelerator: 'Mod+1',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_2]: {
+    accelerator: 'Mod+2',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_3]: {
+    accelerator: 'Mod+3',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_4]: {
+    accelerator: 'Mod+4',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_5]: {
+    accelerator: 'Mod+5',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_6]: {
+    accelerator: 'Mod+6',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_7]: {
+    accelerator: 'Mod+7',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_8]: {
+    accelerator: 'Mod+8',
+    captureDominantly: true,
+  },
+  [HotkeyActions.FOCUS_TAB_LAST]: {
+    accelerator: 'Mod+9',
+    captureDominantly: true,
+  },
+
+  // History navigation
+  [HotkeyActions.HISTORY_BACK]: {
+    accelerator: 'Alt+ArrowLeft',
+    mac: 'Mod+ArrowLeft',
+    macAliases: ['Mod+BracketLeft'],
+    captureDominantly: false,
+  },
+  [HotkeyActions.HISTORY_FORWARD]: {
+    accelerator: 'Alt+ArrowRight',
+    mac: 'Mod+ArrowRight',
+    macAliases: ['Mod+BracketRight'],
+    captureDominantly: false,
+  },
+  [HotkeyActions.HOME_PAGE]: {
+    accelerator: 'Mod+Shift+H',
+    captureDominantly: false,
+  },
+
+  // URL bar
+  [HotkeyActions.FOCUS_URL_BAR]: {
+    accelerator: 'Mod+L',
+    aliases: ['Alt+D', 'F6'],
+    captureDominantly: true,
+  },
+
+  // Page navigation
+  [HotkeyActions.RELOAD]: {
+    accelerator: 'Mod+R',
+    aliases: ['F5'],
+    captureDominantly: false, // Allow apps to handle soft reload
+  },
+  [HotkeyActions.HARD_RELOAD]: {
+    accelerator: 'Mod+Shift+R',
+    captureDominantly: true,
+  },
+
+  // Search
+  [HotkeyActions.FIND_IN_PAGE]: {
+    accelerator: 'Mod+F',
+    aliases: ['F3'],
+    captureDominantly: false, // Allow apps to use their own find
+  },
+  [HotkeyActions.FIND_NEXT]: {
+    accelerator: 'Mod+G',
+    captureDominantly: false,
+  },
+  [HotkeyActions.FIND_PREV]: {
+    accelerator: 'Mod+Shift+G',
+    captureDominantly: false,
+  },
+
+  // Dev tools
+  [HotkeyActions.DEV_TOOLS]: {
+    accelerator: 'Ctrl+Shift+I', // Windows/Linux: Ctrl+Shift+I
+    aliases: ['F12', 'Ctrl+Shift+J'],
+    mac: 'Mod+Alt+I', // Mac: Cmd+Opt+I
+    macAliases: ['F12'],
+    captureDominantly: true,
+  },
+
+  // Zoom
+  [HotkeyActions.ZOOM_IN]: {
+    accelerator: 'Mod+Shift+Equal', // + key requires shift on US layout
+    captureDominantly: true,
+  },
+  [HotkeyActions.ZOOM_OUT]: {
+    accelerator: 'Mod+Minus',
+    captureDominantly: true,
+  },
+  [HotkeyActions.ZOOM_RESET]: {
+    accelerator: 'Mod+0',
+    captureDominantly: true,
+  },
+};
 
 /**
  * Detects the current platform based on navigator.
@@ -19,588 +247,331 @@ export function getCurrentPlatform(): Platform {
   return 'linux';
 }
 
+/** Modifier tokens that can appear in accelerator strings */
+const MODIFIER_TOKENS = new Set([
+  'MOD',
+  'CMDORCTRL',
+  'SHIFT',
+  'ALT',
+  'OPTION',
+  'CTRL',
+  'CONTROL',
+  'META',
+  'CMD',
+  'COMMAND',
+]);
+
+interface ParsedAccelerator {
+  needsMod: boolean;
+  needsShift: boolean;
+  needsAlt: boolean;
+  needsCtrl: boolean; // Explicit Ctrl (not Mod)
+  needsMeta: boolean; // Explicit Meta (not Mod)
+  keyToken: string;
+}
+
 /**
- * Helper to check if the primary modifier key is pressed for the given platform.
- * On Mac, this is the Command key (metaKey). On Windows/Linux, this is Ctrl.
+ * Parses an accelerator string into its component parts.
+ * @param accelerator - e.g., "Mod+Shift+T", "Ctrl+Tab", "F12"
  */
-export function isPrimaryModifierPressed(
-  ev: KeyboardEvent,
-  platform: Platform,
-): boolean {
-  return platform === 'mac'
-    ? ev.metaKey && !ev.ctrlKey
-    : ev.ctrlKey && !ev.metaKey;
+function parseAccelerator(accelerator: string): ParsedAccelerator {
+  const tokens = accelerator.toUpperCase().split('+');
+
+  const needsMod = tokens.includes('MOD') || tokens.includes('CMDORCTRL');
+  const needsShift = tokens.includes('SHIFT');
+  const needsAlt = tokens.includes('ALT') || tokens.includes('OPTION');
+  const needsCtrl = tokens.includes('CTRL') || tokens.includes('CONTROL');
+  const needsMeta =
+    tokens.includes('META') ||
+    tokens.includes('CMD') ||
+    tokens.includes('COMMAND');
+
+  // Find the key token (the one that's not a modifier)
+  const keyToken = tokens.find((t) => !MODIFIER_TOKENS.has(t)) || '';
+
+  return { needsMod, needsShift, needsAlt, needsCtrl, needsMeta, keyToken };
 }
 
-export enum HotkeyActions {
-  // stagewise specific
-  CTRL_I = 'ctrl_i',
-  CTRL_N = 'ctrl_n', // new agent chat
+/**
+ * Matches the key part of an accelerator against a KeyboardEvent.
+ * Handles letters, digits, function keys, arrows, and special keys.
+ */
+function matchKeyToken(ev: KeyboardEvent, token: string): boolean {
+  // Handle single letters (A-Z)
+  if (token.length === 1 && /^[A-Z]$/.test(token))
+    return ev.code === `Key${token}`;
 
-  // tab & window navigation
-  CTRL_T = 'ctrl_t', // new tab
-  CTRL_SHIFT_T = 'ctrl_shift_t', // re-open last closed tab
-  CTRL_W = 'ctrl_w', // close active tab
-  CTRL_SHIFT_W = 'ctrl_shift_w', // close window
-  // switch to next tab
-  CTRL_TAB = 'ctrl_tab',
-  CTRL_PAGE_DOWN = 'ctrl_page_down',
-  CMD_OPTION_ARROW_RIGHT = 'cmd_option_arrow_right', // switch to next tab (macOS)
-  // switch to previous tab
-  CTRL_PAGE_UP = 'ctrl_page_up',
-  CTRL_SHIFT_TAB = 'ctrl_shift_tab',
-  CMD_OPTION_ARROW_LEFT = 'cmd_option_arrow_left', // switch to previous tab (macOS)
-  // focus tab 1 - 8
-  CTRL_1 = 'ctrl_1',
-  CTRL_2 = 'ctrl_2',
-  CTRL_3 = 'ctrl_3',
-  CTRL_4 = 'ctrl_4',
-  CTRL_5 = 'ctrl_5',
-  CTRL_6 = 'ctrl_6',
-  CTRL_7 = 'ctrl_7',
-  CTRL_8 = 'ctrl_8',
-  CTRL_9 = 'ctrl_9', // focus last tab
-  // Back in history (macOS)
-  CMD_BRACKET_LEFT = 'cmd_bracket_left',
-  CMD_ARROW_LEFT = 'cmd_arrow_left',
-  ALT_ARROW_LEFT = 'alt_arrow_left', // Back in history (windows/ linux)
-  // Forward in history (macOS)
-  CMD_BRACKET_RIGHT = 'cmd_bracket_right',
-  CMD_ARROW_RIGHT = 'cmd_arrow_right',
-  ALT_ARROW_RIGHT = 'alt_arrow_right', // Forward in history (windows/ linux)
-  CMD_SHIFT_H = 'cmd_shift_h', // Open home page in current tab
+  // Handle single digits (0-9)
+  if (token.length === 1 && /^[0-9]$/.test(token))
+    return ev.code === `Digit${token}`;
 
-  CTRL_L = 'ctrl_l', // focus address bar
-  ALT_D = 'alt_d',
-  F6 = 'f6',
+  // Handle special keys
+  switch (token) {
+    // Arrow keys
+    case 'ARROWUP':
+      return ev.code === 'ArrowUp';
+    case 'ARROWDOWN':
+      return ev.code === 'ArrowDown';
+    case 'ARROWLEFT':
+      return ev.code === 'ArrowLeft';
+    case 'ARROWRIGHT':
+      return ev.code === 'ArrowRight';
 
-  // page navigation
-  // reload page
-  CTRL_R = 'ctrl_r',
-  F5 = 'f5',
-  CTRL_SHIFT_R = 'ctrl_shift_r', // hard reload page (ignore cache) (not yet implemented, skip)
+    // Navigation keys
+    case 'PAGEUP':
+      return ev.code === 'PageUp';
+    case 'PAGEDOWN':
+      return ev.code === 'PageDown';
+    case 'HOME':
+      return ev.code === 'Home';
+    case 'END':
+      return ev.code === 'End';
 
-  // search, etc. (all of these are not yet implemented, skip)
-  // focus search bar
-  CTRL_F = 'ctrl_f',
-  F3 = 'f3',
-  CTRL_G = 'ctrl_g', // next match
-  CTRL_SHIFT_G = 'ctrl_shift_g', // previous match
+    // Editing keys
+    case 'ENTER':
+    case 'RETURN':
+      return ev.code === 'Enter';
+    case 'TAB':
+      return ev.code === 'Tab';
+    case 'SPACE':
+      return ev.code === 'Space';
+    case 'BACKSPACE':
+      return ev.code === 'Backspace';
+    case 'DELETE':
+      return ev.code === 'Delete';
+    case 'ESCAPE':
+    case 'ESC':
+      return ev.code === 'Escape';
 
-  // dev tools
-  F12 = 'f12',
-  CTRL_SHIFT_J = 'ctrl_shift_j', // open dev tools (macOS)
-  CMD_OPTION_I = 'cmd_option_i', // open dev tools (macOS)
-
-  // zoom
-  CTRL_PLUS = 'ctrl_plus', // zoom in
-  CTRL_MINUS = 'ctrl_minus', // zoom out
-  CTRL_0 = 'ctrl_0', // reset zoom
-
-  // downloads
-  CTRL_J = 'ctrl_j',
-}
-
-export const hotkeyActionDefinitions: Record<
-  HotkeyActions,
-  HotkeyActionDefinition
-> = {
-  // stagewise specific
-  [HotkeyActions.CTRL_I]: {
-    keyComboDefault: 'Ctrl+I',
-    keyComboMac: '⌘I',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyI' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_N]: {
-    keyComboDefault: 'Ctrl+N',
-    keyComboMac: '⌘N',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyN' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: false, // FALSE: Allows 'Down' navigation in lists on Windows/Linux
-  },
-  [HotkeyActions.CTRL_J]: {
-    keyComboDefault: 'Ctrl+J',
-    keyComboMac: '⌘J',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyJ' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true, // Browser Downloads Page -> Reserved
-  },
-
-  // tab & window navigation
-  [HotkeyActions.CTRL_T]: {
-    keyComboDefault: 'Ctrl+T',
-    keyComboMac: '⌘T',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyT' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_SHIFT_T]: {
-    keyComboDefault: 'Ctrl+Shift+T',
-    keyComboMac: '⇧⌘T',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyT' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_W]: {
-    keyComboDefault: 'Ctrl+W',
-    keyComboMac: '⌘W',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyW' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_SHIFT_W]: {
-    keyComboDefault: 'Ctrl+Shift+W',
-    keyComboMac: '⇧⌘W',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyW' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_TAB]: {
-    keyComboDefault: 'Ctrl+Tab',
-    keyComboMac: '⌘Tab',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'Tab' && ev.ctrlKey && !ev.shiftKey && !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_PAGE_DOWN]: {
-    keyComboDefault: 'Ctrl+PageDown',
-    keyComboMac: '⌘PageDown',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'PageDown' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CMD_OPTION_ARROW_RIGHT]: {
-    keyComboDefault: 'Ctrl+PageDown',
-    keyComboMac: '⌥⌘→',
-    isEventMatching: (ev, platform) =>
-      platform === 'mac' &&
-      ev.code === 'ArrowRight' &&
-      ev.metaKey &&
-      ev.altKey &&
-      !ev.shiftKey &&
-      !ev.ctrlKey,
-    captureDominantly: true, // Mac tab switch is always reserved
-  },
-  [HotkeyActions.CTRL_PAGE_UP]: {
-    keyComboDefault: 'Ctrl+PageUp',
-    keyComboMac: '⌘PageUp',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'PageUp' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true, // Tab switching is always reserved
-  },
-  [HotkeyActions.CTRL_SHIFT_TAB]: {
-    keyComboDefault: 'Ctrl+Shift+Tab',
-    keyComboMac: '⇧⌘Tab',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'Tab' && ev.ctrlKey && ev.shiftKey && !ev.altKey,
-    captureDominantly: true, // Tab switching is always reserved
-  },
-  [HotkeyActions.CMD_OPTION_ARROW_LEFT]: {
-    keyComboDefault: 'Ctrl+PageUp',
-    keyComboMac: '⌥⌘←',
-    isEventMatching: (ev, platform) =>
-      platform === 'mac' &&
-      ev.code === 'ArrowLeft' &&
-      ev.metaKey &&
-      ev.altKey &&
-      !ev.shiftKey &&
-      !ev.ctrlKey,
-    captureDominantly: true, // Mac tab switch is always reserved
-  },
-  [HotkeyActions.CTRL_1]: {
-    keyComboDefault: 'Ctrl+1',
-    keyComboMac: '⌘1',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit1' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true, // Numbered tab switching is reserved
-  },
-  [HotkeyActions.CTRL_2]: {
-    keyComboDefault: 'Ctrl+2',
-    keyComboMac: '⌘2',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit2' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true, // Numbered tab switching is reserved
-  },
-  [HotkeyActions.CTRL_3]: {
-    keyComboDefault: 'Ctrl+3',
-    keyComboMac: '⌘3',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit3' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_4]: {
-    keyComboDefault: 'Ctrl+4',
-    keyComboMac: '⌘4',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit4' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_5]: {
-    keyComboDefault: 'Ctrl+5',
-    keyComboMac: '⌘5',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit5' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_6]: {
-    keyComboDefault: 'Ctrl+6',
-    keyComboMac: '⌘6',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit6' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_7]: {
-    keyComboDefault: 'Ctrl+7',
-    keyComboMac: '⌘7',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit7' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_8]: {
-    keyComboDefault: 'Ctrl+8',
-    keyComboMac: '⌘8',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit8' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_9]: {
-    keyComboDefault: 'Ctrl+9',
-    keyComboMac: '⌘9',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit9' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CMD_BRACKET_LEFT]: {
-    keyComboDefault: 'Alt+←',
-    keyComboMac: '⌘[',
-    isEventMatching: (ev, platform) =>
-      platform === 'mac'
-        ? ev.code === 'BracketLeft' &&
-          ev.metaKey &&
-          !ev.shiftKey &&
-          !ev.altKey &&
-          !ev.ctrlKey
-        : ev.code === 'ArrowLeft' &&
-          ev.altKey &&
-          !ev.shiftKey &&
-          !ev.metaKey &&
-          !ev.ctrlKey,
-    captureDominantly: false,
-  },
-  [HotkeyActions.CMD_ARROW_LEFT]: {
-    keyComboDefault: 'Alt+←',
-    keyComboMac: '⌘←',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'ArrowLeft' &&
-      (platform === 'mac'
-        ? ev.metaKey && !ev.shiftKey && !ev.altKey && !ev.ctrlKey
-        : ev.altKey && !ev.shiftKey && !ev.metaKey && !ev.ctrlKey),
-    captureDominantly: false,
-  },
-  [HotkeyActions.ALT_ARROW_LEFT]: {
-    keyComboDefault: 'Alt+←',
-    keyComboMac: '⌥←',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'ArrowLeft' &&
-      ev.altKey &&
-      !ev.shiftKey &&
-      !ev.metaKey &&
-      !ev.ctrlKey,
-    captureDominantly: false,
-  },
-  [HotkeyActions.CMD_BRACKET_RIGHT]: {
-    keyComboDefault: 'Alt+→',
-    keyComboMac: '⌘]',
-    isEventMatching: (ev, platform) =>
-      platform === 'mac'
-        ? ev.code === 'BracketRight' &&
-          ev.metaKey &&
-          !ev.shiftKey &&
-          !ev.altKey &&
-          !ev.ctrlKey
-        : ev.code === 'ArrowRight' &&
-          ev.altKey &&
-          !ev.shiftKey &&
-          !ev.metaKey &&
-          !ev.ctrlKey,
-    captureDominantly: false,
-  },
-  [HotkeyActions.CMD_ARROW_RIGHT]: {
-    keyComboDefault: 'Alt+→',
-    keyComboMac: '⌘→',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'ArrowRight' &&
-      (platform === 'mac'
-        ? ev.metaKey && !ev.shiftKey && !ev.altKey && !ev.ctrlKey
-        : ev.altKey && !ev.shiftKey && !ev.metaKey && !ev.ctrlKey),
-    captureDominantly: false,
-  },
-  [HotkeyActions.ALT_ARROW_RIGHT]: {
-    keyComboDefault: 'Alt+→',
-    keyComboMac: '⌥→',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'ArrowRight' &&
-      ev.altKey &&
-      !ev.shiftKey &&
-      !ev.metaKey &&
-      !ev.ctrlKey,
-    captureDominantly: false,
-  },
-  [HotkeyActions.CMD_SHIFT_H]: {
-    keyComboDefault: 'Ctrl+Shift+H',
-    keyComboMac: '⇧⌘H',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyH' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: false,
-  },
-  [HotkeyActions.CTRL_L]: {
-    keyComboDefault: 'Ctrl+L',
-    keyComboMac: '⌘L',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyL' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.ALT_D]: {
-    keyComboDefault: 'Alt+D',
-    keyComboMac: '⌥D',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'KeyD' &&
-      ev.altKey &&
-      !ev.shiftKey &&
-      !ev.metaKey &&
-      !ev.ctrlKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.F6]: {
-    keyComboDefault: 'F6',
-    keyComboMac: 'F6',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'F6' &&
-      !ev.shiftKey &&
-      !ev.altKey &&
-      !ev.metaKey &&
-      !ev.ctrlKey,
-    captureDominantly: true,
-  },
-
-  // page navigation
-  [HotkeyActions.CTRL_R]: {
-    keyComboDefault: 'Ctrl+R',
-    keyComboMac: '⌘R',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyR' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: false, // Allow apps to handle soft reload
-  },
-  [HotkeyActions.F5]: {
-    keyComboDefault: 'F5',
-    keyComboMac: 'F5',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'F5' &&
-      !ev.shiftKey &&
-      !ev.altKey &&
-      !ev.metaKey &&
-      !ev.ctrlKey,
-    captureDominantly: false, // Allow apps to handle soft reload
-  },
-  [HotkeyActions.CTRL_SHIFT_R]: {
-    keyComboDefault: 'Ctrl+Shift+R',
-    keyComboMac: '⇧⌘R',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyR' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-
-  // search, etc. (Not Reserved - Apps like Google Docs/VSCode need this)
-  [HotkeyActions.CTRL_F]: {
-    keyComboDefault: 'Ctrl+F',
-    keyComboMac: '⌘F',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyF' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: false, // Allow apps to use their own find
-  },
-  [HotkeyActions.F3]: {
-    keyComboDefault: 'F3',
-    keyComboMac: 'F3',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'F3' &&
-      !ev.shiftKey &&
-      !ev.altKey &&
-      !ev.metaKey &&
-      !ev.ctrlKey,
-    captureDominantly: false, // Allow apps to use their own find
-  },
-  [HotkeyActions.CTRL_G]: {
-    keyComboDefault: 'Ctrl+G',
-    keyComboMac: '⌘G',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyG' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: false, // Allow apps to use their own find next
-  },
-  [HotkeyActions.CTRL_SHIFT_G]: {
-    keyComboDefault: 'Ctrl+Shift+G',
-    keyComboMac: '⇧⌘G',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyG' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: false, // Allow apps to use their own find previous
-  },
-
-  // dev tools
-  [HotkeyActions.F12]: {
-    keyComboDefault: 'F12',
-    keyComboMac: 'F12',
-    isEventMatching: (ev, _platform) =>
-      ev.code === 'F12' &&
-      !ev.shiftKey &&
-      !ev.altKey &&
-      !ev.metaKey &&
-      !ev.ctrlKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_SHIFT_J]: {
-    keyComboDefault: 'Ctrl+Shift+J',
-    keyComboMac: '⇧⌘J',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'KeyJ' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CMD_OPTION_I]: {
-    keyComboDefault: 'Ctrl+Shift+I',
-    keyComboMac: '⌥⌘I',
-    isEventMatching: (ev, platform) =>
-      platform === 'mac'
-        ? ev.code === 'KeyI' &&
-          ev.metaKey &&
-          ev.altKey &&
-          !ev.shiftKey &&
-          !ev.ctrlKey
-        : ev.code === 'KeyI' &&
-          ev.ctrlKey &&
-          ev.shiftKey &&
-          !ev.altKey &&
-          !ev.metaKey,
-    captureDominantly: true,
-  },
-
-  // zoom
-  [HotkeyActions.CTRL_PLUS]: {
-    keyComboDefault: 'Ctrl++',
-    keyComboMac: '⌘+',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Equal' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_MINUS]: {
-    keyComboDefault: 'Ctrl+-',
-    keyComboMac: '⌘-',
-    isEventMatching: (ev, platform) =>
-      (ev.code === 'Minus' ||
+    // Punctuation/symbols
+    case 'EQUAL':
+    case 'PLUS':
+      // + key is Equal with Shift on US layout
+      return ev.code === 'Equal' || ev.code === 'NumpadAdd';
+    case 'MINUS':
+      return (
+        ev.code === 'Minus' ||
         ev.code === 'NumpadSubtract' ||
         ev.key === '-' ||
-        ev.key === '_') &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
-  [HotkeyActions.CTRL_0]: {
-    keyComboDefault: 'Ctrl+0',
-    keyComboMac: '⌘0',
-    isEventMatching: (ev, platform) =>
-      ev.code === 'Digit0' &&
-      isPrimaryModifierPressed(ev, platform) &&
-      !ev.shiftKey &&
-      !ev.altKey,
-    captureDominantly: true,
-  },
+        ev.key === '_'
+      );
+    case 'BRACKETLEFT':
+      return ev.code === 'BracketLeft';
+    case 'BRACKETRIGHT':
+      return ev.code === 'BracketRight';
+    case 'SEMICOLON':
+      return ev.code === 'Semicolon';
+    case 'QUOTE':
+      return ev.code === 'Quote';
+    case 'BACKQUOTE':
+      return ev.code === 'Backquote';
+    case 'BACKSLASH':
+      return ev.code === 'Backslash';
+    case 'COMMA':
+      return ev.code === 'Comma';
+    case 'PERIOD':
+      return ev.code === 'Period';
+    case 'SLASH':
+      return ev.code === 'Slash';
+
+    // Function keys (F1-F24)
+    default:
+      if (/^F\d+$/.test(token)) {
+        return ev.code === token;
+      }
+      return false;
+  }
+}
+
+/**
+ * Checks if a keyboard event matches a single accelerator string.
+ * Performs STRICT matching - all modifiers must match exactly.
+ */
+function matchAccelerator(
+  ev: KeyboardEvent,
+  accelerator: string,
+  platform: Platform,
+): boolean {
+  const parsed = parseAccelerator(accelerator);
+
+  // Resolve Mod to the appropriate modifier for this platform
+  // Mod = Meta (Cmd) on Mac, Ctrl on Windows/Linux
+  const requiredMeta =
+    platform === 'mac' ? parsed.needsMod || parsed.needsMeta : parsed.needsMeta;
+  const requiredCtrl =
+    platform === 'mac' ? parsed.needsCtrl : parsed.needsMod || parsed.needsCtrl;
+  const requiredAlt = parsed.needsAlt;
+  const requiredShift = parsed.needsShift;
+
+  // STRICT modifier matching - must match exactly
+  if (ev.metaKey !== requiredMeta) return false;
+  if (ev.ctrlKey !== requiredCtrl) return false;
+  if (ev.altKey !== requiredAlt) return false;
+  if (ev.shiftKey !== requiredShift) return false;
+
+  // Match the key
+  if (!parsed.keyToken) return false;
+  return matchKeyToken(ev, parsed.keyToken);
+}
+
+/**
+ * Main event matcher - checks if an event matches a hotkey definition.
+ * Handles platform-specific accelerators and aliases.
+ */
+export function isEventMatch(
+  ev: KeyboardEvent,
+  def: HotkeyDefinition,
+  platform: Platform,
+): boolean {
+  // Determine which accelerator(s) to check based on platform
+  const isMac = platform === 'mac';
+
+  // Primary accelerator (use mac override if on Mac and available)
+  const primaryAccelerator = isMac && def.mac ? def.mac : def.accelerator;
+
+  // Check primary accelerator
+  if (matchAccelerator(ev, primaryAccelerator, platform)) {
+    return true;
+  }
+
+  // Check aliases
+  const aliases = isMac ? def.macAliases || def.aliases : def.aliases;
+  if (aliases) {
+    for (const alias of aliases) {
+      if (matchAccelerator(ev, alias, platform)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/** Key display names for special keys */
+const KEY_DISPLAY_NAMES: Record<string, { mac: string; default: string }> = {
+  ARROWUP: { mac: '↑', default: '↑' },
+  ARROWDOWN: { mac: '↓', default: '↓' },
+  ARROWLEFT: { mac: '←', default: '←' },
+  ARROWRIGHT: { mac: '→', default: '→' },
+  PAGEUP: { mac: 'PageUp', default: 'PageUp' },
+  PAGEDOWN: { mac: 'PageDown', default: 'PageDown' },
+  ENTER: { mac: '↵', default: 'Enter' },
+  RETURN: { mac: '↵', default: 'Enter' },
+  TAB: { mac: '⇥', default: 'Tab' },
+  SPACE: { mac: 'Space', default: 'Space' },
+  BACKSPACE: { mac: '⌫', default: 'Backspace' },
+  DELETE: { mac: '⌦', default: 'Delete' },
+  ESCAPE: { mac: '⎋', default: 'Esc' },
+  ESC: { mac: '⎋', default: 'Esc' },
+  EQUAL: { mac: '+', default: '+' },
+  PLUS: { mac: '+', default: '+' },
+  MINUS: { mac: '-', default: '-' },
+  BRACKETLEFT: { mac: '[', default: '[' },
+  BRACKETRIGHT: { mac: ']', default: ']' },
 };
 
+/**
+ * Generates a platform-specific display string from an accelerator.
+ * Mac: Uses symbols (⌘⇧T)
+ * Windows/Linux: Uses text (Ctrl+Shift+T)
+ */
+export function getDisplayString(
+  def: HotkeyDefinition,
+  platform: Platform,
+): string {
+  const isMac = platform === 'mac';
+
+  // Use mac override if on Mac and available
+  const accelerator = isMac && def.mac ? def.mac : def.accelerator;
+  const tokens = accelerator.toUpperCase().split('+');
+
+  if (isMac) {
+    // Mac: Use symbols, no separators
+    const parts: string[] = [];
+
+    // Add modifiers in standard Mac order: ⌃⌥⇧⌘
+    if (tokens.includes('CTRL') || tokens.includes('CONTROL')) parts.push('⌃');
+
+    if (tokens.includes('ALT') || tokens.includes('OPTION')) parts.push('⌥');
+
+    if (tokens.includes('SHIFT')) parts.push('⇧');
+
+    if (
+      tokens.includes('MOD') ||
+      tokens.includes('CMDORCTRL') ||
+      tokens.includes('CMD') ||
+      tokens.includes('COMMAND') ||
+      tokens.includes('META')
+    )
+      parts.push('⌘');
+
+    // Add key
+    const keyToken = tokens.find((t) => !MODIFIER_TOKENS.has(t));
+    if (keyToken) {
+      const displayName = KEY_DISPLAY_NAMES[keyToken];
+      if (displayName) parts.push(displayName.mac);
+      else if (keyToken.length === 1) parts.push(keyToken);
+      else parts.push(keyToken);
+    }
+
+    return parts.join('');
+  }
+
+  // Windows/Linux: Use text with + separators
+  const parts: string[] = [];
+
+  // Add modifiers
+  if (
+    tokens.includes('MOD') ||
+    tokens.includes('CMDORCTRL') ||
+    tokens.includes('CTRL') ||
+    tokens.includes('CONTROL')
+  )
+    parts.push('Ctrl');
+
+  if (tokens.includes('ALT') || tokens.includes('OPTION')) parts.push('Alt');
+
+  if (tokens.includes('SHIFT')) parts.push('Shift');
+
+  if (
+    tokens.includes('META') ||
+    tokens.includes('CMD') ||
+    tokens.includes('COMMAND')
+  )
+    parts.push('Win');
+
+  // Add key
+  const keyToken = tokens.find((t) => !MODIFIER_TOKENS.has(t));
+  if (keyToken) {
+    const displayName = KEY_DISPLAY_NAMES[keyToken];
+    if (displayName) parts.push(displayName.default);
+    else if (keyToken.length === 1) parts.push(keyToken);
+    // Capitalize first letter for function keys, etc.
+    else parts.push(keyToken.charAt(0) + keyToken.slice(1).toLowerCase());
+  }
+
+  return parts.join('+');
+}
+
+/**
+ * Finds the hotkey definition that matches a keyboard event.
+ * @deprecated Use isEventMatch() directly for better type safety
+ */
 export function getHotkeyDefinitionForEvent(
   ev: KeyboardEvent,
   platform: Platform = getCurrentPlatform(),
-): HotkeyActionDefinition | undefined {
-  return Object.values(hotkeyActionDefinitions).find((definition) =>
-    definition.isEventMatching(ev, platform),
-  );
+): (HotkeyDefinition & { action: HotkeyActions }) | undefined {
+  for (const [action, def] of Object.entries(hotkeyDefinitions))
+    if (isEventMatch(ev, def, platform))
+      return { ...def, action: action as HotkeyActions };
+
+  return undefined;
 }
+
+// Legacy type alias for backward compatibility
+export type HotkeyActionDefinition = HotkeyDefinition & {
+  action: HotkeyActions;
+};
+
+// Legacy export for backward compatibility
+export const hotkeyActionDefinitions = hotkeyDefinitions;

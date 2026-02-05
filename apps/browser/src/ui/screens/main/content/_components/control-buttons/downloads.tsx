@@ -315,7 +315,7 @@ export function DownloadsControlButton({ isActive }: { isActive: boolean }) {
     void markSeen();
   }, [markSeen]);
 
-  useHotKeyListener(handleShowDownloads, HotkeyActions.CTRL_J);
+  useHotKeyListener(handleShowDownloads, HotkeyActions.DOWNLOADS);
 
   // Memoize unseen finished count calculation
   const unseenFinishedCount = useMemo(() => {

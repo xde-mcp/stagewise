@@ -130,7 +130,7 @@ export function ZoomBar({ tabId }: ZoomBarProps) {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Reset zoom <HotkeyComboText action={HotkeyActions.CTRL_0} />
+                Reset zoom <HotkeyComboText action={HotkeyActions.ZOOM_RESET} />
               </TooltipContent>
             </Tooltip>
             <Button variant="ghost" size="icon-xs" onClick={zoomIn}>

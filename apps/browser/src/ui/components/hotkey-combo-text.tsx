@@ -1,10 +1,13 @@
-import { hotkeyActionDefinitions, type HotkeyActions } from '@shared/hotkeys';
-import useBrowserInfo from '../hooks/use-user-agent';
+import {
+  hotkeyDefinitions,
+  getDisplayString,
+  getCurrentPlatform,
+  type HotkeyActions,
+} from '@shared/hotkeys';
 
 export function HotkeyComboText({ action }: { action: HotkeyActions }) {
-  const userAgent = useBrowserInfo();
+  const platform = getCurrentPlatform();
+  const definition = hotkeyDefinitions[action];
 
-  return userAgent.os.name?.toLowerCase().includes('mac')
-    ? hotkeyActionDefinitions[action].keyComboMac.replace('+', '')
-    : hotkeyActionDefinitions[action].keyComboDefault.replace('+', '');
+  return getDisplayString(definition, platform);
 }

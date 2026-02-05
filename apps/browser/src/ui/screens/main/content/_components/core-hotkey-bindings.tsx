@@ -59,7 +59,7 @@ export function CoreHotkeyBindings({
       await switchTab(tabId);
       void togglePanelKeyboardFocus(focus);
     },
-    [togglePanelKeyboardFocus, switchTab],
+    [togglePanelKeyboardFocus, switchTab, tabUiState],
   );
 
   // TAB NAVIGATION
@@ -68,51 +68,47 @@ export function CoreHotkeyBindings({
   useHotKeyListener(() => {
     togglePanelKeyboardFocus('stagewise-ui');
     onCreateTab();
-  }, HotkeyActions.CTRL_T);
+  }, HotkeyActions.NEW_TAB);
 
   // Close tab
   useHotKeyListener(() => {
     if (!activeTabId) return;
     closeTab(activeTabId);
     removeTabUiState(activeTabId);
-  }, HotkeyActions.CTRL_W);
+  }, HotkeyActions.CLOSE_TAB);
 
   // Close all tabs except active
   useHotKeyListener(() => {
     onCleanAllTabs();
-  }, HotkeyActions.CTRL_SHIFT_W);
+  }, HotkeyActions.CLOSE_WINDOW);
 
-  // Switch to next tab
+  // Switch to next tab (aliases handled in definition: Ctrl+Tab, Mod+PageDown, Mod+Alt+Arrow on Mac)
   const handleNextTab = useCallback(async () => {
     if (!tabNeighborsToActiveTab) return;
     await handleSwitchTab(tabNeighborsToActiveTab.next);
   }, [tabNeighborsToActiveTab, handleSwitchTab]);
 
-  useHotKeyListener(handleNextTab, HotkeyActions.CTRL_TAB);
-  useHotKeyListener(handleNextTab, HotkeyActions.CMD_OPTION_ARROW_RIGHT);
-  useHotKeyListener(handleNextTab, HotkeyActions.CTRL_PAGE_DOWN);
+  useHotKeyListener(handleNextTab, HotkeyActions.NEXT_TAB);
 
-  // Switch to previous tab
+  // Switch to previous tab (aliases handled in definition)
   const handlePreviousTab = useCallback(() => {
     if (!tabNeighborsToActiveTab) return;
     handleSwitchTab(tabNeighborsToActiveTab.previous);
   }, [tabNeighborsToActiveTab, handleSwitchTab]);
 
-  useHotKeyListener(handlePreviousTab, HotkeyActions.CTRL_SHIFT_TAB);
-  useHotKeyListener(handlePreviousTab, HotkeyActions.CMD_OPTION_ARROW_LEFT);
-  useHotKeyListener(handlePreviousTab, HotkeyActions.CTRL_PAGE_UP);
+  useHotKeyListener(handlePreviousTab, HotkeyActions.PREV_TAB);
 
-  // Focus specific tabs (CTRL_1 through CTRL_9)
+  // Focus specific tabs (Mod+1 through Mod+9)
   const createTabIndexHandler = useCallback(
     (index: number) => {
       return () => {
         if (index === 9) {
-          // CTRL_9 focuses last tab
+          // Mod+9 focuses last tab
           if (tabCount === 0) return;
           const lastTabId = tabIds[tabCount - 1];
           handleSwitchTab(lastTabId);
         } else {
-          // CTRL_1-8 focus tabs by index (0-based)
+          // Mod+1-8 focus tabs by index (0-based)
           if (index >= tabCount) return;
           handleSwitchTab(tabIds[index]);
         }
@@ -121,49 +117,46 @@ export function CoreHotkeyBindings({
     [tabIds, tabCount, handleSwitchTab],
   );
 
-  useHotKeyListener(createTabIndexHandler(0), HotkeyActions.CTRL_1);
-  useHotKeyListener(createTabIndexHandler(1), HotkeyActions.CTRL_2);
-  useHotKeyListener(createTabIndexHandler(2), HotkeyActions.CTRL_3);
-  useHotKeyListener(createTabIndexHandler(3), HotkeyActions.CTRL_4);
-  useHotKeyListener(createTabIndexHandler(4), HotkeyActions.CTRL_5);
-  useHotKeyListener(createTabIndexHandler(5), HotkeyActions.CTRL_6);
-  useHotKeyListener(createTabIndexHandler(6), HotkeyActions.CTRL_7);
-  useHotKeyListener(createTabIndexHandler(7), HotkeyActions.CTRL_8);
-  useHotKeyListener(createTabIndexHandler(9), HotkeyActions.CTRL_9);
+  useHotKeyListener(createTabIndexHandler(0), HotkeyActions.FOCUS_TAB_1);
+  useHotKeyListener(createTabIndexHandler(1), HotkeyActions.FOCUS_TAB_2);
+  useHotKeyListener(createTabIndexHandler(2), HotkeyActions.FOCUS_TAB_3);
+  useHotKeyListener(createTabIndexHandler(3), HotkeyActions.FOCUS_TAB_4);
+  useHotKeyListener(createTabIndexHandler(4), HotkeyActions.FOCUS_TAB_5);
+  useHotKeyListener(createTabIndexHandler(5), HotkeyActions.FOCUS_TAB_6);
+  useHotKeyListener(createTabIndexHandler(6), HotkeyActions.FOCUS_TAB_7);
+  useHotKeyListener(createTabIndexHandler(7), HotkeyActions.FOCUS_TAB_8);
+  useHotKeyListener(createTabIndexHandler(9), HotkeyActions.FOCUS_TAB_LAST);
 
   // HISTORY NAVIGATION
 
-  // Back in history
+  // Back in history (aliases handled in definition: Alt+Left, Mod+Left on Mac, Mod+[ on Mac)
   const handleGoBack = useCallback(() => {
     if (!activeTabId) return;
     goBack(activeTabId);
   }, [activeTabId, goBack]);
 
-  useHotKeyListener(handleGoBack, HotkeyActions.CMD_BRACKET_LEFT);
-  useHotKeyListener(handleGoBack, HotkeyActions.CMD_ARROW_LEFT);
-  useHotKeyListener(handleGoBack, HotkeyActions.ALT_ARROW_LEFT);
+  useHotKeyListener(handleGoBack, HotkeyActions.HISTORY_BACK);
 
-  // Forward in history
+  // Forward in history (aliases handled in definition)
   const handleGoForward = useCallback(() => {
     if (!activeTabId) return;
     goForward(activeTabId);
   }, [activeTabId, goForward]);
 
-  useHotKeyListener(handleGoForward, HotkeyActions.CMD_BRACKET_RIGHT);
-  useHotKeyListener(handleGoForward, HotkeyActions.CMD_ARROW_RIGHT);
-  useHotKeyListener(handleGoForward, HotkeyActions.ALT_ARROW_RIGHT);
+  useHotKeyListener(handleGoForward, HotkeyActions.HISTORY_FORWARD);
 
   // PAGE ACTIONS
 
-  // Reload page
+  // Reload page (aliases: Mod+R, F5)
   const handleReload = useCallback(() => {
     if (!activeTabId) return;
     reload(activeTabId);
   }, [activeTabId, reload]);
 
-  useHotKeyListener(handleReload, HotkeyActions.CTRL_R);
-  useHotKeyListener(handleReload, HotkeyActions.F5);
-  useHotKeyListener(handleReload, HotkeyActions.CTRL_SHIFT_R);
+  useHotKeyListener(handleReload, HotkeyActions.RELOAD);
+
+  // Hard reload (Mod+Shift+R)
+  useHotKeyListener(handleReload, HotkeyActions.HARD_RELOAD);
 
   // Home page
   useHotKeyListener(() => {
@@ -173,45 +166,33 @@ export function CoreHotkeyBindings({
         ? newTabPagePreference.customUrl
         : HOME_PAGE_URL;
     goto(homeUrl, activeTabId);
-  }, HotkeyActions.CMD_SHIFT_H);
+  }, HotkeyActions.HOME_PAGE);
 
   // URL BAR
 
-  // Focus URL bar
+  // Focus URL bar (aliases: Mod+L, Alt+D, F6)
   useHotKeyListener(() => {
     togglePanelKeyboardFocus('stagewise-ui');
     onFocusUrlBar();
-  }, HotkeyActions.CTRL_L);
-
-  useHotKeyListener(() => {
-    togglePanelKeyboardFocus('stagewise-ui');
-    onFocusUrlBar();
-  }, HotkeyActions.ALT_D);
-
-  useHotKeyListener(() => {
-    togglePanelKeyboardFocus('stagewise-ui');
-    onFocusUrlBar();
-  }, HotkeyActions.F6);
+  }, HotkeyActions.FOCUS_URL_BAR);
 
   // SEARCH BAR
 
-  // Focus search bar
+  // Focus search bar (aliases: Mod+F, F3)
   useHotKeyListener(() => {
     togglePanelKeyboardFocus('stagewise-ui');
     onFocusSearchBar();
-  }, HotkeyActions.CTRL_F);
+  }, HotkeyActions.FIND_IN_PAGE);
 
   // DEV TOOLS
 
-  // Toggle dev tools
+  // Toggle dev tools (aliases: F12, Ctrl+Shift+I/J, Mod+Alt+I on Mac)
   const handleToggleDevTools = useCallback(() => {
     if (!activeTabId) return;
     toggleDevTools(activeTabId);
   }, [activeTabId, toggleDevTools]);
 
-  useHotKeyListener(handleToggleDevTools, HotkeyActions.F12);
-  useHotKeyListener(handleToggleDevTools, HotkeyActions.CTRL_SHIFT_J);
-  useHotKeyListener(handleToggleDevTools, HotkeyActions.CMD_OPTION_I);
+  useHotKeyListener(handleToggleDevTools, HotkeyActions.DEV_TOOLS);
 
   // ZOOM
 
@@ -222,7 +203,7 @@ export function CoreHotkeyBindings({
     setZoomPercentage(currentZoomPercentage + 10, activeTabId);
   }, [activeTabId, currentZoomPercentage, setZoomPercentage]);
 
-  useHotKeyListener(handleZoomIn, HotkeyActions.CTRL_PLUS);
+  useHotKeyListener(handleZoomIn, HotkeyActions.ZOOM_IN);
 
   // Zoom out
   const handleZoomOut = useCallback(() => {
@@ -231,7 +212,7 @@ export function CoreHotkeyBindings({
     setZoomPercentage(currentZoomPercentage - 10, activeTabId);
   }, [activeTabId, currentZoomPercentage, setZoomPercentage]);
 
-  useHotKeyListener(handleZoomOut, HotkeyActions.CTRL_MINUS);
+  useHotKeyListener(handleZoomOut, HotkeyActions.ZOOM_OUT);
 
   // Reset zoom
   const handleResetZoom = useCallback(() => {
@@ -239,7 +220,7 @@ export function CoreHotkeyBindings({
     setZoomPercentage(100, activeTabId);
   }, [activeTabId, setZoomPercentage]);
 
-  useHotKeyListener(handleResetZoom, HotkeyActions.CTRL_0);
+  useHotKeyListener(handleResetZoom, HotkeyActions.ZOOM_RESET);
 
   return null;
 }

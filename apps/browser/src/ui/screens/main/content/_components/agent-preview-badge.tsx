@@ -40,7 +40,9 @@ export function AgentPreviewBadge({ onClick }: AgentPreviewBadgeProps) {
             <span className="text-xs">Toggle chat panel</span>
             <div className="pointer-events-none flex shrink-0 flex-row items-center gap-0 opacity-40">
               <span className="font-mono text-muted-foreground text-xs">
-                <HotkeyComboText action={HotkeyActions.CTRL_I} />
+                <HotkeyComboText
+                  action={HotkeyActions.TOGGLE_CONTEXT_SELECTOR}
+                />
               </span>
             </div>
           </div>

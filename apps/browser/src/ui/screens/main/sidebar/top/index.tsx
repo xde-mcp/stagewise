@@ -207,7 +207,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {
     if (showNewChatButton) void createAgentAndFocus();
-  }, HotkeyActions.CTRL_N);
+  }, HotkeyActions.NEW_CHAT);
 
   const handleAgentSelect = useCallback(
     (value: string | null) => {
@@ -330,7 +330,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
               <TooltipContent side="bottom">
                 <span>
                   Create new agent (
-                  <HotkeyComboText action={HotkeyActions.CTRL_N} />)
+                  <HotkeyComboText action={HotkeyActions.NEW_CHAT} />)
                 </span>
               </TooltipContent>
             </Tooltip>

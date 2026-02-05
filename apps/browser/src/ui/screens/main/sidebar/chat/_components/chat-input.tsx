@@ -118,7 +118,7 @@ export const ChatInput = ({
   ref,
 }: ChatInputProps) => {
   const focusChatHotkeyText = HotkeyComboText({
-    action: HotkeyActions.CTRL_I,
+    action: HotkeyActions.TOGGLE_CONTEXT_SELECTOR,
   });
 
   const shownPlaceholder = useRef('');
@@ -483,7 +483,10 @@ export function ChatInputActions({
             ) : (
               <>
                 Add reference elements (
-                <HotkeyComboText action={HotkeyActions.CTRL_I} />)
+                <HotkeyComboText
+                  action={HotkeyActions.TOGGLE_CONTEXT_SELECTOR}
+                />
+                )
               </>
             )}
           </TooltipContent>

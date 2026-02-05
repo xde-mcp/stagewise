@@ -346,7 +346,7 @@ export function ChatPanelFooter() {
       togglePanelKeyboardFocus,
       activeTab?.url,
     ]),
-    HotkeyActions.CTRL_I,
+    HotkeyActions.TOGGLE_CONTEXT_SELECTOR,
   );
 
   useEventListener(
