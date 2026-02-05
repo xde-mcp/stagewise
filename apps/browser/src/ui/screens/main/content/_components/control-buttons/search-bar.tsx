@@ -4,24 +4,42 @@ import {
   IconChevronLeft,
   IconChevronRight,
 } from 'nucleo-micro-bold';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useImperativeHandle,
+  type Ref,
+} from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
-import { IconFindEditOutline18 } from 'nucleo-ui-outline-18';
+import { IconMagnifierOutline18 } from 'nucleo-ui-outline-18';
 import {
   Collapsible,
   CollapsibleContent,
 } from '@stagewise/stage-ui/components/collapsible';
+import { cn } from '@stagewise/stage-ui/lib/utils';
+import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
+import { HotkeyActions } from '@shared/hotkeys';
+
+export interface SearchBarRef {
+  focus: () => void;
+}
 
 interface SearchBarProps {
   tabId: string;
-  ref: React.RefObject<HTMLInputElement>;
+  ref: Ref<SearchBarRef>;
 }
 
 export function SearchBar({ tabId, ref }: SearchBarProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [searchString, setSearchString] = useState('');
-  const [isHovered, setIsHovered] = useState(false);
   const [shouldShow, setShouldShow] = useState(false);
-  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track whether the current interaction was triggered by keyboard
+  // This is used to disable animations for keyboard interactions (instant feel)
+  // while keeping animations for mouse interactions
+  const [isKeyboardInteraction, setIsKeyboardInteraction] = useState(false);
 
   const isSearchBarActive = useKartonState(
     (s) => s.browser.tabs[tabId]?.isSearchBarActive ?? false,
@@ -41,57 +59,76 @@ export function SearchBar({ tabId, ref }: SearchBarProps) {
   const deactivateSearchBar = useKartonProcedure(
     (p) => p.browser.searchBar.deactivate,
   );
+  const activateSearchBar = useKartonProcedure(
+    (p) => p.browser.searchBar.activate,
+  );
+
+  // Track if we have a pending focus request from keyboard interaction
+  const [pendingKeyboardFocus, setPendingKeyboardFocus] = useState(false);
+
+  // Expose focus method via ref (called by hotkey CMD+F)
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus: () => {
+        // Notify other components that search bar is taking focus
+        // This prevents chat input from reclaiming focus when stagewise-ui regains keyboard focus
+        window.dispatchEvent(new Event('search-bar-focus-requested'));
+
+        // WORKAROUND: TipTap/ProseMirror may capture keyboard events even after blur.
+        // Explicitly blur ALL contentEditable elements to release keyboard capture.
+        const contentEditables = document.querySelectorAll(
+          '[contenteditable="true"]',
+        );
+        contentEditables.forEach((el) => {
+          if (el instanceof HTMLElement) el.blur();
+        });
+
+        // Mark this as a keyboard interaction for instant open (no animation)
+        setIsKeyboardInteraction(true);
+
+        // If the search bar is already active and input exists, focus immediately
+        if (isSearchBarActive && inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        } else {
+          // Input doesn't exist yet - set pending focus flag
+          // The useEffect below will focus when the input becomes available
+          setPendingKeyboardFocus(true);
+          activateSearchBar();
+        }
+      },
+    }),
+    [activateSearchBar, isSearchBarActive],
+  );
+
+  // Focus the input when it becomes available after a keyboard-triggered open
+  useEffect(() => {
+    if (pendingKeyboardFocus && shouldShow && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+      setPendingKeyboardFocus(false);
+    }
+  }, [pendingKeyboardFocus, shouldShow]);
 
   const handleMouseEnter = useCallback(() => {
-    setIsHovered(true);
-    if (!shouldShow) {
-      setShouldShow(true);
-    }
-  }, [shouldShow]);
-
-  const handleMouseLeave = useCallback(() => {
-    setIsHovered(false);
+    // Mouse interaction should always use transitions
+    setIsKeyboardInteraction(false);
   }, []);
 
-  // Handle auto-show/hide logic
+  // Sync shouldShow with isSearchBarActive from backend
   useEffect(() => {
-    // Clear any existing timers
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-
-    // Show if search bar is active
     if (isSearchBarActive) {
-      if (!shouldShow) {
-        setShouldShow(true);
-      }
-      return;
+      setShouldShow(true);
+    } else {
+      setShouldShow(false);
+      // Reset keyboard interaction flag after close completes
+      // Use a small delay to allow the closing animation to use the current flag
+      setTimeout(() => {
+        setIsKeyboardInteraction(false);
+      }, 0);
     }
-
-    // If search bar is not active and mouse is not hovering, start hide timer
-    if (!isSearchBarActive && !isHovered) {
-      hideTimerRef.current = setTimeout(() => {
-        setShouldShow(false);
-      }, 150);
-    }
-
-    // Cleanup timers on unmount
-    return () => {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
-    };
-  }, [isSearchBarActive, isHovered, shouldShow]);
-
-  // Focus input when search bar becomes active
-  useEffect(() => {
-    if (isSearchBarActive && ref && typeof ref !== 'function') {
-      ref.current?.focus();
-      ref.current?.select();
-    }
-  }, [isSearchBarActive, ref]);
+  }, [isSearchBarActive]);
 
   // Clear local search string when backend search is cleared (e.g., on navigation)
   useEffect(() => {
@@ -99,6 +136,26 @@ export function SearchBar({ tabId, ref }: SearchBarProps) {
       setSearchString('');
     }
   }, [tabSearch]); // Only watch tabSearch, not searchString
+
+  // Global hotkey: Mod+G - Jump to next search result (Chrome-style)
+  const handleFindNext = useCallback(() => {
+    if (!isSearchBarActive) return;
+    if (tabSearch && tabSearch.resultsCount > 0) {
+      nextSearchResult(tabId);
+    }
+  }, [isSearchBarActive, tabSearch, tabId, nextSearchResult]);
+
+  useHotKeyListener(handleFindNext, HotkeyActions.FIND_NEXT);
+
+  // Global hotkey: Mod+Shift+G - Jump to previous search result (Chrome-style)
+  const handleFindPrev = useCallback(() => {
+    if (!isSearchBarActive) return;
+    if (tabSearch && tabSearch.resultsCount > 0) {
+      previousSearchResult(tabId);
+    }
+  }, [isSearchBarActive, tabSearch, tabId, previousSearchResult]);
+
+  useHotKeyListener(handleFindPrev, HotkeyActions.FIND_PREV);
 
   // Start or update search when user types
   useEffect(() => {
@@ -129,31 +186,43 @@ export function SearchBar({ tabId, ref }: SearchBarProps) {
   return (
     <Collapsible open={shouldShow}>
       <CollapsibleContent
-        className="h-8 w-[calc-size(auto,size)] justify-center rounded-full bg-zinc-500/5 pr-1.5 pl-2.5 text-base opacity-100 blur-none transition-all duration-150 ease-out focus-within:bg-zinc-500/10 data-ending-style:h-8! data-starting-style:h-8! data-ending-style:w-0 data-starting-style:w-0 data-ending-style:overflow-hidden data-starting-style:overflow-hidden data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:blur-sm data-starting-style:blur-sm"
+        className={cn(
+          'h-8 w-[calc-size(auto,size)] justify-center rounded-full bg-zinc-500/5 pr-1.5 pl-2.5 text-base opacity-100 blur-none focus-within:bg-zinc-500/10',
+          // Only apply transitions for mouse interactions, instant for keyboard
+          isKeyboardInteraction
+            ? 'transition-none'
+            : 'transition-all duration-150 ease-out data-ending-style:h-8! data-starting-style:h-8! data-ending-style:w-0 data-starting-style:w-0 data-ending-style:overflow-hidden data-starting-style:overflow-hidden data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:blur-sm data-starting-style:blur-sm',
+        )}
         onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
       >
         <div className="flex h-full min-w-48 basis-1/4 flex-row items-center justify-between gap-2">
-          <IconFindEditOutline18 className="size-4 text-muted-foreground opacity-50" />
+          <IconMagnifierOutline18 className="size-4 text-muted-foreground opacity-50" />
           <input
-            ref={ref}
+            ref={inputRef}
             placeholder="Search in tab..."
             type="text"
             value={searchString}
             onChange={(e) => setSearchString(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'ArrowDown') {
+              if (e.key === 'Enter') {
                 e.preventDefault();
                 if (tabSearch && tabSearch.resultsCount > 0) {
-                  nextSearchResult(tabId);
-                }
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (tabSearch && tabSearch.resultsCount > 0) {
-                  previousSearchResult(tabId);
+                  if (e.shiftKey) {
+                    // Shift+Enter: Previous result
+                    previousSearchResult(tabId);
+                  } else {
+                    // Enter: Next result
+                    nextSearchResult(tabId);
+                  }
                 }
               } else if (e.key === 'Escape') {
                 e.preventDefault();
+                e.stopPropagation(); // Prevent React event from bubbling
+                e.nativeEvent.stopImmediatePropagation(); // Prevent native event from reaching window listeners
+                // Mark as keyboard interaction for instant close (no animation)
+                // Set both states synchronously so they're batched in the same render
+                setIsKeyboardInteraction(true);
+                setShouldShow(false);
                 deactivateSearchBar();
               }
             }}
@@ -186,7 +255,10 @@ export function SearchBar({ tabId, ref }: SearchBarProps) {
           <Button
             variant="ghost"
             size="icon-xs"
-            onClick={() => deactivateSearchBar()}
+            onClick={() => {
+              setShouldShow(false);
+              deactivateSearchBar();
+            }}
           >
             <IconXmark className="size-3" />
           </Button>

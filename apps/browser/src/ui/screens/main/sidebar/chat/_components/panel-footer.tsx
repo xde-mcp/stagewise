@@ -317,6 +317,16 @@ export function ChatPanelFooter() {
   useEventListener('omnibox-focus-requested', () => {
     wasActiveBeforeAppBlurRef.current = false;
     setChatInputActive(false);
+    // Also stop context selection to prevent its ESC handler from consuming the first ESC
+    stopContextSelector();
+  });
+
+  // Clear focus restoration flag when search bar takes focus (prevents chat from reclaiming focus)
+  useEventListener('search-bar-focus-requested', () => {
+    wasActiveBeforeAppBlurRef.current = false;
+    setChatInputActive(false);
+    // Also stop context selection to prevent its ESC handler from consuming the first ESC
+    stopContextSelector();
   });
 
   useHotKeyListener(

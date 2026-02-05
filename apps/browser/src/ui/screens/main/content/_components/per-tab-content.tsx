@@ -26,7 +26,7 @@ import { IconWrenchScrewdriverFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { NavButtons } from './nav-buttons';
 import { Omnibox, type OmniboxRef } from './omnibox';
 import { ZoomBar } from './control-buttons/zoom-bar';
-import { SearchBar } from './control-buttons/search-bar';
+import { SearchBar, type SearchBarRef } from './control-buttons/search-bar';
 import { ResourceRequestsControlButton } from './control-buttons/resource-requests';
 import { DownloadsControlButton } from './control-buttons/downloads';
 import { DOMContextSelector } from '@/components/dom-context-selector/selector-canvas';
@@ -53,11 +53,8 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
       | TabState
       | undefined;
     const toggleDevTools = useKartonProcedure((p) => p.browser.devTools.toggle);
-    const activateSearchBar = useKartonProcedure(
-      (p) => p.browser.searchBar.activate,
-    );
     const omniboxRef = useRef<OmniboxRef>(null);
-    const searchInputRef = useRef<HTMLInputElement>(null);
+    const searchBarRef = useRef<SearchBarRef>(null);
 
     const devAppPreviewContainerRef = useRef<HTMLDivElement>(null);
 
@@ -125,14 +122,10 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
           omniboxRef.current?.focus();
         },
         focusSearchBar: () => {
-          activateSearchBar();
-          setTimeout(() => {
-            searchInputRef.current?.focus();
-            searchInputRef.current?.select();
-          }, 50);
+          searchBarRef.current?.focus();
         },
       }),
-      [activateSearchBar],
+      [],
     );
 
     return (
@@ -152,7 +145,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
             isActive={isActive}
           />
           <ZoomBar tabId={tabId} />
-          <SearchBar tabId={tabId} ref={searchInputRef} />
+          <SearchBar tabId={tabId} ref={searchBarRef} />
           <ResourceRequestsControlButton tabId={tabId} isActive={isActive} />
           <DownloadsControlButton isActive={isActive} />
 
