@@ -39,6 +39,23 @@ export function convertOmniboxInputToUrl(
   }
 
   if (category === 'url-like') {
+    // Use http:// for localhost and other local addresses
+    if (
+      input.startsWith('localhost:') ||
+      input.startsWith('localhost/') ||
+      input === 'localhost' ||
+      input.startsWith('127.0.0.1:') ||
+      input.startsWith('127.0.0.1/') ||
+      input === '127.0.0.1' ||
+      input.startsWith('::1:') ||
+      input.startsWith('::1/') ||
+      input === '::1' ||
+      input.startsWith('[::1]:') ||
+      input.startsWith('[::1]/') ||
+      input === '[::1]'
+    ) {
+      return `http://${input}`;
+    }
     return `https://${input}`;
   }
 
@@ -72,10 +89,15 @@ export function categorizeUrlInput(
     return 'url';
   }
 
-  // Check if it's already a valid URL with protocol
+  // Check if it's already a valid URL with a known web protocol
   try {
-    new URL(input);
-    return 'url';
+    const parsedUrl = new URL(input);
+    const knownProtocols = ['http:', 'https:', 'file:', 'stagewise:'];
+    // Only treat as valid URL if it has a known web protocol
+    if (knownProtocols.includes(parsedUrl.protocol)) {
+      return 'url';
+    }
+    // Otherwise fall through to other checks (might be localhost:port pattern)
   } catch {
     // Not a valid URL, continue checking
   }
@@ -84,6 +106,17 @@ export function categorizeUrlInput(
   if (
     !input.includes(' ') &&
     input.split('.').filter((p) => p.length > 0).length > 1
+  ) {
+    return 'url-like';
+  }
+
+  // Check for localhost and other local addresses (with optional port)
+  if (
+    !input.includes(' ') &&
+    (/^localhost(:\d+)?(\/|$)/i.test(input) ||
+      /^127\.0\.0\.1(:\d+)?(\/|$)/.test(input) ||
+      /^::1(:\d+)?(\/|$)/.test(input) ||
+      /^\[::1\](:\d+)?(\/|$)/.test(input))
   ) {
     return 'url-like';
   }
@@ -362,11 +395,20 @@ function getSimplePageNavUrl(input: string): string {
   }
 
   if (category === 'url-like') {
+    // Use http:// for localhost and other local addresses
     if (
       input.startsWith('localhost:') ||
+      input.startsWith('localhost/') ||
+      input === 'localhost' ||
       input.startsWith('127.0.0.1:') ||
+      input.startsWith('127.0.0.1/') ||
+      input === '127.0.0.1' ||
       input.startsWith('::1:') ||
-      input.startsWith('[::1]:')
+      input.startsWith('::1/') ||
+      input === '::1' ||
+      input.startsWith('[::1]:') ||
+      input.startsWith('[::1]/') ||
+      input === '[::1]'
     ) {
       return `http://${input}`;
     }

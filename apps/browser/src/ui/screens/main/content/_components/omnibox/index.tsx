@@ -14,7 +14,11 @@ import {
 } from '@base-ui/react/autocomplete';
 import { PageTransition } from '@shared/karton-contracts/pages-api/types';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { type OmniboxSuggestionItem, useOmniboxSuggestions } from './utils';
+import {
+  type OmniboxSuggestionItem,
+  useOmniboxSuggestions,
+  convertOmniboxInputToUrl,
+} from './utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { InternalPageBreadcrumbs } from './internal-page-breadcrumbs';
@@ -139,10 +143,16 @@ export const Omnibox = ({
       if (inputValue.trim() === '') {
         return;
       }
+      // Convert input to proper URL (handles localhost, search queries, etc.)
+      const url = convertOmniboxInputToUrl(
+        inputValue,
+        searchEngines,
+        defaultEngineId,
+      );
       // Navigate with TYPED transition to indicate user typed in omnibox
-      goto(inputValue, tabId, PageTransition.TYPED);
+      goto(url, tabId, PageTransition.TYPED);
     },
-    [inputValue, tabId],
+    [inputValue, tabId, searchEngines, defaultEngineId],
   );
 
   const onOpenChange = useCallback(
