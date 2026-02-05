@@ -5,6 +5,7 @@ import { App } from '@/app';
 import { getHotkeyDefinitionForEvent } from '@shared/hotkeys';
 import type { MessagePortProxy } from '@stagewise/karton/client';
 import type { KartonMessage } from '@stagewise/karton/shared';
+import { shouldChromeConsumeEvent } from './utils';
 
 declare global {
   interface Window {
@@ -393,6 +394,7 @@ window.addEventListener(
 window.addEventListener('keydown', (e) => {
   // Only tunnel up if event was not captured by a dominant listener in the capture phase
   if (e.defaultPrevented) return;
+  if (shouldChromeConsumeEvent(e)) return;
   window.tunnelKeyDown(e);
 });
 
