@@ -2,7 +2,6 @@ import type { ChatMessage, SelectedElement } from '@shared/karton-contracts/ui';
 import { convertToModelMessages, type UserModelMessage } from 'ai';
 import xml from 'xml';
 import specialTokens from '../utils/special-tokens';
-import { browserMetadataToContextSnippet } from '../utils/metadata-converter/browser-metadata';
 import {
   relevantCodebaseFilesToContextSnippet,
   selectedElementToContextSnippet,
@@ -77,12 +76,6 @@ export async function getUserMessage(
   ) {
     systemAttachmentTextPart.push(
       `<${specialTokens.userMsgAttachmentXmlTag} type="rejected-edits" value="${userMessage.metadata.rejectedEdits.join(',')}"/>`,
-    );
-  }
-
-  if (userMessage.metadata?.browserData) {
-    systemAttachmentTextPart.push(
-      browserMetadataToContextSnippet(userMessage.metadata.browserData),
     );
   }
 

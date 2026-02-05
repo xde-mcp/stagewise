@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { ModelId } from '@shared/available-models';
 import type { ExampleUserInputOutput } from '@stagewise/agent-tools';
-import type { UserMessageMetadata, BrowserData } from './metadata';
+import type { UserMessageMetadata } from './metadata';
 import type { ReactSelectedElementInfo } from '../../selected-elements/react';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import type { SelectedElement } from '../../selected-elements';
@@ -72,7 +72,7 @@ export type DownloadSummary = {
   /** Speed history for graphing (up to 100 data points covering 10 minutes) */
   speedHistory?: DownloadSpeedDataPoint[];
 };
-export type { UserMessageMetadata, BrowserData, ReactSelectedElementInfo };
+export type { UserMessageMetadata, ReactSelectedElementInfo };
 export type { SelectedElement } from '../../selected-elements';
 export type UIMessagePart = AIMessagePart<UIDataTypes, UITools>;
 
@@ -647,11 +647,6 @@ export type AuthStatus =
 
 export type KartonContract = {
   state: AppState;
-  clientProcedures: {
-    devAppPreview: {
-      getPreviewInfo: () => Promise<BrowserData>;
-    };
-  };
   serverProcedures: {
     agentChat: {
       create: (draftContent?: string) => Promise<string>;

@@ -1,4 +1,3 @@
-import { getBrowserData } from '@ui/utils';
 import { type KartonContract, defaultState } from '@shared/karton-contracts/ui';
 import {
   createKartonReactClient,
@@ -32,15 +31,7 @@ const [KartonProvider, useKartonState, useKartonProcedure, useKartonConnected] =
     transport: new ElectronClientTransport({
       messagePort: window.electron.karton.portProxy,
     }),
-    procedures: {
-      devAppPreview: {
-        getPreviewInfo: async () => {
-          const browserData = getBrowserData();
-          if (!browserData) throw new Error('Browser data not available.');
-          return browserData;
-        },
-      },
-    },
+    procedures: {},
     fallbackState: defaultState,
   });
 

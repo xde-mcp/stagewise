@@ -36,27 +36,11 @@ export const textClipAttachmentSchema = z.object({
 
 export type TextClipAttachment = z.infer<typeof textClipAttachmentSchema>;
 
-export const browserDataSchema = z.object({
-  viewport: z.object({
-    width: z.number().min(0),
-    height: z.number().min(0),
-    dpr: z.number(),
-  }),
-  currentUrl: z.string().max(1024).url(),
-  currentTitle: z.string().max(256).nullable(),
-  userAgent: z.string().max(1024),
-  locale: z.string().max(64),
-  prefersDarkMode: z.boolean(),
-});
-
-export type BrowserData = z.infer<typeof browserDataSchema>;
-
 const metadataSchema = z.object({
   createdAt: z.date(),
   selectedPreviewElements: z.array(selectedElementSchema).optional(),
   /** Text clip attachments - collapsed long text pasted by user */
   textClipAttachments: z.array(textClipAttachmentSchema).optional(),
-  browserData: browserDataSchema.optional(),
   thinkingDurations: z.array(z.number()).optional(),
   autoCompactInformation: z
     .object({

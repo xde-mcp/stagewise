@@ -1,52 +1,11 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { PostHogProvider as PostHogProviderOriginal } from 'posthog-js/react';
-import posthog, { type CaptureResult } from 'posthog-js';
+import posthog from 'posthog-js';
 import { useKartonState } from './use-karton';
 
 interface PostHogProviderProps {
   children: ReactNode;
-}
-
-/**
- * Determine if an error originated from the toolbar code (as opposed to the proxied user app).
- *
- * This is critical to ensure we only capture toolbar errors and not errors from the
- * user's application running in the iframe.
- */
-function shouldSendEvent(event: CaptureResult): boolean {
-  // Only filter exception events
-  if (event?.event !== '$exception') return true; // Allow non-exception events through
-
-  // Try to get stack trace from various possible PostHog property names
-  const stackTrace =
-    event.properties?.$exception_stack_trace_raw ||
-    event.properties?.$exception_stacktrace ||
-    event.properties?.$exception_stack ||
-    event.properties?.$exception_list?.[0]?.stacktrace ||
-    '';
-
-  // Also check the exception message for context
-  const exceptionMessage = event.properties?.$exception_message || '';
-
-  // If no stack trace available, we can't determine origin - be conservative and reject
-  if (!stackTrace && !exceptionMessage) return false;
-
-  // Convert to string for easier analysis
-  const stackTraceStr = String(stackTrace);
-  const messageStr = String(exceptionMessage);
-
-  // Check for iframe indicators (user's app)
-  const hasIframeIndicator =
-    stackTraceStr.includes('user-app-iframe') ||
-    stackTraceStr.includes('about:srcdoc') ||
-    messageStr.includes('user-app-iframe');
-
-  // If it clearly has iframe indicators, reject it
-  if (hasIframeIndicator) return false;
-
-  // Send event if no iframe indicators found
-  return true;
 }
 
 /**
@@ -80,7 +39,7 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
       posthog.init(internalData.posthog?.apiKey, {
         before_send: (event) => {
           // Filter out user app errors - only capture toolbar errors
-          if (!event || !shouldSendEvent(event)) return null; // Reject the event
+          if (!event) return null; // Reject the event
           return event;
         },
         disable_session_recording: telemetryLevel !== 'full',
@@ -91,7 +50,6 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
         capture_pageleave: true, // Enable pageleave capture
         debug: import.meta.env.NODE_ENV === 'development',
         session_recording: {
-          blockSelector: '#user-app-iframe',
           compress_events: true,
           recordCrossOriginIframes: false,
           recordHeaders: false,
