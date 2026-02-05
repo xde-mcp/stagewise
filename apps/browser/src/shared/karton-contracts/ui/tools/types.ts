@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { InferUITools } from 'ai';
+import type { InferUITools, Tool } from 'ai';
 
 /**
  * Tool Schema Definitions
@@ -208,10 +208,10 @@ export const globToolInputSchema = z.object({
 export const globToolOutputSchema = z.object({
   message: z.string(),
   result: z.object({
-    totalMatches: z.number().optional(),
+    totalMatches: z.number(),
     relativePaths: z.array(z.string()),
     truncated: z.boolean(),
-    itemsRemoved: z.number().optional(),
+    itemsRemoved: z.number(),
   }),
 });
 
@@ -534,6 +534,15 @@ export const allToolSchemas = {
  * Use this type for type-safe tool rendering in the UI.
  */
 export type UITools = InferUITools<typeof allToolSchemas>;
+
+export type AllTools = typeof allToolSchemas;
+
+export type StagewiseToolSet = {
+  [K in keyof UITools]: Tool<
+    AllTools[K]['inputSchema'],
+    AllTools[K]['outputSchema']
+  >;
+};
 
 /**
  * Type helper for individual tool parts

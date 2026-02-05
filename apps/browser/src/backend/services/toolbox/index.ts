@@ -32,7 +32,7 @@ import {
 import { grepSearchTool } from './tools/file-modification/grep-search';
 import { executeConsoleScriptTool } from './tools/browser/execute-console-script';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
-import { tool } from 'ai';
+import { type Tool, tool } from 'ai';
 import {
   buildAgentFileEditContent,
   captureFileState,
@@ -44,7 +44,7 @@ import {
   deleteFileToolInputSchema,
   multiEditToolInputSchema,
   overwriteFileToolInputSchema,
-  type UITools,
+  type StagewiseToolSet,
 } from '@shared/karton-contracts/ui/tools/types';
 
 type AgentInstanceId = string;
@@ -243,6 +243,11 @@ export class ToolboxService extends DisposableService {
     });
   }
 
+  public async getTool<TToolName extends keyof StagewiseToolSet>(
+    tool: TToolName,
+    agentInstanceId: string,
+  ): Promise<StagewiseToolSet[TToolName]>;
+
   /**
    * Used by the agent to get a tool that can be forwarded to the AI-SDK
    *
@@ -258,10 +263,10 @@ export class ToolboxService extends DisposableService {
    * @note Based on the here provided `agentInstanceId` and the `toolCallId` provided at time of tool execution,
    *        the toolbox can clearly match a tool call to it's related agent and other tool calls made by the agent.
    */
-  public async getTool<TToolName extends keyof UITools>(
+  public async getTool<TToolName extends keyof StagewiseToolSet>(
     tool: TToolName,
     agentInstanceId: string,
-  ): Promise<UITools[TToolName]> {
+  ): Promise<Tool> {
     if (!this.modifiedFilesPerAgent.has(agentInstanceId))
       this.modifiedFilesPerAgent.set(agentInstanceId, new Set());
 
@@ -272,57 +277,43 @@ export class ToolboxService extends DisposableService {
           deleteFileToolInputSchema,
           deleteFileToolExecute,
           agentInstanceId,
-        ) as unknown as UITools[TToolName];
+        );
       case 'globTool':
-        return globTool(this.clientRuntime!) as unknown as UITools[TToolName];
+        return globTool(this.clientRuntime!);
       case 'grepSearchTool':
-        return grepSearchTool(
-          this.clientRuntime!,
-        ) as unknown as UITools[TToolName];
+        return grepSearchTool(this.clientRuntime!);
       case 'listFilesTool':
-        return listFilesTool(
-          this.clientRuntime!,
-        ) as unknown as UITools[TToolName];
+        return listFilesTool(this.clientRuntime!);
       case 'multiEditTool':
         return this.wrapFileModifyingTool(
           MULTI_EDIT_DESCRIPTION,
           multiEditToolInputSchema,
           multiEditToolExecute,
           agentInstanceId,
-        ) as unknown as UITools[TToolName];
+        );
       case 'overwriteFileTool':
         return this.wrapFileModifyingTool(
           OVERWRITE_FILE_DESCRIPTION,
           overwriteFileToolInputSchema,
           overwriteFileToolExecute,
           agentInstanceId,
-        ) as unknown as UITools[TToolName];
+        );
       case 'readFileTool':
-        return readFileTool(
-          this.clientRuntime!,
-        ) as unknown as UITools[TToolName];
+        return readFileTool(this.clientRuntime!);
       case 'resolveContext7LibraryTool':
-        return resolveContext7LibraryTool(
-          this.apiClient as TRPCClient<AppRouter>,
-        ) as unknown as UITools[TToolName];
+        return resolveContext7LibraryTool(this.apiClient!);
       case 'getContext7LibraryDocsTool':
-        return getContext7LibraryDocsTool(
-          this.apiClient as TRPCClient<AppRouter>,
-        ) as unknown as UITools[TToolName];
+        return getContext7LibraryDocsTool(this.apiClient!);
       case 'getLintingDiagnosticsTool':
         return getLintingDiagnosticsTool(
           this.lspService!,
           this.modifiedFilesPerAgent.get(agentInstanceId)!,
           this.clientRuntime!,
-        ) as unknown as UITools[TToolName];
+        );
       case 'executeConsoleScriptTool':
-        return executeConsoleScriptTool(
-          this.windowLayoutService!,
-        ) as unknown as UITools[TToolName];
+        return executeConsoleScriptTool(this.windowLayoutService!);
       case 'readConsoleLogsTool':
-        return readConsoleLogsTool(
-          this.windowLayoutService!,
-        ) as unknown as UITools[TToolName];
+        return readConsoleLogsTool(this.windowLayoutService!);
       default:
         throw new Error(`Tool "${String(tool)}" not found`);
     }

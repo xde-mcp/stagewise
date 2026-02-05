@@ -47,7 +47,7 @@ export async function globToolExecute(
     // Build initial result object
     const resultData = {
       relativePaths: globResult.relativePaths,
-      totalMatches: globResult.totalMatches,
+      totalMatches: globResult.totalMatches || 0,
     };
 
     // Apply output capping to prevent LLM context bloat
