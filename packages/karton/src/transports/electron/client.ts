@@ -11,6 +11,12 @@ export interface MessagePortProxy {
  * The actual MessagePort lives in the preload script. This transport
  * communicates with it through the bridge interface exposed via contextBridge.
  *
+ * Connection readiness:
+ * - The connection is only considered "open" after receiving the first message
+ *   from the server. This ensures the server has called port.start() and is
+ *   ready to receive messages, preventing a race condition where the client
+ *   sends RPC calls before the server is listening.
+ *
  * Error handling:
  * - State sync messages (send) fail silently when the port is not ready
  * - RPC calls will receive proper error responses via the RPC layer
@@ -23,6 +29,17 @@ export class ElectronClientTransport implements Transport {
   private errorHandler: ((error: Error) => void) | null = null;
   private unsubscribeMessage: (() => void) | null = null;
   private portProxy: MessagePortProxy;
+
+  /**
+   * Whether the connection is ready (first message received from server).
+   * This prevents RPC calls from being sent before the server is listening.
+   */
+  private _isReady = false;
+
+  /**
+   * Stored onOpen handler to be called when connection becomes ready.
+   */
+  private _onOpenHandler: (() => void) | null = null;
 
   constructor({ messagePort }: { messagePort: MessagePortProxy }) {
     this.portProxy = messagePort;
@@ -56,12 +73,19 @@ export class ElectronClientTransport implements Transport {
   }
 
   isOpen(): boolean {
-    return true;
+    return this._isReady;
   }
 
   onOpen(handler: () => void): () => void {
-    handler(); // We always report that the port is actually open imemdiately.
-    return () => {};
+    // Store the handler - it will be called when first message is received
+    this._onOpenHandler = handler;
+
+    // If already ready (e.g., handler registered after first message), call immediately
+    if (this._isReady) handler();
+
+    return () => {
+      this._onOpenHandler = null;
+    };
   }
 
   onClose(
@@ -84,6 +108,13 @@ export class ElectronClientTransport implements Transport {
     this.portProxy.setOnMessage((message) => {
       // Ignore empty messages
       if (!message) return;
+
+      // First message received = server is ready and listening
+      // This proves the server has called port.start() and can receive our messages
+      if (!this._isReady) {
+        this._isReady = true;
+        this._onOpenHandler?.();
+      }
 
       try {
         this.messageHandler?.(message);
