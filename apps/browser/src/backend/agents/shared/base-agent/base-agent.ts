@@ -426,18 +426,28 @@ export abstract class BaseAgent<
     // We override the message id with a random UUID to ensure it's unique.
     const id = crypto.randomUUID();
 
+    const msg = { ...message, id: id };
+
     // If the agent is running, we queue the message
     if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
       this.state.set((draft) => {
-        draft.queuedMessages.push({ ...message, id: id });
+        draft.queuedMessages.push(msg);
       });
+
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Queued message: ${JSON.stringify(message)}`,
+      );
 
       return message.id;
     }
 
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Sending user message: ${JSON.stringify(message)}`,
+    );
+
     // If the agent is not running, we add the message to the history and immediately send it to the model.
     this.state.set((draft) => {
-      draft.history.push({ ...message, id: id });
+      draft.history.push(msg);
     });
 
     void this.runStep();
@@ -955,10 +965,6 @@ export abstract class BaseAgent<
       return;
     }
 
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Updating title for agent. Agent Type: ${this.agentType}`,
-    );
-
     const modulo = Math.max(0, this.config.updateTitlesEveryNUserMessages ?? 0);
     const userMsgCount = this.state
       .get()
@@ -966,6 +972,10 @@ export abstract class BaseAgent<
     if (userMsgCount !== 1 && userMsgCount % modulo !== 0) {
       return;
     }
+
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Updating title for agent. Agent Type: ${this.agentType}`,
+    );
 
     const newTitle = await this.generateTitle(this.state.get().history);
     this.logger.debug(
@@ -1035,6 +1045,10 @@ export abstract class BaseAgent<
     r: StepResult<TTools>,
     userWantsToContinue: boolean,
   ): boolean {
+    if (this.state.get().queuedMessages.length > 0) {
+      // We should always continue if the user queued a message
+      return true;
+    }
     let stepsSinceLastMessage = 0;
     let lastUserMessageTime = 0;
     for (let i = this.state.get().history.length - 1; i >= 0; i--) {
@@ -1200,6 +1214,12 @@ export abstract class BaseAgent<
 
     if (!this.canRunStep()) return;
 
+    // Flush the queue into the history
+    this.state.set((draft) => {
+      draft.history.push(...draft.queuedMessages);
+      draft.queuedMessages = [];
+    });
+
     // Get the current model
     const modelWithOptions = this.modelProviderService.getModelWithOptions(
       this.state.get().activeModelId,
@@ -1261,12 +1281,12 @@ export abstract class BaseAgent<
           await this.summarizeAndOverrideHistory();
         }
 
-        this.state.set((draft) => {
-          draft.isWorking = false;
-        });
-
         if (shouldContinue) {
           void this.runStep();
+        } else {
+          this.state.set((draft) => {
+            draft.isWorking = false;
+          });
         }
       },
       onError: (ev) => {

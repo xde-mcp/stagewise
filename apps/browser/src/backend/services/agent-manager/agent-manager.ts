@@ -234,21 +234,22 @@ export class AgentManagerService extends DisposableService {
       onError: (error: Error) => void | Promise<void>;
     },
     initialState?: AgentState,
+    instanceId?: string,
   ): Promise<InstanceType<(typeof AgentsMap)[TAgentType]>> {
-    const agentInstanceId = randomUUID();
+    const agentInstanceId = instanceId ?? randomUUID();
 
     // Build state object outside setState to avoid "Type instantiation is excessively deep" error
     // caused by complex Draft<ChatMessage[]> inference from the 'ai' package's UIMessage type
     const agentState: AgentState = {
-      title: initialState?.title ?? '',
+      title: '',
       isWorking: false,
-      history: initialState?.history ?? [],
-      compactedHistory: initialState?.compactedHistory ?? undefined,
-      lastCompactedMessageId: initialState?.lastCompactedMessageId ?? undefined,
-      queuedMessages: initialState?.queuedMessages ?? [],
-      activeModelId: initialState?.activeModelId ?? 'claude-haiku-4-5',
-      inputState: initialState?.inputState ?? '',
-      usedTokens: initialState?.usedTokens ?? 0,
+      history: [],
+      compactedHistory: undefined,
+      lastCompactedMessageId: undefined,
+      queuedMessages: [],
+      activeModelId: 'claude-haiku-4-5',
+      inputState: '',
+      usedTokens: 0,
     };
 
     // Use type assertion to avoid "Type instantiation is excessively deep" error
@@ -273,9 +274,6 @@ export class AgentManagerService extends DisposableService {
       {
         get: () => this.karton.state.agents.instances[agentInstanceId].state,
         set: (recipe) => {
-          this.logger.debug(
-            `[AgentManager] Updating agent state. ID: ${agentInstanceId}, Type: ${type}`,
-          );
           this.karton.setState((draft) => {
             // @ts-ignore - We have to call the state update recipe with the draft this way to keep "immer" working.
             recipe(draft.agents.instances[agentInstanceId].state);
@@ -310,6 +308,7 @@ export class AgentManagerService extends DisposableService {
       // @ts-ignore - The onFinish handler returns outputs with the configured schema of the agent. dunno why ts doesn't get this right.
       parent?.onFinish,
       parent?.onError,
+      initialState,
     );
 
     this.activeAgents.set(agentInstanceId, agent);
@@ -318,36 +317,41 @@ export class AgentManagerService extends DisposableService {
   }
 
   // Resume an agent form the last persisted state. Should probably be called when the user select the agent from a list of previous agents.
-  public async resumeAgent(_instanceId: string) {
+  public async resumeAgent(instanceId: string) {
     // Early exit if the agent is already active.
-    if (this.activeAgents.has(_instanceId)) {
-      return this.activeAgents.get(_instanceId);
+    if (this.activeAgents.has(instanceId)) {
+      return this.activeAgents.get(instanceId);
+    }
+
+    const agent =
+      await this.agentPersistenceDB?.getStoredAgentInstanceById(instanceId);
+    if (!agent) {
+      throw new Error(`Agent with instance id ${instanceId} not found`);
     }
 
     // Right now, we don't allow resuming sub-agents (because persisted agents stop all their tools calls anyway when they arew stopped and resumed - including any child agents).
-    const agent =
-      await this.agentPersistenceDB?.getStoredAgentInstanceById(_instanceId);
-    if (!agent) {
-      throw new Error(`Agent with instance id ${_instanceId} not found`);
-    }
-
     if (agent.parentAgentInstanceId) {
       throw new Error(
-        `Agent with instance id ${_instanceId} is a sub-agent and cannot be resumed`,
+        `Agent with instance id ${instanceId} is a sub-agent and cannot be resumed`,
       );
     }
 
-    return await this.createAgent(agent.type, undefined, {
-      title: agent.title,
-      history: agent.history,
-      compactedHistory: agent.compactedHistory ?? undefined,
-      lastCompactedMessageId: agent.lastCompactedMessageId ?? undefined,
-      queuedMessages: agent.queuedMessages,
-      activeModelId: agent.activeModelId,
-      inputState: agent.inputState,
-      usedTokens: agent.usedTokens,
-      isWorking: false,
-    });
+    return await this.createAgent(
+      agent.type,
+      undefined,
+      {
+        title: agent.title,
+        history: agent.history,
+        compactedHistory: agent.compactedHistory ?? undefined,
+        lastCompactedMessageId: agent.lastCompactedMessageId ?? undefined,
+        queuedMessages: agent.queuedMessages,
+        activeModelId: agent.activeModelId,
+        inputState: agent.inputState,
+        usedTokens: agent.usedTokens,
+        isWorking: false,
+      },
+      instanceId,
+    );
   }
 
   private async persistAgentState(instanceId: string) {
@@ -393,8 +397,6 @@ export class AgentManagerService extends DisposableService {
     this.logger.debug(`[AgentManager] Deleting agent. ID: ${instanceId}`);
     // First we archive the agent (stops it, deletes it from list of loaded agents while keeping the persisted state intact)
     await this.archiveAgent(instanceId);
-
-    this.logger.debug(`[AgentManager] Agent archived. ID: ${instanceId}`);
 
     if (!this.agentPersistenceDB) {
       throw new Error('Agent persistence DB not found');

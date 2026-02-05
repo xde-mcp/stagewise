@@ -15,15 +15,16 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 
-import type { QueuedMessage } from '@shared/karton-contracts/ui';
+import type { ChatMessage, QueuedMessage } from '@shared/karton-contracts/ui';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 // Stable empty array to avoid creating new instances in selectors (prevents infinite loops)
-const EMPTY_MESSAGE_QUEUE: QueuedMessage[] = [];
+const _EMPTY_MESSAGE_QUEUE: QueuedMessage[] = [];
 
 /** Extract text content from a ChatMessage's parts */
 function getMessageText(message: {
@@ -53,11 +54,10 @@ interface FileDiffItemProps {
   onOpenDiffReview: (filePath?: string) => void;
 }
 
-interface MessageQueueItemProps {
-  messageQueue: QueuedMessage[];
-  activeChatId: string | null;
-  onRemoveMessage: (chatId: string, messageId: string) => Promise<void>;
-  onSendNow: (chatId: string, messageId: string) => Promise<void>;
+interface QueuedMessagesItemProps {
+  queuedMessages: ChatMessage[];
+  onRemoveMessage: (messageId: string) => Promise<void>;
+  onFlush: () => Promise<void>;
 }
 
 function StatusCardItemComponent({
@@ -187,13 +187,15 @@ function FileDiffItem(props: FileDiffItemProps): StatusCardItem | null {
   };
 }
 
-function MessageQueueContent(props: MessageQueueItemProps) {
-  const { messageQueue, activeChatId, onRemoveMessage, onSendNow } = props;
+function MessageQueueContent({
+  queuedMessages,
+  onRemoveMessage,
+}: QueuedMessagesItemProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
     <div className="pt-1" onMouseLeave={() => setHoveredIndex(null)}>
-      {messageQueue.map((queuedMsg, index) => {
+      {queuedMessages.map((queuedMsg, index) => {
         const isFirst = index === 0;
         // Show buttons for first item when nothing is hovered, or when this specific item is hovered
         const showButtons = isFirst
@@ -216,7 +218,7 @@ function MessageQueueContent(props: MessageQueueItemProps) {
                   'mask-[linear-gradient(to_left,transparent_0px,transparent_56px,black_88px)]',
               )}
             >
-              {getMessageText(queuedMsg.message)}
+              {getMessageText(queuedMsg)}
             </span>
             <div
               className={cn(
@@ -230,23 +232,7 @@ function MessageQueueContent(props: MessageQueueItemProps) {
                     variant="ghost"
                     size="icon-xs"
                     onClick={() => {
-                      if (activeChatId)
-                        void onSendNow(activeChatId, queuedMsg.id);
-                    }}
-                  >
-                    <IconArrowUpOutline24 className="size-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Send now</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => {
-                      if (activeChatId)
-                        void onRemoveMessage(activeChatId, queuedMsg.id);
+                      void onRemoveMessage(queuedMsg.id);
                     }}
                   >
                     <IconTrash2Outline24 className="size-3" />
@@ -262,22 +248,28 @@ function MessageQueueContent(props: MessageQueueItemProps) {
   );
 }
 
-function MessageQueueItem(props: MessageQueueItemProps): StatusCardItem | null {
-  const { messageQueue } = props;
-
-  if (messageQueue.length === 0) return null;
+function MessageQueueItem(
+  props: QueuedMessagesItemProps,
+): StatusCardItem | null {
+  if (props.queuedMessages.length === 0) return null;
 
   return {
     key: 'message-queue',
     trigger: (isOpen: boolean) => (
-      <div className="flex h-6 w-full flex-row items-center justify-start gap-2 pl-1.5 text-muted-foreground text-xs hover:text-foreground">
-        <ChevronDownIcon
-          className={cn(
-            'size-3 shrink-0 transition-transform duration-50',
-            isOpen && 'rotate-180',
-          )}
-        />
-        {`${messageQueue.length} Queued`}
+      <div className="flex h-6 w-full flex-row items-center justify-between gap-2 pl-1.5 text-muted-foreground text-xs hover:text-foreground has-[button:hover]:text-muted-foreground">
+        <div className="flex flex-row items-center justify-start gap-2">
+          <ChevronDownIcon
+            className={cn(
+              'size-3 shrink-0 transition-transform duration-50',
+              isOpen && 'rotate-180',
+            )}
+          />
+          {`${props.queuedMessages.length} Queued`}
+        </div>
+        <Button variant="ghost" size="xs" onClick={props.onFlush}>
+          Send now
+          <IconArrowUpOutline24 className="size-3" />
+        </Button>
       </div>
     ),
     contentClassName: 'px-0',
@@ -300,22 +292,20 @@ export function StatusCard() {
   );
   const createTab = useKartonProcedure((p) => p.browser.createTab);
 
+  const [openAgentId] = useOpenAgent();
+
   // Get message queue for active chat (using stable empty array to prevent infinite loops)
-  const messageQueue = useKartonState((s) =>
-    activeChatId
-      ? (s.agentChat?.messageQueue[activeChatId] ?? EMPTY_MESSAGE_QUEUE)
-      : EMPTY_MESSAGE_QUEUE,
+  const messageQueue = useKartonState(
+    (s) => s.agents.instances[openAgentId]?.state.queuedMessages,
   );
 
   // Procedure to remove a queued message
-  const removeQueuedMessage = useKartonProcedure(
-    (p) => p.agentChat.removeQueuedMessage,
+  const deleteQueuedMessage = useKartonProcedure(
+    (p) => p.agents.deleteQueuedMessage,
   );
 
   // Procedure to send a queued message immediately (aborts current work)
-  const sendQueuedMessageNow = useKartonProcedure(
-    (p) => p.agentChat.sendQueuedMessageNow,
-  );
+  const flushQueue = useKartonProcedure((p) => p.agents.flushQueue);
 
   const openDiffReviewPage = useCallback(
     (filePath?: string) => {
@@ -362,10 +352,10 @@ export function StatusCard() {
     const result: StatusCardItem[] = [];
 
     const messageQueueItem = MessageQueueItem({
-      messageQueue,
-      activeChatId,
-      onRemoveMessage: removeQueuedMessage,
-      onSendNow: sendQueuedMessageNow,
+      queuedMessages: messageQueue ?? [],
+      onRemoveMessage: async (messageId) =>
+        await deleteQueuedMessage(openAgentId, messageId),
+      onFlush: async () => await flushQueue(openAgentId),
     });
     if (messageQueueItem) result.push(messageQueueItem);
 
@@ -381,8 +371,8 @@ export function StatusCard() {
   }, [
     messageQueue,
     activeChatId,
-    removeQueuedMessage,
-    sendQueuedMessageNow,
+    deleteQueuedMessage,
+    flushQueue,
     formattedEdits,
     rejectAllPendingEdits,
     acceptAllPendingEdits,

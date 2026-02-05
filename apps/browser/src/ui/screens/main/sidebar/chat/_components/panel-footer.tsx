@@ -241,6 +241,14 @@ export function ChatPanelFooter() {
     return Math.min(100, Math.round((used / max) * 100));
   }, [usedTokens, maxTokens]);
 
+  const queuedMessages = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.queuedMessages,
+  );
+  const flushQueue = useKartonProcedure((p) => p.agents.flushQueue);
+  const handleFlushQueue = useCallback(() => {
+    void flushQueue(openAgent);
+  }, [flushQueue, openAgent]);
+
   const [chatInputActive, setChatInputActive] = useState<boolean>(false);
   // Track if input was focused before app lost focus (for restoring on app regain)
   const wasActiveBeforeAppBlurRef = useRef(false);
@@ -493,6 +501,8 @@ export function ChatPanelFooter() {
           contextUsedPercentage={contextUsed}
           contextUsedKb={usedTokens ? usedTokens / 1000 : 0}
           contextMaxKb={maxTokens ? maxTokens / 1000 : 0}
+          hasQueuedMessages={(queuedMessages?.length ?? 0) > 0}
+          onFlushQueue={handleFlushQueue}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
           onPasteFiles={handlePasteFiles}

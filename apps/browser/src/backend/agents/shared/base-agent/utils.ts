@@ -215,7 +215,7 @@ export const generateSimpleTitle = async (
         content: [
           {
             type: 'text',
-            text: `Extract a title for the user's current intent from the following conversation:\n<conversation>\n${messageList}\n</convesation>\n\nSummarize into a single short sentence.`,
+            text: `Extract a title for the user's current intent from the following conversation:\n<conversation>\n${messageList}\n</conversation>\n\nSummarize into a single short sentence.`,
           },
         ],
       },

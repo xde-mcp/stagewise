@@ -59,6 +59,10 @@ export interface ChatInputProps {
   contextUsedKb?: number;
   contextMaxKb?: number;
 
+  // Queued messages (for early flushing)
+  hasQueuedMessages?: boolean;
+  onFlushQueue?: () => void;
+
   // Focus management
   onFocus?: () => void;
   onBlur?: (event: FocusEvent) => void;
@@ -101,6 +105,9 @@ export const ChatInput = ({
   contextUsedKb = 0,
   contextMaxKb = 0,
 
+  hasQueuedMessages = false,
+  onFlushQueue,
+
   onFocus,
   onBlur,
   onEscape,
@@ -114,8 +121,13 @@ export const ChatInput = ({
     action: HotkeyActions.CTRL_I,
   });
 
-  const resolvedPlaceholder =
-    placeholder ?? `Ask anything about this page ${focusChatHotkeyText}`;
+  const shownPlaceholder = useRef('');
+  useEffect(() => {
+    shownPlaceholder.current =
+      placeholder ??
+      `Ask anything about this page ${focusChatHotkeyText}${hasQueuedMessages ? ', or press ↵ to send now' : ''}`;
+  }, [placeholder, focusChatHotkeyText, hasQueuedMessages]);
+  const staticPlaceholderRef = useRef(() => shownPlaceholder.current);
 
   const [textContent, setTextContent] = useState<string>('');
 
@@ -156,7 +168,7 @@ export const ChatInput = ({
         },
       }),
       Placeholder.configure({
-        placeholder: resolvedPlaceholder,
+        placeholder: staticPlaceholderRef.current,
       }),
       ...configureAttachmentExtensions({
         onNodeDeleted: onAttachmentRemoved,
@@ -175,11 +187,17 @@ export const ChatInput = ({
           '[&_p]:m-0 [&_p]:leading-relaxed',
         ),
       },
-      handleKeyDown: (_view, event) => {
+      handleKeyDown: (view, event) => {
         // Handle Enter without Shift for submit
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault();
-          handleSubmit();
+          // If input is empty and there are queued messages, flush the queue
+          const isEmpty = view.state.doc.textContent.trim().length === 0;
+          if (isEmpty && hasQueuedMessages && onFlushQueue) {
+            onFlushQueue();
+          } else {
+            handleSubmit();
+          }
           return true;
         }
         // Handle Escape
@@ -229,6 +247,10 @@ export const ChatInput = ({
       onBlur?.(event);
     },
   });
+
+  useEffect(() => {
+    editor?.commands.selectAll();
+  }, [editor, shownPlaceholder]);
 
   const canSendMessage = useMemo(() => {
     return !disabled && textContent.trim().length > 2;

@@ -77,14 +77,13 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     Awaited<ReturnType<typeof getAgentsHistoryList>>
   >([]);
 
-  // Only fetch agents history list when there's at least one active agent.
-  // This ensures the AgentManager's persistence DB is fully initialized
-  // (the default agent is only created after DB init completes).
-  const hasActiveAgents = Object.keys(activeAgents).length > 0;
+  const activeAgentIds = useMemo(() => {
+    return Object.keys(activeAgents);
+  }, [Object.keys(activeAgents).length]);
 
   useEffect(() => {
     // Wait until we have at least one active agent before fetching history
-    if (!hasActiveAgents) {
+    if (Object.keys(activeAgents).length === 0) {
       return;
     }
     getAgentsHistoryList(0, 200).then((a) => {
@@ -93,7 +92,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       );
     });
     // TODO: Later, we can add pagination...
-  }, [activeAgents, hasActiveAgents]);
+  }, [activeAgentIds]);
 
   // If the open agent isn't active anymore, we need to update the open agent to the first active agent.
   useEffect(() => {
@@ -103,7 +102,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   }, [openAgent, activeAgents]);
 
   const showChatListButton = useMemo(() => {
-    return agentsList.length + Object.keys(activeAgents).length > 1;
+    return agentsList.length > 0 || Object.keys(activeAgents).length > 1;
   }, [agentsList, activeAgents]);
 
   const showNewChatButton = useMemo(() => {
