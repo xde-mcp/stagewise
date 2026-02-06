@@ -345,7 +345,8 @@ const CodeComponent = ({
         <OverlayScrollbar
           data-code-block-container
           data-language={language}
-          className="w-full overscroll-contain"
+          className="w-full"
+          options={{ overflow: { x: 'scroll', y: 'hidden' } }}
         >
           <CodeBlock
             code={code}
