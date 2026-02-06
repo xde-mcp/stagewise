@@ -1322,6 +1322,7 @@ export abstract class BaseAgent<
         chunking: 'word',
       }),
       temperature: resolvedConfig.temperature,
+      stopWhen: () => false,
       topP: resolvedConfig.topP,
       topK: resolvedConfig.topK,
       presencePenalty: resolvedConfig.presencePenalty,
