@@ -285,7 +285,10 @@ describe('diff utilities', () => {
       expect(generations).toHaveLength(3);
     });
 
-    it('treats init baseline with null oid as deletion', () => {
+    it('treats init baseline with null oid as file creation (not deletion)', () => {
+      // An init baseline with null oid means "file didn't exist at session start"
+      // This is a file creation scenario, NOT a deletion
+      // Only an EDIT with null oid triggers a new generation (file was deleted)
       const ops = [
         createBaselineOpWithExternal({
           filepath: '/readme.md',
@@ -296,13 +299,14 @@ describe('diff utilities', () => {
           filepath: '/readme.md',
           reason: 'init',
           snapshot_oid: null,
-        }), // user deleted file between sessions
-        createEditOpWithExternal({ filepath: '/readme.md' }), // new session
+        }), // file didn't exist at new session start (file creation)
+        createEditOpWithExternal({ filepath: '/readme.md' }), // creates the file
       ];
       const result = segmentFileOperationsIntoGenerations(ops);
 
       const generations = Object.values(result);
-      expect(generations).toHaveLength(2);
+      // All ops should be in a single generation since there's no deletion (edit with null oid)
+      expect(generations).toHaveLength(1);
     });
 
     it('groups by filepath first, then segments each', () => {
@@ -971,8 +975,9 @@ describe('diff utilities', () => {
       expect(fileResult).toBeDefined();
       expect(fileResult?.isExternal).toBe(false);
       if (fileResult && !fileResult.isExternal) {
-        // Accepting deletion means baseline becomes empty/null
-        expect(fileResult.newBaseline).toBe('');
+        // Accepting deletion means baseline becomes null (signals file deletion)
+        // NOT empty string, which would create an empty file
+        expect(fileResult.newBaseline).toBe(null);
       }
     });
 

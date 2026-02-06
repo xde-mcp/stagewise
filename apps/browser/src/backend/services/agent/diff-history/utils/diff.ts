@@ -1,4 +1,23 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
+
+/**
+ * Generates a deterministic hunk ID based on content and position.
+ * This ensures the same hunk produces the same ID across multiple calls.
+ */
+function generateDeterministicHunkId(
+  filepath: string,
+  oldStart: number,
+  oldLines: number,
+  newStart: number,
+  newLines: number,
+  content: string,
+): string {
+  const hash = createHash('sha256');
+  hash.update(
+    `${filepath}:${oldStart}:${oldLines}:${newStart}:${newLines}:${content}`,
+  );
+  return hash.digest('hex').slice(0, 32);
+}
 import {
   diffLines,
   structuredPatch,
@@ -85,11 +104,12 @@ export function segmentFileOperationsIntoGenerations<
       // Add current op to current generation
       currentGeneration.push(op);
 
-      // Check if this op marks a deletion (null snapshot_oid)
-      // This handles both:
-      // - edit with null: agent deleted the file
-      // - init baseline with null: user deleted the file between sessions
-      if (op.snapshot_oid === null) wasDeleted = true;
+      // Check if this op marks a deletion (edit with null snapshot_oid)
+      // An edit with null oid means the file was deleted.
+      // An init baseline with null oid means the file is being created (didn't exist before),
+      // which is NOT a deletion - it's the start of a new generation for a new file.
+      if (op.operation === 'edit' && op.snapshot_oid === null)
+        wasDeleted = true;
     }
 
     // Don't forget the last generation
@@ -306,7 +326,14 @@ export function createFileDiffsFromGenerations(
         baselineOid: startsWithInit ? firstOp.snapshot_oid : null,
         currentOid: lastOp.snapshot_oid,
         contributor: lastOp.contributor,
-        hunkId: randomUUID(),
+        hunkId: generateDeterministicHunkId(
+          path,
+          0,
+          0,
+          0,
+          0,
+          `${startsWithInit ? firstOp.snapshot_oid : 'null'}:${lastOp.snapshot_oid}`,
+        ),
       });
       continue; // Skip text diff logic
     }
@@ -332,7 +359,14 @@ export function createFileDiffsFromGenerations(
     const patch = structuredPatch('', '', diffBaseline, diffCurrent, '', '');
     const hunks: BlamedHunk[] = patch.hunks.map((hunk) => ({
       ...hunk,
-      id: randomUUID(),
+      id: generateDeterministicHunkId(
+        path,
+        hunk.oldStart,
+        hunk.oldLines,
+        hunk.newStart,
+        hunk.newLines,
+        hunk.lines.join('\n'),
+      ),
     }));
 
     // Build hunk ranges for lookup
@@ -570,6 +604,16 @@ export function acceptAndRejectHunks(
         workingCurrent = currentWorkingCurrent;
       }
     }
+
+    // Handle file creation revert: if baseline was null and we reverted to '',
+    // convert back to null to indicate the file should be deleted
+    if (textFileDiff.baseline === null && workingCurrent === '')
+      workingCurrent = null;
+
+    // Handle file deletion revert: if current was null and we reverted baseline to '',
+    // the file should be restored from the original baseline
+    if (textFileDiff.current === null && workingBaseline === '')
+      workingBaseline = null;
 
     // Store results per filepath (later FileDiffs overwrite earlier)
     if (baselineChanged || currentChanged) {

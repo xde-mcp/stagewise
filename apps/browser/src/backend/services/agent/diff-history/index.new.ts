@@ -1,4 +1,5 @@
 import { DisposableService } from '@/services/disposable';
+import type { FileResult } from '@shared/karton-contracts/ui/shared-types';
 import { isBinaryFile } from 'isbinaryfile';
 import path from 'node:path';
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
@@ -364,25 +365,8 @@ export class DiffHistoryService extends DisposableService {
       failedRejectedHunkIds,
     );
     for (const [filePath, fileResult] of Object.entries(result)) {
-      if (fileResult.isExternal && fileResult.newBaselineOid !== undefined)
-        await this.doAccept(filePath, fileResult.newBaselineOid);
-
-      if (fileResult.isExternal && fileResult.newCurrentOid !== undefined)
-        await this.doReject(
-          filePath,
-          fileResult.newCurrentOid,
-          fileResult.isExternal,
-        );
-
-      if (!fileResult.isExternal && fileResult.newBaseline !== undefined)
-        await this.doAccept(filePath, fileResult.newBaseline);
-
-      if (!fileResult.isExternal && fileResult.newCurrent !== undefined)
-        await this.doReject(
-          filePath,
-          fileResult.newCurrent,
-          fileResult.isExternal,
-        );
+      await this.doAccept(filePath, fileResult);
+      await this.doReject(filePath, fileResult);
     }
 
     for (const agentInstanceId of this.activeAgentInstanceIds)
@@ -403,25 +387,36 @@ export class DiffHistoryService extends DisposableService {
     return oid;
   }
 
-  private async doReject(
-    filePath: string,
-    newCurrentOid: string | null,
-    isExternal: boolean,
-  ) {
+  private async doReject(filePath: string, fileResult: FileResult) {
+    if (fileResult.isExternal && fileResult.newCurrentOid === undefined) return;
+    if (!fileResult.isExternal && fileResult.newCurrent === undefined) return;
     // Lock file to prevent watcher from treating this write as a user change
     this.ignoreFileForWatcher(filePath);
+    const isExternal = fileResult.isExternal;
+    let newCurrentOid: string | null;
 
     try {
       // Copy content from blob to file system
-      if (isExternal && newCurrentOid !== null) {
-        await copyContentToPath(this.blobsDir, newCurrentOid, filePath);
-      } else if (!isExternal && newCurrentOid !== null) {
-        const content = await retrieveContentForOid(this.db, newCurrentOid);
-        if (content) await fs.writeFile(filePath, content, 'utf8');
+      if (isExternal && typeof fileResult.newCurrentOid === 'string') {
+        await copyContentToPath(
+          this.blobsDir,
+          fileResult.newCurrentOid,
+          filePath,
+        );
+        newCurrentOid = fileResult.newCurrentOid;
+      } else if (!isExternal && typeof fileResult.newCurrent === 'string') {
+        await fs.writeFile(filePath, fileResult.newCurrent, 'utf8');
+        newCurrentOid = await storeFileContent(
+          this.db,
+          filePath,
+          Buffer.from(fileResult.newCurrent),
+        );
       } else {
         await fs.unlink(filePath);
+        newCurrentOid = null;
       }
     } catch (error) {
+      newCurrentOid = null;
       this.logError(`[DiffHistory] Failed to write file: ${filePath}`, error);
     } finally {
       // Unlock after a small delay to allow chokidar to see and ignore the event
@@ -435,12 +430,34 @@ export class DiffHistoryService extends DisposableService {
     });
   }
 
-  private async doAccept(filePath: string, newBaselineOid: string | null) {
-    await insertOperation(this.db, filePath, newBaselineOid, {
-      operation: 'baseline',
-      contributor: 'user',
-      reason: 'accept',
-    });
+  private async doAccept(filePath: string, fileResult: FileResult) {
+    if (!fileResult.isExternal && fileResult.newBaseline === undefined) return;
+    if (fileResult.isExternal && fileResult.newBaselineOid === undefined)
+      return;
+
+    const newContentIsNull =
+      !fileResult.isExternal && fileResult.newBaseline === null;
+    const isExternal = fileResult.isExternal;
+
+    // Not necessary to store new content if it's null or if it's an external file
+    if (newContentIsNull || isExternal)
+      return await insertOperation(
+        this.db,
+        filePath,
+        isExternal ? (fileResult.newBaselineOid ?? null) : null,
+        {
+          operation: 'baseline',
+          contributor: 'user',
+          reason: 'accept',
+        },
+      );
+
+    await storeFileContent(
+      this.db,
+      filePath,
+      Buffer.from(fileResult.newBaseline!, 'utf8'),
+      { operation: 'baseline', contributor: 'user', reason: 'accept' },
+    );
   }
 
   /**
@@ -565,7 +582,7 @@ export class DiffHistoryService extends DisposableService {
     const nonExternalOpsWithContent =
       await this.getOperationsWithContent(nonExternalOps);
     const mergedOps = [...nonExternalOpsWithContent, ...externalOps].sort(
-      (a, b) => a.idx - b.idx,
+      (a, b) => Number(a.idx) - Number(b.idx),
     );
     const generations = segmentFileOperationsIntoGenerations(mergedOps);
     const contributorMap = buildContributorMap(generations);

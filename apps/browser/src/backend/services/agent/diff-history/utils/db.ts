@@ -366,7 +366,7 @@ export async function getAllOperationsForAgentInstanceId(
       const sessionStart = initIndices[i];
       const sessionEnd =
         initIndices[i + 1] !== undefined
-          ? initIndices[i + 1] - 1
+          ? BigInt(initIndices[i + 1]) - 1n
           : ops[ops.length - 1].idx;
 
       // Get operations in this session range
@@ -720,13 +720,14 @@ export async function getUndoTargetForToolCallsByFilePath(
 
 /**
  * Store new file content with reverse-delta compression.
+ * Optionally inserts an operation with meta into the ops table.
  * Returns the oid of the stored content.
  */
 export async function storeFileContent(
   db: SnapshotDb,
   filepath: string,
   content: Buffer,
-  meta: OperationMeta,
+  meta?: OperationMeta,
 ): Promise<string> {
   const newOid = computeOid(content);
 
@@ -758,7 +759,7 @@ export async function storeFileContent(
   }
 
   // Record operation (idx auto-generated)
-  insertOperation(db, filepath, newOid, meta);
+  if (meta) insertOperation(db, filepath, newOid, meta);
 
   return newOid;
 }
