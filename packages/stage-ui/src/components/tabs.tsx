@@ -17,7 +17,7 @@ export const TabsList = ({ className, children, ...props }: TabsListProps) => {
     <TabsBase.List
       {...props}
       className={cn(
-        'grid w-full auto-cols-fr grid-flow-col justify-center rounded-full bg-derived-darker-subtle p-0.5',
+        'grid w-full auto-cols-fr grid-flow-col justify-center rounded-full border border-derived bg-background p-0.5',
         className,
       )}
     >
@@ -37,9 +37,9 @@ export const TabsTrigger = ({
       {...props}
       className={(state) =>
         cn(
-          'h-full rounded-full px-2 py-1 font-medium text-xs transition-colors',
+          'h-full rounded-full bg-background px-2 py-1 font-medium text-xs transition-colors',
           state.active
-            ? 'bg-derived-lighter text-primary-foreground'
+            ? 'bg-active-derived! bg-background text-primary-foreground'
             : 'text-muted-foreground hover:text-foreground',
           typeof className === 'function' ? className(state) : className,
         )
