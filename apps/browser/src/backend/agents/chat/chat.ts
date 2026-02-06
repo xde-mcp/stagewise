@@ -1,6 +1,7 @@
 import { BaseAgent, type BaseAgentConfig } from '../shared/base-agent';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import type { ToolSet } from 'ai';
+import { buildChatSystemPrompt } from './context-builder';
 
 export class ChatAgent extends BaseAgent<never, ToolSet> {
   public static readonly agentType = AgentTypes.CHAT;
@@ -35,8 +36,8 @@ export class ChatAgent extends BaseAgent<never, ToolSet> {
     updateTitlesEveryNUserMessages: 5,
   };
 
-  protected getSystemPrompt = (): string => {
-    return `You are a helpful little chatbot called "stage".`;
+  protected getSystemPrompt = async (): Promise<string> => {
+    return buildChatSystemPrompt(this.toolbox, this.instanceId);
   };
 
   protected getTools = async () => {

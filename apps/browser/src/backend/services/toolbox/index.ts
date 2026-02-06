@@ -38,6 +38,7 @@ import {
   captureFileState,
   cleanupTempFile,
 } from './utils';
+import { collectDiagnosticsForFiles } from './utils/context-getters';
 import path from 'node:path';
 import type { z } from 'zod';
 import {
@@ -46,6 +47,15 @@ import {
   overwriteFileToolInputSchema,
   type StagewiseToolSet,
 } from '@shared/karton-contracts/ui/tools/types';
+import type {
+  BrowserSnapshot,
+  DiagnosticsByFile,
+  WorkspaceSnapshot,
+} from './types';
+import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info';
+import { getWorkspaceInfo as getWorkspaceInfoUtil } from '@/agents/shared/prompts/utils/workspace-info';
+import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
+import { readStagewiseMd } from '@/agents/shared/prompts/utils/read-stagewise-md';
 
 type AgentInstanceId = string;
 
@@ -333,6 +343,80 @@ export class ToolboxService extends DisposableService {
    */
   public async undoToolCalls(toolCallIds: string[]): Promise<void> {
     return this.diffHistoryService.undoToolCalls(toolCallIds);
+  }
+
+  public getWorkspaceSnapshot(): WorkspaceSnapshot {
+    const workspace = this.uiKarton.state.workspace;
+    return {
+      isConnected: this.clientRuntime !== null,
+      workspacePath: workspace?.path ?? null,
+      cwd: this.clientRuntime?.fileSystem.getCurrentWorkingDirectory() ?? null,
+      stagewiseMdPath: workspace?.paths.data ?? null,
+    };
+  }
+
+  public async getWorkspaceInfo(): Promise<WorkspaceInfo | null> {
+    if (!this.clientRuntime) return null;
+    return getWorkspaceInfoUtil(this.clientRuntime);
+  }
+
+  public getBrowserSnapshot(): BrowserSnapshot {
+    const browser = this.uiKarton.state.browser;
+    const activeTab = browser.activeTabId
+      ? browser.tabs[browser.activeTabId]
+      : null;
+
+    const allTabs = Object.values(browser.tabs)
+      .sort((a, b) => b.lastFocusedAt - a.lastFocusedAt)
+      .map((tab) => ({
+        id: tab.id,
+        title: tab.title,
+        url: tab.url,
+        error: tab.error
+          ? { code: tab.error.code, message: tab.error.message }
+          : null,
+        consoleLogCount: tab.consoleLogCount,
+        consoleErrorCount: tab.consoleErrorCount,
+        handle: tab.handle,
+        lastFocusedAt: tab.lastFocusedAt,
+      }));
+
+    return {
+      activeTab: activeTab
+        ? {
+            id: activeTab.id,
+            title: activeTab.title,
+            url: activeTab.url,
+            error: activeTab.error,
+            consoleLogCount: activeTab.consoleLogCount,
+            consoleErrorCount: activeTab.consoleErrorCount,
+            handle: activeTab.handle,
+          }
+        : null,
+      tabs: allTabs,
+      totalTabCount: Object.keys(browser.tabs).length,
+    };
+  }
+
+  public async getAgentsMd(): Promise<string | null> {
+    if (!this.clientRuntime) return null;
+    return readAgentsMd(this.clientRuntime);
+  }
+
+  public async getStagewiseMd(): Promise<string | null> {
+    const stagewiseMdPath = this.uiKarton.state.workspace?.paths.data ?? null;
+    if (!stagewiseMdPath) return null;
+    return readStagewiseMd(stagewiseMdPath);
+  }
+
+  public async getLspDiagnosticsForAgent(
+    agentInstanceId: string,
+  ): Promise<DiagnosticsByFile> {
+    const modifiedFiles = this.modifiedFilesPerAgent.get(agentInstanceId);
+    if (!this.lspService || !modifiedFiles || modifiedFiles.size === 0) {
+      return new Map();
+    }
+    return collectDiagnosticsForFiles(this.lspService, modifiedFiles);
   }
 
   /**
