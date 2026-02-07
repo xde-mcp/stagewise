@@ -188,6 +188,7 @@ export class ToolboxService extends DisposableService {
     ) => Promise<unknown>,
     agentInstanceId: string,
   ) {
+    if (!this.clientRuntime) return null;
     // Cast to any to bypass AI SDK's strict FlexibleSchema type inference
     // The schemas are validated Zod schemas that work correctly at runtime
     return tool({
@@ -256,7 +257,7 @@ export class ToolboxService extends DisposableService {
   public async getTool<TToolName extends keyof StagewiseToolSet>(
     tool: TToolName,
     agentInstanceId: string,
-  ): Promise<StagewiseToolSet[TToolName]>;
+  ): Promise<StagewiseToolSet[TToolName] | null>;
 
   /**
    * Used by the agent to get a tool that can be forwarded to the AI-SDK
@@ -276,12 +277,13 @@ export class ToolboxService extends DisposableService {
   public async getTool<TToolName extends keyof StagewiseToolSet>(
     tool: TToolName,
     agentInstanceId: string,
-  ): Promise<Tool> {
+  ): Promise<Tool | null> {
     if (!this.modifiedFilesPerAgent.has(agentInstanceId))
       this.modifiedFilesPerAgent.set(agentInstanceId, new Set());
 
     switch (tool) {
       case 'deleteFileTool':
+        if (!this.clientRuntime) return null;
         return this.wrapFileModifyingTool(
           DELETE_FILE_DESCRIPTION,
           deleteFileToolInputSchema,
@@ -289,12 +291,16 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'globTool':
-        return globTool(this.clientRuntime!);
+        if (!this.clientRuntime) return null;
+        return globTool(this.clientRuntime);
       case 'grepSearchTool':
-        return grepSearchTool(this.clientRuntime!);
+        if (!this.clientRuntime) return null;
+        return grepSearchTool(this.clientRuntime);
       case 'listFilesTool':
-        return listFilesTool(this.clientRuntime!);
+        if (!this.clientRuntime) return null;
+        return listFilesTool(this.clientRuntime);
       case 'multiEditTool':
+        if (!this.clientRuntime) return null;
         return this.wrapFileModifyingTool(
           MULTI_EDIT_DESCRIPTION,
           multiEditToolInputSchema,
@@ -302,6 +308,7 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'overwriteFileTool':
+        if (!this.clientRuntime) return null;
         return this.wrapFileModifyingTool(
           OVERWRITE_FILE_DESCRIPTION,
           overwriteFileToolInputSchema,
@@ -309,23 +316,31 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'readFileTool':
-        return readFileTool(this.clientRuntime!);
+        if (!this.clientRuntime) return null;
+        return readFileTool(this.clientRuntime);
       case 'resolveContext7LibraryTool':
-        return resolveContext7LibraryTool(this.apiClient!);
+        if (!this.apiClient) return null;
+        return resolveContext7LibraryTool(this.apiClient);
       case 'getContext7LibraryDocsTool':
-        return getContext7LibraryDocsTool(this.apiClient!);
+        if (!this.apiClient) return null;
+        return getContext7LibraryDocsTool(this.apiClient);
       case 'getLintingDiagnosticsTool':
+        if (!this.lspService) return null;
+        if (!this.clientRuntime) return null;
         return getLintingDiagnosticsTool(
           this.lspService!,
           this.modifiedFilesPerAgent.get(agentInstanceId)!,
-          this.clientRuntime!,
+          this.clientRuntime,
         );
       case 'executeConsoleScriptTool':
-        return executeConsoleScriptTool(this.windowLayoutService!);
+        if (!this.windowLayoutService) return null;
+        return executeConsoleScriptTool(this.windowLayoutService);
       case 'readConsoleLogsTool':
-        return readConsoleLogsTool(this.windowLayoutService!);
+        if (!this.windowLayoutService) return null;
+        return readConsoleLogsTool(this.windowLayoutService);
       default:
-        throw new Error(`Tool "${String(tool)}" not found`);
+        this.logger.error('[ToolboxService] Tool not found', { tool });
+        return null;
     }
   }
 
@@ -508,7 +523,14 @@ export class ToolboxService extends DisposableService {
 
   private async initialize(): Promise<void> {
     this.logger.debug('[ToolboxService] Initializing...');
-    this.authService.registerAuthStateChangeCallback(this.refreshApiClient);
+
+    // Eagerly initialize the API client if auth is already available
+    this.apiClient = this.getOrCreateApiClient();
+
+    // Use arrow function to preserve `this` binding when called as callback
+    this.authService.registerAuthStateChangeCallback(() =>
+      this.refreshApiClient(),
+    );
   }
 
   protected onTeardown(): Promise<void> | void {
