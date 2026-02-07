@@ -41,13 +41,37 @@ export class ChatAgent extends BaseAgent<never, ToolSet> {
   };
 
   protected getTools = async () => {
-    return {
-      // grepSearch: await this.toolbox.getTool('grepSearchTool', this.instanceId),
-      // updateStagewiseMd: await this.toolbox.getTool(
-      //   'updateStagewiseMdTool',
-      //   this.instanceId,
-      // ),
-      // TODO: Add more
+    const id = this.instanceId;
+    const box = this.toolbox;
+    const tools = {
+      executeConsoleScriptTool: await box.getTool(
+        'executeConsoleScriptTool',
+        id,
+      ),
+      resolveContext7LibraryTool: await box.getTool(
+        'resolveContext7LibraryTool',
+        id,
+      ),
+      getContext7LibraryDocsTool: await box.getTool(
+        'getContext7LibraryDocsTool',
+        id,
+      ),
+      getLintingDiagnosticsTool: await box.getTool(
+        'getLintingDiagnosticsTool',
+        id,
+      ),
+      deleteFileTool: await box.getTool('deleteFileTool', id),
+      overwriteFileTool: await box.getTool('overwriteFileTool', id),
+      readFileTool: await box.getTool('readFileTool', id),
+      listFilesTool: await box.getTool('listFilesTool', id),
+      globTool: await box.getTool('globTool', id),
+      multiEditTool: await box.getTool('multiEditTool', id),
+      grepSearchTool: await box.getTool('grepSearchTool', id),
+      readConsoleLogsTool: await box.getTool('readConsoleLogsTool', id),
     };
+    // Filter out null tools that miss dependencies in the toolbox (e.g. no workspace connected)
+    return Object.fromEntries(
+      Object.entries(tools).filter(([_, tool]) => tool !== null),
+    ) as ToolSet;
   };
 }
