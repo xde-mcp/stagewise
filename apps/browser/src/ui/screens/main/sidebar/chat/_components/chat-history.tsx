@@ -60,10 +60,15 @@ export const ChatHistory = () => {
     [updateSpacerHeight],
   );
 
-  // Callback ref for last assistant message - stores element for measurement
-  const lastAssistantMessageRef = useCallback((node: HTMLDivElement | null) => {
-    lastAssistantElementRef.current = node;
-  }, []);
+  // Callback ref for last assistant message - stores element for measurement AND triggers height update
+  const lastAssistantMessageRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      lastAssistantElementRef.current = node;
+      // Trigger height measurement when a new element is mounted
+      if (node) updateSpacerHeight();
+    },
+    [updateSpacerHeight],
+  );
 
   // Auto-scroll hook
   const {
@@ -297,6 +302,7 @@ export const ChatHistory = () => {
       history,
       showWorkingIndicator,
       paddingRight,
+      spacerHeight,
     ],
   );
 
