@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { selectedElementSchema } from '../../selected-elements';
+import { selectedElementSchema } from '../../../selected-elements';
 
 /**
  * Schema for file attachments.

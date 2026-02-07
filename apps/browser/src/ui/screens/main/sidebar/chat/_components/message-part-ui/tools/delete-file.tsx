@@ -1,4 +1,5 @@
-import type { ToolPart } from '@shared/karton-contracts/ui';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { ToolUIPart } from 'ai';
 import { DiffPreview } from './shared/diff-preview';
 import { ToolPartUI } from './shared/tool-part-ui';
 import {
@@ -23,7 +24,7 @@ import { usePostHog } from 'posthog-js/react';
 export const DeleteFileToolPart = ({
   part,
 }: {
-  part: Extract<ToolPart, { type: 'tool-deleteFileTool' }>;
+  part: Extract<ToolUIPart<StagewiseUITools>, { type: 'tool-deleteFileTool' }>;
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [collapsedDiffView, setCollapsedDiffView] = useState(true);
@@ -31,9 +32,13 @@ export const DeleteFileToolPart = ({
 
   const diff = useMemo(
     () =>
+      // TODO @julian is this deleted?
+      // @ts-expect-error - hiddenFromLLM doesn't exist anymore (in toolbox i guess)
       part.output?.hiddenFromLLM?.diff
-        ? diffLines(part.output.hiddenFromLLM.diff.before ?? '', '')
+        ? // @ts-expect-error
+          diffLines(part.output.hiddenFromLLM.diff.before ?? '', '')
         : null,
+    // @ts-expect-error
     [part.output?.hiddenFromLLM],
   );
 

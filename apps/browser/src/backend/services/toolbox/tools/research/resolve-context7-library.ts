@@ -1,7 +1,7 @@
 import {
   type ResolveContext7LibraryToolInput,
   resolveContext7LibraryToolInputSchema,
-} from '@shared/karton-contracts/ui/tools/types';
+} from '@shared/karton-contracts/ui/agent/tools/types';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import { tool } from 'ai';
 import { rethrowCappedToolOutputError, capToolOutput } from '../../utils';

@@ -46,7 +46,7 @@ import {
   multiEditToolInputSchema,
   overwriteFileToolInputSchema,
   type StagewiseToolSet,
-} from '@shared/karton-contracts/ui/tools/types';
+} from '@shared/karton-contracts/ui/agent/tools/types';
 import type {
   BrowserSnapshot,
   DiagnosticsByFile,

@@ -1,5 +1,4 @@
 import { useKartonState } from '@/hooks/use-karton';
-import type { ToolPart } from '@shared/karton-contracts/ui';
 import {
   useMemo,
   useState,
@@ -8,7 +7,8 @@ import {
   useContext,
   useCallback,
 } from 'react';
-import type { ReasoningUIPart } from 'ai';
+import type { ReasoningUIPart, ToolUIPart } from 'ai';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { GlobToolPart } from './glob';
 import { SearchIcon } from 'lucide-react';
 import { GrepSearchToolPart } from './grep-search';
@@ -38,7 +38,7 @@ export const useExploringContentContext = () => {
 
 export type ReadOnlyToolPart =
   | Extract<
-      ToolPart,
+      ToolUIPart<StagewiseUITools>,
       {
         type:
           | 'tool-globTool'
@@ -55,7 +55,7 @@ export type ReadOnlyToolPart =
   | ReasoningUIPart;
 
 export function isReadOnlyToolPart(
-  part: ToolPart | ReasoningUIPart,
+  part: ToolUIPart<StagewiseUITools> | ReasoningUIPart,
 ): part is ReadOnlyToolPart {
   return (
     part.type === 'reasoning' ||
@@ -408,7 +408,7 @@ export const ExploringToolParts = ({
         return 'Exploring files...';
       case 'tool-getContext7LibraryDocsTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolPart,
+          ToolUIPart<StagewiseUITools>,
           { type: 'tool-getContext7LibraryDocsTool' }
         >;
         if (!p.input?.libraryId) return 'Exploring documentation...';
@@ -416,7 +416,7 @@ export const ExploringToolParts = ({
       }
       case 'tool-resolveContext7LibraryTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolPart,
+          ToolUIPart<StagewiseUITools>,
           { type: 'tool-resolveContext7LibraryTool' }
         >;
         if (!p.input?.library) return 'Exploring documentation...';
@@ -424,7 +424,7 @@ export const ExploringToolParts = ({
       }
       case 'tool-executeConsoleScriptTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolPart,
+          ToolUIPart<StagewiseUITools>,
           { type: 'tool-executeConsoleScriptTool' }
         >;
         const tab = Object.values(activeTabs).find(
@@ -436,7 +436,7 @@ export const ExploringToolParts = ({
       }
       case 'tool-readConsoleLogsTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolPart,
+          ToolUIPart<StagewiseUITools>,
           { type: 'tool-readConsoleLogsTool' }
         >;
         const tab = Object.values(activeTabs).find(

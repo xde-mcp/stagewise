@@ -15,7 +15,7 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 
-import type { ChatMessage, QueuedMessage } from '@shared/karton-contracts/ui';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import {
   Tooltip,
   TooltipContent,
@@ -24,9 +24,9 @@ import {
 import { useOpenAgent } from '@/hooks/use-open-chat';
 
 // Stable empty array to avoid creating new instances in selectors (prevents infinite loops)
-const _EMPTY_MESSAGE_QUEUE: QueuedMessage[] = [];
+const _EMPTY_MESSAGE_QUEUE: AgentMessage[] = [];
 
-/** Extract text content from a ChatMessage's parts */
+/** Extract text content from a AgentMessage's parts */
 function getMessageText(message: {
   parts: { type: string; text?: string }[];
 }): string {
@@ -55,7 +55,7 @@ interface FileDiffItemProps {
 }
 
 interface QueuedMessagesItemProps {
-  queuedMessages: ChatMessage[];
+  queuedMessages: AgentMessage[];
   onRemoveMessage: (messageId: string) => Promise<void>;
   onFlush: () => Promise<void>;
 }

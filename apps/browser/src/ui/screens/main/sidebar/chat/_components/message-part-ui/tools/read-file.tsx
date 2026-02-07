@@ -1,4 +1,5 @@
-import type { ToolPart } from '@shared/karton-contracts/ui';
+import type { ToolUIPart } from 'ai';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { EyeIcon } from 'lucide-react';
 
@@ -7,7 +8,7 @@ export const ReadFileToolPart = ({
   disableShimmer = false,
   minimal = false,
 }: {
-  part: Extract<ToolPart, { type: 'tool-readFileTool' }>;
+  part: Extract<ToolUIPart<StagewiseUITools>, { type: 'tool-readFileTool' }>;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {

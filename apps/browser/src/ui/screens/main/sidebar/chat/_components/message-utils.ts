@@ -1,17 +1,21 @@
 import type {
-  ToolPart,
   UIMessagePart,
+  ToolUIPart,
   ReasoningUIPart,
-  ChatMessage,
-} from '@shared/karton-contracts/ui';
+  UIDataTypes,
+} from 'ai';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 
-export function isToolPart(part: UIMessagePart): part is ToolPart {
+export function isToolPart(
+  part: UIMessagePart<UIDataTypes, StagewiseUITools>,
+): part is ToolUIPart<StagewiseUITools> {
   return part.type === 'dynamic-tool' || part.type.startsWith('tool-');
 }
 
 export function isToolOrReasoningPart(
-  part: UIMessagePart,
-): part is ToolPart | ReasoningUIPart {
+  part: UIMessagePart<UIDataTypes, StagewiseUITools>,
+): part is ToolUIPart<StagewiseUITools> | ReasoningUIPart {
   return (
     part.type === 'dynamic-tool' ||
     part.type.startsWith('tool-') ||
@@ -23,7 +27,7 @@ export function isToolOrReasoningPart(
  * Check if an assistant message is "empty" (no visible content yet).
  * Used to determine if we should show the "Working..." indicator.
  */
-export function isEmptyAssistantMessage(msg: ChatMessage): boolean {
+export function isEmptyAssistantMessage(msg: AgentMessage): boolean {
   // If it has any tools or files, it's not empty
   if (
     msg.parts

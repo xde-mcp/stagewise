@@ -1,4 +1,5 @@
-import type { ToolPart } from '@shared/karton-contracts/ui';
+import type { ToolUIPart } from 'ai';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import {
   IconTriangleWarningOutline18,
   IconCheck2Outline18,
@@ -16,7 +17,10 @@ export const GetLintingDiagnosticsToolPart = ({
   capMaxHeight = false,
   isLastPart = false,
 }: {
-  part: Extract<ToolPart, { type: 'tool-getLintingDiagnosticsTool' }>;
+  part: Extract<
+    ToolUIPart<StagewiseUITools>,
+    { type: 'tool-getLintingDiagnosticsTool' }
+  >;
   disableShimmer?: boolean;
   capMaxHeight?: boolean;
   isLastPart?: boolean;

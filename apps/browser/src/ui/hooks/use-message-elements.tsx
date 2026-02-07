@@ -3,7 +3,7 @@ import type { SelectedElement } from '@shared/selected-elements';
 import type {
   FileAttachment,
   TextClipAttachment,
-} from '@shared/karton-contracts/ui/metadata';
+} from '@shared/karton-contracts/ui/agent/metadata';
 
 /**
  * Context for providing all attachment data within a message scope.

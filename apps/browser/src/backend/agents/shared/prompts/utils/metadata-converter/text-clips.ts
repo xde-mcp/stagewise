@@ -1,4 +1,4 @@
-import type { TextClipAttachment } from '@shared/karton-contracts/ui/metadata.js';
+import type { TextClipAttachment } from '@shared/karton-contracts/ui/agent/metadata.js';
 import xml from 'xml';
 import specialTokens from '../special-tokens.js';
 

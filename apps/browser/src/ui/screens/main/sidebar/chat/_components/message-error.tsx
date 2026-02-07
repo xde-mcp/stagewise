@@ -1,11 +1,8 @@
 import { cn } from '@/utils';
 import { useState } from 'react';
 import { IconTriangleWarning } from 'nucleo-micro-bold';
-import {
-  AgentErrorType,
-  type ChatMessage,
-  type AgentError,
-} from '@shared/karton-contracts/ui';
+import { AgentErrorType, type AgentError } from '@shared/karton-contracts/ui';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { RefreshCcwIcon, CopyIcon, CopyCheckIcon } from 'lucide-react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { Streamdown } from '@/components/streamdown';
@@ -99,7 +96,7 @@ export function MessageError({ error }: { error: AgentError }) {
     for (let i = agentHistory.length - 1; i >= 0; i--) {
       const message = agentHistory[i];
       if (message.role === 'user') {
-        const message: ChatMessage & { role: 'user' } = {
+        const message: AgentMessage & { role: 'user' } = {
           ...agentHistory[i],
           role: 'user',
         };

@@ -1,4 +1,5 @@
-import type { ToolPart } from '@shared/karton-contracts/ui';
+import type { ToolUIPart } from 'ai';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import {
   Tooltip,
   TooltipTrigger,
@@ -12,7 +13,10 @@ export const UpdateStagewiseMdToolPart = ({
   disableShimmer = false,
   minimal = false,
 }: {
-  part: Extract<ToolPart, { type: 'tool-updateStagewiseMdTool' }>;
+  part: Extract<
+    ToolUIPart<StagewiseUITools>,
+    { type: 'tool-updateStagewiseMdTool' }
+  >;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {

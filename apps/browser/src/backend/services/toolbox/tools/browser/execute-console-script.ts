@@ -1,7 +1,7 @@
 import {
   type ExecuteConsoleScriptToolInput,
   executeConsoleScriptToolInputSchema,
-} from '@shared/karton-contracts/ui/tools/types';
+} from '@shared/karton-contracts/ui/agent/tools/types';
 import { tool } from 'ai';
 import { rethrowCappedToolOutputError } from '../../utils';
 import { capToolOutput } from '../../utils';

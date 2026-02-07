@@ -1,4 +1,5 @@
-import type { ToolPart } from '@shared/karton-contracts/ui';
+import type { ToolUIPart } from 'ai';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { DiffPreview } from './shared/diff-preview';
 import { FileIcon } from './shared/file-icon';
 import { usePostHog } from 'posthog-js/react';
@@ -31,18 +32,23 @@ import {
 export const MultiEditToolPart = ({
   part,
 }: {
-  part: Extract<ToolPart, { type: 'tool-multiEditTool' }>;
+  part: Extract<ToolUIPart<StagewiseUITools>, { type: 'tool-multiEditTool' }>;
 }) => {
   const [expanded, setExpanded] = useState(true);
   const { getFileIDEHref } = useFileIDEHref();
   const diff = useMemo(
     () =>
+      // TODO @julian is this deleted?
+      // @ts-expect-error - hiddenFromLLM doesn't exist anymore (in toolbox i guess)
       part.output?.hiddenFromLLM?.diff
         ? diffLines(
+            // @ts-expect-error
             part.output?.hiddenFromLLM?.diff.before ?? '',
+            // @ts-expect-error
             part.output?.hiddenFromLLM?.diff.after ?? '',
           )
         : null,
+    // @ts-expect-error
     [part.output?.hiddenFromLLM],
   );
 

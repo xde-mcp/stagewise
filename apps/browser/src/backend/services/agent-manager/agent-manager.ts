@@ -4,8 +4,8 @@ import {
   AgentTypes,
 } from '@shared/karton-contracts/ui/agent';
 import { DisposableService } from '../disposable';
-import type { ChatMessage } from '@shared/karton-contracts/ui';
-import { AgentsMap } from '@/agents/agents-map';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import { AgentsMap, type AgentTypeMap } from '@/agents/agents-map';
 import { randomUUID } from 'node:crypto';
 import type { KartonService } from '../karton';
 import type { TelemetryService } from '../telemetry';
@@ -17,6 +17,11 @@ import type { z } from 'zod';
 import { AgentPersistenceDB } from './persistence/db';
 import type { GlobalDataPathService } from '../global-data-path';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
+
+/**
+ * @note Due to the complex type inference for all this stuff, we sometimes explicitly define types here to avoid errors.
+ *       This is a bit of a hack, but it's the best we can do for now.
+ */
 
 export class AgentManagerService extends DisposableService {
   private activeAgents = new Map<string, BaseAgent<any, any>>();
@@ -61,7 +66,7 @@ export class AgentManagerService extends DisposableService {
     // Create an empty default agent only after the DB is ready
     // This ensures that when there's an active agent, the DB is guaranteed to be initialized
     this.dbReadyPromise.then(() => {
-      this.createAgent(AgentTypes.CHAT);
+      this.createAgent(AgentTypes.CHAT, undefined);
     });
   }
 
@@ -83,7 +88,8 @@ export class AgentManagerService extends DisposableService {
     this.karton.registerServerProcedureHandler(
       'agents.create',
       async (_callingClientId: string) => {
-        return (await this.createAgent(AgentTypes.CHAT)).instanceId;
+        // @ts-ignore - We have to cast the result to any to avoid the type instantiation error.
+        return (await this.createAgent(AgentTypes.CHAT, undefined)).instanceId;
       },
     );
     this.karton.registerServerProcedureHandler(
@@ -99,7 +105,7 @@ export class AgentManagerService extends DisposableService {
       async (
         _callingClientId: string,
         instanceId: string,
-        message: ChatMessage & { role: 'user' },
+        message: AgentMessage & { role: 'user' },
       ) => {
         await this.sendUserMessage(instanceId, message);
       },
@@ -170,7 +176,7 @@ export class AgentManagerService extends DisposableService {
         _callingClientId: string,
         instanceId: string,
         userMessageId: string,
-        newMessage: ChatMessage & { role: 'user' },
+        newMessage: AgentMessage & { role: 'user' },
       ) => {
         return await this.replaceUserMessage(
           instanceId,
@@ -221,11 +227,11 @@ export class AgentManagerService extends DisposableService {
   protected onTeardown(): Promise<void> | void {}
 
   // Create a new agent. Should be called when the user creates a new agent.
-  public async createAgent<TAgentType extends AgentTypes>(
+  public async createAgent<TAgentType extends keyof AgentTypeMap>(
     type: TAgentType,
+    instanceConfig: InstanceType<AgentTypeMap[TAgentType]>['instanceConfig'],
     parent?: {
       parentInstanceId: string;
-      parentHistory: ChatMessage[];
       onFinish: (
         finishOutput: z.infer<
           (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
@@ -235,11 +241,16 @@ export class AgentManagerService extends DisposableService {
     },
     initialState?: AgentState,
     instanceId?: string,
-  ): Promise<InstanceType<(typeof AgentsMap)[TAgentType]>> {
+  ): Promise<
+    BaseAgent<
+      (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'],
+      InstanceType<AgentTypeMap[TAgentType]>['instanceConfig']
+    >
+  > {
     const agentInstanceId = instanceId ?? randomUUID();
 
     // Build state object outside setState to avoid "Type instantiation is excessively deep" error
-    // caused by complex Draft<ChatMessage[]> inference from the 'ai' package's UIMessage type
+    // caused by complex Draft<[]> inference from the 'ai' package's UIMessage type
     const agentState: AgentState = {
       title: '',
       isWorking: false,
@@ -253,7 +264,7 @@ export class AgentManagerService extends DisposableService {
     };
 
     // Use type assertion to avoid "Type instantiation is excessively deep" error
-    // caused by Draft<> inference on deeply nested ChatMessage types from 'ai' package
+    // caused by Draft<> inference on deeply nested  types from 'ai' package
     this.karton.setState((draft) => {
       (draft.agents.instances as Record<string, unknown>)[agentInstanceId] = {
         type: type,
@@ -272,7 +283,9 @@ export class AgentManagerService extends DisposableService {
     const agent = new AgentsMap[type](
       agentInstanceId,
       {
-        get: () => this.karton.state.agents.instances[agentInstanceId].state,
+        get: () =>
+          this.karton.state.agents.instances[agentInstanceId]
+            .state as Readonly<AgentState>,
         set: (recipe) => {
           this.karton.setState((draft) => {
             // @ts-ignore - We have to call the state update recipe with the draft this way to keep "immer" working.
@@ -286,24 +299,15 @@ export class AgentManagerService extends DisposableService {
       this.telemetryService,
       this.logger,
       this.modelProviderService,
-      async <TChildAgentType extends AgentTypes>(
-        childAgentType: TChildAgentType,
-        history: ChatMessage[],
-        onFinish: (
-          finishOutput: z.infer<
-            (typeof AgentsMap)[TChildAgentType]['config']['finishToolOutputSchema']
-          >,
-        ) => void | Promise<void>,
-        onError: (error: Error) => void | Promise<void>,
-      ) => {
-        const childAgent = await this.createAgent(childAgentType, {
-          parentInstanceId: agentInstanceId,
-          parentHistory: history,
-          onFinish: onFinish,
-          onError: onError,
-        });
-
-        return childAgent;
+      instanceConfig as any,
+      async (childAgentType, instanceConfig, onFinish, onError) => {
+        return await this.spawnChildAgent(
+          agentInstanceId,
+          childAgentType,
+          instanceConfig,
+          onFinish,
+          onError,
+        );
       },
       // @ts-ignore - The onFinish handler returns outputs with the configured schema of the agent. dunno why ts doesn't get this right.
       parent?.onFinish,
@@ -313,15 +317,44 @@ export class AgentManagerService extends DisposableService {
 
     this.activeAgents.set(agentInstanceId, agent);
 
-    return agent as unknown as InstanceType<(typeof AgentsMap)[TAgentType]>;
+    return agent;
   }
 
-  // Resume an agent form the last persisted state. Should probably be called when the user select the agent from a list of previous agents.
+  private async spawnChildAgent<TChildAgentType extends keyof AgentTypeMap>(
+    parentInstanceId: string,
+    childAgentType: TChildAgentType,
+    instanceConfig: InstanceType<
+      AgentTypeMap[TChildAgentType]
+    >['instanceConfig'],
+    onFinish: (
+      finishOutput: z.infer<
+        (typeof AgentsMap)[TChildAgentType]['config']['finishToolOutputSchema']
+      >,
+    ) => void | Promise<void>,
+    onError: (error: Error) => void | Promise<void>,
+  ): Promise<
+    BaseAgent<
+      (typeof AgentsMap)[TChildAgentType]['config']['finishToolOutputSchema'],
+      InstanceType<AgentTypeMap[TChildAgentType]>['instanceConfig']
+    >
+  > {
+    const childAgent = await this.createAgent(childAgentType, instanceConfig, {
+      parentInstanceId: parentInstanceId,
+      onFinish: onFinish,
+      onError: onError,
+    });
+
+    return childAgent;
+  }
+
+  // Resume an agent from the last persisted state. Should probably be called when the user select the agent from a list of previous agents.
   public async resumeAgent(instanceId: string) {
     // Early exit if the agent is already active.
     if (this.activeAgents.has(instanceId)) {
       return this.activeAgents.get(instanceId);
     }
+
+    this.logger.debug(`[AgentManager] Resuming agent. ID: ${instanceId}`);
 
     const agent =
       await this.agentPersistenceDB?.getStoredAgentInstanceById(instanceId);
@@ -338,6 +371,7 @@ export class AgentManagerService extends DisposableService {
 
     return await this.createAgent(
       agent.type,
+      agent.instanceConfig as any,
       undefined,
       {
         title: agent.title,
@@ -456,7 +490,7 @@ export class AgentManagerService extends DisposableService {
    */
   public async sendUserMessage(
     instanceId: string,
-    message: ChatMessage & { role: 'user' },
+    message: AgentMessage & { role: 'user' },
   ) {
     const agent = this.activeAgents.get(instanceId);
 
@@ -573,7 +607,7 @@ export class AgentManagerService extends DisposableService {
   public async replaceUserMessage(
     instanceId: string,
     userMessageId: string,
-    newMessage: ChatMessage & { role: 'user' },
+    newMessage: AgentMessage & { role: 'user' },
   ): Promise<string> {
     const agent = this.activeAgents.get(instanceId);
 

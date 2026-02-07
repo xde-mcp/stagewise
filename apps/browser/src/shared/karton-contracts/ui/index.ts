@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { ModelId } from '@shared/available-models';
 import type { ExampleUserInputOutput } from '@stagewise/agent-tools';
-import type { UserMessageMetadata } from './metadata';
+import type { UserMessageMetadata } from './agent/metadata';
 import type { ReactSelectedElementInfo } from '../../selected-elements/react';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import type { SelectedElement } from '../../selected-elements';
@@ -34,7 +34,12 @@ import {
   configurablePermissionTypes,
 } from './shared-types';
 import type { PageTransition, DownloadState } from '../pages-api/types';
-import type { AgentState, AgentTypes, AgentHistoryEntry } from './agent';
+import type {
+  AgentState,
+  AgentTypes,
+  AgentHistoryEntry,
+  AgentMessage,
+} from './agent';
 
 export type ChatMessage = UIMessage<UserMessageMetadata, UIDataTypes, UITools>;
 
@@ -724,7 +729,7 @@ export type KartonContract = {
       updateInputState: (agentId: string, inputState: string) => Promise<void>;
       sendUserMessage: (
         agentId: string,
-        message: ChatMessage & { role: 'user' },
+        message: AgentMessage & { role: 'user' },
       ) => Promise<void>;
       sendToolApprovalResponse: (
         instanceId: string,
@@ -747,7 +752,7 @@ export type KartonContract = {
       replaceUserMessage: (
         agentId: string,
         userMessageId: string,
-        newMessage: ChatMessage & { role: 'user' },
+        newMessage: AgentMessage & { role: 'user' },
       ) => Promise<string>;
       setActiveModelId: (agentId: string, modelId: ModelId) => Promise<void>;
     };

@@ -6,7 +6,7 @@ import {
   primaryKey,
   customType,
 } from 'drizzle-orm/sqlite-core';
-import type { ChatMessage } from '@shared/karton-contracts/ui';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { metaTable } from '@/utils/migrate-database/types';
 import type { ModelId } from '@shared/available-models';
 import { relations } from 'drizzle-orm';
@@ -72,18 +72,21 @@ export const agentInstances = sqliteTable(
     id: text('id').primaryKey(),
     parentAgentInstanceId: text('parent_agent_instance_id'),
     type: agentType('type').notNull(),
+    instanceConfig: text('instance_config', { mode: 'json' }).$type<unknown>(),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
     lastMessageAt: integer('last_message_at', { mode: 'timestamp' }).notNull(),
     activeModelId: modelId('active_model_id').notNull(),
     title: text('title').notNull(),
-    history: text('history', { mode: 'json' }).notNull().$type<ChatMessage[]>(),
+    history: text('history', { mode: 'json' })
+      .notNull()
+      .$type<AgentMessage[]>(),
     lastCompactedMessageId: text('last_compacted_message_id'),
     compactedHistory: text('compacted_history', { mode: 'json' }).$type<
-      ChatMessage[]
+      AgentMessage[]
     >(),
     queuedMessages: text('queued_messages', { mode: 'json' })
       .notNull()
-      .$type<(ChatMessage & { role: 'user' })[]>(),
+      .$type<(AgentMessage & { role: 'user' })[]>(),
     inputState: text('input_state', { mode: 'json' }).notNull().$type<string>(),
     usedTokens: integer('used_tokens').notNull(),
   },

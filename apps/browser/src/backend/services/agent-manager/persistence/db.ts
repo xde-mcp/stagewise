@@ -101,9 +101,7 @@ export class AgentPersistenceDB {
         ),
       );
 
-    this._logger.debug(
-      `[AgentPersistenceDB] Fetched agent history entries: ${JSON.stringify(results)}`,
-    );
+    this._logger.debug(`[AgentPersistenceDB] Fetched agent history entries`);
 
     return results;
   }
@@ -122,9 +120,7 @@ export class AgentPersistenceDB {
   public async getStoredAgentInstanceById(
     id: string,
   ): Promise<schema.StoredAgentInstance | null> {
-    this._logger.debug(
-      `[AgentPersistenceDB] Fetching agent instance by id: ${id}`,
-    );
+    this._logger.debug(`[AgentPersistenceDB] Fetching agent instance: ${id}`);
     const _results = await this._db
       .selectDistinct()
       .from(schema.agentInstances)
@@ -150,7 +146,7 @@ export class AgentPersistenceDB {
     agentInstance: schema.NewStoredAgentInstance,
   ): Promise<void> {
     this._logger.debug(
-      `[AgentPersistenceDB] Storing agent instance: ${JSON.stringify(agentInstance)}`,
+      `[AgentPersistenceDB] Storing agent instance: ${agentInstance.id}`,
     );
     await this._db
       .insert(schema.agentInstances)

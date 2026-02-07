@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { fileToDataUrl, generateId, validateFileBeforeUpload } from '@/utils';
 import { fileAttachmentToAttachmentAttributes } from '@/utils/attachment-conversions';
-import type { FileAttachment } from '@shared/karton-contracts/ui/metadata';
+import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 import type { ChatInputHandle } from '@/screens/main/sidebar/chat/_components/chat-input';
 
 export interface UseFileAttachmentsOptions {

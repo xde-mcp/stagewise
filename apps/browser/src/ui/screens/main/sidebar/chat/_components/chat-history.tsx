@@ -13,7 +13,7 @@ import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { cn } from '@ui/utils';
-import type { History, ChatMessage } from '@shared/karton-contracts/ui';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { IconXmark } from 'nucleo-micro-bold';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
@@ -171,7 +171,7 @@ export const ChatHistory = () => {
       .filter(
         (message) => message.role === 'user' || message.role === 'assistant',
       )
-      .reduce<History>((curr, message) => {
+      .reduce<AgentMessage[]>((curr, message) => {
         const lastMessage = curr[curr.length - 1];
         if (!lastMessage) {
           curr.push({ ...message, parts: [...message.parts] });
@@ -233,7 +233,7 @@ export const ChatHistory = () => {
 
   // Render individual message item
   const itemContent = useCallback(
-    (index: number, message: ChatMessage) => {
+    (index: number, message: AgentMessage) => {
       const isLastMessage = index === filteredMessages.length - 1;
       const isLastUserMessage = index === lastUserMsgIndex;
       const isLastAssistantMessage =
@@ -242,12 +242,12 @@ export const ChatHistory = () => {
       const messageComponent =
         message.role === 'user' ? (
           <MessageUser
-            message={message as ChatMessage & { role: 'user' }}
+            message={message as AgentMessage & { role: 'user' }}
             isLastMessage={isLastMessage}
           />
         ) : (
           <MessageAssistant
-            message={message as ChatMessage & { role: 'assistant' }}
+            message={message as AgentMessage & { role: 'assistant' }}
             isLastMessage={isLastMessage}
           />
         );

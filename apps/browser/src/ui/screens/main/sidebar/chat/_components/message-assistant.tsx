@@ -1,14 +1,16 @@
 import { cn } from '@/utils';
 import { IconMagicWandSparkle } from 'nucleo-glass';
 import type {
-  ChatMessage,
-  TextUIPart,
-  FileUIPart,
   ReasoningUIPart,
-  UIMessagePart,
   ToolUIPart,
   DynamicToolUIPart,
-} from '@shared/karton-contracts/ui';
+  FileUIPart,
+  TextUIPart,
+  UIMessagePart,
+  UIDataTypes,
+} from 'ai';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { useMemo, memo } from 'react';
 import { useKartonState } from '@/hooks/use-karton';
 import { ThinkingPart } from './message-part-ui/thinking';
@@ -29,7 +31,7 @@ import { ReadConsoleLogsToolPart } from './message-part-ui/tools/read-console-lo
 import { isToolOrReasoningPart } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 
-type AssistantMessage = ChatMessage & { role: 'assistant' };
+type AssistantMessage = AgentMessage & { role: 'assistant' };
 
 export const MessageAssistant = memo(
   function MessageAssistant({
@@ -112,7 +114,10 @@ export const MessageAssistant = memo(
 
                     return acc;
                   },
-                  [] as (UIMessagePart | ReadOnlyToolPart[])[],
+                  [] as (
+                    | UIMessagePart<UIDataTypes, StagewiseUITools>
+                    | ReadOnlyToolPart[]
+                  )[],
                 );
 
                 const typeCounters: Record<string, number> = {};
@@ -211,7 +216,11 @@ export const MessageAssistant = memo(
                             isLastMessage
                           }
                           key={stableKey}
-                          part={part as ToolUIPart | DynamicToolUIPart}
+                          part={
+                            part as
+                              | ToolUIPart<StagewiseUITools>
+                              | DynamicToolUIPart
+                          }
                         />
                       );
                   }

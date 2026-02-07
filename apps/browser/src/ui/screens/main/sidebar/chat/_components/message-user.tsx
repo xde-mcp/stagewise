@@ -4,7 +4,8 @@ import {
 } from '@/utils/attachment-conversions';
 import { markdownToTipTapContent } from '@/utils/tiptap-content-utils';
 import { cn, collectUserMessageMetadata } from '@/utils';
-import type { ChatMessage, FileUIPart } from '@shared/karton-contracts/ui';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import type { FileUIPart } from 'ai';
 import { useMemo, useCallback, memo, useState, useRef, useEffect } from 'react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useEventListener } from '@/hooks/use-event-listener';
@@ -35,7 +36,7 @@ import type { AttachmentType } from './rich-text';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import type { Content } from '@tiptap/core';
 
-type UserMessage = ChatMessage & { role: 'user' };
+type UserMessage = AgentMessage & { role: 'user' };
 
 export const MessageUser = memo(
   function MessageUser({

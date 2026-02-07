@@ -1,7 +1,7 @@
 import type { FileUIPart } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
 import { generateId } from '@/utils';
-import type { FileAttachment } from '@shared/karton-contracts/ui/metadata';
+import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 import type { AttachmentAttributes } from '@/screens/main/sidebar/chat/_components/rich-text';
 
 /**

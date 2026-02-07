@@ -1,4 +1,5 @@
-import type { ToolPart } from '@shared/karton-contracts/ui';
+import type { ToolUIPart } from 'ai';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { getTruncatedFileUrl } from '@ui/utils';
 import { FolderOpenIcon } from 'lucide-react';
@@ -8,7 +9,7 @@ export const ListFilesToolPart = ({
   disableShimmer = false,
   minimal = false,
 }: {
-  part: Extract<ToolPart, { type: 'tool-listFilesTool' }>;
+  part: Extract<ToolUIPart<StagewiseUITools>, { type: 'tool-listFilesTool' }>;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {

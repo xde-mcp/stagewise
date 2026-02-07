@@ -5,7 +5,7 @@ import { extractTextClipsFromTiptapContent } from '@ui/screens/main/sidebar/chat
 import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
-import type { FileAttachment } from '@shared/karton-contracts/ui/metadata';
+import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 import type { Content } from '@tiptap/core';
 
 const customTwMerge = extendTailwindMerge({

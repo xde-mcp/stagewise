@@ -5,14 +5,14 @@ import {
   type UserModelMessage,
   type ToolSet,
 } from 'ai';
-import type { ChatMessage, SelectedElement } from '@shared/karton-contracts/ui';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import type { SelectedElement } from '@shared/selected-elements';
 import type { ModelProviderService } from '@/agents/model-provider';
 import {
   relevantCodebaseFilesToContextSnippet,
   selectedElementToContextSnippet,
 } from '../prompts/utils/metadata-converter/html-elements';
 import { textClipToContextSnippet } from '../prompts/utils/metadata-converter/text-clips';
-import { browserMetadataToContextSnippet } from '../prompts/utils/metadata-converter/browser-metadata';
 import xml from 'xml';
 import specialTokens from '../prompts/utils/special-tokens';
 
@@ -26,7 +26,7 @@ import specialTokens from '../prompts/utils/special-tokens';
  * @returns Model messages that represent the input messages.
  */
 export const convertStagewiseUIToModelMessages = async (
-  messages: ChatMessage[],
+  messages: AgentMessage[],
   systemPrompt: string,
   tools: ToolSet,
 ): Promise<ModelMessage[]> => {
@@ -115,12 +115,6 @@ export const convertStagewiseUIToModelMessages = async (
         );
       }
 
-      if (message.metadata?.browserData) {
-        systemAttachmentTextPart.push(
-          browserMetadataToContextSnippet(message.metadata.browserData),
-        );
-      }
-
       // Handle text clip attachments - collapsed long text pasted by user
       // These are referenced in user message as @{id} and contain the full text content
       if (
@@ -178,7 +172,7 @@ export const capitalizeFirstLetter = (string: string): string => {
 };
 
 export const generateSimpleTitle = async (
-  messages: ChatMessage[],
+  messages: AgentMessage[],
   modelProviderService: ModelProviderService,
   agentInstanceId: string,
 ): Promise<string> => {
@@ -228,7 +222,7 @@ export const generateSimpleTitle = async (
 };
 
 export const generateChatSummary = async (
-  messages: ChatMessage[],
+  messages: AgentMessage[],
   modelProviderService: ModelProviderService,
   agentInstanceId: string,
 ): Promise<string> => {

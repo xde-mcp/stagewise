@@ -15,7 +15,7 @@ import {
   NODE_NAME_TO_TYPE,
 } from '../types';
 import { getAttachmentAnchorText } from '@ui/components/streamdown';
-import type { TextClipAttachment as TextClipAttachmentMetadata } from '@shared/karton-contracts/ui/metadata';
+import type { TextClipAttachment as TextClipAttachmentMetadata } from '@shared/karton-contracts/ui/agent/metadata';
 
 /** Minimum character length for text to be converted to a text clip on paste */
 const TEXT_CLIP_THRESHOLD = 100;

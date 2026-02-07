@@ -1,11 +1,11 @@
 import { type ReactNode, createContext, useContext, useMemo } from 'react';
 
-import type { ChatMessage } from '@shared/karton-contracts/ui';
 import type {
   FileAttachment,
   TextClipAttachment,
   UserMessageMetadata,
-} from '@shared/karton-contracts/ui/metadata';
+} from '@shared/karton-contracts/ui/agent/metadata';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 
 type AttachmentId = string;
 
@@ -28,7 +28,7 @@ const AttachmentMetadataContext =
 
 interface AttachmentMetadataProviderProps {
   children: ReactNode;
-  messages: ChatMessage[];
+  messages: AgentMessage[];
 }
 
 export const AttachmentMetadataProvider = ({

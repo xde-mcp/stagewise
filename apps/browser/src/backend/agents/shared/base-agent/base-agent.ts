@@ -4,7 +4,6 @@ import {
   type ToolApprovalResponse,
   streamText,
   smoothStream,
-  type ToolSet,
   type StepResult,
   NoSuchToolError,
   type AsyncIterableStream,
@@ -12,13 +11,17 @@ import {
   readUIMessageStream,
   tool,
   type FlexibleSchema,
+  type ToolUIPart,
 } from 'ai';
-import type { ChatMessage, ToolUIPart } from '@shared/karton-contracts/ui';
-import type { AgentTypes, AgentState } from '@shared/karton-contracts/ui/agent';
+import type {
+  AgentMessage,
+  AgentTypes,
+  AgentState,
+} from '@shared/karton-contracts/ui/agent';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
 import type { ModelId } from '../../model-map';
 import type { z } from 'zod';
-import { AgentsMap } from '../../agents-map';
+import type { AgentTypeMap } from '../../agents-map';
 import type { ToolboxService } from '@/services/toolbox';
 import type { TelemetryService } from '@/services/telemetry';
 import type { Logger } from '@/services/logger';
@@ -30,11 +33,17 @@ import {
   generateChatSummary,
 } from './utils';
 import { randomUUID } from 'node:crypto';
+import type {
+  AllTools,
+  StagewiseToolSet,
+  StagewiseUITools,
+} from '@shared/karton-contracts/ui/agent/tools/types';
+import { AgentsMap } from '../../agents-map';
 
 /**
  * The base configuration for an agent. Should be defined by the inheriting class.
  */
-export type BaseAgentConfig<TFinishToolOutputSchema extends FlexibleSchema> = {
+export type BaseAgentConfig<TFinishToolOutputSchema extends z.ZodType> = {
   /**
    * Whether the agents state (including Messages) should be persisted to the database.
    */
@@ -238,9 +247,7 @@ export type MessageId = string;
  * AgentsMap[AgentTypes.CHAT].config.defaultModelId
  * ```
  */
-export interface BaseAgentStatic<
-  TFinishToolOutputSchema extends z.ZodType = z.ZodType,
-> {
+export interface BaseAgentStatic<TFinishToolOutputSchema extends z.ZodType> {
   readonly config: BaseAgentConfig<TFinishToolOutputSchema>;
   readonly agentType: AgentTypes;
 }
@@ -248,7 +255,7 @@ export interface BaseAgentStatic<
 /**
  * Utility type to extract the config type from an agent class.
  */
-export type AgentConfig<T extends BaseAgentStatic> = T['config'];
+export type AgentConfig<T extends BaseAgentStatic<any>> = T['config'];
 
 /**
  * A reusable base class for all agents.
@@ -266,7 +273,7 @@ export type AgentConfig<T extends BaseAgentStatic> = T['config'];
  */
 export abstract class BaseAgent<
   TFinishToolOutputSchema extends z.ZodType,
-  TTools extends ToolSet,
+  TInstanceConfig,
 > {
   public readonly instanceId: string;
 
@@ -299,6 +306,14 @@ export abstract class BaseAgent<
     persist: () => Promise<void>;
   };
 
+  /**
+   * The configuration of the agent instance.
+   * Depends on the agent type.
+   *
+   * @note Must be serializable since this get's recovered when resuming the agent.
+   */
+  public readonly instanceConfig: TInstanceConfig;
+
   // External dependencies
   protected readonly toolbox: ToolboxService;
   protected readonly telemetryService: TelemetryService;
@@ -309,12 +324,14 @@ export abstract class BaseAgent<
   private stepAbortController: AbortController | null = null;
 
   // Handler that get's called when the agent wants to spawn a child agent.
-  private readonly spawnChildAgentHandler?: <TAgentType extends AgentTypes>(
+  private readonly spawnChildAgentHandler: <
+    TAgentType extends keyof AgentTypeMap,
+  >(
     // The type of the child agent to spawn.
     childAgentType: TAgentType,
 
-    // The history with which the child agent should be spawned.
-    history: ChatMessage[],
+    // The config with which the agent should be spawned
+    instanceConfig: InstanceType<AgentTypeMap[TAgentType]>['instanceConfig'],
 
     // The handler that should be called when the child agent calls the finish tool.
     onFinish: (
@@ -324,9 +341,12 @@ export abstract class BaseAgent<
     ) => void | Promise<void>,
 
     onError: (error: Error) => void | Promise<void>,
-  ) =>
-    | InstanceType<(typeof AgentsMap)[TAgentType]>
-    | Promise<InstanceType<(typeof AgentsMap)[TAgentType]>>;
+  ) => Promise<
+    BaseAgent<
+      (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'],
+      InstanceType<AgentTypeMap[TAgentType]>['instanceConfig']
+    >
+  >;
 
   // Handler that get's called when the agent calls the finish tool (notify the parent).
   // The finish tool should be added to the list of tools when calling `streamText` on every step (if it's configured).
@@ -337,10 +357,10 @@ export abstract class BaseAgent<
     error: Error,
   ) => void | Promise<void>;
 
-  private messages: ChatMessage[] = [];
+  private messages: AgentMessage[] = [];
 
   public constructor(
-    instaceId: string,
+    instanceId: string,
     state: {
       get: () => AgentState;
       set: (recipe: (draft: AgentState) => void) => void;
@@ -350,30 +370,35 @@ export abstract class BaseAgent<
     telemetryService: TelemetryService,
     logger: Logger,
     modelProviderService: ModelProviderService,
-    spawnChildAgentHandler?: <TAgentType extends AgentTypes>(
+    instanceConfig: TInstanceConfig,
+    spawnChildAgentHandler: <TAgentType extends keyof AgentTypeMap>(
       childAgentType: TAgentType,
-      history: ChatMessage[],
+      instanceConfig: InstanceType<AgentTypeMap[TAgentType]>['instanceConfig'],
       onFinish: (
         finishOutput: z.infer<
           (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
         >,
       ) => void | Promise<void>,
       onError: (error: Error) => void | Promise<void>,
-    ) =>
-      | InstanceType<(typeof AgentsMap)[TAgentType]>
-      | Promise<InstanceType<(typeof AgentsMap)[TAgentType]>>,
+    ) => Promise<
+      BaseAgent<
+        (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'],
+        InstanceType<AgentTypeMap[TAgentType]>['instanceConfig']
+      >
+    >,
     finishToolHandler?: (
       finishOutput: z.infer<FlexibleSchema<TFinishToolOutputSchema>>,
     ) => void | Promise<void>,
     finishToolErrorHandler?: (error: Error) => void | Promise<void>,
     initialState?: Partial<AgentState>,
   ) {
-    this.instanceId = instaceId;
+    this.instanceId = instanceId;
     this.state = state;
     this.toolbox = toolbox;
     this.telemetryService = telemetryService;
     this.logger = logger;
     this.modelProviderService = modelProviderService;
+    this.instanceConfig = instanceConfig;
     this.spawnChildAgentHandler = spawnChildAgentHandler;
     this.finishToolHandler = finishToolHandler;
     this.finishToolErrorHandler = finishToolErrorHandler;
@@ -421,7 +446,7 @@ export abstract class BaseAgent<
    * @note DO NOT OVERRIDE
    */
   public async sendUserMessage(
-    message: ChatMessage & { role: 'user' },
+    message: AgentMessage & { role: 'user' },
   ): Promise<MessageId> {
     // We override the message id with a random UUID to ensure it's unique.
     const id = crypto.randomUUID();
@@ -480,7 +505,8 @@ export abstract class BaseAgent<
           const toolPartIndex = msg.parts.findIndex(
             (part) =>
               (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
-              (part as ToolUIPart).approval?.id === approvalId,
+              (part as ToolUIPart<StagewiseUITools>).approval?.id ===
+                approvalId,
           );
           if (toolPartIndex !== -1) {
             if (
@@ -602,7 +628,7 @@ export abstract class BaseAgent<
    */
   public async replaceUserMessage(
     userMessageId: string,
-    newUserMessage: ChatMessage & { role: 'user' },
+    newUserMessage: AgentMessage & { role: 'user' },
   ): Promise<string> {
     this.state.set((draft) => {
       const replaceMessageIndex = draft.history.findIndex(
@@ -625,7 +651,7 @@ export abstract class BaseAgent<
    *
    * @note DO NOT OVERRIDE
    */
-  public getMessages(): ChatMessage[] {
+  public getMessages(): AgentMessage[] {
     return this.state.get().history;
   }
 
@@ -720,7 +746,7 @@ export abstract class BaseAgent<
    *
    * @note Will only be called if `generateTitles` in agent config is set to `true`.
    */
-  protected async generateTitle(messages: ChatMessage[]): Promise<string> {
+  protected async generateTitle(messages: AgentMessage[]): Promise<string> {
     try {
       return await generateSimpleTitle(
         messages,
@@ -746,9 +772,9 @@ export abstract class BaseAgent<
    * @note Will only be called automatically, if `summarizeChatHistoryThreshold` in agent config is set to a value greater than 0.
    */
   protected async summarizeChatHistory(
-    messages: ChatMessage[],
+    messages: AgentMessage[],
     _lastCompactedMessageId: string,
-  ): Promise<ChatMessage[]> {
+  ): Promise<AgentMessage[]> {
     // The standard compaction logic is very simple. We can make this more sophisticated later on.
     const summary = await generateChatSummary(
       messages,
@@ -786,8 +812,8 @@ export abstract class BaseAgent<
    * @note If the transform to Model messages should be customized, override the `transformMessagesToModelMessages` instead.
    */
   protected transformMessagesBeforeStep(
-    messages: ChatMessage[],
-  ): ChatMessage[] | Promise<ChatMessage[]> {
+    messages: AgentMessage[],
+  ): AgentMessage[] | Promise<AgentMessage[]> {
     return messages;
   }
 
@@ -809,7 +835,7 @@ export abstract class BaseAgent<
    * @note The added system prompt is configured via the method `getSystemPrompt`.
    */
   protected async transformMessagesToModelMessages(
-    messages: ChatMessage[],
+    messages: AgentMessage[],
     systemPrompt: string,
   ): Promise<ModelMessage[]> {
     return convertStagewiseUIToModelMessages(
@@ -848,7 +874,7 @@ export abstract class BaseAgent<
    * @note Can be overridden by the inheriting class to return a different system prompt.
    */
   protected abstract getSystemPrompt(
-    messages: ChatMessage[],
+    messages: AgentMessage[],
   ): string | Promise<string>;
 
   /**
@@ -861,8 +887,8 @@ export abstract class BaseAgent<
    * @note Can be overridden by the inheriting class to return a different list of tools.
    */
   protected abstract getTools(
-    messages: ChatMessage[],
-  ): TTools | Promise<TTools>;
+    messages: AgentMessage[],
+  ): Partial<StagewiseToolSet> | Promise<Partial<StagewiseToolSet>>;
 
   /**
    * Allowed to configure the settings that are passed to the model when running a step.
@@ -870,7 +896,7 @@ export abstract class BaseAgent<
    * @returns A partial config that shallow merges with the default config of the agent.
    */
   protected getModelSettings(
-    _messages: ChatMessage[],
+    _messages: AgentMessage[],
   ):
     | Partial<BaseAgentConfig<TFinishToolOutputSchema>>
     | Promise<Partial<BaseAgentConfig<TFinishToolOutputSchema>>> {
@@ -885,7 +911,7 @@ export abstract class BaseAgent<
    * @note The agent may still not continue with another step if there are still open approval requests, tool calls that need to be finished or the agent only returned text in the last step.
    */
   protected onStepFinished(
-    _result: StepResult<TTools>,
+    _result: StepResult<StagewiseToolSet>,
   ): boolean | Promise<boolean> {
     return true;
   }
@@ -899,7 +925,7 @@ export abstract class BaseAgent<
 
   /**
    * =======================================================
-   * INTERNAL METHODS (SHOULD ONLY BE USED BY CHILD AGENTS)
+   * INTERNAL METHODS (SHOULD ONLY BE USED BY AGENT IMPLEMENTATIONS)
    * =======================================================
    */
 
@@ -908,42 +934,37 @@ export abstract class BaseAgent<
    */
   protected getSpawnChildAgentTool<
     AT extends AgentTypes,
-    TChildAgentInputSchema extends z.ZodType,
+    SpawnToolInputSchema extends z.ZodType,
   >(
     description: string,
-    inputSchema: TChildAgentInputSchema,
+    inputSchema: SpawnToolInputSchema,
     agentType: AT,
-    contextBuilder: (
-      input: z.infer<TChildAgentInputSchema>,
-    ) => ChatMessage[] | Promise<ChatMessage[]>,
+    configGetter: (
+      input: z.infer<SpawnToolInputSchema>,
+    ) => InstanceType<AgentTypeMap[AT]>['instanceConfig'],
   ): Tool {
     return {
       description: description,
       inputSchema: inputSchema,
       outputSchema: AgentsMap[agentType].config.finishToolOutputSchema,
-      execute: async (input) => {
-        const context = await contextBuilder(input);
-        const childAgentPromise = new Promise<
-          z.infer<
-            (typeof AgentsMap)[AgentTypes]['config']['finishToolOutputSchema']
-          >
-        >((resolve, reject) => {
+      // Use any for input/output to avoid "Type instantiation is excessively deep" errors
+      execute: async (input: any) => {
+        const config = configGetter(input);
+        // Use any for Promise type to avoid deep type instantiation
+        const childAgentPromise = new Promise<any>((resolve, reject) => {
           try {
-            if (this.spawnChildAgentHandler) {
-              this.spawnChildAgentHandler(
-                agentType,
-                context,
-                (finishOutput) => {
-                  resolve(finishOutput);
-                },
-                (error) => {
-                  reject(error);
-                },
-              );
-            } else {
-              // No handler configured on parent agent, so we just resolve with undefined.
-              resolve(undefined);
-            }
+            this.spawnChildAgentHandler<AT>(
+              agentType,
+              // Use any cast to avoid deep type instantiation
+              // @ts-ignore - TS can't keep up with the type definitions...
+              config,
+              (finishOutput) => {
+                resolve(finishOutput);
+              },
+              (error) => {
+                reject(error);
+              },
+            );
           } catch (error) {
             reject(error);
           }
@@ -951,6 +972,151 @@ export abstract class BaseAgent<
         return await childAgentPromise;
       },
     };
+  }
+
+  /**
+   * Should be executed after a user or toool approval message was added to the agent
+   */
+  private async runStep(): Promise<void> {
+    this.state.set((draft) => {
+      draft.isWorking = true;
+    });
+
+    if (!this.canRunStep()) return;
+
+    // Flush the queue into the history
+    this.state.set((draft) => {
+      draft.history.push(...draft.queuedMessages);
+      draft.queuedMessages = [];
+    });
+
+    // Get the current model
+    const modelWithOptions = this.modelProviderService.getModelWithOptions(
+      this.state.get().activeModelId,
+      this.instanceId,
+    );
+
+    const modelMessages = await this.generateContextForNewStep();
+
+    const tools = await this.getToolsForStep();
+
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Executing step with tools: ${JSON.stringify(tools)}`,
+    );
+
+    const resolvedConfig = {
+      ...this.config,
+      ...(await this.getModelSettings(this.messages)),
+    };
+
+    this.stepAbortController = new AbortController();
+
+    const stream = streamText({
+      model: modelWithOptions.model,
+      providerOptions: modelWithOptions.providerOptions,
+      headers: modelWithOptions.headers,
+      messages: modelMessages,
+      tools: tools as StagewiseToolSet,
+      timeout: resolvedConfig.maxTime
+        ? {
+            totalMs: resolvedConfig.maxTime,
+          }
+        : undefined,
+      maxRetries: resolvedConfig.maxRetries ?? 1,
+      maxOutputTokens: resolvedConfig.maxOutputTokens ?? 1000,
+      abortSignal: this.stepAbortController.signal,
+      onAbort: () => {
+        /* no-op */
+        this.state.set((draft) => {
+          draft.isWorking = false;
+        });
+      },
+      onFinish: async (result) => {
+        const shouldContinue = await this.handlePostStep(result);
+        this.stepAbortController = null;
+
+        this.state.set((draft) => {
+          draft.usedTokens = result.usage.totalTokens ?? 0;
+        });
+
+        // Check the current token usage. If necessary, summarize the chat history.
+        // We always check the token usage in relation to the currently selected model.
+        const compactionThreshold =
+          this.config.summarizeChatHistoryThreshold ?? 0.5;
+        if (
+          compactionThreshold >= 0 &&
+          this.state.get().usedTokens / modelWithOptions.contextWindowSize >
+            compactionThreshold
+        ) {
+          await this.summarizeAndOverrideHistory();
+        }
+
+        if (shouldContinue) {
+          void this.runStep();
+        } else {
+          this.state.set((draft) => {
+            draft.isWorking = false;
+          });
+        }
+      },
+      onError: (ev) => {
+        const error = ev.error as Error;
+        this.logger.error(
+          `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
+        );
+      },
+      experimental_repairToolCall: async (r) => {
+        // Haiku often returns the tool input as string instead of object - we try to parse it as object
+        // If the parsing fails, we simply return an invalid tool call
+        this.logger.debug('[AgentService] Repairing tool call', r.error);
+        this.telemetryService.captureException(r.error);
+        if (NoSuchToolError.isInstance(r.error)) return r.toolCall;
+
+        const foundTool =
+          r.tools[r.toolCall.toolName as keyof StagewiseToolSet];
+        if (!foundTool) return null;
+
+        try {
+          const input = JSON.parse(r.toolCall.input);
+          if (typeof input === 'string') {
+            const objectInput = JSON.parse(input); // Try to parse the input as object
+            if (typeof objectInput === 'object' && objectInput !== null)
+              return { ...r.toolCall, input: JSON.stringify(objectInput) };
+          } else return null; // If not a string, it already failed the initial parsing check, so we return null
+        } catch {
+          return null;
+        }
+        return null;
+      },
+      experimental_transform: smoothStream({
+        delayInMs: 10,
+        chunking: 'word',
+      }),
+      temperature: resolvedConfig.temperature,
+      stopWhen: () => false,
+      topP: resolvedConfig.topP,
+      topK: resolvedConfig.topK,
+      presencePenalty: resolvedConfig.presencePenalty,
+      frequencyPenalty: resolvedConfig.frequencyPenalty,
+      stopSequences: resolvedConfig.stopSequences,
+      seed: resolvedConfig.seed,
+    });
+    try {
+      const uiStream = stream.toUIMessageStream<AgentMessage>({
+        generateMessageId: randomUUID,
+      });
+
+      await this.handleUiStream(uiStream);
+
+      // After the stream is finished, we check if the agent should run a new step (after emptying the queue and the approvals into the history)
+      if (this.state.get().queuedMessages.length > 0) {
+        void this.runStep();
+      }
+    } catch (err) {
+      this.logger.error(
+        `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
+      );
+    }
   }
 
   /**
@@ -994,6 +1160,8 @@ export abstract class BaseAgent<
     );
     const uncompactedIndex =
       this.state.get().history.length - 1 - uncompactedCount;
+
+    // TODO: Make compaction "recursive" by using the compacted history for new compaction.
 
     //Not enough messages to compact
     if (uncompactedIndex < 0) return;
@@ -1042,7 +1210,7 @@ export abstract class BaseAgent<
    * @returns Whether the agent should run a new step based on the given conditions.
    */
   private shouldRunNewStep(
-    r: StepResult<TTools>,
+    r: StepResult<StagewiseToolSet>,
     userWantsToContinue: boolean,
   ): boolean {
     if (this.state.get().queuedMessages.length > 0) {
@@ -1102,7 +1270,9 @@ export abstract class BaseAgent<
    *
    * @returns Whether the agent should run a new step based on the given conditions.
    */
-  private async handlePostStep(result: StepResult<TTools>): Promise<boolean> {
+  private async handlePostStep(
+    result: StepResult<StagewiseToolSet>,
+  ): Promise<boolean> {
     this.logger.debug(
       `[BaseAgent:${this.instanceId}] Handling post step. Agent Type: ${this.agentType}`,
     );
@@ -1204,151 +1374,7 @@ export abstract class BaseAgent<
     return openToolCallRequests.length === 0;
   }
 
-  /**
-   * Should be executed after a user or toool approval message was added to the agent
-   */
-  private async runStep(): Promise<void> {
-    this.state.set((draft) => {
-      draft.isWorking = true;
-    });
-
-    if (!this.canRunStep()) return;
-
-    // Flush the queue into the history
-    this.state.set((draft) => {
-      draft.history.push(...draft.queuedMessages);
-      draft.queuedMessages = [];
-    });
-
-    // Get the current model
-    const modelWithOptions = this.modelProviderService.getModelWithOptions(
-      this.state.get().activeModelId,
-      this.instanceId,
-    );
-
-    const modelMessages = await this.generateContextForNewStep();
-
-    const tools = await this.getToolsForStep();
-
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Executing step with tools: ${JSON.stringify(tools)}`,
-    );
-
-    const resolvedConfig = {
-      ...this.config,
-      ...(await this.getModelSettings(this.messages)),
-    };
-
-    this.stepAbortController = new AbortController();
-
-    const stream = streamText({
-      model: modelWithOptions.model,
-      providerOptions: modelWithOptions.providerOptions,
-      headers: modelWithOptions.headers,
-      messages: modelMessages,
-      tools: tools,
-      timeout: resolvedConfig.maxTime
-        ? {
-            totalMs: resolvedConfig.maxTime,
-          }
-        : undefined,
-      maxRetries: resolvedConfig.maxRetries ?? 1,
-      maxOutputTokens: resolvedConfig.maxOutputTokens ?? 1000,
-      abortSignal: this.stepAbortController.signal,
-      onAbort: () => {
-        /* no-op */
-        this.state.set((draft) => {
-          draft.isWorking = false;
-        });
-      },
-      onFinish: async (result) => {
-        const shouldContinue = await this.handlePostStep(result);
-        this.stepAbortController = null;
-
-        this.state.set((draft) => {
-          draft.usedTokens = result.usage.totalTokens ?? 0;
-        });
-
-        // Check the current token usage. If necessary, summarize the chat history.
-        // We always check the token usage in relation to the currently selected model.
-        const compactionThreshold =
-          this.config.summarizeChatHistoryThreshold ?? 0.5;
-        if (
-          compactionThreshold >= 0 &&
-          this.state.get().usedTokens / modelWithOptions.contextWindowSize >
-            compactionThreshold
-        ) {
-          await this.summarizeAndOverrideHistory();
-        }
-
-        if (shouldContinue) {
-          void this.runStep();
-        } else {
-          this.state.set((draft) => {
-            draft.isWorking = false;
-          });
-        }
-      },
-      onError: (ev) => {
-        const error = ev.error as Error;
-        this.logger.error(
-          `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
-        );
-      },
-      experimental_repairToolCall: async (r) => {
-        // Haiku often returns the tool input as string instead of object - we try to parse it as object
-        // If the parsing fails, we simply return an invalid tool call
-        this.logger.debug('[AgentService] Repairing tool call', r.error);
-        this.telemetryService.captureException(r.error);
-        if (NoSuchToolError.isInstance(r.error)) return r.toolCall;
-
-        const foundTool = r.tools[r.toolCall.toolName];
-        if (!foundTool) return null;
-
-        try {
-          const input = JSON.parse(r.toolCall.input);
-          if (typeof input === 'string') {
-            const objectInput = JSON.parse(input); // Try to parse the input as object
-            if (typeof objectInput === 'object' && objectInput !== null)
-              return { ...r.toolCall, input: JSON.stringify(objectInput) };
-          } else return null; // If not a string, it already failed the initial parsing check, so we return null
-        } catch {
-          return null;
-        }
-        return null;
-      },
-      experimental_transform: smoothStream({
-        delayInMs: 10,
-        chunking: 'word',
-      }),
-      temperature: resolvedConfig.temperature,
-      stopWhen: () => false,
-      topP: resolvedConfig.topP,
-      topK: resolvedConfig.topK,
-      presencePenalty: resolvedConfig.presencePenalty,
-      frequencyPenalty: resolvedConfig.frequencyPenalty,
-      stopSequences: resolvedConfig.stopSequences,
-      seed: resolvedConfig.seed,
-    });
-    try {
-      const uiStream = stream.toUIMessageStream<ChatMessage>({
-        generateMessageId: randomUUID,
-      });
-
-      await this.handleUiStream(uiStream);
-
-      // After the stream is finished, we check if the agent should run a new step (after emptying the queue and the approvals into the history)
-      if (this.state.get().queuedMessages.length > 0) {
-        void this.runStep();
-      }
-    } catch (err) {
-      this.logger.error(
-        `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
-      );
-    }
-  }
-
-  private async getToolsForStep(): Promise<ToolSet> {
+  private async getToolsForStep(): Promise<Partial<StagewiseToolSet>> {
     const userTools = await this.getTools(this.messages);
     const finishTool = this.getFinishTool()
       ? { finish: this.getFinishTool() }
@@ -1372,9 +1398,9 @@ export abstract class BaseAgent<
   }
 
   private async handleUiStream(
-    uiStream: AsyncIterableStream<InferUIMessageChunk<ChatMessage>>,
+    uiStream: AsyncIterableStream<InferUIMessageChunk<AgentMessage>>,
   ): Promise<void> {
-    for await (const uiMessage of readUIMessageStream<ChatMessage>({
+    for await (const uiMessage of readUIMessageStream<AgentMessage>({
       stream: uiStream,
     })) {
       this.state.set((draft) => {
@@ -1394,18 +1420,20 @@ export abstract class BaseAgent<
         };
 
         // Add metadata for each part of the message
-        uiMessage.parts.forEach((part, index) => {
-          if (part.type === 'text' || part.type === 'reasoning') {
-            existingMessage.metadata!.partsMetadata[index] ??= {
-              startedAt: new Date(),
-              endedAt: undefined,
-            };
-            if (part.state === 'done') {
-              existingMessage.metadata!.partsMetadata[index].endedAt =
-                new Date();
+        uiMessage.parts.forEach(
+          (part: (typeof uiMessage.parts)[number], index: number) => {
+            if (part.type === 'text' || part.type === 'reasoning') {
+              existingMessage.metadata!.partsMetadata[index] ??= {
+                startedAt: new Date(),
+                endedAt: undefined,
+              };
+              if (part.state === 'done') {
+                existingMessage.metadata!.partsMetadata[index].endedAt =
+                  new Date();
+              }
             }
-          }
-        });
+          },
+        );
       });
     }
   }

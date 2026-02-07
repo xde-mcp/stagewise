@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS agentInstances(
   id TEXT PRIMARY KEY,
   parent_agent_instance_id TEXT,
   type TEXT NOT NULL,
+  instance_config TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   last_message_at INTEGER NOT NULL,
   active_model_id TEXT NOT NULL,

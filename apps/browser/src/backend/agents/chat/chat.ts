@@ -1,11 +1,17 @@
-import { BaseAgent, type BaseAgentConfig } from '../shared/base-agent';
+import { BaseAgent } from '../shared/base-agent';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
-import type { ToolSet } from 'ai';
-import { buildChatSystemPrompt } from './context-builder';
+import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
+import { buildChatSystemPrompt } from './context-builder/context-builder';
+import { z } from 'zod';
 
-export class ChatAgent extends BaseAgent<never, ToolSet> {
+export const chatAgentFinishToolOutputSchema = z.object({ type: z.string() });
+
+export class ChatAgent extends BaseAgent<
+  typeof chatAgentFinishToolOutputSchema,
+  undefined
+> {
   public static readonly agentType = AgentTypes.CHAT;
-  public static readonly config: BaseAgentConfig<never> = {
+  public static readonly config = {
     persistent: true,
     defaultModelId: 'claude-sonnet-4-5' as const,
     allowModelSelection: true,
@@ -32,7 +38,7 @@ export class ChatAgent extends BaseAgent<never, ToolSet> {
     },
     allowUserInput: true,
     generateTitles: true,
-    finishToolOutputSchema: undefined,
+    finishToolOutputSchema: chatAgentFinishToolOutputSchema,
     updateTitlesEveryNUserMessages: 5,
   };
 
@@ -72,6 +78,6 @@ export class ChatAgent extends BaseAgent<never, ToolSet> {
     // Filter out null tools that miss dependencies in the toolbox (e.g. no workspace connected)
     return Object.fromEntries(
       Object.entries(tools).filter(([_, tool]) => tool !== null),
-    ) as ToolSet;
+    ) as Partial<StagewiseToolSet>;
   };
 }

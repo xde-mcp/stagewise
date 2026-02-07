@@ -287,7 +287,9 @@ export const getLintingDiagnosticsToolInputSchema = z.object({
 export const lintingDiagnosticSchema = z.object({
   line: z.number(),
   column: z.number(),
-  severity: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  severity: z
+    .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+    .default(1),
   source: z.string(),
   message: z.string(),
   code: z.string().optional(),
@@ -528,17 +530,16 @@ export const allToolSchemas = {
   getContext7LibraryDocsTool: getContext7LibraryDocsToolSchema,
   resolveContext7LibraryTool: resolveContext7LibraryToolSchema,
 } as const;
-
 /**
  * Inferred UI types for all tools.
  * Use this type for type-safe tool rendering in the UI.
  */
-export type UITools = InferUITools<typeof allToolSchemas>;
+export type StagewiseUITools = InferUITools<AllTools>;
 
 export type AllTools = typeof allToolSchemas;
 
 export type StagewiseToolSet = {
-  [K in keyof UITools]: Tool<
+  [K in keyof AllTools]: Tool<
     AllTools[K]['inputSchema'],
     AllTools[K]['outputSchema']
   >;
@@ -547,4 +548,4 @@ export type StagewiseToolSet = {
 /**
  * Type helper for individual tool parts
  */
-export type ToolName = keyof UITools;
+export type ToolName = keyof StagewiseToolSet;

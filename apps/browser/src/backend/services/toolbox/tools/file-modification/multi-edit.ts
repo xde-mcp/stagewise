@@ -1,7 +1,7 @@
 import {
   type MultiEditToolInput,
   multiEditToolInputSchema,
-} from '@shared/karton-contracts/ui/tools/types';
+} from '@shared/karton-contracts/ui/agent/tools/types';
 import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { tool } from 'ai';
 import { rethrowCappedToolOutputError } from '../../utils';
