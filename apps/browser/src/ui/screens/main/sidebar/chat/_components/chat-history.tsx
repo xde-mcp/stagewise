@@ -338,7 +338,7 @@ export const ChatHistory = () => {
             'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
           )}
         >
-          <EmptyPlaceholder />
+          {EmptyPlaceholder()}
         </section>
       </AttachmentMetadataProvider>
     );
