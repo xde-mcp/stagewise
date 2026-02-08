@@ -48,6 +48,14 @@ export class UserExperienceService extends DisposableService {
   // Store bound callback reference for proper unregistration
   private readonly boundHandleServiceStateChange: () => void;
 
+  // Track last synced values to prevent infinite loops
+  private lastSyncedStoredExperienceData: string | null = null;
+  private lastSyncedWorkspaceStatus: string | null = null;
+
+  // Flag to prevent re-entrant initialization
+  private isLoadingStoredExperienceData = false;
+  private hasInitializedStoredExperienceData = false;
+
   private constructor(
     logger: Logger,
     uiKarton: KartonService,
@@ -147,15 +155,23 @@ export class UserExperienceService extends DisposableService {
   }
 
   private handleServiceStateChange() {
-    // Load stored experience data if needed
+    // Load stored experience data if needed (only once per session)
     const state = this.uiKarton.state;
     const needsInitialization =
       state.userAccount?.status === 'authenticated' &&
-      !state.userExperience.storedExperienceData.hasSeenOnboardingFlow;
+      !this.hasInitializedStoredExperienceData &&
+      !this.isLoadingStoredExperienceData;
 
     if (needsInitialization) {
+      // Set flag to prevent re-entrant calls
+      this.isLoadingStoredExperienceData = true;
+
       // Load data asynchronously first
       void this.getStoredExperienceData().then((storedExperienceData) => {
+        // Mark as initialized to prevent future re-loads
+        this.hasInitializedStoredExperienceData = true;
+        this.isLoadingStoredExperienceData = false;
+
         this.uiKarton.setState((draft) => {
           draft.userExperience.storedExperienceData = storedExperienceData;
         });
@@ -164,8 +180,9 @@ export class UserExperienceService extends DisposableService {
       });
     }
 
-    // Always sync workspace status changes to pages API
-    this.syncHomePageStateToPagesService();
+    // Only sync if not currently loading (to prevent loops)
+    if (!this.isLoadingStoredExperienceData)
+      this.syncHomePageStateToPagesService();
   }
 
   /**
@@ -409,15 +426,40 @@ export class UserExperienceService extends DisposableService {
   /**
    * Sync current home page state to PagesService.
    * Called when stored experience data or workspace status changes.
+   * Uses memoization to prevent infinite loops from recursive state updates.
    */
   private syncHomePageStateToPagesService(): void {
     if (!this.pagesService) {
       return;
     }
     const state = this.uiKarton.state;
+
+    // Stringify current values for comparison (cheap memoization)
+    const currentStoredData = JSON.stringify(
+      state.userExperience.storedExperienceData,
+    );
+    const currentWorkspaceStatus = JSON.stringify(state.workspaceStatus);
+
+    // Only sync if values actually changed to prevent infinite loops
+    const storedDataChanged =
+      currentStoredData !== this.lastSyncedStoredExperienceData;
+    const workspaceStatusChanged =
+      currentWorkspaceStatus !== this.lastSyncedWorkspaceStatus;
+
+    if (!storedDataChanged && !workspaceStatusChanged) return; // Nothing changed, skip sync
+
+    // Update memoization cache
+    this.lastSyncedStoredExperienceData = currentStoredData;
+    this.lastSyncedWorkspaceStatus = currentWorkspaceStatus;
+
+    // Only include changed values in the sync
     this.pagesService.syncHomePageState({
-      storedExperienceData: state.userExperience.storedExperienceData,
-      workspaceStatus: state.workspaceStatus,
+      storedExperienceData: storedDataChanged
+        ? state.userExperience.storedExperienceData
+        : undefined,
+      workspaceStatus: workspaceStatusChanged
+        ? state.workspaceStatus
+        : undefined,
     });
   }
 
