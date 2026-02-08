@@ -220,8 +220,9 @@ function MessageQueueContent({
             <span
               className={cn(
                 'inline-flex w-full items-center gap-0.5 overflow-x-hidden text-ellipsis whitespace-nowrap text-xs transition-[mask-image] duration-200',
-                showButtons &&
-                  'mask-[linear-gradient(to_left,transparent_0px,transparent_56px,black_88px)]',
+                showButtons
+                  ? 'mask-[linear-gradient(to_left,transparent_0px,transparent_56px,black_88px)]'
+                  : 'mask-[linear-gradient(to_left,transparent_0px,black_24px)]',
               )}
             >
               {parseMessageSegments(getMessageText(queuedMsg)).map((seg) =>
