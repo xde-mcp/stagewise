@@ -1068,6 +1068,13 @@ export abstract class BaseAgent<
         this.logger.error(
           `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
         );
+        try {
+          this.stepAbortController?.abort();
+        } catch {}
+        this.stepAbortController = null;
+        this.state.set((draft) => {
+          draft.isWorking = false;
+        });
       },
       experimental_repairToolCall: async (r) => {
         // Haiku often returns the tool input as string instead of object - we try to parse it as object
@@ -1388,8 +1395,8 @@ export abstract class BaseAgent<
     };
   }
 
-  private getFinishTool(): Tool | undefined {
-    if (!this.config.finishToolOutputSchema) return undefined;
+  private getFinishTool(): Tool | null {
+    if (!this.config.finishToolOutputSchema) return null;
     return tool({
       description:
         'Mark the conversation as done/finished. You must use this tool to mark the work/task as being done. Use it after all other tool calls are done.',
