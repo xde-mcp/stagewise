@@ -4,13 +4,11 @@
 
 import { app } from 'electron';
 import { AuthService } from './services/auth';
-import { AgentService } from './services/agent/agent';
 import { AgentManagerService } from './services/agent-manager';
 import { UserExperienceService } from './services/experience';
 import { WorkspaceService } from './services/workspace';
 import { FilePickerService } from './services/file-picker';
 import { existsSync, unlinkSync } from 'node:fs';
-import path from 'node:path';
 import { AppMenuService } from './services/app-menu';
 import { URIHandlerService } from './services/uri-handler';
 import { IdentifierService } from './services/identifier';
@@ -478,24 +476,12 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   // Set the getPendingEdits handler for pages-api contract
   // This allows pages routes to fetch pending file edits from the main UI state
-  pagesService.setGetPendingEditsHandler(async (chatId: string) => {
-    const agentChat = uiKarton.state.agentChat;
-    const activeChat = agentChat?.activeChat;
-    if (!activeChat || activeChat.id !== chatId) {
-      return { found: false, edits: [] };
-    }
-    const pendingEdits = activeChat.pendingEdits ?? [];
-    const workspacePath = uiKarton.state.workspace?.path;
+  pagesService.setGetPendingEditsHandler(async (agentInstanceId: string) => {
+    const pendingEdits =
+      uiKarton.state.toolbox[agentInstanceId]?.pendingFileDiffs ?? [];
     return {
       found: true,
-      edits: pendingEdits.map((edit) => ({
-        // Convert absolute paths to relative paths for display in pages API
-        path: workspacePath
-          ? path.relative(workspacePath, edit.path)
-          : edit.path,
-        before: edit.before,
-        after: edit.after,
-      })),
+      edits: pendingEdits,
     };
   });
 
@@ -503,12 +489,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   // This enables real-time updates in the diff-review page
   let previousPendingEditsSnapshot = '';
   const pendingEditsSyncCallback = (state: typeof uiKarton.state) => {
-    const activeChat = state.agentChat?.activeChat;
-    if (!activeChat) return;
+    const activeAgentInstanceIds = Object.keys(state.agents.instances);
 
-    const chatId = activeChat.id;
-    const workspacePath = state.workspace?.path;
-    const pendingEdits = activeChat.pendingEdits ?? [];
+    const _workspacePath = state.workspace?.path;
 
     // Create a snapshot key that detects ANY content changes, not just path changes.
     // Include path + simple content hash (length + sample chars) for fast but reliable comparison.
@@ -518,24 +501,22 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       const mid = Math.floor(s.length / 2);
       return `${s.length}:${s.slice(0, 8)}:${s.slice(-8)}:${s[mid] ?? ''}`;
     };
-    const snapshotKey = `${chatId}:${pendingEdits
-      .map((e) => `${e.path}|${hashContent(e.before)}|${hashContent(e.after)}`)
-      .join('||')}`;
+    for (const agentInstanceId of activeAgentInstanceIds) {
+      const pendingEdits =
+        state.toolbox[agentInstanceId]?.pendingFileDiffs ?? [];
 
-    if (snapshotKey !== previousPendingEditsSnapshot) {
-      previousPendingEditsSnapshot = snapshotKey;
-      // Push update to Pages API state
-      pagesService.updatePendingEditsState(
-        chatId,
-        pendingEdits.map((edit) => ({
-          // Convert absolute paths to relative paths for display in pages API
-          path: workspacePath
-            ? path.relative(workspacePath, edit.path)
-            : edit.path,
-          before: edit.before,
-          after: edit.after,
-        })),
-      );
+      const snapshotKey = `${pendingEdits
+        .map(
+          (e) =>
+            `${e.path}|${hashContent(!e.isExternal ? e.baseline : null)}|${hashContent(!e.isExternal ? e.current : null)}`,
+        )
+        .join('||')}`;
+
+      if (snapshotKey !== previousPendingEditsSnapshot) {
+        previousPendingEditsSnapshot = snapshotKey;
+        // Push update to Pages API state
+        pagesService.updatePendingEditsState(agentInstanceId, pendingEdits);
+      }
     }
   };
   uiKarton.registerStateChangeCallback(pendingEditsSyncCallback);
@@ -666,17 +647,11 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   workspaceService.registerWorkspaceChangeListener((event) => {
     switch (event.type) {
       case 'loaded': {
-        // Implicitly accept pending edits and reset history from previous workspace
-        // This preserves file changes while clearing invalid undo history
-        agentService.acceptAllPendingEdits();
-        agentService.resetDiffHistory();
-
         const accessPath = event.selectedPath;
         const clientRuntime = new ClientRuntimeNode({
           workingDirectory: accessPath,
           rgBinaryBasePath: globalDataPathService.globalDataPath,
         });
-        agentService.setClientRuntime(clientRuntime);
         toolboxService.setClientRuntime(clientRuntime);
         void _userExperienceService.saveRecentlyOpenedWorkspace({
           path: event.selectedPath,
@@ -686,10 +661,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         break;
       }
       case 'unloaded':
-        // Implicitly accept pending edits and reset history
-        agentService.acceptAllPendingEdits();
-        agentService.resetDiffHistory();
-        agentService.setClientRuntime(null);
         toolboxService.setClientRuntime(null);
         break;
     }
@@ -788,16 +759,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     };
   });
 
-  const agentService = await AgentService.create(
-    logger,
-    telemetryService,
-    uiKarton,
-    globalConfigService,
-    authService,
-    windowLayoutService,
-    globalDataPathService,
-  );
-
   const modelProviderService = new ModelProviderService(
     telemetryService,
     authService,
@@ -829,62 +790,75 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   // Set up accept/reject pending edits handlers for pages-api contract
   // These call AgentService methods which handle the actual diff history logic
-  pagesService.setAcceptAllPendingEditsHandler(async (chatId: string) => {
-    // First ensure the correct chat is active
-    const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
-    if (currentActiveChatId !== chatId) {
-      logger.warn(
-        `[Main] acceptAllPendingEdits: chat ${chatId} is not active, skipping`,
-      );
-      return;
-    }
-    agentService.acceptAllPendingEdits();
-  });
-
-  pagesService.setRejectAllPendingEditsHandler(async (chatId: string) => {
-    const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
-    if (currentActiveChatId !== chatId) {
-      logger.warn(
-        `[Main] rejectAllPendingEdits: chat ${chatId} is not active, skipping`,
-      );
-      return;
-    }
-    agentService.rejectAllPendingEdits();
-  });
-
-  pagesService.setAcceptPendingEditHandler(
-    async (chatId: string, filePath: string) => {
-      const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
-      if (currentActiveChatId !== chatId) {
+  pagesService.setAcceptAllPendingEditsHandler(
+    async (agentInstanceId: string) => {
+      const pendingEdits =
+        uiKarton.state.toolbox[agentInstanceId]?.pendingFileDiffs ?? [];
+      if (pendingEdits.length === 0) {
         logger.warn(
-          `[Main] acceptPendingEdit: chat ${chatId} is not active, skipping`,
+          `[Main] acceptAllPendingEdits: no pending edits for agent instance ${agentInstanceId}`,
         );
         return;
       }
-      // Convert relative path back to absolute path for the agent service
-      const workspacePath = uiKarton.state.workspace?.path;
-      const absolutePath = workspacePath
-        ? path.resolve(workspacePath, filePath)
-        : filePath;
-      agentService.acceptPendingEdit(absolutePath);
+      diffHistoryService.acceptAndRejectHunks(
+        pendingEdits.flatMap((e) =>
+          !e.isExternal ? e.hunks.map((h) => h.id) : [],
+        ),
+        [],
+      );
+    },
+  );
+
+  pagesService.setRejectAllPendingEditsHandler(
+    async (agentInstanceId: string) => {
+      const pendingEdits =
+        uiKarton.state.toolbox[agentInstanceId]?.pendingFileDiffs ?? [];
+      if (pendingEdits.length === 0) {
+        logger.warn(
+          `[Main] rejectAllPendingEdits: no pending edits for agent instance ${agentInstanceId}`,
+        );
+        return;
+      }
+      diffHistoryService.acceptAndRejectHunks(
+        [],
+        pendingEdits.flatMap((e) =>
+          !e.isExternal ? e.hunks.map((h) => h.id) : [],
+        ),
+      );
+    },
+  );
+
+  pagesService.setAcceptPendingEditHandler(
+    async (agentInstanceId: string, fileId: string) => {
+      const pendingEdits =
+        uiKarton.state.toolbox[agentInstanceId]?.pendingFileDiffs ?? [];
+      if (pendingEdits.length === 0) {
+        logger.warn(
+          `[Main] acceptPendingEdit: no pending edits for agent instance ${agentInstanceId}`,
+        );
+        return;
+      }
+      const hunkIds = pendingEdits.flatMap((e) =>
+        e.fileId === fileId && !e.isExternal ? e.hunks.map((h) => h.id) : [],
+      );
+      diffHistoryService.acceptAndRejectHunks(hunkIds, []);
     },
   );
 
   pagesService.setRejectPendingEditHandler(
-    async (chatId: string, filePath: string) => {
-      const currentActiveChatId = uiKarton.state.agentChat?.activeChat?.id;
-      if (currentActiveChatId !== chatId) {
+    async (agentInstanceId: string, fileId: string) => {
+      const pendingEdits =
+        uiKarton.state.toolbox[agentInstanceId]?.pendingFileDiffs ?? [];
+      if (pendingEdits.length === 0) {
         logger.warn(
-          `[Main] rejectPendingEdit: chat ${chatId} is not active, skipping`,
+          `[Main] rejectPendingEdit: no pending edits for agent instance ${agentInstanceId}`,
         );
         return;
       }
-      // Convert relative path back to absolute path for the agent service
-      const workspacePath = uiKarton.state.workspace?.path;
-      const absolutePath = workspacePath
-        ? path.resolve(workspacePath, filePath)
-        : filePath;
-      agentService.rejectPendingEdit(absolutePath);
+      const hunkIds = pendingEdits.flatMap((e) =>
+        e.fileId === fileId && !e.isExternal ? e.hunks.map((h) => h.id) : [],
+      );
+      diffHistoryService.acceptAndRejectHunks([], hunkIds);
     },
   );
 

@@ -1,4 +1,5 @@
 import { Button } from '@stagewise/stage-ui/components/button';
+import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import {
   IconTrash2Outline24,
   IconArrowUpOutline24,
@@ -40,7 +41,16 @@ function getMessageText(message: {
   return textPart && 'text' in textPart ? (textPart.text ?? '') : '';
 }
 
-interface StatusCardItem {
+type FormattedFileDiff = {
+  fileId: string;
+  path: string;
+  fileName: string;
+  linesAdded: number;
+  linesRemoved: number;
+  hunkIds: string[];
+};
+
+interface StatusCardSection {
   trigger: (isOpen: boolean) => React.ReactNode;
   contentClassName?: string;
   content: React.ReactNode;
@@ -48,29 +58,25 @@ interface StatusCardItem {
   defaultOpen?: boolean;
 }
 
-interface FileDiffItemProps {
-  formattedEdits: Array<{
-    path: string;
-    fileName: string;
-    linesAdded: number;
-    linesRemoved: number;
-  }>;
-  onRejectAll: () => void;
-  onAcceptAll: () => void;
-  onOpenDiffReview: (filePath?: string) => void;
+interface FileDiffSectionProps {
+  pendingDiffs: FormattedFileDiff[];
+  diffSummary: FormattedFileDiff[];
+  onRejectAll: (hunkIds: string[]) => void;
+  onAcceptAll: (hunkIds: string[]) => void;
+  onOpenDiffReview: (fileId: string) => void;
 }
 
-interface QueuedMessagesItemProps {
+interface QueuedMessagesSectionProps {
   queuedMessages: AgentMessage[];
   onRemoveMessage: (messageId: string) => Promise<void>;
   onFlush: () => Promise<void>;
 }
 
-function StatusCardItemComponent({
+function StatusCardSectionComponent({
   item,
   showDivider,
 }: {
-  item: StatusCardItem;
+  item: StatusCardSection;
   showDivider: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(item.defaultOpen ?? true);
@@ -101,7 +107,7 @@ function StatusCardComponent({
   items,
   ref,
 }: {
-  items: StatusCardItem[];
+  items: StatusCardSection[];
   ref?: React.RefObject<HTMLDivElement>;
 }) {
   return (
@@ -110,7 +116,7 @@ function StatusCardComponent({
       className="-z-10 absolute right-2 bottom-[calc(100%+1px)] left-2 flex flex-col items-center justify-between rounded-t-lg border-derived border-t border-r border-l bg-background p-1 backdrop-blur-lg"
     >
       {items.map((item, index) => (
-        <StatusCardItemComponent
+        <StatusCardSectionComponent
           key={item.key}
           item={item}
           showDivider={index < items.length - 1}
@@ -120,10 +126,18 @@ function StatusCardComponent({
   );
 }
 
-function FileDiffItem(props: FileDiffItemProps): StatusCardItem | null {
-  const { formattedEdits, onRejectAll, onAcceptAll, onOpenDiffReview } = props;
+function FileDiffSection(
+  props: FileDiffSectionProps,
+): StatusCardSection | null {
+  const {
+    pendingDiffs,
+    diffSummary,
+    onRejectAll,
+    onAcceptAll,
+    onOpenDiffReview,
+  } = props;
 
-  if (formattedEdits.length === 0) return null;
+  if (pendingDiffs?.length === 0 && diffSummary?.length === 0) return null;
 
   return {
     key: 'file-diff',
@@ -135,68 +149,108 @@ function FileDiffItem(props: FileDiffItemProps): StatusCardItem | null {
             isOpen && 'rotate-180',
           )}
         />
-        {`${formattedEdits.length} Edit${formattedEdits.length > 1 ? 's' : ''}`}
-        <div className="ml-auto flex flex-row items-center justify-start gap-1">
-          <Button
-            variant="ghost"
-            size="xs"
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRejectAll();
-            }}
-          >
-            Reject
-          </Button>
-          <Button
-            variant="primary"
-            size="xs"
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAcceptAll();
-            }}
-          >
-            Accept all
-          </Button>
-        </div>
+        {pendingDiffs?.length > 0 ? (
+          `${pendingDiffs.length} Edit${pendingDiffs.length > 1 ? 's' : ''}`
+        ) : (
+          <span>
+            {diffSummary.length} Edit{diffSummary.length > 1 ? 's' : ''}
+          </span>
+        )}
+
+        {pendingDiffs?.length > 0 ? (
+          <div className="ml-auto flex flex-row items-center justify-start gap-1">
+            <Button
+              variant="ghost"
+              size="xs"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRejectAll(
+                  pendingDiffs?.flatMap((diff) => diff.hunkIds) ?? [],
+                );
+              }}
+            >
+              Reject
+            </Button>
+            <Button
+              variant="primary"
+              size="xs"
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAcceptAll(
+                  pendingDiffs?.flatMap((diff) => diff.hunkIds) ?? [],
+                );
+              }}
+            >
+              Accept all
+            </Button>
+          </div>
+        ) : (
+          <div className="ml-auto h-6" />
+        )}
       </div>
     ),
     contentClassName: 'px-0',
     content: (
       <div className="pt-1">
-        {formattedEdits.map((edit) => (
-          <button
-            type="button"
-            className="flex w-full cursor-pointer flex-col items-start justify-start gap-2 rounded px-1 py-0.5 text-foreground hover:bg-surface-1 hover:text-hover-derived"
-            key={edit.path}
-            onClick={() => onOpenDiffReview(edit.path)}
-          >
-            <span className="flex flex-row items-center justify-start gap-1 truncate text-xs">
-              <FileIcon filePath={edit.fileName} className="size-5 shrink-0" />
-              <span className="text-xs leading-none">{edit.fileName}</span>
-              {edit.linesAdded > 0 && (
-                <span className="text-[10px] text-success-foreground leading-none hover:text-hover-derived">
-                  +{edit.linesAdded}
-                </span>
-              )}
-              {edit.linesRemoved > 0 && (
-                <span className="text-[10px] text-error-foreground leading-none hover:text-hover-derived">
-                  -{edit.linesRemoved}
-                </span>
-              )}
-            </span>
-          </button>
-        ))}
+        {pendingDiffs?.length > 0
+          ? pendingDiffs?.map((edit) => (
+              <FileDiffFileItem
+                key={edit.path}
+                fileDiff={edit}
+                onOpenDiffReview={onOpenDiffReview}
+              />
+            ))
+          : diffSummary?.length > 0
+            ? diffSummary?.map((edit) => (
+                <FileDiffFileItem
+                  key={edit.path}
+                  fileDiff={edit}
+                  onOpenDiffReview={onOpenDiffReview}
+                />
+              ))
+            : null}
       </div>
     ),
   };
 }
 
-function MessageQueueContent({
+function FileDiffFileItem({
+  fileDiff,
+  onOpenDiffReview,
+}: {
+  fileDiff: FormattedFileDiff;
+  onOpenDiffReview: (fileId: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="flex w-full cursor-pointer flex-col items-start justify-start gap-2 rounded px-1 py-0.5 text-foreground hover:bg-surface-1 hover:text-hover-derived"
+      onClick={() => onOpenDiffReview(fileDiff.fileId)}
+    >
+      <span className="flex flex-row items-center justify-start gap-1 truncate text-xs">
+        <FileIcon filePath={fileDiff.fileName} className="size-5 shrink-0" />
+        <span className="text-xs leading-none">{fileDiff.fileName}</span>
+        {fileDiff.linesAdded > 0 && (
+          <span className="text-[10px] text-success-foreground leading-none hover:text-hover-derived">
+            +{fileDiff.linesAdded}
+          </span>
+        )}
+        {fileDiff.linesRemoved > 0 && (
+          <span className="text-[10px] text-error-foreground leading-none hover:text-hover-derived">
+            -{fileDiff.linesRemoved}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function MessageQueueSectionContent({
   queuedMessages,
   onRemoveMessage,
-}: QueuedMessagesItemProps) {
+}: QueuedMessagesSectionProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
@@ -264,9 +318,9 @@ function MessageQueueContent({
   );
 }
 
-function MessageQueueItem(
-  props: QueuedMessagesItemProps,
-): StatusCardItem | null {
+function MessageQueueSection(
+  props: QueuedMessagesSectionProps,
+): StatusCardSection | null {
   if (props.queuedMessages.length === 0) return null;
 
   return {
@@ -291,7 +345,7 @@ function MessageQueueItem(
     contentClassName: 'px-0',
     content: (
       <AttachmentMetadataProvider messages={props.queuedMessages}>
-        <MessageQueueContent {...props} />
+        <MessageQueueSectionContent {...props} />
       </AttachmentMetadataProvider>
     ),
   };
@@ -301,20 +355,23 @@ export function StatusCard() {
   const cardRef = useRef<HTMLDivElement>(null);
   // Use ref to persist previousHeight across effect re-runs (fixes flickering)
   const previousHeightRef = useRef(0);
-  const activeChat = useKartonState((s) => s.agentChat?.activeChat);
-  const activeChatId = activeChat?.id ?? null;
+  const [openAgentId] = useOpenAgent();
+  const toolbox = useKartonState((s) => s.toolbox);
+  const pendingDiffs = useMemo(() => {
+    return toolbox[openAgentId]?.pendingFileDiffs;
+  }, [toolbox, openAgentId]);
+  const diffSummary = useMemo(() => {
+    return toolbox[openAgentId]?.editSummary;
+  }, [toolbox, openAgentId]);
 
   const rejectAllPendingEdits = useKartonProcedure(
-    (p) => p.agentChat.rejectAllPendingEdits,
+    (p) => p.toolbox.rejectHunks,
   );
   const acceptAllPendingEdits = useKartonProcedure(
-    (p) => p.agentChat.acceptAllPendingEdits,
+    (p) => p.toolbox.acceptHunks,
   );
   const createTab = useKartonProcedure((p) => p.browser.createTab);
 
-  const [openAgentId] = useOpenAgent();
-
-  // Get message queue for active chat (using stable empty array to prevent infinite loops)
   const messageQueue = useKartonState(
     (s) => s.agents.instances[openAgentId]?.state.queuedMessages,
   );
@@ -328,72 +385,88 @@ export function StatusCard() {
   const flushQueue = useKartonProcedure((p) => p.agents.flushQueue);
 
   const openDiffReviewPage = useCallback(
-    (filePath?: string) => {
-      if (activeChatId) {
-        const hash = filePath ? `#${encodeURIComponent(filePath)}` : '';
-        void createTab(
-          `stagewise://internal/diff-review/${activeChatId}${hash}`,
-          true,
-        );
-      }
+    (fileId: string) => {
+      if (!openAgentId) return;
+      const fragment = fileId ? `#${encodeURIComponent(fileId)}` : '';
+      void createTab(
+        `stagewise://internal/diff-review/${openAgentId}${fragment}`,
+        true,
+      );
     },
-    [activeChatId, createTab],
+    [openAgentId, createTab],
   );
 
-  const pendingEdits = useMemo(() => {
-    return activeChat?.pendingEdits ?? [];
-  }, [activeChat]);
+  function formatFileDiff(fileDiff: FileDiff): FormattedFileDiff {
+    const diff =
+      fileDiff.isExternal === true
+        ? diffLines('', '')
+        : diffLines(fileDiff.baseline, fileDiff.current);
+    const fileName = fileDiff.path.split('/').pop() ?? '';
+    const linesAdded = diff.reduce(
+      (acc, line) => acc + (line.added ? line.count : 0),
+      0,
+    );
+    const linesRemoved = diff.reduce(
+      (acc, line) => acc + (line.removed ? line.count : 0),
+      0,
+    );
+    const hunkIds =
+      fileDiff.isExternal === true
+        ? [fileDiff.hunkId]
+        : fileDiff.hunks.map((hunk) => hunk.id);
+    return {
+      fileId: fileDiff.fileId,
+      path: fileDiff.path,
+      fileName,
+      linesAdded,
+      linesRemoved,
+      hunkIds,
+    };
+  }
 
-  const formattedEdits = useMemo(() => {
-    const edits: {
-      path: string;
-      fileName: string;
-      linesAdded: number;
-      linesRemoved: number;
-    }[] = [];
-    for (const edit of pendingEdits) {
-      const diff = diffLines(edit.before ?? '', edit.after ?? '');
-      const fileName = edit.path.split('/').pop() ?? '';
-      const linesAdded = diff.reduce(
-        (acc, line) => acc + (line.added ? line.count : 0),
-        0,
-      );
-      const linesRemoved = diff.reduce(
-        (acc, line) => acc + (line.removed ? line.count : 0),
-        0,
-      );
-      edits.push({ path: edit.path, fileName, linesAdded, linesRemoved });
-    }
+  const formattedPendingDiffs = useMemo(() => {
+    const edits: FormattedFileDiff[] = [];
+    for (const edit of pendingDiffs ?? []) edits.push(formatFileDiff(edit));
+
     return edits;
-  }, [pendingEdits]);
+  }, [pendingDiffs]);
+
+  const formattedDiffSummary = useMemo(() => {
+    const edits: FormattedFileDiff[] = [];
+    for (const edit of diffSummary ?? []) edits.push(formatFileDiff(edit));
+
+    return edits;
+  }, [diffSummary]);
 
   // Create status card items
   const items = useMemo(() => {
-    const result: StatusCardItem[] = [];
+    const result: StatusCardSection[] = [];
 
-    const messageQueueItem = MessageQueueItem({
+    const messageQueueSection = MessageQueueSection({
       queuedMessages: messageQueue ?? [],
       onRemoveMessage: async (messageId) =>
         await deleteQueuedMessage(openAgentId, messageId),
       onFlush: async () => await flushQueue(openAgentId),
     });
-    if (messageQueueItem) result.push(messageQueueItem);
+    if (messageQueueSection) result.push(messageQueueSection);
 
-    const fileDiffItem = FileDiffItem({
-      formattedEdits,
-      onRejectAll: () => void rejectAllPendingEdits(),
-      onAcceptAll: () => void acceptAllPendingEdits(),
+    const fileDiffSection = FileDiffSection({
+      pendingDiffs: formattedPendingDiffs,
+      diffSummary: formattedDiffSummary,
+      onRejectAll: (hunkIds: string[]) => void rejectAllPendingEdits(hunkIds),
+      onAcceptAll: (hunkIds: string[]) => void acceptAllPendingEdits(hunkIds),
       onOpenDiffReview: openDiffReviewPage,
     });
-    if (fileDiffItem) result.push(fileDiffItem);
+    if (fileDiffSection) result.push(fileDiffSection);
 
     return result;
   }, [
     messageQueue,
-    activeChatId,
+    openAgentId,
     deleteQueuedMessage,
     flushQueue,
-    formattedEdits,
+    formattedPendingDiffs,
+    formattedDiffSummary,
     rejectAllPendingEdits,
     acceptAllPendingEdits,
     openDiffReviewPage,

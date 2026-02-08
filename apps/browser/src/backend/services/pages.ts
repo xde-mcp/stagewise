@@ -13,7 +13,7 @@ import {
   type PagesApiContract,
   defaultState,
 } from '@shared/karton-contracts/pages-api';
-import type { FileDiffResult } from '@shared/karton-contracts/pages-api/types';
+import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import type {
   UserPreferences,
   Patch,
@@ -65,17 +65,21 @@ export class PagesService extends DisposableService {
   private markDownloadsSeenHandler?: () => Promise<void>;
   private onSearchEnginesChangeHandler?: () => Promise<void>;
   private getPendingEditsHandler?: (
-    chatId: string,
+    agentInstanceId: string,
   ) => Promise<PendingEditsResult>;
-  private acceptAllPendingEditsHandler?: (chatId: string) => Promise<void>;
-  private rejectAllPendingEditsHandler?: (chatId: string) => Promise<void>;
+  private acceptAllPendingEditsHandler?: (
+    agentInstanceId: string,
+  ) => Promise<void>;
+  private rejectAllPendingEditsHandler?: (
+    agentInstanceId: string,
+  ) => Promise<void>;
   private acceptPendingEditHandler?: (
-    chatId: string,
+    agentInstanceId: string,
     path: string,
   ) => Promise<void>;
   private rejectPendingEditHandler?: (
-    chatId: string,
-    path: string,
+    agentInstanceId: string,
+    fileId: string,
   ) => Promise<void>;
   private getPreferencesHandler?: () => UserPreferences;
   private updatePreferencesHandler?: (patches: Patch[]) => Promise<void>;
@@ -780,7 +784,7 @@ export class PagesService extends DisposableService {
       'getPendingEdits',
       async (
         _callingClientId: string,
-        chatId: string,
+        agentInstanceId: string,
       ): Promise<PendingEditsResult> => {
         if (!this.getPendingEditsHandler) {
           this.logger.warn(
@@ -788,33 +792,39 @@ export class PagesService extends DisposableService {
           );
           return { found: false, edits: [] };
         }
-        return this.getPendingEditsHandler(chatId);
+        return this.getPendingEditsHandler(agentInstanceId);
       },
     );
 
     this.kartonServer.registerServerProcedureHandler(
       'acceptAllPendingEdits',
-      async (_callingClientId: string, chatId: string): Promise<void> => {
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+      ): Promise<void> => {
         if (!this.acceptAllPendingEditsHandler) {
           this.logger.warn(
             '[PagesService] acceptAllPendingEdits called but no handler is set',
           );
           return;
         }
-        await this.acceptAllPendingEditsHandler(chatId);
+        await this.acceptAllPendingEditsHandler(agentInstanceId);
       },
     );
 
     this.kartonServer.registerServerProcedureHandler(
       'rejectAllPendingEdits',
-      async (_callingClientId: string, chatId: string): Promise<void> => {
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+      ): Promise<void> => {
         if (!this.rejectAllPendingEditsHandler) {
           this.logger.warn(
             '[PagesService] rejectAllPendingEdits called but no handler is set',
           );
           return;
         }
-        await this.rejectAllPendingEditsHandler(chatId);
+        await this.rejectAllPendingEditsHandler(agentInstanceId);
       },
     );
 
@@ -822,8 +832,8 @@ export class PagesService extends DisposableService {
       'acceptPendingEdit',
       async (
         _callingClientId: string,
-        chatId: string,
-        filePath: string,
+        agentInstanceId: string,
+        fileId: string,
       ): Promise<void> => {
         if (!this.acceptPendingEditHandler) {
           this.logger.warn(
@@ -831,7 +841,7 @@ export class PagesService extends DisposableService {
           );
           return;
         }
-        await this.acceptPendingEditHandler(chatId, filePath);
+        await this.acceptPendingEditHandler(agentInstanceId, fileId);
       },
     );
 
@@ -839,8 +849,8 @@ export class PagesService extends DisposableService {
       'rejectPendingEdit',
       async (
         _callingClientId: string,
-        chatId: string,
-        filePath: string,
+        agentInstanceId: string,
+        fileId: string,
       ): Promise<void> => {
         if (!this.rejectPendingEditHandler) {
           this.logger.warn(
@@ -848,7 +858,7 @@ export class PagesService extends DisposableService {
           );
           return;
         }
-        await this.rejectPendingEditHandler(chatId, filePath);
+        await this.rejectPendingEditHandler(agentInstanceId, fileId);
       },
     );
 
@@ -1064,7 +1074,7 @@ export class PagesService extends DisposableService {
    * Set the handler for getting pending edits. This should be called by main.ts.
    */
   public setGetPendingEditsHandler(
-    handler: (chatId: string) => Promise<PendingEditsResult>,
+    handler: (agentInstanceId: string) => Promise<PendingEditsResult>,
   ): void {
     this.getPendingEditsHandler = handler;
   }
@@ -1073,7 +1083,7 @@ export class PagesService extends DisposableService {
    * Set the handler for accepting all pending edits. This should be called by main.ts.
    */
   public setAcceptAllPendingEditsHandler(
-    handler: (chatId: string) => Promise<void>,
+    handler: (agentInstanceId: string) => Promise<void>,
   ): void {
     this.acceptAllPendingEditsHandler = handler;
   }
@@ -1082,7 +1092,7 @@ export class PagesService extends DisposableService {
    * Set the handler for rejecting all pending edits. This should be called by main.ts.
    */
   public setRejectAllPendingEditsHandler(
-    handler: (chatId: string) => Promise<void>,
+    handler: (agentInstanceId: string) => Promise<void>,
   ): void {
     this.rejectAllPendingEditsHandler = handler;
   }
@@ -1091,7 +1101,7 @@ export class PagesService extends DisposableService {
    * Set the handler for accepting a single pending edit. This should be called by main.ts.
    */
   public setAcceptPendingEditHandler(
-    handler: (chatId: string, path: string) => Promise<void>,
+    handler: (agentInstanceId: string, fileId: string) => Promise<void>,
   ): void {
     this.acceptPendingEditHandler = handler;
   }
@@ -1100,7 +1110,7 @@ export class PagesService extends DisposableService {
    * Set the handler for rejecting a single pending edit. This should be called by main.ts.
    */
   public setRejectPendingEditHandler(
-    handler: (chatId: string, path: string) => Promise<void>,
+    handler: (agentInstanceId: string, fileId: string) => Promise<void>,
   ): void {
     this.rejectPendingEditHandler = handler;
   }
@@ -1270,11 +1280,11 @@ export class PagesService extends DisposableService {
    * Update the pending edits state for a specific chat. Called when edits change.
    */
   public updatePendingEditsState(
-    chatId: string,
-    edits: FileDiffResult[],
+    agentInstanceId: string,
+    edits: FileDiff[],
   ): void {
     this.kartonServer.setState((draft) => {
-      draft.pendingEditsByChat[chatId] = edits;
+      draft.pendingEditsByAgentInstanceId[agentInstanceId] = edits;
     });
   }
 

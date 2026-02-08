@@ -9,7 +9,6 @@ import type {
   ActiveDownloadInfo,
   DownloadControlResult,
   PendingEditsResult,
-  FileDiffResult,
   SearchEngine,
   AddSearchEngineInput,
   AddSearchEngineResult,
@@ -20,13 +19,14 @@ import type {
   ContextFilesResult,
 } from './types';
 import type { UserPreferences, Patch, GlobalConfig } from '../ui/shared-types';
+import type { FileDiff } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
 
 export type PagesApiState = {
   /** Active downloads currently in progress, keyed by download ID */
   activeDownloads: Record<number, ActiveDownloadInfo>;
   /** Pending file edits by chat ID, pushed in real-time */
-  pendingEditsByChat: Record<string, FileDiffResult[]>;
+  pendingEditsByAgentInstanceId: Record<string, FileDiff[]>;
   /** User preferences (read-only sync) */
   preferences: UserPreferences;
   /** Global config (read-only sync, updated via setGlobalConfig procedure) */
@@ -79,15 +79,15 @@ export type PagesApiContract = {
       options: ClearBrowsingDataOptions,
     ) => Promise<ClearBrowsingDataResult>;
     /** Get pending file edits for a specific chat */
-    getPendingEdits: (chatId: string) => Promise<PendingEditsResult>;
+    getPendingEdits: (agentInstanceId: string) => Promise<PendingEditsResult>;
     /** Accept all pending edits for a specific chat */
-    acceptAllPendingEdits: (chatId: string) => Promise<void>;
+    acceptAllPendingEdits: (agentInstanceId: string) => Promise<void>;
     /** Reject all pending edits for a specific chat */
-    rejectAllPendingEdits: (chatId: string) => Promise<void>;
+    rejectAllPendingEdits: (agentInstanceId: string) => Promise<void>;
     /** Accept a single pending edit by file path */
-    acceptPendingEdit: (chatId: string, path: string) => Promise<void>;
+    acceptPendingEdit: (agentInstanceId: string, path: string) => Promise<void>;
     /** Reject a single pending edit by file path */
-    rejectPendingEdit: (chatId: string, path: string) => Promise<void>;
+    rejectPendingEdit: (agentInstanceId: string, path: string) => Promise<void>;
     /** Get current user preferences */
     getPreferences: () => Promise<UserPreferences>;
     /** Update user preferences by applying Immer patches */
@@ -132,7 +132,7 @@ export type PagesApiContract = {
 
 export const defaultState: PagesApiState = {
   activeDownloads: {},
-  pendingEditsByChat: {},
+  pendingEditsByAgentInstanceId: {},
   preferences: defaultUserPreferences,
   globalConfig: {
     telemetryLevel: 'full',

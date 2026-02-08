@@ -175,7 +175,7 @@ export class DiffHistoryService extends DisposableService {
             reason: 'user-save',
           });
         } catch (error) {
-          this.logError(`[DiffHistory] Failed to read file: ${path}`, error);
+          this.logError(`Failed to read file: ${path}`, error);
           return;
         }
         this.logDebug(`File changed: ${path}`);
@@ -197,7 +197,7 @@ export class DiffHistoryService extends DisposableService {
         await this.updateWatcher();
       } catch (error) {
         this.logError(
-          `[DiffHistory] Failed to get edit summary for agent instance ${agentInstanceId}`,
+          `Failed to get edit summary for agent instance ${agentInstanceId}`,
           error,
         );
       }
@@ -347,7 +347,7 @@ export class DiffHistoryService extends DisposableService {
     });
   }
 
-  private async acceptAndRejectHunks(
+  public async acceptAndRejectHunks(
     hunkIdsToAccept: string[],
     hunkIdsToReject: string[],
   ) {
@@ -356,20 +356,29 @@ export class DiffHistoryService extends DisposableService {
 
     const { result, failedAcceptedHunkIds, failedRejectedHunkIds } =
       acceptAndRejectHunksUtils(pendingDiffs, hunkIdsToAccept, hunkIdsToReject);
-    this.logError(
-      `[DiffHistory] Failed to accept hunks: ${failedAcceptedHunkIds?.join(', ')}`,
-      failedAcceptedHunkIds,
-    );
-    this.logError(
-      `[DiffHistory] Failed to reject hunks: ${failedRejectedHunkIds?.join(', ')}`,
-      failedRejectedHunkIds,
-    );
+    if ((failedAcceptedHunkIds?.length ?? 0) > 0)
+      this.logError(
+        `Failed to accept hunks: ${failedAcceptedHunkIds?.join(', ')}`,
+        failedAcceptedHunkIds,
+      );
+    if ((failedRejectedHunkIds?.length ?? 0) > 0)
+      this.logError(
+        `Failed to reject hunks: ${failedRejectedHunkIds?.join(', ')}`,
+        failedRejectedHunkIds,
+      );
     for (const [filePath, fileResult] of Object.entries(result)) {
       await this.doAccept(filePath, fileResult);
       await this.doReject(filePath, fileResult);
     }
 
-    for (const agentInstanceId of this.activeAgentInstanceIds)
+    // Extract unique agent instance IDs from pending operations' contributors
+    // Contributors have format 'agent-{agentInstanceId}' or 'user'
+    const affectedAgentIds = new Set<string>();
+    for (const op of pendingOperations)
+      if (op.contributor.startsWith('agent-'))
+        affectedAgentIds.add(op.contributor.slice(6)); // Remove 'agent-' prefix
+
+    for (const agentInstanceId of affectedAgentIds)
       await this.updateDiffKartonState(agentInstanceId);
 
     await this.updateWatcher();
@@ -417,7 +426,7 @@ export class DiffHistoryService extends DisposableService {
       }
     } catch (error) {
       newCurrentOid = null;
-      this.logError(`[DiffHistory] Failed to write file: ${filePath}`, error);
+      this.logError(`Failed to write file: ${filePath}`, error);
     } finally {
       // Unlock after a small delay to allow chokidar to see and ignore the event
       setTimeout(() => this.unignoreFileForWatcher(filePath), 500);
@@ -493,7 +502,7 @@ export class DiffHistoryService extends DisposableService {
 
       if (!copiedOp) {
         this.logError(
-          `[DiffHistory] Failed to copy operations for ${filePath} - no init baseline found`,
+          `Failed to copy operations for ${filePath} - no init baseline found`,
           null,
         );
         continue;
@@ -531,10 +540,7 @@ export class DiffHistoryService extends DisposableService {
             reason: 'user-save',
           });
       } catch (error) {
-        this.logError(
-          `[DiffHistory] Failed to undo tool calls for ${filePath}`,
-          error,
-        );
+        this.logError(`Failed to undo tool calls for ${filePath}`, error);
       } finally {
         // Unlock after a small delay to allow chokidar to see and ignore the event
         setTimeout(() => this.unignoreFileForWatcher(filePath), 500);

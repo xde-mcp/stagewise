@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as InternalAppRouteRouteImport } from './routes/_internal-app/route'
-import { Route as DiffReviewChatIdRouteImport } from './routes/diff-review/$chatId'
+import { Route as DiffReviewAgentInstanceIdRouteImport } from './routes/diff-review/$agentInstanceId'
 import { Route as InternalAppHistoryRouteImport } from './routes/_internal-app/history'
 import { Route as InternalAppDownloadsRouteImport } from './routes/_internal-app/downloads'
 import { Route as InternalAppClearDataRouteImport } from './routes/_internal-app/clear-data'
@@ -33,11 +33,12 @@ const InternalAppRouteRoute = InternalAppRouteRouteImport.update({
   id: '/_internal-app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DiffReviewChatIdRoute = DiffReviewChatIdRouteImport.update({
-  id: '/diff-review/$chatId',
-  path: '/diff-review/$chatId',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const DiffReviewAgentInstanceIdRoute =
+  DiffReviewAgentInstanceIdRouteImport.update({
+    id: '/diff-review/$agentInstanceId',
+    path: '/diff-review/$agentInstanceId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const InternalAppHistoryRoute = InternalAppHistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -108,7 +109,7 @@ export interface FileRoutesByFullPath {
   '/clear-data': typeof InternalAppClearDataRoute
   '/downloads': typeof InternalAppDownloadsRoute
   '/history': typeof InternalAppHistoryRoute
-  '/diff-review/$chatId': typeof DiffReviewChatIdRoute
+  '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
   '/auth/callback': typeof CallbacksAuthCallbackRoute
   '/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
@@ -122,7 +123,7 @@ export interface FileRoutesByTo {
   '/clear-data': typeof InternalAppClearDataRoute
   '/downloads': typeof InternalAppDownloadsRoute
   '/history': typeof InternalAppHistoryRoute
-  '/diff-review/$chatId': typeof DiffReviewChatIdRoute
+  '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
   '/auth/callback': typeof CallbacksAuthCallbackRoute
   '/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
@@ -139,7 +140,7 @@ export interface FileRoutesById {
   '/_internal-app/clear-data': typeof InternalAppClearDataRoute
   '/_internal-app/downloads': typeof InternalAppDownloadsRoute
   '/_internal-app/history': typeof InternalAppHistoryRoute
-  '/diff-review/$chatId': typeof DiffReviewChatIdRoute
+  '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
   '/_callbacks/auth/callback': typeof CallbacksAuthCallbackRoute
   '/_error-pages/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/_internal-app/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
@@ -156,7 +157,7 @@ export interface FileRouteTypes {
     | '/clear-data'
     | '/downloads'
     | '/history'
-    | '/diff-review/$chatId'
+    | '/diff-review/$agentInstanceId'
     | '/auth/callback'
     | '/error/page-load-failed'
     | '/browsing-settings/website-permissions'
@@ -170,7 +171,7 @@ export interface FileRouteTypes {
     | '/clear-data'
     | '/downloads'
     | '/history'
-    | '/diff-review/$chatId'
+    | '/diff-review/$agentInstanceId'
     | '/auth/callback'
     | '/error/page-load-failed'
     | '/browsing-settings/website-permissions'
@@ -186,7 +187,7 @@ export interface FileRouteTypes {
     | '/_internal-app/clear-data'
     | '/_internal-app/downloads'
     | '/_internal-app/history'
-    | '/diff-review/$chatId'
+    | '/diff-review/$agentInstanceId'
     | '/_callbacks/auth/callback'
     | '/_error-pages/error/page-load-failed'
     | '/_internal-app/browsing-settings/website-permissions'
@@ -196,7 +197,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   InternalAppRouteRoute: typeof InternalAppRouteRouteWithChildren
   HomeRoute: typeof HomeRoute
-  DiffReviewChatIdRoute: typeof DiffReviewChatIdRoute
+  DiffReviewAgentInstanceIdRoute: typeof DiffReviewAgentInstanceIdRoute
   CallbacksAuthCallbackRoute: typeof CallbacksAuthCallbackRoute
   ErrorPagesErrorPageLoadFailedRoute: typeof ErrorPagesErrorPageLoadFailedRoute
 }
@@ -217,11 +218,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalAppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/diff-review/$chatId': {
-      id: '/diff-review/$chatId'
-      path: '/diff-review/$chatId'
-      fullPath: '/diff-review/$chatId'
-      preLoaderRoute: typeof DiffReviewChatIdRouteImport
+    '/diff-review/$agentInstanceId': {
+      id: '/diff-review/$agentInstanceId'
+      path: '/diff-review/$agentInstanceId'
+      fullPath: '/diff-review/$agentInstanceId'
+      preLoaderRoute: typeof DiffReviewAgentInstanceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_internal-app/history': {
@@ -349,7 +350,7 @@ const InternalAppRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   InternalAppRouteRoute: InternalAppRouteRouteWithChildren,
   HomeRoute: HomeRoute,
-  DiffReviewChatIdRoute: DiffReviewChatIdRoute,
+  DiffReviewAgentInstanceIdRoute: DiffReviewAgentInstanceIdRoute,
   CallbacksAuthCallbackRoute: CallbacksAuthCallbackRoute,
   ErrorPagesErrorPageLoadFailedRoute: ErrorPagesErrorPageLoadFailedRoute,
 }

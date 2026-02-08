@@ -1,3 +1,4 @@
+import type { FileDiff } from '../ui/shared-types';
 // Enum for how the user arrived at the page (matches Chrome's internal integers)
 // Core transition types are stored in the lower 8 bits
 export enum PageTransition {
@@ -266,19 +267,12 @@ export interface DownloadControlResult {
   error?: string;
 }
 
-// File diff for pending edits
-export interface FileDiffResult {
-  path: string;
-  before: string | null;
-  after: string | null;
-}
-
 // Result of getting pending edits for a chat
 export interface PendingEditsResult {
   /** Whether the chat was found */
   found: boolean;
   /** Pending file diffs */
-  edits: FileDiffResult[];
+  edits: FileDiff[];
 }
 
 // Re-export search engine types from shared-types

@@ -16,7 +16,7 @@ import {
 import { diffLines, type ChangeObject } from 'diff';
 import { DiffPreview } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/diff-preview';
 import { FileIcon } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/file-icon';
-import type { FileDiffResult } from '@shared/karton-contracts/pages-api/types';
+import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import {
   Tooltip,
   TooltipTrigger,
@@ -30,7 +30,7 @@ import {
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 
-export const Route = createFileRoute('/diff-review/$chatId')({
+export const Route = createFileRoute('/diff-review/$agentInstanceId')({
   component: Page,
   head: () => ({
     meta: [
@@ -43,15 +43,16 @@ export const Route = createFileRoute('/diff-review/$chatId')({
 
 const FileDiffItem: FC<{
   edit: {
-    path: string;
-    elementId: string;
+    fileId: string;
     fileName: string;
+    path: string;
     diff: ChangeObject<string>[];
     linesAdded: number;
     linesRemoved: number;
+    elementId: string;
   };
-  onAccept: (path: string) => void;
-  onReject: (path: string) => void;
+  onAccept: (fileId: string) => void;
+  onReject: (fileId: string) => void;
 }> = ({ edit, onAccept, onReject }) => {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -103,7 +104,7 @@ const FileDiffItem: FC<{
                     className="size-6 cursor-pointer p-0"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onReject(edit.path);
+                      onReject(edit.fileId);
                     }}
                   >
                     <XIcon className="size-3" />
@@ -119,7 +120,7 @@ const FileDiffItem: FC<{
                     className="size-6 cursor-pointer p-0"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onAccept(edit.path);
+                      onAccept(edit.fileId);
                     }}
                   >
                     <CheckIcon className="size-3" />
@@ -153,13 +154,13 @@ const FileDiffItem: FC<{
 };
 
 function Page() {
-  const { chatId } = Route.useParams();
+  const { agentInstanceId } = Route.useParams();
   const isConnected = useKartonConnected();
   const scrollContainerRef = useRef<HTMLElement | null>(null);
 
   // Subscribe to real-time state updates for pending edits
   const pendingEditsFromState = useKartonState(
-    (s) => s.pendingEditsByChat[chatId] ?? null,
+    (s) => s.pendingEditsByAgentInstanceId[agentInstanceId] ?? null,
   );
 
   // Procedures for fetching and modifying edits
@@ -194,7 +195,7 @@ function Page() {
     rejectPendingEdit,
   ]);
 
-  const [pendingEdits, setPendingEdits] = useState<FileDiffResult[]>([]);
+  const [pendingEdits, setPendingEdits] = useState<FileDiff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [chatFound, setChatFound] = useState(true);
 
@@ -209,7 +210,7 @@ function Page() {
 
   // Initial fetch when connected (fallback for first load before state sync)
   useEffect(() => {
-    if (!isConnected || !chatId) return;
+    if (!isConnected || !agentInstanceId) return;
     // If we already have state, don't fetch
     if (pendingEditsFromState !== null) return;
 
@@ -218,7 +219,7 @@ function Page() {
     async function fetchEdits() {
       setIsLoading(true);
       try {
-        const result = await getPendingEditsRef.current(chatId);
+        const result = await getPendingEditsRef.current(agentInstanceId);
         if (!cancelled) {
           setChatFound(result.found);
           setPendingEdits(result.edits);
@@ -238,34 +239,36 @@ function Page() {
     return () => {
       cancelled = true;
     };
-  }, [isConnected, chatId, pendingEditsFromState]);
+  }, [isConnected, agentInstanceId, pendingEditsFromState]);
 
   // Handlers for accept/reject actions
   const handleAcceptAll = useCallback(() => {
-    void acceptAllRef.current(chatId);
-  }, [chatId]);
+    void acceptAllRef.current(agentInstanceId);
+  }, [agentInstanceId]);
 
   const handleRejectAll = useCallback(() => {
-    void rejectAllRef.current(chatId);
-  }, [chatId]);
+    void rejectAllRef.current(agentInstanceId);
+  }, [agentInstanceId]);
 
   const handleAcceptOne = useCallback(
-    (filePath: string) => {
-      void acceptOneRef.current(chatId, filePath);
+    (fileId: string) => {
+      void acceptOneRef.current(agentInstanceId, fileId);
     },
-    [chatId],
+    [agentInstanceId],
   );
 
   const handleRejectOne = useCallback(
-    (filePath: string) => {
-      void rejectOneRef.current(chatId, filePath);
+    (fileId: string) => {
+      void rejectOneRef.current(agentInstanceId, fileId);
     },
-    [chatId],
+    [agentInstanceId],
   );
 
   const formattedEdits = useMemo(() => {
     return pendingEdits.map((edit) => {
-      const diff = diffLines(edit.before ?? '', edit.after ?? '');
+      const diff = edit.isExternal
+        ? diffLines('', '')
+        : diffLines(edit.baseline ?? '', edit.current ?? '');
       const fileName = edit.path.split('/').pop() ?? '';
       const linesAdded = diff.reduce(
         (acc, line) => acc + (line.added ? (line.count ?? 0) : 0),
@@ -277,6 +280,7 @@ function Page() {
       );
       return {
         path: edit.path,
+        fileId: edit.fileId,
         fileName,
         diff,
         linesAdded,
@@ -408,7 +412,7 @@ function Page() {
         <div className="mx-auto max-w-4xl space-y-6">
           {formattedEdits.map((edit) => (
             <FileDiffItem
-              key={edit.path}
+              key={edit.fileId}
               edit={edit}
               onAccept={handleAcceptOne}
               onReject={handleRejectOne}
