@@ -76,7 +76,6 @@ export function ChatPanelFooter() {
     addFileAttachment,
     removeFileAttachment,
     clearFileAttachments,
-    setFileAttachments,
   } = useFileAttachments({ chatInputRef });
 
   const { activeEditMessageId, setMainDropHandler } = useMessageEditState();

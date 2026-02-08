@@ -44,7 +44,6 @@ import { readAgentsMd } from './services/agent/prompt-builder/utils/read-agents-
 import { STAGEWISE_MD_FILENAME } from './services/agent/generate-stagewise-md';
 import { resolve } from 'node:path';
 import { ModelProviderService } from './agents/model-provider';
-import type { AllToolsUnion } from '@stagewise/agent-tools';
 
 export type MainParameters = {
   launchOptions: {
