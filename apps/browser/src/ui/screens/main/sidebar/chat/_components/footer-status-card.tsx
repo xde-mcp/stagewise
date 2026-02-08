@@ -22,6 +22,12 @@ import {
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
 import { useOpenAgent } from '@/hooks/use-open-chat';
+import {
+  AttachmentLinkRouter,
+  parseMessageSegments,
+  getAttachmentKey,
+} from '@/components/streamdown/attachment-links';
+import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
 
 // Stable empty array to avoid creating new instances in selectors (prevents infinite loops)
 const _EMPTY_MESSAGE_QUEUE: AgentMessage[] = [];
@@ -213,12 +219,21 @@ function MessageQueueContent({
             </div>
             <span
               className={cn(
-                'w-full overflow-hidden truncate text-xs transition-[mask-image] duration-200',
+                'inline-flex w-full items-center gap-0.5 overflow-x-hidden text-ellipsis whitespace-nowrap text-xs transition-[mask-image] duration-200',
                 showButtons &&
                   'mask-[linear-gradient(to_left,transparent_0px,transparent_56px,black_88px)]',
               )}
             >
-              {getMessageText(queuedMsg)}
+              {parseMessageSegments(getMessageText(queuedMsg)).map((seg) =>
+                seg.kind === 'text' ? (
+                  seg.content
+                ) : (
+                  <AttachmentLinkRouter
+                    key={getAttachmentKey(seg.linkData)}
+                    linkData={seg.linkData}
+                  />
+                ),
+              )}
             </span>
             <div
               className={cn(
@@ -273,7 +288,11 @@ function MessageQueueItem(
       </div>
     ),
     contentClassName: 'px-0',
-    content: <MessageQueueContent {...props} />,
+    content: (
+      <AttachmentMetadataProvider messages={props.queuedMessages}>
+        <MessageQueueContent {...props} />
+      </AttachmentMetadataProvider>
+    ),
   };
 }
 

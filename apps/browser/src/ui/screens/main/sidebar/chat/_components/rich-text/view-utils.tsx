@@ -181,9 +181,8 @@ function Wrapper({
   viewOnly: boolean;
   children: React.ReactNode;
 }) {
-  if (viewOnly) {
-    return <span className="inline px-0.5">{children}</span>;
-  }
+  if (viewOnly) return <span className="inline px-0.5 pt-px">{children}</span>;
+
   return (
     <NodeViewWrapper as="span" className="inline">
       {children}

@@ -159,6 +159,90 @@ export function parseAttachmentLink(
   return null;
 }
 
+export type MessageSegment =
+  | { kind: 'text'; content: string }
+  | { kind: 'attachment'; linkData: AttachmentLinkData };
+
+/**
+ * Parse markdown text into alternating text and attachment-link segments.
+ * Extracts markdown links whose href matches a known attachment prefix
+ * (element:, image:, file:, text-clip:, color:, wsfile:) and returns them
+ * as structured segments alongside plain text.
+ *
+ * Uses balanced-parenthesis matching so color values like
+ * `rgba(0, 0, 0)` are handled correctly.
+ */
+export function parseMessageSegments(text: string): MessageSegment[] {
+  const segments: MessageSegment[] = [];
+  const linkStartRegex = /\[(?:[^\]]*)\]\(/g;
+  // Derive prefixes from the single source of truth
+  const prefixes = ATTACHMENT_LINK_PATTERNS.map((p) => p.prefix);
+  let lastEnd = 0;
+  let match = linkStartRegex.exec(text);
+
+  while (match !== null) {
+    const hrefStart = match.index + match[0].length;
+    const rest = text.slice(hrefStart);
+
+    if (!prefixes.some((p) => rest.startsWith(p))) {
+      match = linkStartRegex.exec(text);
+      continue;
+    }
+
+    // Use balanced parentheses to find the closing )
+    let depth = 1;
+    let i = 0;
+    for (; i < rest.length; i++) {
+      if (rest[i] === '(') depth++;
+      if (rest[i] === ')') {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    if (depth !== 0) {
+      match = linkStartRegex.exec(text);
+      continue;
+    }
+
+    const href = rest.slice(0, i);
+    const parsed = parseAttachmentLink(href);
+    if (!parsed) {
+      match = linkStartRegex.exec(text);
+      continue;
+    }
+
+    if (match.index > lastEnd) {
+      segments.push({
+        kind: 'text',
+        content: text.slice(lastEnd, match.index),
+      });
+    }
+    segments.push({ kind: 'attachment', linkData: parsed });
+    lastEnd = hrefStart + i + 1;
+    match = linkStartRegex.exec(text);
+  }
+
+  if (lastEnd < text.length)
+    segments.push({ kind: 'text', content: text.slice(lastEnd) });
+
+  return segments;
+}
+
+/** Get a stable React key from attachment link data. */
+export function getAttachmentKey(linkData: AttachmentLinkData): string {
+  switch (linkData.type) {
+    case 'element':
+    case 'image':
+    case 'file':
+    case 'textClip':
+      return `${linkData.type}-${linkData.id}`;
+    case 'wsfile':
+      return `wsfile-${linkData.filePath}`;
+    case 'color':
+      return `color-${linkData.color}`;
+  }
+}
+
 interface WorkspaceFileLinkProps {
   filePath: string;
   lineNumber?: string;
