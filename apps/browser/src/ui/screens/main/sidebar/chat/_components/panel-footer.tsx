@@ -39,6 +39,10 @@ export function ChatPanelFooter() {
 
   const [openAgent] = useOpenAgent();
 
+  const isWorking = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.isWorking || false,
+  );
+
   const chatInputState = useKartonState(
     (s) => s.agents.instances[openAgent]?.state.inputState,
   );
@@ -519,7 +523,7 @@ export function ChatPanelFooter() {
           onAttachmentRemoved={handleAttachmentRemoved}
         />
         <ChatInputActions
-          isAgentWorking={isConnected && reconnectState.isReconnecting}
+          isAgentWorking={isWorking}
           hasTextInput={
             chatInputRef.current?.getTextContent().trim().length > 0
           }

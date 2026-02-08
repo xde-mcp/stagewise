@@ -34,7 +34,6 @@ import {
 } from './utils';
 import { randomUUID } from 'node:crypto';
 import type {
-  AllTools,
   StagewiseToolSet,
   StagewiseUITools,
 } from '@shared/karton-contracts/ui/agent/tools/types';
@@ -43,192 +42,193 @@ import { AgentsMap } from '../../agents-map';
 /**
  * The base configuration for an agent. Should be defined by the inheriting class.
  */
-export type BaseAgentConfig<TFinishToolOutputSchema extends z.ZodType> = {
-  /**
-   * Whether the agents state (including Messages) should be persisted to the database.
-   */
-  persistent: boolean;
+export type BaseAgentConfig<TFinishToolOutputSchema extends z.ZodType | null> =
+  {
+    /**
+     * Whether the agents state (including Messages) should be persisted to the database.
+     */
+    persistent: boolean;
 
-  /**
-   * The default suggested model ID to use for the agent.
-   */
-  defaultModelId: ModelId;
+    /**
+     * The default suggested model ID to use for the agent.
+     */
+    defaultModelId: ModelId;
 
-  /**
-   * If user is allowed to select a different model than the default one.
-   *
-   * @note If set to `false`, the default model ID will be used and the UI should not show any model selection options.
-   *        If a madel change call is made anyway, it get's ignored.
-   */
-  allowModelSelection: boolean;
+    /**
+     * If user is allowed to select a different model than the default one.
+     *
+     * @note If set to `false`, the default model ID will be used and the UI should not show any model selection options.
+     *        If a madel change call is made anyway, it get's ignored.
+     */
+    allowModelSelection: boolean;
 
-  /**
-   * The required capabilities for the model to be usable by the agent.
-   *
-   * @note The agent will not immediately crash when running a step with a different model (ai-sdk might crash though), but the UI can use the info to filter the available models etc.
-   */
-  requiredCapabilities: ModelCapabilities;
+    /**
+     * The required capabilities for the model to be usable by the agent.
+     *
+     * @note The agent will not immediately crash when running a step with a different model (ai-sdk might crash though), but the UI can use the info to filter the available models etc.
+     */
+    requiredCapabilities: ModelCapabilities;
 
-  /**
-   * Configures, if the user can input content directly into the agent.
-   *
-   * @note If set to `false`, the UI should not show any input field for the agent.
-   *
-   * @note If set to `false`, the agent will include a `finish` tool that will be used to send response data to the parent agent. This tools output MUST be configured with the `finishToolOutput` property in this config.
-   */
-  allowUserInput: boolean;
+    /**
+     * Configures, if the user can input content directly into the agent.
+     *
+     * @note If set to `false`, the UI should not show any input field for the agent.
+     *
+     * @note If set to `false`, the agent will include a `finish` tool that will be used to send response data to the parent agent. This tools output MUST be configured with the `finishToolOutput` property in this config.
+     */
+    allowUserInput: boolean;
 
-  /**
-   * Allows to configure the output format of a finish tool that can be used by the agentto send response data to the parent agent (if one exists).
-   * @note If set to undefined, the agent will not include a finish tool.
-   */
-  finishToolOutputSchema: FlexibleSchema<TFinishToolOutputSchema> | undefined;
+    /**
+     * Allows to configure the output format of a finish tool that can be used by the agentto send response data to the parent agent (if one exists).
+     * @note If set to undefined, the agent will not include a finish tool.
+     */
+    finishToolOutputSchema: FlexibleSchema<TFinishToolOutputSchema> | undefined;
 
-  /**
-   * Whether the agent should generate titles for it's instance.
-   *
-   * @note The base agent provides a default implementation for generating titles, which can be modified by overriding the `generateTitle` method.
-   */
-  generateTitles: boolean;
+    /**
+     * Whether the agent should generate titles for it's instance.
+     *
+     * @note The base agent provides a default implementation for generating titles, which can be modified by overriding the `generateTitle` method.
+     */
+    generateTitles: boolean;
 
-  /**
-   * The threshold of max context window size after which the chat history should be summarized.
-   *
-   * @note Accepts a value between 0 (0%) and 1 (100%).
-   *
-   * @note You can disable summarization by setting the value to -1.
-   *
-   * @note You can always trigger manual summarization while the agent is in idle by calling the `summarizeChatHistory` method.
-   *
-   * @note You can customize summarization logic by overriding the `summarizeChatHistory` method.
-   *
-   * @default 0.5
-   */
-  summarizeChatHistoryThreshold?: number;
+    /**
+     * The threshold of max context window size after which the chat history should be summarized.
+     *
+     * @note Accepts a value between 0 (0%) and 1 (100%).
+     *
+     * @note You can disable summarization by setting the value to -1.
+     *
+     * @note You can always trigger manual summarization while the agent is in idle by calling the `summarizeChatHistory` method.
+     *
+     * @note You can customize summarization logic by overriding the `summarizeChatHistory` method.
+     *
+     * @default 0.5
+     */
+    summarizeChatHistoryThreshold?: number;
 
-  /**
-   * How many uncompacted messages to keep in the internal history. Only older messages beyond this limit will be compacted.
-   *
-   * @note The minimum value is 5, any lower value will be ignored.
-   *
-   * @default 5
-   */
-  uncompactedMessagesToKeep?: number;
+    /**
+     * How many uncompacted messages to keep in the internal history. Only older messages beyond this limit will be compacted.
+     *
+     * @note The minimum value is 5, any lower value will be ignored.
+     *
+     * @default 5
+     */
+    uncompactedMessagesToKeep?: number;
 
-  /**
-   * A configurable uinterval of user messages after which the title should be updated.
-   *
-   * @note If not set, the title will not be updated automatically and only be generated on the first user message.
-   *
-   * @note Only used if `generateTitles` is set to `true`.
-   */
-  updateTitlesEveryNUserMessages?: number;
+    /**
+     * A configurable uinterval of user messages after which the title should be updated.
+     *
+     * @note If not set, the title will not be updated automatically and only be generated on the first user message.
+     *
+     * @note Only used if `generateTitles` is set to `true`.
+     */
+    updateTitlesEveryNUserMessages?: number;
 
-  /**
-   * A customizable reason text for the LLM in case a running tool call was aborted due to the user flushing the message queue.
-   */
-  flushQueueToolCallAbortReason?: string;
+    /**
+     * A customizable reason text for the LLM in case a running tool call was aborted due to the user flushing the message queue.
+     */
+    flushQueueToolCallAbortReason?: string;
 
-  /**
-   * A customizable reason text for the LLM in case a open tool call approval request was denied due to the user sending a new message instead of waiting for the tool call to finish.
-   */
-  flushQueueToolCallRequestApprovalReason?: string;
+    /**
+     * A customizable reason text for the LLM in case a open tool call approval request was denied due to the user sending a new message instead of waiting for the tool call to finish.
+     */
+    flushQueueToolCallRequestApprovalReason?: string;
 
-  /**
-   * A customizable reason text for the LLM in case a running tool call was aborted due to the user stopping the agent.
-   */
-  stopToolCallAbortReason?: string;
+    /**
+     * A customizable reason text for the LLM in case a running tool call was aborted due to the user stopping the agent.
+     */
+    stopToolCallAbortReason?: string;
 
-  /**
-   * A customizable reason text for the LLM in case a open tool call approval request was denied due to the user stopping the agent.
-   */
-  stopToolCallRequestApprovalReason?: string;
+    /**
+     * A customizable reason text for the LLM in case a open tool call approval request was denied due to the user stopping the agent.
+     */
+    stopToolCallRequestApprovalReason?: string;
 
-  /**
-   * A configurable amount of maximum steps to take before new step execution is force-stopped and a new user message is needed to resume the agents operation.
-   *
-   * @default infinite
-   */
-  maxSteps?: number;
+    /**
+     * A configurable amount of maximum steps to take before new step execution is force-stopped and a new user message is needed to resume the agents operation.
+     *
+     * @default infinite
+     */
+    maxSteps?: number;
 
-  /**
-   * A configurable amount of maximum retries the generation can take within one agent step.
-   *
-   * @default 1
-   */
-  maxRetries?: number;
+    /**
+     * A configurable amount of maximum retries the generation can take within one agent step.
+     *
+     * @default 1
+     */
+    maxRetries?: number;
 
-  /**
-   * A configurable amount of maximum time (ms) to spend before new step execution is force-stopped and a new user message is needed to resume the agents operation.
-   *
-   * @default infinite
-   */
-  maxTime?: number;
+    /**
+     * A configurable amount of maximum time (ms) to spend before new step execution is force-stopped and a new user message is needed to resume the agents operation.
+     *
+     * @default infinite
+     */
+    maxTime?: number;
 
-  /**
-   * A configurable amount of maximum output tokens per step.
-   *
-   * @default 1000
-   */
-  maxOutputTokens?: number;
+    /**
+     * A configurable amount of maximum output tokens per step.
+     *
+     * @default 1000
+     */
+    maxOutputTokens?: number;
 
-  /**
-   * Temperature setting.
-   *
-   * The value is passed through to the provider. The range depends on the provider and model.
-   *
-   * @note It is recommended to set either `temperature` or `topP`, but not both.
-   */
-  temperature?: number;
+    /**
+     * Temperature setting.
+     *
+     * The value is passed through to the provider. The range depends on the provider and model.
+     *
+     * @note It is recommended to set either `temperature` or `topP`, but not both.
+     */
+    temperature?: number;
 
-  /**
-   * Nucleus sampling.
-   *
-   * The value is passed through to the provider. The range depends on the provider and model.
-   *
-   * @note It is recommended to set either `temperature` or `topP`, but not both.
-   */
-  topP?: number;
+    /**
+     * Nucleus sampling.
+     *
+     * The value is passed through to the provider. The range depends on the provider and model.
+     *
+     * @note It is recommended to set either `temperature` or `topP`, but not both.
+     */
+    topP?: number;
 
-  /**
-   * Only sample from the top K options for each subsequent token.
-   *
-   * Used to remove "long tail" low probability responses.
-   *
-   * @note Recommended for advanced use cases only. You usually only need to use temperature.
-   */
-  topK?: number;
+    /**
+     * Only sample from the top K options for each subsequent token.
+     *
+     * Used to remove "long tail" low probability responses.
+     *
+     * @note Recommended for advanced use cases only. You usually only need to use temperature.
+     */
+    topK?: number;
 
-  /**
-   * Presence penalty setting.
-   *
-   * It affects the likelihood of the model to repeat information that is already in the prompt.
-   * The value is passed through to the provider. The range depends on the provider and model
-   */
-  presencePenalty?: number;
+    /**
+     * Presence penalty setting.
+     *
+     * It affects the likelihood of the model to repeat information that is already in the prompt.
+     * The value is passed through to the provider. The range depends on the provider and model
+     */
+    presencePenalty?: number;
 
-  /**
-   * Frequency penalty setting.
-   *
-   * It affects the likelihood of the model to repeatedly use the same words or phrases.
-   * The value is passed through to the provider. The range depends on the provider and model.
-   */
-  frequencyPenalty?: number;
+    /**
+     * Frequency penalty setting.
+     *
+     * It affects the likelihood of the model to repeatedly use the same words or phrases.
+     * The value is passed through to the provider. The range depends on the provider and model.
+     */
+    frequencyPenalty?: number;
 
-  /**
-   * Sequences that will stop the generation of the text.
-   *
-   * If the model generates any of these sequences, it will stop generating further text.
-   */
-  stopSequences?: string[];
+    /**
+     * Sequences that will stop the generation of the text.
+     *
+     * If the model generates any of these sequences, it will stop generating further text.
+     */
+    stopSequences?: string[];
 
-  /**
-   * The seed (integer) to use for random sampling.
-   *
-   * If set and supported by the model, calls will generate deterministic results.
-   */
-  seed?: number;
-};
+    /**
+     * The seed (integer) to use for random sampling.
+     *
+     * If set and supported by the model, calls will generate deterministic results.
+     */
+    seed?: number;
+  };
 
 export type MessageId = string;
 
@@ -247,7 +247,9 @@ export type MessageId = string;
  * AgentsMap[AgentTypes.CHAT].config.defaultModelId
  * ```
  */
-export interface BaseAgentStatic<TFinishToolOutputSchema extends z.ZodType> {
+export interface BaseAgentStatic<
+  TFinishToolOutputSchema extends z.ZodType | null,
+> {
   readonly config: BaseAgentConfig<TFinishToolOutputSchema>;
   readonly agentType: AgentTypes;
 }
@@ -272,7 +274,7 @@ export type AgentConfig<T extends BaseAgentStatic<any>> = T['config'];
  *       TypeScript cannot enforce `abstract static`, so this is enforced by the `BaseAgentClass` interface.
  */
 export abstract class BaseAgent<
-  TFinishToolOutputSchema extends z.ZodType,
+  TFinishToolOutputSchema extends z.ZodType | null,
   TInstanceConfig,
 > {
   public readonly instanceId: string;
@@ -942,7 +944,11 @@ export abstract class BaseAgent<
     configGetter: (
       input: z.infer<SpawnToolInputSchema>,
     ) => InstanceType<AgentTypeMap[AT]>['instanceConfig'],
-  ): Tool {
+  ): Tool | null {
+    if (AgentsMap[agentType].config.finishToolOutputSchema === null) {
+      return null;
+    }
+
     return {
       description: description,
       inputSchema: inputSchema,
@@ -1000,9 +1006,7 @@ export abstract class BaseAgent<
 
     const tools = await this.getToolsForStep();
 
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Executing step with tools: ${JSON.stringify(tools)}`,
-    );
+    this.logger.debug(`[BaseAgent:${this.instanceId}] Running step`);
 
     const resolvedConfig = {
       ...this.config,
@@ -1376,9 +1380,8 @@ export abstract class BaseAgent<
 
   private async getToolsForStep(): Promise<Partial<StagewiseToolSet>> {
     const userTools = await this.getTools(this.messages);
-    const finishTool = this.getFinishTool()
-      ? { finish: this.getFinishTool() }
-      : {};
+    const finishTool =
+      this.getFinishTool() !== null ? { finish: this.getFinishTool() } : {};
     return {
       ...userTools,
       ...finishTool,

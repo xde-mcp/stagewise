@@ -121,20 +121,19 @@ export class AgentPersistenceDB {
     id: string,
   ): Promise<schema.StoredAgentInstance | null> {
     this._logger.debug(`[AgentPersistenceDB] Fetching agent instance: ${id}`);
-    const _results = await this._db
+    const results = await this._db
       .selectDistinct()
       .from(schema.agentInstances)
       .where(eq(schema.agentInstances.id, id))
-      .limit(1);
-    return (
-      (
-        await this._db
-          .selectDistinct()
-          .from(schema.agentInstances)
-          .where(eq(schema.agentInstances.id, id))
-          .limit(1)
-      )[0] ?? null
-    );
+      .limit(1)
+      .catch((error) => {
+        this._logger.error(
+          `[AgentPersistenceDB] Failed to fetch agent instance: ${error}`,
+        );
+        return null;
+      });
+
+    return results?.[0] ?? null;
   }
 
   /**
@@ -156,6 +155,11 @@ export class AgentPersistenceDB {
         set: {
           ...agentInstance,
         },
+      })
+      .catch((error) => {
+        this._logger.error(
+          `[AgentPersistenceDB] Failed to store agent instance: ${error}`,
+        );
       });
   }
 
@@ -177,6 +181,11 @@ export class AgentPersistenceDB {
 
     await this._db
       .delete(schema.agentInstances)
-      .where(eq(schema.agentInstances.id, id));
+      .where(eq(schema.agentInstances.id, id))
+      .catch((error) => {
+        this._logger.error(
+          `[AgentPersistenceDB] Failed to delete agent instance: ${error}`,
+        );
+      });
   }
 }

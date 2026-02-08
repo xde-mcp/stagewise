@@ -2,14 +2,7 @@ import { BaseAgent } from '../shared/base-agent';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
 import { buildChatSystemPrompt } from './context-builder/context-builder';
-import { z } from 'zod';
-
-export const chatAgentFinishToolOutputSchema = z.object({ type: z.string() });
-
-export class ChatAgent extends BaseAgent<
-  typeof chatAgentFinishToolOutputSchema,
-  undefined
-> {
+export class ChatAgent extends BaseAgent<never, undefined> {
   public static readonly agentType = AgentTypes.CHAT;
   public static readonly config = {
     persistent: true,
@@ -38,7 +31,7 @@ export class ChatAgent extends BaseAgent<
     },
     allowUserInput: true,
     generateTitles: true,
-    finishToolOutputSchema: chatAgentFinishToolOutputSchema,
+    finishToolOutputSchema: null,
     updateTitlesEveryNUserMessages: 5,
   };
 
