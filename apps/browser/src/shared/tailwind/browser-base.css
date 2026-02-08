@@ -14,6 +14,7 @@
 @import "../../../../../packages/stage-ui/src/styles/index.css";
 @import "../../../assets/fonts/Geist/geist.css";
 @import "../../../assets/fonts/GeistMono/geist-mono.css";
+@import "../../../assets/fonts/RobotoMono/roboto-mono.css";
 
 @plugin 'tailwind-scrollbar';
 
@@ -21,8 +22,8 @@
   --font-sans: stagewise-builtin-geist, -apple-system, BlinkMacSystemFont,
               "Segoe UI", "Ubuntu", "Roboto", "Noto Sans", "Cantarell",
               "Helvetica Neue", "Inter", Arial, sans-serif;
-  --font-mono: stagewise-builtin-geist-mono, Menlo,ui-monospace, "SF Mono",
-              "Segoe UI Mono", "Ubuntu Mono", "Roboto Mono", "Noto Mono",
+  --font-mono: "Roboto Mono", Menlo, Monaco, stagewise-builtin-roboto-mono, "Noto Sans Mono", ui-monospace, "SF Mono",
+              "Segoe UI Mono", "Ubuntu Mono",  "Noto Mono",
               "Liberation Mono", "Inter Mono", Consolas, monospace;
   --text-2xs: 0.625rem;
 }
