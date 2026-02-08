@@ -156,14 +156,26 @@ export class AuthServerInterop {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    const subscriptionData = await client.subscription.getSubscription
-      .query()
-      .catch((err) => {
-        this.logger.error(
-          `[AuthServerInterop] Failed to get subscription: ${err}`,
-        );
-        return null;
-      });
+
+    // The tRPC client uses httpBatchStreamLink (streaming HTTP) which has
+    // no built-in timeout. If the server responds with headers but the
+    // stream body never closes, the query hangs indefinitely. We add an
+    // explicit timeout to prevent this from blocking the auth flow.
+    const SUBSCRIPTION_TIMEOUT_MS = 15_000;
+    const subscriptionData = await Promise.race([
+      client.subscription.getSubscription.query(),
+      new Promise<null>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Subscription query timed out')),
+          SUBSCRIPTION_TIMEOUT_MS,
+        ),
+      ),
+    ]).catch((err) => {
+      this.logger.error(
+        `[AuthServerInterop] Failed to get subscription: ${err}`,
+      );
+      return null;
+    });
 
     this.logger.debug(
       `[AuthServerInterop] Subscription data: ${JSON.stringify(subscriptionData)}`,

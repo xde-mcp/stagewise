@@ -85,6 +85,10 @@ export class FaviconService {
   /**
    * Store a favicon for a page URL.
    * Fetches the favicon image if not already cached.
+   *
+   * The HTTP fetch is performed *before* opening the database transaction
+   * to avoid holding a write lock during potentially slow network I/O,
+   * which would cause SQLITE_BUSY errors for concurrent callers.
    */
   async storeFavicon(
     pageUrl: string,
@@ -93,8 +97,33 @@ export class FaviconService {
   ): Promise<void> {
     const now = toWebKitTimestamp(new Date());
 
+    // Check if the favicon is already cached (read outside transaction)
+    const existingFavicon = await this.db
+      .select()
+      .from(schema.favicons)
+      .where(eq(schema.favicons.url, faviconUrl))
+      .get();
+
+    // Pre-fetch the image outside the transaction so we don't hold
+    // a DB write lock during network I/O.
+    let imageData: {
+      buffer: Buffer;
+      width: number;
+      height: number;
+    } | null = null;
+    if (!existingFavicon) {
+      try {
+        imageData = await this.fetchFaviconImage(faviconUrl);
+      } catch (_err) {
+        this.logger.debug(
+          `[FaviconService] Failed to fetch favicon: ${faviconUrl}`,
+        );
+      }
+    }
+
+    // Now run the DB-only operations inside a short transaction.
     await this.db.transaction(async (tx) => {
-      // Find or create the favicon entry
+      // Re-check inside transaction to handle races
       const faviconEntry = await tx
         .select()
         .from(schema.favicons)
@@ -104,7 +133,6 @@ export class FaviconService {
       let iconId: number;
 
       if (!faviconEntry) {
-        // Create new favicon entry
         const result = await tx
           .insert(schema.favicons)
           .values({
@@ -114,23 +142,15 @@ export class FaviconService {
           .returning({ id: schema.favicons.id });
         iconId = result[0].id;
 
-        // Fetch and store the bitmap
-        try {
-          const imageData = await this.fetchFaviconImage(faviconUrl);
-          if (imageData) {
-            await tx.insert(schema.faviconBitmaps).values({
-              iconId,
-              lastUpdated: now,
-              imageData: imageData.buffer,
-              width: imageData.width,
-              height: imageData.height,
-              lastRequested: now,
-            });
-          }
-        } catch (_err) {
-          this.logger.debug(
-            `[FaviconService] Failed to fetch favicon: ${faviconUrl}`,
-          );
+        if (imageData) {
+          await tx.insert(schema.faviconBitmaps).values({
+            iconId,
+            lastUpdated: now,
+            imageData: imageData.buffer,
+            width: imageData.width,
+            height: imageData.height,
+            lastRequested: now,
+          });
         }
       } else {
         iconId = faviconEntry.id;

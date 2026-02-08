@@ -303,6 +303,9 @@ export class AuthService extends DisposableService {
 
   // This function is called when the auth callback URL is received with an auth code.
   // It immediately exchanges the code for tokens without requiring user confirmation.
+  // The auth tab is closed as soon as the token exchange succeeds, and the full
+  // auth state check (session + subscription) runs in the background to avoid
+  // blocking the UI if the API is slow or unreachable.
   public async handleAuthCodeExchange(
     authCode: string | undefined,
     error: string | undefined,
@@ -326,7 +329,10 @@ export class AuthService extends DisposableService {
         expiresAt: new Date(tokenData.expiresAt),
         refreshExpiresAt: new Date(tokenData.refreshExpiresAt),
       };
-      await this.checkAuthState();
+
+      // Close the auth tab immediately after a successful token exchange
+      // so the user isn't blocked by slow downstream API calls.
+      this.closeAuthTab();
 
       this.notificationService.showNotification({
         title: 'Signed in',
@@ -335,6 +341,11 @@ export class AuthService extends DisposableService {
         duration: 3000,
         actions: [],
       });
+
+      // Run full auth state check (session validation + subscription fetch)
+      // in the background. This may involve slow tRPC streaming calls that
+      // should not block the auth callback response.
+      void this.checkAuthState();
     } catch (err) {
       this.logger.error(`[AuthService] Failed to exchange token: ${err}`);
       this.notificationService.showNotification({
@@ -344,7 +355,6 @@ export class AuthService extends DisposableService {
         duration: 5000,
         actions: [],
       });
-    } finally {
       this.closeAuthTab();
     }
   }
