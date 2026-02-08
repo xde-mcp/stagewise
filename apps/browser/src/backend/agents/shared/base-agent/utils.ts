@@ -17,6 +17,19 @@ import xml from 'xml';
 import specialTokens from '../prompts/utils/special-tokens';
 
 /**
+ * Strip all underscore-prefixed properties from a tool output object.
+ * This allows tool implementations to attach UI-only metadata (e.g. `_diff`)
+ * that is visible in the UI but automatically excluded from model context.
+ */
+function stripUnderscoreProperties(
+  output: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(output).filter(([key]) => !key.startsWith('_')),
+  );
+}
+
+/**
  * Converts a set of UI messages to model messages that then can simply be used to trigger a LLM.
  *
  * We implement this function to integrate handling for our custom formatting of file references etc.
@@ -40,8 +53,29 @@ export const convertStagewiseUIToModelMessages = async (
   // Convert each UI message to model message format
   for (const message of messages) {
     if (message.role !== 'user') {
+      // Strip underscore-prefixed properties (e.g. _diff) from tool outputs
+      // before converting to model messages - these are UI-only metadata
+      const cleanedMessage = {
+        ...message,
+        parts: message.parts.map((part) => {
+          if (
+            (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
+            'output' in part &&
+            part.output &&
+            typeof part.output === 'object'
+          ) {
+            return {
+              ...part,
+              output: stripUnderscoreProperties(
+                part.output as Record<string, unknown>,
+              ),
+            };
+          }
+          return part;
+        }),
+      };
       modelMessages.push(
-        ...(await convertToModelMessages([message], {
+        ...(await convertToModelMessages([cleanedMessage], {
           tools: tools,
         })),
       );

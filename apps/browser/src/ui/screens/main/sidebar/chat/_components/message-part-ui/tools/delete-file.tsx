@@ -1,4 +1,7 @@
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type {
+  StagewiseUITools,
+  WithDiff,
+} from '@shared/karton-contracts/ui/agent/tools/types';
 import type { ToolUIPart } from 'ai';
 import { DiffPreview } from './shared/diff-preview';
 import { ToolPartUI } from './shared/tool-part-ui';
@@ -30,16 +33,16 @@ export const DeleteFileToolPart = ({
   const [collapsedDiffView, setCollapsedDiffView] = useState(true);
   const posthog = usePostHog();
 
+  const outputWithDiff = part.output as
+    | WithDiff<typeof part.output>
+    | undefined;
+
   const diff = useMemo(
     () =>
-      // TODO @julian is this deleted?
-      // @ts-expect-error - hiddenFromLLM doesn't exist anymore (in toolbox i guess)
-      part.output?.hiddenFromLLM?.diff
-        ? // @ts-expect-error
-          diffLines(part.output.hiddenFromLLM.diff.before ?? '', '')
+      outputWithDiff?._diff
+        ? diffLines(outputWithDiff._diff.before ?? '', '')
         : null,
-    // @ts-expect-error
-    [part.output?.hiddenFromLLM],
+    [outputWithDiff?._diff],
   );
 
   const deletedLineCount = useMemo(

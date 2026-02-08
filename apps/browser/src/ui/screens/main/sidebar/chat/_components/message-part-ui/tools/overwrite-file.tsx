@@ -1,5 +1,8 @@
 import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type {
+  StagewiseUITools,
+  WithDiff,
+} from '@shared/karton-contracts/ui/agent/tools/types';
 import { FileIcon } from './shared/file-icon';
 import {
   Tooltip,
@@ -42,20 +45,19 @@ export const OverwriteFileToolPart = ({
   const [expanded, setExpanded] = useState(true);
   const { getFileIDEHref } = useFileIDEHref();
   const posthog = usePostHog();
+  const outputWithDiff = part.output as
+    | WithDiff<typeof part.output>
+    | undefined;
+
   const diff = useMemo(
     () =>
-      // TODO @julian is this deleted?
-      // @ts-expect-error - hiddenFromLLM doesn't exist anymore (in toolbox i guess)
-      part.output?.hiddenFromLLM?.diff
+      outputWithDiff?._diff
         ? diffLines(
-            // @ts-expect-error
-            part.output?.hiddenFromLLM?.diff.before ?? '',
-            // @ts-expect-error
-            part.output?.hiddenFromLLM?.diff.after ?? '',
+            outputWithDiff._diff.before ?? '',
+            outputWithDiff._diff.after ?? '',
           )
         : null,
-    // @ts-expect-error
-    [part.output?.hiddenFromLLM],
+    [outputWithDiff?._diff],
   );
 
   const newLineCount = useMemo(
@@ -112,9 +114,7 @@ export const OverwriteFileToolPart = ({
           relativePath={path ?? undefined}
           newLineCount={newLineCount}
           deletedLineCount={deletedLineCount}
-          // TODO @julian is this deleted?
-          // @ts-expect-error - hiddenFromLLM doesn't exist anymore (in toolbox i guess)
-          fileWasCreated={part.output?.hiddenFromLLM?.diff.before === null}
+          fileWasCreated={outputWithDiff?._diff?.before === null}
         />
       );
   }, [state, streaming, path, newLineCount, deletedLineCount]);

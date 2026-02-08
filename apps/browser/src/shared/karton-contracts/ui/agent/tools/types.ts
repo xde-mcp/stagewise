@@ -549,3 +549,21 @@ export type StagewiseToolSet = {
  * Type helper for individual tool parts
  */
 export type ToolName = keyof StagewiseToolSet;
+
+/**
+ * Diff data attached to file-modifying tool outputs for UI rendering.
+ * Stripped before reaching the LLM via the underscore-prefix convention
+ * in `convertStagewiseUIToModelMessages`.
+ */
+export interface ToolOutputDiff {
+  /** File content before the edit. `null` means the file was created. */
+  before: string | null;
+  /** File content after the edit. `null` means the file was deleted. */
+  after: string | null;
+}
+
+/**
+ * Helper type to add optional `_diff` metadata to a tool output type.
+ * Use in UI components to safely access diff data from tool outputs.
+ */
+export type WithDiff<T> = T & { _diff?: ToolOutputDiff | null };

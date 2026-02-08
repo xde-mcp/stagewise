@@ -249,7 +249,13 @@ export class ToolboxService extends DisposableService {
         const modifiedFiles = this.modifiedFilesPerAgent.get(agentInstanceId);
         if (modifiedFiles) modifiedFiles.add(absolutePath);
 
-        return result;
+        // Attach diff data for UI rendering (stripped before LLM sees it)
+        const _diff =
+          !beforeState.isExternal && !afterState.isExternal
+            ? { before: beforeState.content, after: afterState.content }
+            : null;
+
+        return { ...(result as object), _diff };
       },
     });
   }
