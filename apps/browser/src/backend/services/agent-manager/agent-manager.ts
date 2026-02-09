@@ -438,14 +438,25 @@ export class AgentManagerService extends DisposableService {
    */
   private async deleteAgent(instanceId: string) {
     this.logger.debug(`[AgentManager] Deleting agent. ID: ${instanceId}`);
-    // First we archive the agent (stops it, deletes it from list of loaded agents while keeping the persisted state intact)
+
+    // Recursively delete all child agents first
+    const childAgentInstanceIds = Object.entries(
+      this.karton.state.agents.instances,
+    )
+      .filter(([_, instance]) => instance.parentAgentInstanceId === instanceId)
+      .map(([id]) => id);
+    for (const childAgentInstanceId of childAgentInstanceIds) {
+      await this.deleteAgent(childAgentInstanceId);
+    }
+
+    // Archive this agent (stops it, tears down resources, removes from active state)
     await this.archiveAgent(instanceId);
 
     if (!this.agentPersistenceDB) {
       throw new Error('Agent persistence DB not found');
     }
 
-    // Clear the agent from the persistence layer. This also clears all child agents from the persistence layer so we have double safety that all agents are deleted.
+    // Clear the agent from the persistence layer
     await this.agentPersistenceDB?.deleteAgentInstance(instanceId);
   }
 
@@ -476,7 +487,8 @@ export class AgentManagerService extends DisposableService {
       .filter(([_, instance]) => instance.parentAgentInstanceId === instanceId)
       .map(([id]) => id);
     for (const childAgentInstanceId of childAgentInstanceIds) {
-      await this.deleteAgent(childAgentInstanceId);
+      const _childAgent = this.activeAgents.get(childAgentInstanceId);
+      await this.archiveAgent(childAgentInstanceId);
     }
 
     // Clear the active agents map.
