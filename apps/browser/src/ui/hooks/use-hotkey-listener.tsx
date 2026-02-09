@@ -6,6 +6,7 @@ import {
   isEventMatch,
   type HotkeyActions,
 } from '@shared/hotkeys';
+import { shouldNativeInputConsumeEvent } from '@shared/native-input-events';
 import { usePostHog } from 'posthog-js/react';
 
 export function useHotKeyListener(
@@ -18,6 +19,11 @@ export function useHotKeyListener(
 
   const hotKeyListener = useCallback(
     (ev: KeyboardEvent) => {
+      // For non-dominant hotkeys, check if a native editable element should consume the event
+      // This allows standard text editing behavior to work (e.g., Cmd+ArrowLeft in inputs)
+      if (!definition.captureDominantly && shouldNativeInputConsumeEvent(ev))
+        return;
+
       // The first matching hotkey action will be executed and abort further processing of other hotkey actions.
       if (isEventMatch(ev, definition, platform)) {
         posthog.capture('agent_select_elements_hotkey_pressed', {
