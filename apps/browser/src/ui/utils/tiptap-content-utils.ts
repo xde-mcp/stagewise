@@ -4,6 +4,11 @@ import { Document } from '@tiptap/extension-document';
 import { Paragraph } from '@tiptap/extension-paragraph';
 import { Text } from '@tiptap/extension-text';
 import { AllAttachmentExtensions } from '@ui/screens/main/sidebar/chat/_components/rich-text';
+import type {
+  FileAttachment,
+  TextClipAttachment,
+} from '@shared/karton-contracts/ui/agent/metadata';
+import type { SelectedElement } from '@shared/selected-elements';
 
 /**
  * Singleton MarkdownManager instance for parsing markdown with attachment support.
@@ -48,4 +53,102 @@ export function markdownToTipTapContent(markdown: string): JSONContent {
       ],
     };
   }
+}
+
+/**
+ * Injects attachment data from message metadata into TipTap JSON node attrs.
+ *
+ * markdownToTipTapContent produces attachment nodes with only IDs (the markdown
+ * doesn't carry inline data like URLs or text clip content). This function
+ * walks the tree and patches each attachment node with the full data from the
+ * original message metadata, making the result identical to what the editor
+ * produces during fresh composition.
+ */
+export function enrichTipTapContent(
+  content: JSONContent,
+  metadata: {
+    fileAttachments?: FileAttachment[];
+    textClipAttachments?: TextClipAttachment[];
+    selectedPreviewElements?: SelectedElement[];
+  },
+): JSONContent {
+  const fileMap = new Map(
+    (metadata.fileAttachments ?? []).map((f) => [f.id, f]),
+  );
+  const clipMap = new Map(
+    (metadata.textClipAttachments ?? []).map((c) => [c.id, c]),
+  );
+  const elementMap = new Map(
+    (metadata.selectedPreviewElements ?? []).map((e) => [e.stagewiseId, e]),
+  );
+
+  function walk(node: JSONContent): JSONContent {
+    const id = node.attrs?.id as string | undefined;
+
+    if (node.type === 'imageAttachment' && id) {
+      const file = fileMap.get(id);
+      if (file) {
+        return {
+          ...node,
+          attrs: {
+            ...node.attrs,
+            url: file.url,
+            label: file.fileName ?? node.attrs?.label,
+            validationError: file.validationError,
+          },
+        };
+      }
+    }
+
+    if (node.type === 'fileAttachment' && id) {
+      const file = fileMap.get(id);
+      if (file) {
+        return {
+          ...node,
+          attrs: {
+            ...node.attrs,
+            label: file.fileName ?? node.attrs?.label,
+            validationError: file.validationError,
+          },
+        };
+      }
+    }
+
+    if (node.type === 'textClipAttachment' && id) {
+      const clip = clipMap.get(id);
+      if (clip) {
+        return {
+          ...node,
+          attrs: {
+            ...node.attrs,
+            label: clip.label,
+            content: clip.content,
+          },
+        };
+      }
+    }
+
+    if (node.type === 'elementAttachment' && id) {
+      const el = elementMap.get(id);
+      if (el) {
+        const tagName = (el.nodeType || el.tagName).toLowerCase();
+        const domId = el.attributes?.id ? `#${el.attributes.id}` : '';
+        return {
+          ...node,
+          attrs: {
+            ...node.attrs,
+            label: `${tagName}${domId}`,
+          },
+        };
+      }
+    }
+
+    if (node.content) {
+      return { ...node, content: node.content.map(walk) };
+    }
+
+    return node;
+  }
+
+  return walk(content);
 }

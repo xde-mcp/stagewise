@@ -34,6 +34,10 @@ import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { useChatDraft } from '@/hooks/use-chat-draft';
 import type { Content } from '@tiptap/core';
+import {
+  markdownToTipTapContent,
+  enrichTipTapContent,
+} from '@/utils/tiptap-content-utils';
 
 export function ChatPanelFooter() {
   const chatInputRef = useRef<ChatInputHandle>(null);
@@ -92,6 +96,7 @@ export function ChatPanelFooter() {
     addFileAttachment,
     removeFileAttachment,
     clearFileAttachments,
+    setFileAttachments,
   } = useFileAttachments({ chatInputRef });
 
   const { activeEditMessageId, setMainDropHandler } = useMessageEditState();
@@ -164,16 +169,52 @@ export function ChatPanelFooter() {
   // so the stream is fully done and won't re-add the assistant message.
   const [pendingRevert, setPendingRevert] = useState<{
     messageId: string;
-    text: string;
+    message: AgentMessage;
   } | null>(null);
 
   useEffect(() => {
     if (!isWorking && pendingRevert) {
-      revertToUserMessage(openAgent, pendingRevert.messageId, false);
-      chatInputRef.current?.setTextContent(pendingRevert.text);
+      const { messageId, message } = pendingRevert;
       setPendingRevert(null);
+
+      // Revert chat history (remove user msg + partial response)
+      revertToUserMessage(openAgent, messageId, false);
+
+      // Restore input content: parse markdown then inject full attachment
+      // data from metadata so nodes are identical to fresh composition
+      const textPart = message.parts.find((p) => p.type === 'text');
+      const text = textPart?.type === 'text' ? textPart.text : '';
+      if (text) {
+        const parsed = markdownToTipTapContent(text);
+        const tiptapContent = enrichTipTapContent(parsed, {
+          fileAttachments: message.metadata?.fileAttachments,
+          textClipAttachments: message.metadata?.textClipAttachments,
+          selectedPreviewElements: message.metadata?.selectedPreviewElements as
+            | SelectedElement[]
+            | undefined,
+        });
+        updateChatInputState(tiptapContent);
+      }
+
+      // Restore file attachments state (used by handleSubmit for the message)
+      if (message.metadata?.fileAttachments?.length) {
+        setFileAttachments(message.metadata.fileAttachments);
+      }
+
+      // Restore selected elements state
+      const elements = message.metadata?.selectedPreviewElements;
+      if (elements?.length) {
+        setLocalSelectedElements(elements as SelectedElement[]);
+      }
     }
-  }, [isWorking, pendingRevert, revertToUserMessage, openAgent]);
+  }, [
+    isWorking,
+    pendingRevert,
+    revertToUserMessage,
+    openAgent,
+    updateChatInputState,
+    setFileAttachments,
+  ]);
 
   const abortAgent = useCallback(async () => {
     // Snapshot history before stop
@@ -203,11 +244,9 @@ export function ChatPanelFooter() {
 
       if (!hasToolCall && textLength < 200) {
         const userMessage = currentHistory[lastUserMsgIndex];
-        const textPart = userMessage.parts.find((p) => p.type === 'text');
-        const text = textPart?.type === 'text' ? textPart.text : '';
 
         // Schedule revert for when the stream is fully done (isWorking → false)
-        setPendingRevert({ messageId: userMessage.id, text });
+        setPendingRevert({ messageId: userMessage.id, message: userMessage });
       }
     }
 

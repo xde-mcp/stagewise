@@ -461,16 +461,12 @@ export abstract class BaseAgent<
         draft.queuedMessages.push(msg);
       });
 
-      this.logger.debug(
-        `[BaseAgent:${this.instanceId}] Queued message: ${JSON.stringify(message)}`,
-      );
+      this.logger.debug(`[BaseAgent:${this.instanceId}] Queued message`);
 
       return message.id;
     }
 
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Sending user message: ${JSON.stringify(message)}`,
-    );
+    this.logger.debug(`[BaseAgent:${this.instanceId}] Sending user message`);
 
     // If the agent is not running, we add the message to the history and immediately send it to the model.
     this.state.set((draft) => {
