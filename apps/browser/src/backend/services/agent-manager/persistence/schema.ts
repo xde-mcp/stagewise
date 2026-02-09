@@ -11,6 +11,7 @@ import { metaTable } from '@/utils/migrate-database/types';
 import type { ModelId } from '@shared/available-models';
 import { relations } from 'drizzle-orm';
 import type { AgentTypes } from '@shared/karton-contracts/ui/agent';
+import superjson from 'superjson';
 
 const _sqliteBoolean = customType<{ data: boolean; driverData: number }>({
   dataType() {
@@ -51,16 +52,15 @@ const modelId = customType<{ data: ModelId; driverData: string }>({
   },
 });
 
-const _sqliteDate = customType<{ data: Date; driverData: number }>({
+const _sqliteJson = customType<{ data: unknown; driverData: string }>({
   dataType() {
-    return 'integer';
+    return 'text';
   },
-
   toDriver(value) {
-    return value.getTime();
+    return superjson.stringify(value);
   },
   fromDriver(value) {
-    return new Date(value);
+    return superjson.parse(value);
   },
 });
 
@@ -72,22 +72,18 @@ export const agentInstances = sqliteTable(
     id: text('id').primaryKey(),
     parentAgentInstanceId: text('parent_agent_instance_id'),
     type: agentType('type').notNull(),
-    instanceConfig: text('instance_config', { mode: 'json' }).$type<unknown>(),
+    instanceConfig: _sqliteJson('instance_config').$type<unknown>(),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
     lastMessageAt: integer('last_message_at', { mode: 'timestamp' }).notNull(),
     activeModelId: modelId('active_model_id').notNull(),
     title: text('title').notNull(),
-    history: text('history', { mode: 'json' })
-      .notNull()
-      .$type<AgentMessage[]>(),
+    history: _sqliteJson('history').notNull().$type<AgentMessage[]>(),
     lastCompactedMessageId: text('last_compacted_message_id'),
-    compactedHistory: text('compacted_history', { mode: 'json' }).$type<
-      AgentMessage[]
-    >(),
-    queuedMessages: text('queued_messages', { mode: 'json' })
+    compactedHistory: _sqliteJson('compacted_history').$type<AgentMessage[]>(),
+    queuedMessages: _sqliteJson('queued_messages')
       .notNull()
       .$type<(AgentMessage & { role: 'user' })[]>(),
-    inputState: text('input_state', { mode: 'json' }).notNull().$type<string>(),
+    inputState: _sqliteJson('input_state').notNull().$type<string>(),
     usedTokens: integer('used_tokens').notNull(),
   },
   (table) => [

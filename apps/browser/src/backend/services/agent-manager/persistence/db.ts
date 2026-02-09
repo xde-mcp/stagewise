@@ -158,7 +158,7 @@ export class AgentPersistenceDB {
       })
       .catch((error) => {
         this._logger.error(
-          `[AgentPersistenceDB] Failed to store agent instance: ${error}`,
+          `[AgentPersistenceDB] Failed to store agent instance: ${error.message}, ${error.stack}`,
         );
       });
   }
