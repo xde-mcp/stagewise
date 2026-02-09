@@ -232,7 +232,12 @@ export class AgentManagerService extends DisposableService {
     );
   }
 
-  protected onTeardown(): Promise<void> | void {}
+  protected async onTeardown(): Promise<void> {
+    for (const agent of this.activeAgents.values()) {
+      await agent.onTeardown();
+    }
+    this.activeAgents.clear();
+  }
 
   // Create a new agent. Should be called when the user creates a new agent.
   public async createAgent<TAgentType extends keyof AgentTypeMap>(
@@ -487,9 +492,12 @@ export class AgentManagerService extends DisposableService {
       .filter(([_, instance]) => instance.parentAgentInstanceId === instanceId)
       .map(([id]) => id);
     for (const childAgentInstanceId of childAgentInstanceIds) {
-      const _childAgent = this.activeAgents.get(childAgentInstanceId);
+      const childAgent = this.activeAgents.get(childAgentInstanceId);
+      await childAgent?.onTeardown();
       await this.archiveAgent(childAgentInstanceId);
     }
+
+    await agent.onTeardown();
 
     // Clear the active agents map.
     this.activeAgents.delete(instanceId);

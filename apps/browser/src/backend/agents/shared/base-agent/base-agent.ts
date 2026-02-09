@@ -1505,4 +1505,11 @@ export abstract class BaseAgent<
       });
     });
   }
+
+  /**
+   * Must be called when the agent is torn down (deleted or closed) to clean up/ free resources (e.g. sandbox memory, state, etc.).
+   */
+  public onTeardown(): Promise<void> | void {
+    void this.toolbox.clearAgentTracking(this.instanceId);
+  }
 }
