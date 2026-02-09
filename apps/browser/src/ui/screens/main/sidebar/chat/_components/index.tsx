@@ -113,7 +113,7 @@ export function ChatPanel() {
       aria-label="Chat panel drop zone"
     >
       <ChatHistory />
-      <ChatPanelFooter />
+      <ChatPanelFooter key={openAgent} />
     </div>
   );
 }

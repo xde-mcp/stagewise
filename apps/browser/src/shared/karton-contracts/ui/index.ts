@@ -718,7 +718,7 @@ export type KartonContract = {
       loadMoreChats: () => Promise<{ loaded: number; hasMore: boolean }>;
     };
     agents: {
-      create: () => Promise<string>;
+      create: (initialInputState?: string) => Promise<string>;
       resume: (agentId: string) => Promise<void>;
       delete: (agentId: string) => Promise<void>;
       getAgentsHistoryList: (

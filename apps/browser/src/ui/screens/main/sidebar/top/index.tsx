@@ -110,14 +110,18 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   }, [openAgent]);
 
   const groupedChats = useMemo(() => {
+    // Filter out active agents from history to avoid duplicates
+    const filtered = agentsList.filter(
+      (agent) => !activeAgentIds.includes(agent.id),
+    );
     // Sort by updatedAt descending so most recent chats appear first
-    const sorted = [...agentsList].sort(
+    const sorted = filtered.sort(
       (a, b) =>
         new Date(b.lastMessageAt).getTime() -
         new Date(a.lastMessageAt).getTime(),
     );
     return { 'Active agents': activeAgentsList, ...groupChatsByTime(sorted) };
-  }, [agentsList, timeTick, activeAgentsList]);
+  }, [agentsList, timeTick, activeAgentsList, activeAgentIds]);
 
   const minimalFormatter = useMemo(
     () =>
@@ -198,11 +202,12 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 
   // Helper to create a new chat and focus the input
   const createAgentAndFocus = useCallback(async () => {
-    const newAgent = await createAgent();
+    const currentInputState = getDraft();
+    const newAgent = await createAgent(currentInputState || undefined);
     setOpenAgent(newAgent);
     void getAgentsHistoryList(0, 200).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [createAgent, getAgentsHistoryList]);
+  }, [createAgent, getDraft, getAgentsHistoryList]);
 
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {
@@ -224,7 +229,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
         });
       }
     },
-    [openAgent, setOpenAgent, getDraft],
+    [openAgent, setOpenAgent, resumeAgent, getAgentsHistoryList, agentsList],
   );
 
   // Build menu items for the options dropdown

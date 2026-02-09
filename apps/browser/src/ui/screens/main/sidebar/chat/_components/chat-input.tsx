@@ -86,6 +86,8 @@ export interface ChatInputHandle {
   /** Insert an attachment mention at the current cursor position */
   insertAttachment: (attrs: AttachmentAttributes) => void;
   getTextContent: () => string;
+  /** Get the current TipTap JSON content as a string */
+  getJsonContent: () => string;
 }
 
 export const ChatInput = ({
@@ -269,32 +271,32 @@ export const ChatInput = ({
     if (editor) editor.setEditable(!disabled);
   }, [editor, disabled]);
 
-  // Sync external value changes to editor - but ONLY for explicit resets (empty doc)
-  // We don't sync every value change because that causes feedback loops and race conditions
-  // The editor manages its own state; we only need to reset it when explicitly cleared
+  // Sync external value to editor when their emptiness is out of sync.
+  // This covers two scenarios:
+  // 1. Clearing after send: parent resets value to an empty doc, but editor
+  //    still has the old message text → reset editor to empty.
+  // 2. Inherited input on agent creation: the editor mounted empty (TipTap
+  //    always starts with a single empty paragraph), but the value now carries
+  //    content inherited from the previous agent → populate the editor.
+  // We only act on this empty/non-empty mismatch to avoid feedback loops that
+  // would occur if we synced every value change back into the editor.
   useEffect(() => {
-    // Skip if this is an internal change (from user editing or insertAttachment)
     if (isInternalChangeRef.current) {
       isInternalChangeRef.current = false;
       return;
     }
 
-    if (!editor || value === undefined) return;
+    if (!editor || value == null) return;
 
-    // Check if this is an explicit reset to empty document
-    // This handles the case after sending a message when parent clears the input
     const valueContent = (value as { content?: unknown[] })?.content;
-    const isEmptyDoc =
+    const isValueEmpty =
       valueContent?.length === 1 &&
       (valueContent[0] as { type?: string })?.type === 'paragraph' &&
       !(valueContent[0] as { content?: unknown[] })?.content;
 
-    const currentDocSize = editor.state.doc.content.size;
-    const isCurrentlyEmpty = currentDocSize <= 2; // Empty doc has size 2
+    const isEditorEmpty = editor.state.doc.content.size <= 2;
 
-    // Only reset if: value is empty AND editor is not already empty
-    // This prevents resetting during normal editing
-    if (isEmptyDoc && !isCurrentlyEmpty) {
+    if (isValueEmpty !== isEditorEmpty) {
       editor.commands.setContent(value);
     }
   }, [value, editor]);
@@ -328,6 +330,10 @@ export const ChatInput = ({
     getTextContent: () => {
       if (!editor) return '';
       return editor.getText();
+    },
+    getJsonContent: () => {
+      if (!editor) return '';
+      return JSON.stringify(editor.getJSON());
     },
     clear: () => {
       editor?.commands.clearContent();

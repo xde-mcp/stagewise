@@ -7,15 +7,7 @@ import {
 } from 'react';
 
 interface ChatDraftContextValue {
-  /**
-   * Get the current draft content from the chat input.
-   * Returns empty string if no getter is registered.
-   */
   getDraft: () => string;
-  /**
-   * Register a getter function (called by the component that owns the input).
-   * Returns a cleanup function to unregister.
-   */
   registerDraftGetter: (getter: () => string) => () => void;
 }
 

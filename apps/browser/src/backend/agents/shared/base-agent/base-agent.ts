@@ -425,7 +425,7 @@ export abstract class BaseAgent<
       draft.queuedMessages = initialState?.queuedMessages ?? [];
       draft.activeModelId =
         initialState?.activeModelId ?? this.config.defaultModelId;
-      draft.inputState = initialState?.inputState ?? '';
+      draft.inputState = initialState?.inputState ?? draft.inputState;
       draft.usedTokens = initialState?.usedTokens ?? 0;
     });
   }

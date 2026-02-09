@@ -87,9 +87,17 @@ export class AgentManagerService extends DisposableService {
   private registerKartonHandlers(): void {
     this.karton.registerServerProcedureHandler(
       'agents.create',
-      async (_callingClientId: string) => {
-        // @ts-ignore - We have to cast the result to any to avoid the type instantiation error.
-        return (await this.createAgent(AgentTypes.CHAT, undefined)).instanceId;
+      async (_callingClientId: string, initialInputState?: string) => {
+        return (
+          await this.createAgent(
+            AgentTypes.CHAT,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            initialInputState,
+          )
+        ).instanceId;
       },
     );
     this.karton.registerServerProcedureHandler(
@@ -241,6 +249,7 @@ export class AgentManagerService extends DisposableService {
     },
     initialState?: AgentState,
     instanceId?: string,
+    initialInputState?: string,
   ): Promise<
     BaseAgent<
       (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'],
@@ -259,7 +268,7 @@ export class AgentManagerService extends DisposableService {
       lastCompactedMessageId: undefined,
       queuedMessages: [],
       activeModelId: 'claude-haiku-4-5',
-      inputState: '',
+      inputState: initialInputState ?? '',
       usedTokens: 0,
     };
 

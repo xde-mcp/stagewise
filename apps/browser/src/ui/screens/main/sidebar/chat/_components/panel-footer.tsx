@@ -32,10 +32,20 @@ import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/ric
 import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useChatDraft } from '@/hooks/use-chat-draft';
 import type { Content } from '@tiptap/core';
 
 export function ChatPanelFooter() {
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const { registerDraftGetter } = useChatDraft();
+
+  // Register the draft getter so other components can access the current input
+  useEffect(() => {
+    const unregister = registerDraftGetter(() => {
+      return chatInputRef.current?.getJsonContent() ?? '';
+    });
+    return unregister;
+  }, [registerDraftGetter]);
 
   const [openAgent] = useOpenAgent();
 
