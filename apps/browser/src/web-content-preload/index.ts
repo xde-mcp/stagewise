@@ -1,3 +1,4 @@
+import { injectStealthOverrides } from './stealth';
 import { contextBridge, ipcRenderer } from 'electron';
 import { createElement, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -6,6 +7,9 @@ import { getHotkeyDefinitionForEvent } from '@shared/hotkeys';
 import type { MessagePortProxy } from '@stagewise/karton/client';
 import type { KartonMessage } from '@stagewise/karton/shared';
 import { shouldChromeConsumeEvent } from './utils';
+
+// Inject stealth overrides into the main world before any page scripts run
+injectStealthOverrides();
 
 declare global {
   interface Window {

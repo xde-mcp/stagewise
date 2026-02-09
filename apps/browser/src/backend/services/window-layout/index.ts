@@ -1,4 +1,4 @@
-import { BaseWindow, app, ipcMain, nativeTheme } from 'electron';
+import { BaseWindow, app, ipcMain, nativeTheme, session } from 'electron';
 import path from 'node:path';
 import type { SelectedElement } from '@shared/karton-contracts/ui';
 import { getHotkeyDefinitionForEvent } from '@shared/hotkeys';
@@ -141,6 +141,10 @@ export class WindowLayoutService extends DisposableService {
     );
     // Connect preferences service for checking stored permission settings
     permissionRegistry.setPreferencesService(this.preferencesService);
+
+    // Configure session-level stealth settings for the browser content session
+    // so all tabs appear as a regular Chrome browser
+    this.setupBrowserSessionStealth();
 
     this.uiController = await UIController.create(this.logger);
     this.uiController.setCheckFrameValidityHandler(
@@ -409,6 +413,98 @@ export class WindowLayoutService extends DisposableService {
       );
       await this.handleCreateTab(url);
     }
+  }
+
+  /**
+   * Configures the shared browser content session to appear as a regular
+   * Chrome browser, preventing anti-bot/anti-spam detection.
+   * Sets a dynamic user agent and intercepts Sec-CH-UA headers.
+   */
+  private setupBrowserSessionStealth() {
+    const browserSession = session.fromPartition('persist:browser-content');
+    const chromeVersion = process.versions.chrome;
+    const chromeMajor = chromeVersion.split('.')[0];
+
+    // Build a platform-appropriate user agent string
+    let platformUA: string;
+    switch (process.platform) {
+      case 'darwin':
+        platformUA =
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)';
+        break;
+      case 'win32':
+        platformUA =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)';
+        break;
+      default:
+        platformUA =
+          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)';
+        break;
+    }
+    const userAgent = `${platformUA} Chrome/${chromeMajor}.0.0.0 Safari/537.36`;
+    browserSession.setUserAgent(userAgent);
+
+    this.logger.debug(
+      `[WindowLayoutService] Set session user agent: ${userAgent}`,
+    );
+
+    // Build the Sec-CH-UA brand list (matches real Chrome format + Stagewise)
+    const secChUaPlatform =
+      process.platform === 'darwin'
+        ? 'macOS'
+        : process.platform === 'win32'
+          ? 'Windows'
+          : 'Linux';
+    const secChUa = `"Chromium";v="${chromeMajor}", "Google Chrome";v="${chromeMajor}", "Not-A.Brand";v="99"`;
+
+    // Full version list for high-entropy client hint header
+    const secChUaFullVersionList = `"Chromium";v="${chromeMajor}.0.0.0", "Google Chrome";v="${chromeMajor}.0.0.0", "Not-A.Brand";v="99.0.0.0"`;
+
+    // Intercept outgoing requests to fix client hint headers.
+    // Any Sec-CH-UA-* header that Chromium sends may contain "Electron" as a
+    // brand — we replace them all with Chrome-matching values.
+    browserSession.webRequest.onBeforeSendHeaders((details, callback) => {
+      const { requestHeaders } = details;
+
+      // Helper: set header regardless of casing Chromium used
+      const setHeader = (name: string, value: string) => {
+        const lower = name.toLowerCase();
+        for (const key of Object.keys(requestHeaders)) {
+          if (key.toLowerCase() === lower) {
+            delete requestHeaders[key];
+          }
+        }
+        requestHeaders[name] = value;
+      };
+
+      // Replace all client-hint UA headers that could mention "Electron"
+      for (const key of Object.keys(requestHeaders)) {
+        const lower = key.toLowerCase();
+        if (lower === 'sec-ch-ua') {
+          setHeader('Sec-CH-UA', secChUa);
+        } else if (lower === 'sec-ch-ua-mobile') {
+          setHeader('Sec-CH-UA-Mobile', '?0');
+        } else if (lower === 'sec-ch-ua-platform') {
+          setHeader('Sec-CH-UA-Platform', `"${secChUaPlatform}"`);
+        } else if (lower === 'sec-ch-ua-full-version-list') {
+          setHeader('Sec-CH-UA-Full-Version-List', secChUaFullVersionList);
+        } else if (lower === 'sec-ch-ua-arch') {
+          setHeader('Sec-CH-UA-Arch', '"x86"');
+        } else if (lower === 'sec-ch-ua-bitness') {
+          setHeader('Sec-CH-UA-Bitness', '"64"');
+        } else if (lower === 'sec-ch-ua-model') {
+          setHeader('Sec-CH-UA-Model', '""');
+        } else if (lower === 'sec-ch-ua-platform-version') {
+          setHeader('Sec-CH-UA-Platform-Version', '""');
+        }
+      }
+
+      callback({ requestHeaders });
+    });
+
+    this.logger.debug(
+      '[WindowLayoutService] Configured browser session stealth headers',
+    );
   }
 
   private setupKartonConnectionListener() {
