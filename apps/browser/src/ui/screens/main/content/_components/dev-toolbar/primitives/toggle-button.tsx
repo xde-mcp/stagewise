@@ -25,7 +25,7 @@ export function ToggleButton(props: ToggleButtonProps) {
       <TooltipTrigger delay={10} closeDelay={10}>
         <Button
           variant="ghost"
-          size="icon-md"
+          size="icon-sm"
           aria-label={props.ariaLabel}
           className={cn(
             'shrink-0',

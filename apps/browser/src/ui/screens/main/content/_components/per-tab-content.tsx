@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -10,19 +9,19 @@ import {
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import type { TabState } from '@shared/karton-contracts/ui';
-import { Button } from '@stagewise/stage-ui/components/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@stagewise/stage-ui/components/tooltip';
+//import { Button } from '@stagewise/stage-ui/components/button';
+//import {
+//  Tooltip,
+//  TooltipContent,
+//  TooltipTrigger,
+//} from '@stagewise/stage-ui/components/tooltip';
 import {
   ResizablePanelGroup,
   ResizablePanel,
-  ResizableHandle,
+  //ResizableHandle,
   type ImperativePanelHandle,
 } from '@stagewise/stage-ui/components/resizable';
-import { IconWrenchScrewdriverFillDuo18 } from 'nucleo-ui-fill-duo-18';
+//import { IconWrenchScrewdriverFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { NavButtons } from './nav-buttons';
 import { Omnibox, type OmniboxRef } from './omnibox';
 import { ZoomBar } from './control-buttons/zoom-bar';
@@ -33,9 +32,11 @@ import { DOMContextSelector } from '@/components/dom-context-selector/selector-c
 import { WebContentsOverlay } from '@/components/web-contents-overlay';
 import { WebContentsOverlayProvider } from '@/contexts';
 import { BasicAuthDialog } from './basic-auth-dialog';
-import { DevToolbar, useHasOpenPanel, useToolbarWidth } from './dev-toolbar';
-import { HotkeyComboText } from '@/components/hotkey-combo-text';
-import { HotkeyActions } from '@shared/hotkeys';
+//import { DevToolbar, useHasOpenPanel, useToolbarWidth } from './dev-toolbar';
+//import { HotkeyComboText } from '@/components/hotkey-combo-text';
+//import { HotkeyActions } from '@shared/hotkeys';
+import { ColorSchemeWidget } from './dev-toolbar/widgets/color-scheme';
+import { ChromeDevToolsWidget } from './dev-toolbar/widgets/chrome-devtools';
 
 export interface PerTabContentRef {
   focusOmnibox: () => void;
@@ -52,23 +53,26 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
     const tab = useKartonState((s) => s.browser.tabs[tabId]) as
       | TabState
       | undefined;
-    const toggleDevTools = useKartonProcedure((p) => p.browser.devTools.toggle);
+    const _toggleDevTools = useKartonProcedure(
+      (p) => p.browser.devTools.toggle,
+    );
     const omniboxRef = useRef<OmniboxRef>(null);
     const searchBarRef = useRef<SearchBarRef>(null);
 
     const devAppPreviewContainerRef = useRef<HTMLDivElement>(null);
 
-    const hasOpenPanel = useHasOpenPanel(tab?.url);
-    const { width: persistedToolbarWidth, setWidth: persistToolbarWidth } =
-      useToolbarWidth(tab?.url);
+    //const hasOpenPanel = useHasOpenPanel(tab?.url);
+    //const { width: persistedToolbarWidth, setWidth: persistToolbarWidth } =
+    //  useToolbarWidth(tab?.url);
 
     // Local state for optimistic toolbar width updates
-    const [localToolbarSize, setLocalToolbarSize] = useState<number | null>(
+    const [_localToolbarSize, setLocalToolbarSize] = useState<number | null>(
       null,
     );
     const pendingWidthRef = useRef<number | null>(null);
-    const toolbarPanelRef = useRef<ImperativePanelHandle>(null);
+    const _toolbarPanelRef = useRef<ImperativePanelHandle>(null);
 
+    /*
     // Sync local state from persisted width on initial load or when persisted changes
     useEffect(() => {
       if (persistedToolbarWidth !== null) {
@@ -83,6 +87,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
         toolbarPanelRef.current.resize(targetSize);
       }
     }, [hasOpenPanel, localToolbarSize, persistedToolbarWidth]);
+    */
 
     // Dispatch a resize event when the panel layout changes
     // This forces BackgroundWithCutout to recalculate its bounds
@@ -99,11 +104,13 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
     }, []);
 
     // Handle drag end - persist the width when pointer is released
+    /*
     const handlePointerUp = useCallback(() => {
       if (pendingWidthRef.current !== null) {
         persistToolbarWidth(pendingWidthRef.current);
       }
     }, [persistToolbarWidth]);
+    */
 
     const isInternalPage = useMemo(() => {
       // Consider a page "internal" if it's a stagewise:// URL or if an error page is displayed
@@ -149,6 +156,23 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
           <ResourceRequestsControlButton tabId={tabId} isActive={isActive} />
           <DownloadsControlButton isActive={isActive} />
 
+          <ColorSchemeWidget
+            tab={tab}
+            sortableProps={
+              /* @ts-ignore */
+              { isDragging: false, dragHandleProps: {} }
+            }
+          />
+
+          <ChromeDevToolsWidget
+            tab={tab}
+            sortableProps={
+              /* @ts-ignore */
+              { isDragging: false, dragHandleProps: {} }
+            }
+          />
+
+          {/*
           <Tooltip>
             <TooltipTrigger>
               <Button
@@ -175,6 +199,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
               <HotkeyComboText action={HotkeyActions.DEV_TOOLS} />)
             </TooltipContent>
           </Tooltip>
+          */}
         </div>
         {/* Content area - wrapped with WebContentsOverlayProvider for overlay access */}
         <WebContentsOverlayProvider>
@@ -182,7 +207,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
             direction="horizontal"
             className={cn(
               'overflow-visible! size-full rounded-lg p-2',
-              tab?.devTools.open && 'pr-0',
+              //tab?.devTools.open && 'pr-0',
             )}
             onLayout={handlePanelLayoutChange}
           >
@@ -213,6 +238,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
             </ResizablePanel>
 
             {/* Dev toolbar */}
+            {/*
             {tab?.devTools.open && (
               <>
                 {hasOpenPanel && (
@@ -240,6 +266,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
                 </ResizablePanel>
               </>
             )}
+            */}
           </ResizablePanelGroup>
         </WebContentsOverlayProvider>
       </div>
