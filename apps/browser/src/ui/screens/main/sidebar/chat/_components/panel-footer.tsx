@@ -53,6 +53,12 @@ export function ChatPanelFooter() {
     (s) => s.agents.instances[openAgent]?.state.isWorking || false,
   );
 
+  const history = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.history,
+  );
+  const historyRef = useRef(history);
+  historyRef.current = history;
+
   const chatInputState = useKartonState(
     (s) => s.agents.instances[openAgent]?.state.inputState,
   );
@@ -120,6 +126,9 @@ export function ChatPanelFooter() {
   );
   const sendUserMessage = useKartonProcedure((p) => p.agents.sendUserMessage);
   const stopAgent = useKartonProcedure((p) => p.agents.stop);
+  const revertToUserMessage = useKartonProcedure(
+    (p) => p.agents.revertToUserMessage,
+  );
   const setContextSelectionActive = useKartonProcedure(
     (p) => p.browser.contextSelection.setActive,
   );
@@ -151,17 +160,60 @@ export function ChatPanelFooter() {
     setContextSelectionActive(false);
   }, [setContextSelectionActive]);
 
-  const abortAgent = useCallback(async () => {
-    await stopAgent(openAgent);
+  // Pending early-abort revert: deferred until isWorking becomes false
+  // so the stream is fully done and won't re-add the assistant message.
+  const [pendingRevert, setPendingRevert] = useState<{
+    messageId: string;
+    text: string;
+  } | null>(null);
 
-    // Restore text from message parts
-    /*
-    const textPart = message.parts.find((p) => p.type === 'text');
-    const tiptapJsonContent = message.metadata?.tiptapJsonContent;
-    if (tiptapJsonContent)
-      chatInputRef.current?.setJsonContent(tiptapJsonContent);
-    */
-  }, [stopAgent]);
+  useEffect(() => {
+    if (!isWorking && pendingRevert) {
+      revertToUserMessage(openAgent, pendingRevert.messageId, false);
+      chatInputRef.current?.setTextContent(pendingRevert.text);
+      setPendingRevert(null);
+    }
+  }, [isWorking, pendingRevert, revertToUserMessage, openAgent]);
+
+  const abortAgent = useCallback(async () => {
+    // Snapshot history before stop
+    const currentHistory = historyRef.current ?? [];
+
+    // Find last user message
+    let lastUserMsgIndex = -1;
+    for (let i = currentHistory.length - 1; i >= 0; i--) {
+      if (currentHistory[i].role === 'user') {
+        lastUserMsgIndex = i;
+        break;
+      }
+    }
+
+    // Check early abort condition before stopping: no tool calls AND text < 200 chars
+    if (lastUserMsgIndex !== -1) {
+      const assistantParts = currentHistory
+        .slice(lastUserMsgIndex + 1)
+        .flatMap((m) => m.parts);
+
+      const hasToolCall = assistantParts.some(
+        (p) => p.type.startsWith('tool-') || p.type === 'dynamic-tool',
+      );
+      const textLength = assistantParts
+        .filter((p) => p.type === 'text')
+        .reduce((sum, p) => sum + (p.type === 'text' ? p.text.length : 0), 0);
+
+      if (!hasToolCall && textLength < 200) {
+        const userMessage = currentHistory[lastUserMsgIndex];
+        const textPart = userMessage.parts.find((p) => p.type === 'text');
+        const text = textPart?.type === 'text' ? textPart.text : '';
+
+        // Schedule revert for when the stream is fully done (isWorking → false)
+        setPendingRevert({ messageId: userMessage.id, text });
+      }
+    }
+
+    // Stop the agent (revert will fire once isWorking becomes false)
+    await stopAgent(openAgent);
+  }, [stopAgent, openAgent]);
 
   const isVerboseMode = useKartonState(
     (s) => s.appInfo.releaseChannel === 'dev',

@@ -88,6 +88,8 @@ export interface ChatInputHandle {
   getTextContent: () => string;
   /** Get the current TipTap JSON content as a string */
   getJsonContent: () => string;
+  /** Set the editor content from plain text */
+  setTextContent: (text: string) => void;
 }
 
 export const ChatInput = ({
@@ -337,6 +339,11 @@ export const ChatInput = ({
     },
     clear: () => {
       editor?.commands.clearContent();
+    },
+    setTextContent: (text: string) => {
+      if (!editor) return;
+      isInternalChangeRef.current = true;
+      editor.commands.setContent(text);
     },
   }));
 
