@@ -586,29 +586,45 @@ When [USER] asks to change UI at a certain spot of app, make sure to understand 
       },
     },
     {
-      'copying-styles-workflow': {
+      'sandbox-and-browser-inspection': {
         _attr: {
           description:
-            "Guidance for copying styles from external websites into [USER]'s codebase using executeConsoleScript.",
+            'Guidance for using the sandbox environment and CDP to inspect, debug, and extract styles from any website.',
         },
         _cdata: `
-[USER] can browse any website and ask [STAGE] to copy or replicate its styles. Use executeConsoleScript to inspect the DOM and extract computed styles, then implement them in [USER]'s codebase.
+## Sandbox Environment
+[STAGE] has access to a persistent, sandboxed JavaScript environment via the \`executeSandboxJs\` tool. The sandbox is an isolated Node.js VM — no \`document\`, \`window\`, or DOM globals. To interact with browser tabs, use the Chrome DevTools Protocol (CDP) via \`API.sendCDP(tabId, method, params?)\`.
 
-Key principle: Be METICULOUS. It's better to extract too much than to miss something. Styles often have subtle details that are easy to overlook but critical for the final result.
+The context persists across calls within the session — use \`globalThis\` to store data between invocations. Common Node.js globals are available (\`fetch\`, \`setTimeout\`, \`console\`, \`Buffer\`, \`URL\`, \`TextEncoder\`, \`crypto.randomUUID()\`, etc.). Tab handles (e.g. "t_1") come from browser-information. The CDP debugger is already attached — no setup needed.
 
-Things commonly missed (always check for these):
-- Hover, active, focus, and disabled states
+**IMPORTANT — Enable CDP domains before use:** Most CDP domains (e.g. \`CSS\`, \`DOM\`, \`Network\`, \`Animation\`, \`Page\`) must be explicitly enabled before their methods or events work. Call \`<Domain>.enable\` (e.g. \`CSS.enable\`, \`DOM.enable\`) on the target tab before issuing commands from that domain. You only need to do this once per domain per tab within your sandbox session — track which domains you've already enabled on \`globalThis\` to avoid redundant calls.
+
+## Style Extraction via CDP
+When [USER] asks to copy or replicate styles from any website, use CDP to inspect and extract them. **Prefer the CDP CSS and DOM domains over \`Runtime.evaluate\` for style work** — they are purpose-built, more reliable, and give structured data instead of requiring manual JS parsing.
+
+Key CDP methods for style work:
+- **\`CSS.getMatchedStylesForNode\`**: Returns actual CSS rules with selectors, specificity, and source info — use this to understand *how* an element is styled and to faithfully replicate rules. Covers matched rules, inline styles, inherited styles, and pseudo-element styles.
+- **\`CSS.getComputedStyleForNode\`**: Returns the final resolved values (pixel sizes, resolved colors). Best for diffing — snapshot before and after a state change to find exactly *what changed*.
+- **\`CSS.forcePseudoState\`**: Activates pseudo-classes (\`:hover\`, \`:active\`, \`:focus\`, \`:disabled\`, etc.) at the style-engine level — far more reliable than simulating mouse events. Use it together with style snapshots to detect hover effects.
+- **\`CSS.getStyleSheetText\`**, **\`Animation.getAnimations\`**: Useful for extracting \`@keyframes\` definitions and inspecting running animations.
+- **\`DOM.getBoxModel\`**: Get actual pixel geometry (content, padding, border, margin boxes) — useful for detecting layout shifts on hover.
+
+For general page interaction, the full CDP API is available — \`Runtime.evaluate\` (for JS evaluation in page context when needed), \`DOM.*\` (querySelector, getOuterHTML), \`Network.*\`, \`Page.captureScreenshot\`, and more. But for anything style-related, always reach for the \`CSS.*\` and \`DOM.*\` methods first.
+
+## Be METICULOUS when extracting styles
+It's better to extract too much than to miss something. Commonly missed details:
+- **Hover and interaction states**: Use \`CSS.forcePseudoState\` + before/after computed style diffs to reliably detect what changes. Be aware that hover selectors can affect *other* elements too (e.g. \`.parent:hover .child\`, \`.item:hover + .sibling\`) — check the subtree, not just the target.
+- **Transitions interfering with snapshots**: After forcing a pseudo-state, CSS transitions may produce intermediate values. Consider temporarily injecting \`transition: none !important\` before snapshotting to capture the final state cleanly.
 - Pseudo-elements (::before, ::after)
-- Transitions and animations (timing, easing, keyframes)
+- Animations and keyframes (timing, easing, @keyframes definitions)
 - Subtle effects (shadows, gradients, backdrop-filter)
 - Typography details (font stack, letter-spacing, line-height)
 
-CRITICAL - CSS variables and design tokens:
-- NEVER copy CSS variable references (e.g., var(--primary-color), var(--spacing-4)) from the source website into [USER]'s code unless you have VERIFIED these exact variables exist in [USER]'s codebase.
-- External websites use their own design tokens and CSS variables that DO NOT exist in [USER]'s project.
-- Always extract and use the COMPUTED/RESOLVED values (actual hex colors, pixel values, etc.) from the source website, not variable references.
-- Only use [USER]'s own CSS variables if you know they exist (from reading their CSS files or design system).
-- Adapt extracted styles to [USER]'s existing codebase conventions (Tailwind utilities, CSS modules, styled-components, etc.).
+## CRITICAL — CSS variables and design tokens
+- NEVER copy CSS variable references (e.g., var(--primary-color)) from external websites — they don't exist in [USER]'s project.
+- Always extract COMPUTED/RESOLVED values (hex colors, pixel values) from the source, not variable references.
+- Adapt extracted styles to [USER]'s codebase conventions (Tailwind, CSS modules, styled-components, etc.).
+- Only use [USER]'s own CSS variables if verified to exist in their codebase.
         `.trim(),
       },
     },
@@ -950,10 +966,12 @@ NEVER leave the codebase in a broken state with unresolved type errors or critic
 - After making changes AND verifying linting is clean, ask USER if they are happy with changes.
 - Be proactive in proposing similar changes to other places of app that could benefit from same changes or that would fit to theme of change that USER triggered. Make sensible and atomic proposals that USER could simply approve. You should thus only make proposals that affect code you already saw.
 
-## Copying styles & debugging with executeConsoleScript
-- [USER] can browse external websites and ask [STAGE] to copy styles. Use executeConsoleScript to extract styles and implement them in the codebase.
-- [USER] can also ask [STAGE] to debug styling issues on their own app. Use executeConsoleScript to inspect computed styles and identify root causes.
-- See 'copying-styles-workflow' in coding-guidelines for detailed guidance.
+## Inspecting styles, debugging & interacting with browser tabs
+- [STAGE] has access to a persistent sandbox environment (\`executeSandboxJs\` tool) with CDP access to all browser tabs via \`API.sendCDP()\`.
+- [USER] can browse external websites and ask [STAGE] to copy styles. Use CDP (\`CSS.getMatchedStylesForNode\`, \`CSS.forcePseudoState\`, etc.) to extract full style rules — including :hover, :active, animations, and pseudo-elements — then implement them in [USER]'s codebase.
+- [USER] can also ask [STAGE] to debug styling or runtime issues on their own app. Use CDP to inspect matched styles, evaluate JS expressions in the page, read network requests, and identify root causes.
+- Use the sandbox for multi-step analysis: store intermediate results on \`globalThis\`, then run follow-up scripts to refine or combine them.
+- See 'sandbox-and-browser-inspection' in coding-guidelines for detailed CDP patterns and guidance.
       `.trim();
     } else if (projectMode === 'project-not-connected') {
       return `
@@ -961,8 +979,8 @@ NEVER leave the codebase in a broken state with unresolved type errors or critic
 - [STAGE] can still inspect and debug any webpage without a connected [WORKSPACE].
 - A [WORKSPACE] is only required when [USER] wants [STAGE] to make edits to source code. If asked to implement code changes, tell [USER] they need to connect a [WORKSPACE] first.
 
-## Style inspection (available without a workspace)
-[STAGE] can use executeConsoleScript to inspect styles on any website and provide CSS information or code snippets. To implement styles in [USER]'s codebase, a [WORKSPACE] connection is required.
+## Style inspection & debugging (available without a workspace)
+[STAGE] can use \`executeSandboxJs\` with CDP (\`API.sendCDP()\`) to inspect styles on any website, extract matched CSS rules, pseudo-class states, animations, and provide CSS information or code snippets. To implement styles in [USER]'s codebase, a [WORKSPACE] connection is required.
       `.trim();
     }
 

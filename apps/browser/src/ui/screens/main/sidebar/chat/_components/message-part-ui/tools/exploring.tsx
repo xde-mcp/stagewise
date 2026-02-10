@@ -20,7 +20,7 @@ import { cn } from '@/utils';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { ThinkingPart } from '../thinking';
 import { ReadConsoleLogsToolPart } from './read-console-logs';
-import { ExecuteConsoleScriptToolPart } from './execute-console-script';
+import { ExecuteSandboxJsToolPart } from './execute-sandbox-js';
 import { GetLintingDiagnosticsToolPart } from './get-linting-diagnostics';
 
 // Context for tracking expanded children within exploring section
@@ -47,7 +47,7 @@ export type ReadOnlyToolPart =
           | 'tool-readFileTool'
           | 'tool-getContext7LibraryDocsTool'
           | 'tool-resolveContext7LibraryTool'
-          | 'tool-executeConsoleScriptTool'
+          | 'tool-executeSandboxJsTool'
           | 'tool-readConsoleLogsTool'
           | 'tool-getLintingDiagnosticsTool';
       }
@@ -65,7 +65,7 @@ export function isReadOnlyToolPart(
     part.type === 'tool-readFileTool' ||
     part.type === 'tool-getContext7LibraryDocsTool' ||
     part.type === 'tool-resolveContext7LibraryTool' ||
-    part.type === 'tool-executeConsoleScriptTool' ||
+    part.type === 'tool-executeSandboxJsTool' ||
     part.type === 'tool-readConsoleLogsTool' ||
     part.type === 'tool-getLintingDiagnosticsTool'
   );
@@ -151,9 +151,9 @@ const PartContent = ({
           disableShimmer={disableShimmer}
         />
       );
-    case 'tool-executeConsoleScriptTool':
+    case 'tool-executeSandboxJsTool':
       return (
-        <ExecuteConsoleScriptToolPart
+        <ExecuteSandboxJsToolPart
           key={part.toolCallId}
           showBorder={!minimal}
           part={part}
@@ -292,7 +292,7 @@ export const ExploringToolParts = ({
           docsRead += 1;
           hasUsedContext7Tools = true;
           break;
-        case 'tool-executeConsoleScriptTool':
+        case 'tool-executeSandboxJsTool':
           consoleScriptsExecuted += 1;
           hasUsedBrowserTools = true;
           break;
@@ -422,17 +422,12 @@ export const ExploringToolParts = ({
         if (!p.input?.library) return 'Exploring documentation...';
         return `Searching docs for ${p.input.library}...`;
       }
-      case 'tool-executeConsoleScriptTool': {
-        const p = lastNonReasoningPart as Extract<
+      case 'tool-executeSandboxJsTool': {
+        const _p = lastNonReasoningPart as Extract<
           ToolUIPart<StagewiseUITools>,
-          { type: 'tool-executeConsoleScriptTool' }
+          { type: 'tool-executeSandboxJsTool' }
         >;
-        const tab = Object.values(activeTabs).find(
-          (tab) => tab.handle === p.input?.id,
-        );
-        if (!tab) return 'Exploring the browser...';
-        const hostname = new URL(tab.url).hostname;
-        return `Running script in ${hostname}...`;
+        return 'Running sandbox JavaScript...';
       }
       case 'tool-readConsoleLogsTool': {
         const p = lastNonReasoningPart as Extract<

@@ -26,7 +26,7 @@ import {
   type ReadOnlyToolPart,
 } from './message-part-ui/tools/exploring';
 import { UnknownToolPart } from './message-part-ui/tools/unknown';
-import { ExecuteConsoleScriptToolPart } from './message-part-ui/tools/execute-console-script';
+import { ExecuteSandboxJsToolPart } from './message-part-ui/tools/execute-sandbox-js';
 import { ReadConsoleLogsToolPart } from './message-part-ui/tools/read-console-logs';
 import { isToolOrReasoningPart } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
@@ -187,9 +187,9 @@ export const MessageAssistant = memo(
                       );
                     case 'tool-multiEditTool':
                       return <MultiEditToolPart key={stableKey} part={part} />;
-                    case 'tool-executeConsoleScriptTool':
+                    case 'tool-executeSandboxJsTool':
                       return (
-                        <ExecuteConsoleScriptToolPart
+                        <ExecuteSandboxJsToolPart
                           key={stableKey}
                           part={part}
                           isLastPart={isLastPart}

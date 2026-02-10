@@ -235,6 +235,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private readonly MAX_CONSOLE_LOGS = 1000; // Ring buffer max size
   private isConsoleLogListenerSetup = false;
   private isRuntimeEnabled = false;
+  private isEnablingCdpDomains = false; // Prevents concurrent enableCdpDomainsForConsole calls
 
   // Error handling
   private errorHandler: TabErrorHandler | null = null;
@@ -1392,8 +1393,9 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       // NOTE: We no longer clear console logs on navigation.
       // The ring buffer (MAX_CONSOLE_LOGS) handles overflow automatically.
       // Logs persist across navigations so the agent can see the full history.
-      // Reset Runtime enabled flag - will be re-enabled on did-stop-loading
+      // Reset Runtime enabled flags - will be re-enabled on did-stop-loading
       this.isRuntimeEnabled = false;
+      this.isEnablingCdpDomains = false;
     });
 
     wc.on('did-stop-loading', () => {
@@ -2146,6 +2148,28 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   }
 
   /**
+   * Sends a raw Chrome DevTools Protocol (CDP) command to this tab's debugger.
+   * The debugger is already attached by SelectedElementTracker on construction.
+   *
+   * @param method - The CDP method to invoke (e.g., 'Runtime.evaluate', 'DOM.getDocument')
+   * @param params - Optional parameters for the CDP method
+   * @returns The result from the CDP command
+   * @throws Error if the debugger is not attached or the command fails
+   */
+  public async sendCDP(
+    method: string,
+    params?: Record<string, unknown>,
+  ): Promise<unknown> {
+    const wc = this.webContentsView.webContents;
+
+    if (wc.isDestroyed()) throw new Error('Tab is destroyed');
+
+    if (!wc.debugger.isAttached()) throw new Error('Debugger not attached');
+
+    return await wc.debugger.sendCommand(method, params);
+  }
+
+  /**
    * Executes a JavaScript expression in the console of this tab.
    * Uses the Chrome DevTools Protocol (CDP) Runtime.evaluate command.
    *
@@ -2383,6 +2407,8 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
 
     if (wc.isDestroyed()) return;
     if (this.isRuntimeEnabled) return;
+    // Prevent concurrent execution - multiple calls can race before isRuntimeEnabled is set
+    if (this.isEnablingCdpDomains) return;
 
     // Wait briefly for debugger to be attached by SelectedElementTracker
     // (it attaches in its constructor, so this should be very quick)
@@ -2392,6 +2418,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       return;
     }
 
+    this.isEnablingCdpDomains = true;
     try {
       // Enable Runtime domain - captures console.log/error/etc. and exceptions
       await wc.debugger.sendCommand('Runtime.enable');
@@ -2424,6 +2451,8 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
           `[TabController] Failed to enable CDP domains: ${err}`,
         );
       }
+    } finally {
+      this.isEnablingCdpDomains = false;
     }
   }
 

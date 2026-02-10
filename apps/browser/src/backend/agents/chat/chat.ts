@@ -43,10 +43,7 @@ export class ChatAgent extends BaseAgent<never, undefined> {
     const id = this.instanceId;
     const box = this.toolbox;
     const tools = {
-      executeConsoleScriptTool: await box.getTool(
-        'executeConsoleScriptTool',
-        id,
-      ),
+      executeSandboxJsTool: await box.getTool('executeSandboxJsTool', id),
       resolveContext7LibraryTool: await box.getTool(
         'resolveContext7LibraryTool',
         id,

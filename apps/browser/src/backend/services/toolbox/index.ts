@@ -1,4 +1,5 @@
 import type { Logger } from '@/services/logger';
+import { SandboxService } from '../sandbox';
 import type { KartonService } from '@/services/karton';
 import type { GlobalConfigService } from '@/services/global-config';
 import { DisposableService } from '@/services/disposable';
@@ -30,7 +31,7 @@ import {
   DESCRIPTION as MULTI_EDIT_DESCRIPTION,
 } from './tools/file-modification/multi-edit';
 import { grepSearchTool } from './tools/file-modification/grep-search';
-import { executeConsoleScriptTool } from './tools/browser/execute-console-script';
+import { executeSandboxJsTool } from './tools/browser/execute-sandbox-js';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
 import { type Tool, tool } from 'ai';
 import {
@@ -68,6 +69,8 @@ export class ToolboxService extends DisposableService {
   private readonly authService: AuthService;
   private readonly telemetryService: TelemetryService;
   private readonly globalDataPathService: GlobalDataPathService;
+
+  private sandboxService: SandboxService | null = null;
 
   /** Client runtime for workspace operations - set via setClientRuntime() */
   private clientRuntime: ClientRuntimeNode | null = null;
@@ -338,9 +341,9 @@ export class ToolboxService extends DisposableService {
           this.modifiedFilesPerAgent.get(agentInstanceId)!,
           this.clientRuntime,
         );
-      case 'executeConsoleScriptTool':
+      case 'executeSandboxJsTool':
         if (!this.windowLayoutService) return null;
-        return executeConsoleScriptTool(this.windowLayoutService);
+        return executeSandboxJsTool(this.sandboxService!, agentInstanceId);
       case 'readConsoleLogsTool':
         if (!this.windowLayoutService) return null;
         return readConsoleLogsTool(this.windowLayoutService);
@@ -525,6 +528,7 @@ export class ToolboxService extends DisposableService {
    */
   public clearAgentTracking(agentInstanceId: string): void {
     this.modifiedFilesPerAgent.delete(agentInstanceId);
+    this.sandboxService?.destroyAgent(agentInstanceId);
   }
 
   private async initialize(): Promise<void> {
@@ -532,6 +536,10 @@ export class ToolboxService extends DisposableService {
 
     // Eagerly initialize the API client if auth is already available
     this.apiClient = this.getOrCreateApiClient();
+    this.sandboxService = await SandboxService.create(
+      this.windowLayoutService,
+      this.logger,
+    );
 
     // Use arrow function to preserve `this` binding when called as callback
     this.authService.registerAuthStateChangeCallback(() =>
@@ -546,6 +554,9 @@ export class ToolboxService extends DisposableService {
     // Teardown LSP service
     void this.lspService?.teardown();
     this.lspService = null;
+
+    void this.sandboxService?.teardown();
+    this.sandboxService = null;
 
     // Clear modified files tracking
     this.modifiedFilesPerAgent.clear();

@@ -1,4 +1,3 @@
-import type { ToolPart } from '@shared/karton-contracts/ui';
 import { ChevronDownIcon, Loader2Icon, XIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { IconWindowPointerOutline18 } from 'nucleo-ui-outline-18';
@@ -19,15 +18,20 @@ import { StreamingCodeBlock } from '@/components/ui/streaming-code-block';
 import { cn } from '@/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import { useKartonState } from '@/hooks/use-karton';
+import type { ToolUIPart } from 'ai';
+import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 
-export const ExecuteConsoleScriptToolPart = ({
+export const ExecuteSandboxJsToolPart = ({
   part,
   capMaxHeight = false,
   showBorder = false,
   disableShimmer = false,
   isLastPart = false,
 }: {
-  part: Extract<ToolPart, { type: 'tool-executeConsoleScriptTool' }>;
+  part: Extract<
+    ToolUIPart<StagewiseUITools>,
+    { type: 'tool-executeSandboxJsTool' }
+  >;
   capMaxHeight?: boolean;
   showBorder?: boolean;
   disableShimmer?: boolean;
@@ -35,7 +39,7 @@ export const ExecuteConsoleScriptToolPart = ({
 }) => {
   const [scriptExpanded, setScriptExpanded] = useState(false);
   const [resultExpanded, setResultExpanded] = useState(true);
-  const activeTabs = useKartonState((s) => s.browser.tabs);
+  const _activeTabs = useKartonState((s) => s.browser.tabs);
 
   const streaming = useMemo(() => {
     return part.state === 'input-streaming' || part.state === 'input-available';
@@ -52,16 +56,6 @@ export const ExecuteConsoleScriptToolPart = ({
     isStreaming: streaming,
     isLastPart,
   });
-
-  const tab = useMemo(() => {
-    return Object.values(activeTabs).find(
-      (tab) => tab.handle === part.input?.id,
-    );
-  }, [part.input?.id, activeTabs]);
-
-  const hostname = useMemo(() => {
-    return tab ? new URL(tab.url).hostname : undefined;
-  }, [tab]);
 
   // Format the result as pretty-printed JSON if possible
   const formattedResult = useMemo(() => {
@@ -105,12 +99,9 @@ export const ExecuteConsoleScriptToolPart = ({
             )}
           >
             {streaming ? (
-              <LoadingHeader
-                disableShimmer={disableShimmer}
-                hostname={hostname}
-              />
+              <LoadingHeader disableShimmer={disableShimmer} />
             ) : (
-              <SuccessHeader capMaxHeight={capMaxHeight} hostname={hostname} />
+              <SuccessHeader capMaxHeight={capMaxHeight} />
             )}
           </div>
         </>
@@ -243,13 +234,7 @@ const ErrorHeader = ({
   );
 };
 
-const SuccessHeader = ({
-  capMaxHeight,
-  hostname,
-}: {
-  capMaxHeight?: boolean;
-  hostname?: string;
-}) => {
+const SuccessHeader = ({ capMaxHeight }: { capMaxHeight?: boolean }) => {
   return (
     <div className="pointer-events-none flex flex-row items-center justify-start gap-1">
       <div className="pointer-events-auto flex flex-row items-center justify-start gap-1">
@@ -261,9 +246,6 @@ const SuccessHeader = ({
           ) : (
             <span className="font-medium">Ran script</span>
           )}
-          <span className="font-normal opacity-75">
-            {hostname ? ` in ${hostname}` : ''}
-          </span>
         </span>
       </div>
     </div>

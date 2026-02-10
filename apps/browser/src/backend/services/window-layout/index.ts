@@ -1828,6 +1828,20 @@ export class WindowLayoutService extends DisposableService {
     return null;
   }
 
+  public async sendCDP(
+    tabHandleOrId: string,
+    method: string,
+    params: any,
+  ): Promise<any> {
+    const tab = this.resolveTabByHandleOrId(tabHandleOrId);
+    if (!tab)
+      throw new Error(
+        `Tab not found: "${tabHandleOrId}". Check browser-information for available tabs.`,
+      );
+
+    return await tab.sendCDP(method, params);
+  }
+
   /**
    * Executes a JavaScript expression in the console of the specified tab.
    *

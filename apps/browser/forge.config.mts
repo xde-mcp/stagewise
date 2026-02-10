@@ -193,6 +193,11 @@ const config: ForgeConfig = {
           config: 'vite.web-content-preload.config.ts',
           target: 'preload',
         },
+        {
+          entry: 'src/backend/services/sandbox/sandbox-worker.ts',
+          config: 'vite.sandbox-worker.config.ts',
+          target: 'main',
+        },
       ],
       renderer: [
         {

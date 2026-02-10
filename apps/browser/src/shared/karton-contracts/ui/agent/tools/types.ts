@@ -357,26 +357,25 @@ export const updateStagewiseMdToolSchema = {
   outputSchema: updateStagewiseMdToolOutputSchema,
 } as const;
 
-export const executeConsoleScriptToolInputSchema = z.object({
-  id: z.string().describe('The tab ID to execute the script on'),
-  script: z.string().describe('Synchronous JavaScript code to execute'),
+export const executeSandboxJsToolInputSchema = z.object({
+  script: z.string().describe('JavaScript code to execute'),
 });
 
-export const executeConsoleScriptToolOutputSchema = z.object({
+export const executeSandboxJsToolOutputSchema = z.object({
   message: z.string(),
   result: z.any(),
 });
 
-export type ExecuteConsoleScriptToolInput = z.infer<
-  typeof executeConsoleScriptToolInputSchema
+export type ExecuteSandboxJsToolInput = z.infer<
+  typeof executeSandboxJsToolInputSchema
 >;
-export type ExecuteConsoleScriptToolOutput = z.infer<
-  typeof executeConsoleScriptToolOutputSchema
+export type ExecuteSandboxJsToolOutput = z.infer<
+  typeof executeSandboxJsToolOutputSchema
 >;
 
-export const executeConsoleScriptToolSchema = {
-  inputSchema: executeConsoleScriptToolInputSchema,
-  outputSchema: executeConsoleScriptToolOutputSchema,
+export const executeSandboxJsToolSchema = {
+  inputSchema: executeSandboxJsToolInputSchema,
+  outputSchema: executeSandboxJsToolOutputSchema,
 } as const;
 
 export const consoleLogLevelSchema = z.enum([
@@ -525,7 +524,7 @@ export const allToolSchemas = {
   deleteFileTool: deleteFileToolSchema,
   getLintingDiagnosticsTool: getLintingDiagnosticsToolSchema,
   updateStagewiseMdTool: updateStagewiseMdToolSchema,
-  executeConsoleScriptTool: executeConsoleScriptToolSchema,
+  executeSandboxJsTool: executeSandboxJsToolSchema,
   readConsoleLogsTool: readConsoleLogsToolSchema,
   getContext7LibraryDocsTool: getContext7LibraryDocsToolSchema,
   resolveContext7LibraryTool: resolveContext7LibraryToolSchema,
