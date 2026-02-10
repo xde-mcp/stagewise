@@ -1,5 +1,5 @@
 import { defaultRehypePlugins, Streamdown as StreamdownBase } from 'streamdown';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { CodeBlock } from '../ui/code-block';
 import { StreamingCodeBlock } from '../ui/streaming-code-block';
 import { Mermaid } from '../ui/mermaid';

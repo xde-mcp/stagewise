@@ -8,7 +8,7 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { useKartonState } from '@/hooks/use-karton';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { usePostHog } from 'posthog-js/react';
 import {
   useAttachmentMetadata,
