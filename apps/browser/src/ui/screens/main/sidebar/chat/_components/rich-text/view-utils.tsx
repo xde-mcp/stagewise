@@ -205,7 +205,7 @@ export function AttachmentBadgeWrapper({
   // Error message takes priority - show as tooltip
   if (errorMessage) {
     return (
-      <Wrapper viewOnly={viewOnly}>
+      <Wrapper viewOnly={viewOnly ?? false}>
         <Tooltip>
           <TooltipTrigger render={children} />
           <TooltipContent>
@@ -217,7 +217,7 @@ export function AttachmentBadgeWrapper({
   }
 
   return (
-    <Wrapper viewOnly={viewOnly}>
+    <Wrapper viewOnly={viewOnly ?? false}>
       {previewContent ? (
         <PreviewCard>
           <PreviewCardBase.Trigger

@@ -98,11 +98,17 @@ function ElementPreviewContent({
 
     const checkExistence = async () => {
       try {
-        const exists = await checkElementExists(
-          selectedElement?.tabId,
-          selectedElement?.backendNodeId,
-          selectedElement?.frameId,
-        );
+        const noDataPresent =
+          !selectedElement?.tabId ||
+          !selectedElement?.backendNodeId ||
+          !selectedElement?.frameId;
+        const exists = noDataPresent
+          ? false
+          : await checkElementExists(
+              selectedElement.tabId!,
+              selectedElement.backendNodeId!,
+              selectedElement.frameId!,
+            );
         if (!cancelled) {
           setElementExists(exists);
           setElementExistenceChecked(true);
@@ -146,12 +152,17 @@ function ElementPreviewContent({
       // Switch to the tab first
       await switchTab(selectedElement?.tabId);
       // Wait a bit for the tab to be active, then scroll
+      const noDataPresent =
+        !selectedElement?.tabId ||
+        !selectedElement?.backendNodeId ||
+        !selectedElement?.frameId;
       setTimeout(async () => {
-        await scrollToElement(
-          selectedElement?.tabId,
-          selectedElement?.backendNodeId,
-          selectedElement?.frameId,
-        );
+        if (!noDataPresent)
+          await scrollToElement(
+            selectedElement.tabId!,
+            selectedElement.backendNodeId!,
+            selectedElement.frameId!,
+          );
       }, 100);
     } catch (error) {
       console.error('Failed to scroll to element:', error);

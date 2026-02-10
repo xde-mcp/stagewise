@@ -81,8 +81,8 @@ const paidPlanLimitExceededMessage = (minutes?: number) =>
 
 export function MessageError({ error }: { error: AgentError }) {
   const [openAgent] = useOpenAgent();
-  const agentHistory = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.history,
+  const agentHistory = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.history : [],
   );
 
   const revertToUserMessage = useKartonProcedure(

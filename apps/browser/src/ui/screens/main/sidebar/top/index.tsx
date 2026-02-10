@@ -96,7 +96,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 
   // If the open agent isn't active anymore, we need to update the open agent to the first active agent.
   useEffect(() => {
-    if (!Object.keys(activeAgents).includes(openAgent)) {
+    if (!openAgent || !Object.keys(activeAgents).includes(openAgent)) {
       setOpenAgent(Object.keys(activeAgents)[0]);
     }
   }, [openAgent, activeAgents]);
@@ -344,7 +344,9 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             <SearchableSelect
               items={chatSelectItems}
               value={openAgent}
-              onValueChange={handleAgentSelect}
+              onValueChange={(value) =>
+                handleAgentSelect(value as string | null)
+              }
               side="bottom"
               sideOffset={8}
               size="xs"

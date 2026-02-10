@@ -14,6 +14,7 @@ import {
   useRef,
   useOptimistic,
   startTransition,
+  type RefObject,
 } from 'react';
 import {
   useKartonState,
@@ -53,18 +54,18 @@ export function ChatPanelFooter() {
 
   const [openAgent] = useOpenAgent();
 
-  const isWorking = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.isWorking || false,
+  const isWorking = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.isWorking || false : false,
   );
 
-  const history = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.history,
+  const history = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.history : [],
   );
   const historyRef = useRef(history);
   historyRef.current = history;
 
-  const chatInputState = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.inputState,
+  const chatInputState = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.inputState : null,
   );
   const setChatInputState = useKartonProcedure(
     (p) => p.agents.updateInputState,
@@ -72,13 +73,16 @@ export function ChatPanelFooter() {
 
   const [optimisticChatInputState, setOptimisticChatInputState] =
     useOptimistic<Content | null>(
-      chatInputState?.length > 0 ? JSON.parse(chatInputState) : null,
+      chatInputState && chatInputState.length > 0
+        ? JSON.parse(chatInputState)
+        : null,
     );
 
   const updateChatInputState = useCallback(
     (newInputState: Content) => {
       const content = JSON.stringify(newInputState);
       startTransition(async () => {
+        if (!openAgent) return;
         setOptimisticChatInputState(newInputState);
         void setChatInputState(openAgent, content);
       });
@@ -97,7 +101,9 @@ export function ChatPanelFooter() {
     removeFileAttachment,
     clearFileAttachments,
     setFileAttachments,
-  } = useFileAttachments({ chatInputRef });
+  } = useFileAttachments({
+    chatInputRef: chatInputRef as RefObject<ChatInputHandle>,
+  });
 
   const { activeEditMessageId, setMainDropHandler } = useMessageEditState();
 
@@ -109,7 +115,7 @@ export function ChatPanelFooter() {
   const activeTabId = useKartonState((s) => s.browser.activeTabId);
   const tabs = useKartonState((s) => s.browser.tabs);
   const activeTab = useMemo(() => {
-    return tabs[activeTabId];
+    return activeTabId ? tabs[activeTabId] : null;
   }, [tabs, activeTabId]);
 
   // Element selection state from Karton
@@ -178,7 +184,7 @@ export function ChatPanelFooter() {
       setPendingRevert(null);
 
       // Revert chat history (remove user msg + partial response)
-      revertToUserMessage(openAgent, messageId, false);
+      if (openAgent) revertToUserMessage(openAgent, messageId, false);
 
       // Restore input content: parse markdown then inject full attachment
       // data from metadata so nodes are identical to fresh composition
@@ -251,7 +257,7 @@ export function ChatPanelFooter() {
     }
 
     // Stop the agent (revert will fire once isWorking becomes false)
-    await stopAgent(openAgent);
+    if (openAgent) await stopAgent(openAgent);
   }, [stopAgent, openAgent]);
 
   const isVerboseMode = useKartonState(
@@ -270,7 +276,7 @@ export function ChatPanelFooter() {
     // (backend will queue if agent is working)
     return (
       enableInputField &&
-      chatInputRef.current?.getTextContent().trim().length > 2
+      (chatInputRef.current?.getTextContent()?.trim().length ?? 0) > 2
     );
   }, [enableInputField, optimisticChatInputState]);
 
@@ -310,7 +316,7 @@ export function ChatPanelFooter() {
 
     try {
       // Send the message
-      await sendUserMessage(openAgent, message);
+      if (openAgent) await sendUserMessage(openAgent, message);
 
       // Only clear input state after successful send
       updateChatInputState({ type: 'doc', content: [{ type: 'paragraph' }] });
@@ -334,8 +340,8 @@ export function ChatPanelFooter() {
     updateChatInputState,
   ]);
 
-  const usedTokens = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.usedTokens,
+  const usedTokens = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.usedTokens : 0,
   );
   const maxTokens = 200000; // TODO Add max tokens info to agent state
 
@@ -345,12 +351,12 @@ export function ChatPanelFooter() {
     return Math.min(100, Math.round((used / max) * 100));
   }, [usedTokens, maxTokens]);
 
-  const queuedMessages = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.queuedMessages,
+  const queuedMessages = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.queuedMessages : [],
   );
   const flushQueue = useKartonProcedure((p) => p.agents.flushQueue);
   const handleFlushQueue = useCallback(() => {
-    void flushQueue(openAgent);
+    if (openAgent) void flushQueue(openAgent);
   }, [flushQueue, openAgent]);
 
   const [chatInputActive, setChatInputActive] = useState<boolean>(false);
@@ -578,8 +584,8 @@ export function ChatPanelFooter() {
     ),
   });
 
-  const allowUserInput = useKartonState(
-    (s) => s.agents.instances[openAgent]?.allowUserInput,
+  const allowUserInput = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.allowUserInput : false,
   );
   if (!allowUserInput) return null;
 
@@ -599,7 +605,7 @@ export function ChatPanelFooter() {
       >
         <ChatInput
           key={openAgent}
-          ref={chatInputRef}
+          ref={chatInputRef as RefObject<ChatInputHandle>}
           value={optimisticChatInputState}
           onChange={updateChatInputState}
           onSubmit={handleSubmit}
@@ -625,7 +631,7 @@ export function ChatPanelFooter() {
         <ChatInputActions
           isAgentWorking={isWorking}
           hasTextInput={
-            chatInputRef.current?.getTextContent().trim().length > 0
+            (chatInputRef.current?.getTextContent()?.trim().length ?? 0) > 0
           }
           onStop={abortAgent}
           showElementSelectorButton
@@ -634,7 +640,7 @@ export function ChatPanelFooter() {
           elementSelectorDisabled={hasOpenedInternalPage}
           showImageUploadButton
           onAddFileAttachment={handleAddFileAttachment}
-          canSendMessage={canSendMessage}
+          canSendMessage={canSendMessage ?? false}
           onSubmit={handleSubmit}
           isActive={chatInputActive}
         />

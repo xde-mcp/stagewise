@@ -9,8 +9,17 @@
  * These defaults ensure tool components (OverwriteFileTool, MultiEditTool) work without errors.
  */
 
-import { useContext, useCallback, useRef, useState } from 'react';
-import { createContext, type ReactNode, useMemo } from 'react';
+import {
+  useContext,
+  useCallback,
+  useRef,
+  useState,
+  createContext,
+  useMemo,
+  type ReactNode,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import type { AppState, KartonContract } from '@shared/karton-contracts/ui';
 import { defaultState } from '@shared/karton-contracts/ui';
 import { DEFAULT_STORY_AGENT_ID } from '../decorators/scenarios/shared-utilities';
@@ -34,20 +43,32 @@ export const MockKartonProvider: React.FC<MockKartonProviderProps> = ({
   mockState = {},
 }) => {
   const state = useMemo<AppState>(() => {
+    // Create a complete mock workspace (defaultState.workspace is null)
+    const mockWorkspace: AppState['workspace'] = {
+      path: '/mock/workspace',
+      paths: {
+        data: '/mock/workspace/.stagewise',
+        temp: '/mock/workspace/.stagewise/tmp',
+      },
+      agent: {
+        accessPath: '/mock/workspace/path',
+      },
+      rag: {
+        lastIndexedAt: null,
+        indexedFiles: 0,
+        statusInfo: { isIndexing: false },
+      },
+      loadedOnStart: true,
+    };
+
     // Create a complete default state with all required fields
     const completeDefaultState: AppState = {
       ...defaultState,
       globalConfig: {
-        openFilesInIde: 'vscode',
         ...defaultState.globalConfig,
+        openFilesInIde: 'vscode',
       },
-      workspace: {
-        ...defaultState.workspace,
-        agent: {
-          accessPath: '/mock/workspace/path',
-          ...defaultState.workspace?.agent,
-        },
-      },
+      workspace: mockWorkspace,
     };
 
     // Deep merge mockState with completeDefaultState
@@ -61,20 +82,21 @@ export const MockKartonProvider: React.FC<MockKartonProviderProps> = ({
       // Properly merge agents.instances
       agents: {
         instances: {
-          ...completeDefaultState.agents?.instances,
+          ...completeDefaultState.agents.instances,
           ...mockState.agents?.instances,
         },
       },
-      workspace: mockState.workspace
-        ? {
-            ...completeDefaultState.workspace,
-            ...mockState.workspace,
-            agent: {
-              ...completeDefaultState.workspace?.agent,
-              ...mockState.workspace?.agent,
-            },
-          }
-        : completeDefaultState.workspace,
+      workspace:
+        mockState.workspace !== undefined
+          ? ({
+              ...completeDefaultState.workspace,
+              ...mockState.workspace,
+              agent: {
+                ...completeDefaultState.workspace?.agent,
+                ...mockState.workspace?.agent,
+              },
+            } as AppState['workspace'])
+          : completeDefaultState.workspace,
     };
   }, [mockState]);
 
@@ -190,9 +212,16 @@ export function useChatActions() {
 }
 
 // Mock context for open agent
-const MockOpenAgentContext = createContext<
-  ReturnType<typeof useState<string | null>>
->([null, () => {}]);
+// Using explicit tuple type to match expected consumer signatures
+type OpenAgentContextValue = [
+  string | null,
+  Dispatch<SetStateAction<string | null>>,
+];
+
+const MockOpenAgentContext = createContext<OpenAgentContextValue>([
+  null,
+  () => {},
+]);
 
 export interface MockOpenAgentProviderProps {
   children: ReactNode;
@@ -212,4 +241,5 @@ export const MockOpenAgentProvider: React.FC<MockOpenAgentProviderProps> = ({
 };
 
 // Mock implementation of useOpenAgent
-export const useOpenAgent = () => useContext(MockOpenAgentContext);
+export const useOpenAgent = (): OpenAgentContextValue =>
+  useContext(MockOpenAgentContext);

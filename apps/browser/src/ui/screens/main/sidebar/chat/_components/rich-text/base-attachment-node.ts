@@ -154,7 +154,7 @@ export function createAttachmentNode<TAttrs extends object = object>(
       // Start function helps the tokenizer find potential matches quickly
       start(src: string) {
         const pattern = `\\[\\]\\(${markdownProtocol}:`;
-        const result = src.match(new RegExp(pattern))?.index;
+        const result = src.match(new RegExp(pattern))?.index ?? -1;
         return result;
       },
       // Tokenize function parses our custom link syntax
@@ -174,13 +174,11 @@ export function createAttachmentNode<TAttrs extends object = object>(
 
     // Parse the custom token created by our tokenizer
     parseMarkdown(token: any) {
-      if (token.type !== name) return null;
-
       return {
         type: name,
         attrs: {
-          id: token.id,
-          label: token.id, // Use ID as default label
+          id: token.id as string,
+          label: token.id as string, // Use ID as default label
         },
       };
     },

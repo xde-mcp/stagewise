@@ -44,7 +44,6 @@ const metadataSchema = z.object({
   selectedPreviewElements: z.array(selectedElementSchema).optional(),
   /** Text clip attachments - collapsed long text pasted by user */
   textClipAttachments: z.array(textClipAttachmentSchema).optional(),
-  thinkingDurations: z.array(z.number()).optional(),
   autoCompactInformation: z
     .object({
       isAutoCompacted: z.literal(true),

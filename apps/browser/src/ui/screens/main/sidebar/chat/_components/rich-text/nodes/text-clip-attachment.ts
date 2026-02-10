@@ -166,8 +166,9 @@ export const TextClipAttachment = Node.create<AttachmentNodeOptions>({
     name: 'textClipAttachment',
     level: 'inline' as const,
     // Start function helps the tokenizer find potential matches quickly
+    // Returns number (index of match, or -1 if no match per marked.js convention)
     start(src: string) {
-      return src.match(/\[\]\(text-clip:/)?.index;
+      return src.match(/\[\]\(text-clip:/)?.index ?? -1;
     },
     // Tokenize function parses our custom link syntax
     tokenize(src: string) {
@@ -184,14 +185,15 @@ export const TextClipAttachment = Node.create<AttachmentNodeOptions>({
   },
 
   // Parse the custom token created by our tokenizer
-  parseMarkdown(token: any) {
-    if (token.type !== 'textClipAttachment') return null;
-
+  // This is only called for tokens with type matching our tokenizer's name
+  // Token has additional 'id' property from our custom tokenizer
+  parseMarkdown(token) {
+    const id = token.id as string;
     return {
       type: 'textClipAttachment',
       attrs: {
-        id: token.id,
-        label: token.id,
+        id,
+        label: id,
         // Note: content will be empty here and needs to be rehydrated from metadata
         content: '',
       },

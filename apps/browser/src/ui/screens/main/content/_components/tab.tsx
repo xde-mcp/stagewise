@@ -71,12 +71,15 @@ export function Tab({
   const tabRef = useRef<HTMLDivElement>(null);
   const clipPathId = `tabClipPath-${useId()}`;
 
-  const dimensions = useElementDimensions(tabRef, [
-    activateBottomLeftCornerRadius,
-    isActive,
-    borderRadius,
-    effectiveBottomLeftRadius,
-  ]);
+  const dimensions = useElementDimensions(
+    tabRef as React.RefObject<HTMLElement>,
+    [
+      activateBottomLeftCornerRadius,
+      isActive,
+      borderRadius,
+      effectiveBottomLeftRadius,
+    ],
+  );
 
   const svgPath = useMemo(() => {
     if (!isActive) return '';

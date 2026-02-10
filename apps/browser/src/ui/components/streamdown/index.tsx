@@ -470,6 +470,7 @@ const AnchorComponent = ({
   // Must be called before conditional return to satisfy React hooks rules
   const processedHref = useMemo(() => {
     if (!href) return '';
+    if (!openAgent) return '';
     return href.replaceAll(
       encodeURIComponent('{{CONVERSATION_ID}}'),
       openAgent,

@@ -46,8 +46,8 @@ export function CoreHotkeyBindings({
   );
   const { tabUiState } = useTabUIState();
 
-  const currentZoomPercentage = useKartonState(
-    (s) => s.browser.tabs[activeTabId]?.zoomPercentage,
+  const currentZoomPercentage = useKartonState((s) =>
+    activeTabId ? s.browser.tabs[activeTabId]?.zoomPercentage : 100,
   );
   const newTabPagePreference = useKartonState(
     (s) => s.preferences.general.newTabPage,

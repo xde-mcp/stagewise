@@ -31,6 +31,16 @@ import { isToolOrReasoningPart } from './message-utils';
 
 type AssistantMessage = AgentMessage & { role: 'assistant' };
 
+/** Part with its original index in msg.parts for correct metadata lookup */
+type PartWithOriginalIndex =
+  | {
+      part: UIMessagePart<UIDataTypes, StagewiseUITools>;
+      originalIndex: number;
+    }
+  | {
+      parts: { part: ReadOnlyToolPart; originalIndex: number }[];
+    };
+
 export const MessageAssistant = memo(
   function MessageAssistant({
     message: msg,
@@ -79,62 +89,55 @@ export const MessageAssistant = memo(
               )}
             >
               {(() => {
-                // Merge read-only tools into the previous tool part
-                const parts = msg.parts.reduce(
-                  (acc, part) => {
-                    // Skip step-start parts, they don't contain information we need to render and break the ReadOnly-Part detection logic
+                // Merge read-only tools into groups, preserving original indices for metadata lookup
+                const partsWithIndices = msg.parts.reduce(
+                  (acc, part, originalIndex) => {
+                    // Skip step-start parts, they don't contain information we need to render
                     if (part.type === 'step-start') return acc;
-                    // Forward everything except read-only tools
-                    if (
-                      !isToolOrReasoningPart(part) ||
-                      !isReadOnlyToolPart(part)
-                    )
-                      acc.push(part);
 
-                    const previousPart = acc[acc.length - 1];
-                    // Merge read-only tools into the previous tool-part-array if one already exists
+                    // Check if this is a read-only tool or reasoning part
                     if (
-                      isToolOrReasoningPart(part) &&
-                      isReadOnlyToolPart(part) &&
-                      Array.isArray(previousPart)
-                    ) {
-                      previousPart.push(part);
-                    }
-                    // Turn read-only tools into an array of parts if no previous tool-part-array exists
-                    else if (
                       isToolOrReasoningPart(part) &&
                       isReadOnlyToolPart(part)
-                    )
-                      acc.push([part]);
+                    ) {
+                      const previousItem = acc[acc.length - 1];
+                      // Merge into previous group if one exists
+                      if (previousItem && 'parts' in previousItem)
+                        previousItem.parts.push({ part, originalIndex });
+                      // Create a new group
+                      else acc.push({ parts: [{ part, originalIndex }] });
+                      // Non-grouped part
+                    } else acc.push({ part, originalIndex });
 
                     return acc;
                   },
-                  [] as (
-                    | UIMessagePart<UIDataTypes, StagewiseUITools>
-                    | ReadOnlyToolPart[]
-                  )[],
+                  [] as PartWithOriginalIndex[],
                 );
 
                 const typeCounters: Record<string, number> = {};
                 let exploringGroupIndex = 0;
 
-                return parts.map((part, index) => {
-                  const isLastPart = index === parts.length - 1;
-                  if (Array.isArray(part)) {
+                return partsWithIndices.map((item, index) => {
+                  const isLastPart = index === partsWithIndices.length - 1;
+
+                  // Handle grouped read-only parts (exploring tools + reasoning)
+                  if ('parts' in item) {
                     const stableKey = `${msg.id}:exploring:${exploringGroupIndex}`;
                     exploringGroupIndex++;
                     return (
-                      // Handles glob, grep, listFiles, readFile tools
                       <ExploringToolParts
                         key={stableKey}
-                        parts={part}
-                        thinkingDurations={msg.metadata?.thinkingDurations}
+                        parts={item.parts.map((p) => p.part)}
+                        partsMetadata={msg.metadata?.partsMetadata ?? []}
+                        originalIndices={item.parts.map((p) => p.originalIndex)}
                         isAutoExpanded={isLastPart}
                         isShimmering={isWorking && isLastPart && isLastMessage}
                       />
                     );
                   }
 
+                  // Handle single parts
+                  const { part, originalIndex } = item;
                   const currentTypeIndex = typeCounters[part.type] ?? 0;
                   typeCounters[part.type] = currentTypeIndex + 1;
                   const stableKey = `${msg.id}:${part.type}:${currentTypeIndex}`;
@@ -155,7 +158,12 @@ export const MessageAssistant = memo(
                         <ThinkingPart
                           key={stableKey}
                           thinkingDuration={
-                            msg.metadata?.thinkingDurations?.[currentTypeIndex]
+                            (msg.metadata?.partsMetadata?.[
+                              originalIndex
+                            ]?.endedAt?.getTime() ?? 0) -
+                            (msg.metadata?.partsMetadata?.[
+                              originalIndex
+                            ]?.startedAt?.getTime() ?? 0)
                           }
                           part={part as ReasoningUIPart}
                           isLastPart={isLastPart}
@@ -207,7 +215,7 @@ export const MessageAssistant = memo(
                         <UnknownToolPart
                           shimmer={
                             isWorking &&
-                            index === parts.length - 1 &&
+                            index === partsWithIndices.length - 1 &&
                             isLastMessage
                           }
                           key={stableKey}

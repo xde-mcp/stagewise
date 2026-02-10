@@ -20,7 +20,7 @@ export function WithTabPreviewCard({
 }: {
   tabState: TabState;
   children: ReactElement;
-  activeTabId: string;
+  activeTabId: string | null | undefined;
 }) {
   const isActive = tabState.id === activeTabId;
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -42,7 +42,7 @@ export function WithTabPreviewCard({
           {(tabState.screenshot?.length ?? 0) > 0 && (
             <>
               <img
-                src={tabState.screenshot}
+                src={tabState.screenshot ?? undefined}
                 className="hidden"
                 alt="Preview of the tab"
                 onLoad={() => setImageLoaded(true)}
@@ -51,7 +51,7 @@ export function WithTabPreviewCard({
               {imageLoaded && (
                 <div className="flex min-h-24 w-full items-center justify-center overflow-hidden rounded-sm bg-background ring-1 ring-border-subtle">
                   <img
-                    src={tabState.screenshot}
+                    src={tabState.screenshot ?? undefined}
                     className="max-h-36 max-w-full object-contain"
                     alt="Preview of the tab"
                   />

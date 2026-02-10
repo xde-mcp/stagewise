@@ -911,7 +911,7 @@ export interface AuthResponse {
   expiresAt: string;
 }`,
               'output-available',
-              null, // No previous content - file was created
+              undefined, // No previous content - file was created
             ),
           ],
         },

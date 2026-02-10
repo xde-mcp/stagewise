@@ -234,7 +234,7 @@ export function useOmniboxSuggestions(
                 </span>
               ),
               suggestionIcon:
-                entry.faviconUrl?.length > 0 ? (
+                entry.faviconUrl && entry.faviconUrl.length > 0 ? (
                   <img src={entry.faviconUrl} alt="" className="size-4" />
                 ) : (
                   <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
@@ -345,7 +345,7 @@ export function useOmniboxSuggestions(
               </span>
             ),
             suggestionIcon:
-              entry.faviconUrl?.length > 0 ? (
+              entry.faviconUrl && entry.faviconUrl.length > 0 ? (
                 <img src={entry.faviconUrl} alt="" className="size-4" />
               ) : (
                 <IconGlobe3Fill18 className="size-4 text-muted-foreground" />

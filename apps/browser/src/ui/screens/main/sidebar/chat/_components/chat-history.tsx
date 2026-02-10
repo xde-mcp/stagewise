@@ -100,11 +100,11 @@ export const ChatHistory = () => {
   const createTab = useKartonProcedure((s) => s.browser.createTab);
   const sendUserMessage = useKartonProcedure((s) => s.agents.sendUserMessage);
   const [openAgent] = useOpenAgent();
-  const isWorking = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.isWorking,
+  const isWorking = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
   );
-  const history = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.history,
+  const history = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.history : [],
   );
   const [removedSuggestionUrls, setRemovedSuggestionUrls] = useState<
     Set<string>
@@ -185,16 +185,6 @@ export const ChatHistory = () => {
 
         if (lastMessage.role === message.role && message.role === 'assistant') {
           lastMessage.parts = [...lastMessage.parts, ...message.parts];
-          if (
-            message.metadata?.thinkingDurations &&
-            message.metadata.thinkingDurations.length >
-              (lastMessage.metadata?.thinkingDurations?.length ?? 0)
-          ) {
-            lastMessage.metadata = {
-              ...lastMessage.metadata,
-              thinkingDurations: message.metadata.thinkingDurations,
-            };
-          }
         } else {
           curr.push({ ...message, parts: [...message.parts] });
         }
@@ -318,6 +308,7 @@ export const ChatHistory = () => {
             key={suggestion.url}
             {...suggestion}
             onClick={async () => {
+              if (!openAgent) return;
               await createTab(suggestion.url);
               await sendUserMessage(openAgent, {
                 id: crypto.randomUUID(),

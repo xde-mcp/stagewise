@@ -90,7 +90,7 @@ export function fileAttachmentToAttachmentAttributes(
     return {
       id: attachment.id,
       type: 'image',
-      label: attachment.fileName,
+      label: attachment.fileName ?? 'Image',
       url: attachment.url,
       validationError: attachment.validationError,
     };
@@ -99,7 +99,7 @@ export function fileAttachmentToAttachmentAttributes(
   return {
     id: attachment.id,
     type: 'file',
-    label: attachment.fileName,
+    label: attachment.fileName ?? 'File',
     validationError: attachment.validationError,
   };
 }

@@ -1,4 +1,5 @@
 import { useKartonState } from '@/hooks/use-karton';
+import type { UserMessageMetadata } from '@shared/karton-contracts/ui/agent/metadata';
 import {
   useMemo,
   useState,
@@ -191,12 +192,15 @@ export const ExploringToolParts = ({
   parts,
   isAutoExpanded,
   isShimmering,
-  thinkingDurations,
+  partsMetadata,
+  originalIndices,
 }: {
   parts: ReadOnlyToolPart[];
   isAutoExpanded: boolean;
   isShimmering: boolean;
-  thinkingDurations?: number[];
+  partsMetadata: UserMessageMetadata['partsMetadata'];
+  /** Original indices in msg.parts for each part, used for correct metadata lookup */
+  originalIndices: number[];
 }) => {
   const [expanded, setExpanded] = useState(isAutoExpanded);
   const [expandedChildren, setExpandedChildren] = useState<Set<string>>(
@@ -229,15 +233,13 @@ export const ExploringToolParts = ({
   const hasExpandedChild = expandedChildren.size > 0;
 
   const partContents = useMemo(() => {
-    let reasoningIndex = -1;
     return parts.map((part, index) => {
-      if (part.type === 'reasoning') reasoningIndex++;
       // Use a stable key for reasoning parts (index-based) instead of part.text which changes during streaming
       const stableKey =
-        part.type === 'reasoning'
-          ? `reasoning-${reasoningIndex}`
-          : part.toolCallId;
+        part.type === 'reasoning' ? `reasoning-${index}` : part.toolCallId;
       const isLastPart = index === parts.length - 1;
+      // Use the original index from msg.parts to look up the correct metadata
+      const originalIndex = originalIndices[index];
       return (
         <PartContent
           key={stableKey}
@@ -246,14 +248,15 @@ export const ExploringToolParts = ({
           disableShimmer
           isLastPart={isLastPart}
           thinkingDuration={
-            part.type === 'reasoning'
-              ? thinkingDurations?.[reasoningIndex]
+            part.type === 'reasoning' && originalIndex !== undefined
+              ? (partsMetadata?.[originalIndex]?.endedAt?.getTime() ?? 0) -
+                (partsMetadata?.[originalIndex]?.startedAt?.getTime() ?? 0)
               : undefined
           }
         />
       );
     });
-  }, [parts, thinkingDurations]);
+  }, [parts, partsMetadata, originalIndices]);
 
   const explorationMetadata = useMemo(() => {
     let filesRead = 0;
@@ -449,17 +452,25 @@ export const ExploringToolParts = ({
   }, [parts, activeTabs]);
 
   // For single part, show it inline in the trigger without expand/collapse
-  if (isOnlyOnePart)
+  if (isOnlyOnePart) {
+    // Use the original index from msg.parts to look up the correct metadata
+    const originalIndex = originalIndices[0];
     return (
       <PartContent
         part={parts[0]!}
         minimal={true}
         disableShimmer={!isShimmering}
-        thinkingDuration={thinkingDurations?.[0]}
+        thinkingDuration={
+          originalIndex !== undefined
+            ? (partsMetadata?.[originalIndex]?.endedAt?.getTime() ?? 0) -
+              (partsMetadata?.[originalIndex]?.startedAt?.getTime() ?? 0)
+            : undefined
+        }
         isLastPart={isAutoExpanded}
         capMaxHeight={true}
       />
     );
+  }
 
   // For multiple parts, use MinimalToolPartUI with collapsible content
   return (

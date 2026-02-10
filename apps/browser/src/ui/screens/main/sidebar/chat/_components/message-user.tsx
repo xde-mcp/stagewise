@@ -6,7 +6,15 @@ import { markdownToTipTapContent } from '@/utils/tiptap-content-utils';
 import { cn, collectUserMessageMetadata } from '@/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { FileUIPart } from 'ai';
-import { useMemo, useCallback, memo, useState, useRef, useEffect } from 'react';
+import {
+  useMemo,
+  useCallback,
+  memo,
+  useState,
+  useRef,
+  useEffect,
+  type RefObject,
+} from 'react';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useEventListener } from '@/hooks/use-event-listener';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
@@ -60,7 +68,10 @@ export const MessageUser = memo(
       removeFileAttachment,
       clearFileAttachments,
       setFileAttachments: setEditedFileAttachments,
-    } = useFileAttachments({ chatInputRef, insertIntoEditor: true });
+    } = useFileAttachments({
+      chatInputRef: chatInputRef as RefObject<ChatInputHandle>,
+      insertIntoEditor: true,
+    });
 
     // Message edit state for file drop routing and exposing local elements
     const { registerEditMode, unregisterEditMode } = useMessageEditState();
@@ -218,9 +229,11 @@ export const MessageUser = memo(
         ];
 
         // Convert FileAttachments to FileUIParts
-        const fileParts: FileUIPart[] = await Promise.all(
-          editedFileAttachments.map(fileAttachmentToFileUIPart),
-        );
+        const fileParts: FileUIPart[] = (
+          await Promise.all(
+            editedFileAttachments.map(fileAttachmentToFileUIPart),
+          )
+        ).filter((part): part is FileUIPart => part !== null);
 
         // Collect metadata for selected elements
         // Note: textClipAttachments from extractTextClipsFromTiptapContent will have empty content
@@ -449,6 +462,7 @@ export const MessageUser = memo(
     const activeTabId = useKartonState((s) => s.browser.activeTabId);
     const tabs = useKartonState((s) => s.browser.tabs);
     const activeTab = useMemo(() => {
+      if (!activeTabId) return null;
       return tabs[activeTabId];
     }, [tabs, activeTabId]);
 
@@ -475,6 +489,7 @@ export const MessageUser = memo(
         ];
         const seen = new Set<string>();
         return combined.filter((el) => {
+          if (!el.stagewiseId) return false;
           if (seen.has(el.stagewiseId)) return false;
           seen.add(el.stagewiseId);
           return true;
@@ -562,7 +577,7 @@ export const MessageUser = memo(
                 {isEditing && (
                   <>
                     <ChatInput
-                      ref={chatInputRef}
+                      ref={chatInputRef as RefObject<ChatInputHandle>}
                       defaultValue={pendingTiptapContent}
                       onChange={setPendingTiptapContent}
                       onSubmit={handleSubmitEdit}
@@ -583,8 +598,8 @@ export const MessageUser = memo(
                       <ChatInputActions
                         isAgentWorking={false}
                         hasTextInput={
-                          chatInputRef.current?.getTextContent().trim().length >
-                          0
+                          (chatInputRef.current?.getTextContent()?.trim()
+                            ?.length ?? 0) > 0
                         }
                         showElementSelectorButton
                         elementSelectionActive={elementSelectionActive}
@@ -593,8 +608,8 @@ export const MessageUser = memo(
                         showImageUploadButton
                         onAddFileAttachment={addFileAttachment}
                         canSendMessage={
-                          chatInputRef.current?.getTextContent().trim().length >
-                          2
+                          (chatInputRef.current?.getTextContent()?.trim()
+                            ?.length ?? 0) > 2
                         }
                         onSubmit={handleSubmitEdit}
                         isActive

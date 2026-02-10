@@ -358,9 +358,11 @@ export function StatusCard() {
   const [openAgentId] = useOpenAgent();
   const toolbox = useKartonState((s) => s.toolbox);
   const pendingDiffs = useMemo(() => {
+    if (!openAgentId) return [];
     return toolbox[openAgentId]?.pendingFileDiffs;
   }, [toolbox, openAgentId]);
   const diffSummary = useMemo(() => {
+    if (!openAgentId) return [];
     return toolbox[openAgentId]?.editSummary;
   }, [toolbox, openAgentId]);
 
@@ -372,8 +374,8 @@ export function StatusCard() {
   );
   const createTab = useKartonProcedure((p) => p.browser.createTab);
 
-  const messageQueue = useKartonState(
-    (s) => s.agents.instances[openAgentId]?.state.queuedMessages,
+  const messageQueue = useKartonState((s) =>
+    openAgentId ? s.agents.instances[openAgentId]?.state.queuedMessages : [],
   );
 
   // Procedure to remove a queued message
@@ -400,7 +402,7 @@ export function StatusCard() {
     const diff =
       fileDiff.isExternal === true
         ? diffLines('', '')
-        : diffLines(fileDiff.baseline, fileDiff.current);
+        : diffLines(fileDiff.baseline ?? '', fileDiff.current ?? '');
     const fileName = fileDiff.path.split('/').pop() ?? '';
     const linesAdded = diff.reduce(
       (acc, line) => acc + (line.added ? line.count : 0),
@@ -444,9 +446,14 @@ export function StatusCard() {
 
     const messageQueueSection = MessageQueueSection({
       queuedMessages: messageQueue ?? [],
-      onRemoveMessage: async (messageId) =>
-        await deleteQueuedMessage(openAgentId, messageId),
-      onFlush: async () => await flushQueue(openAgentId),
+      onRemoveMessage: async (messageId) => {
+        if (!openAgentId) return;
+        await deleteQueuedMessage(openAgentId, messageId);
+      },
+      onFlush: async () => {
+        if (!openAgentId) return;
+        await flushQueue(openAgentId);
+      },
     });
     if (messageQueueSection) result.push(messageQueueSection);
 
@@ -507,5 +514,10 @@ export function StatusCard() {
 
   if (items.length === 0) return null;
 
-  return <StatusCardComponent items={items} ref={cardRef} />;
+  return (
+    <StatusCardComponent
+      items={items}
+      ref={cardRef as React.RefObject<HTMLDivElement>}
+    />
+  );
 }

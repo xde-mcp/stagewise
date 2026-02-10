@@ -699,7 +699,7 @@ const serializeElementRecursive = (
     .reduce(
       (acc, prop) => {
         try {
-          const value = element[prop as keyof HTMLElement];
+          const value = (element as HTMLElement)[prop as keyof HTMLElement];
           // Only include serializable values
           if (typeof value !== 'function') {
             acc[prop] = copyObject(value, 0, 2);
@@ -772,7 +772,7 @@ const serializeElementRecursive = (
       height: boundingRect.height,
     },
     textContent: truncateString(getCleanTextContent(element), 512) ?? 'unknown',
-    parent,
+    parent: parent ?? undefined,
     siblings,
     children,
     frameworkInfo:

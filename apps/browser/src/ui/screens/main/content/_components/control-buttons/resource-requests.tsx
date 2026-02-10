@@ -342,7 +342,7 @@ function PermissionRequestRow({
               <Select
                 triggerClassName="mt-1 w-full max-w-full"
                 popupClassName="max-w-(--anchor-width)"
-                value={selectedDevice}
+                value={selectedDevice ?? undefined}
                 onValueChange={setSelectedDevice}
                 triggerVariant="secondary"
                 size="md"

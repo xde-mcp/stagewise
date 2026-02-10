@@ -89,7 +89,7 @@ export const Omnibox = ({
     [],
   );
 
-  const shouldShowBreadcrumbs = displayedTabUrl.startsWith(
+  const shouldShowBreadcrumbs = displayedTabUrl?.startsWith(
     'stagewise://internal/',
   );
 
@@ -108,7 +108,7 @@ export const Omnibox = ({
 
   const { groups: suggestionGroups, resetSuggestions } = useOmniboxSuggestions(
     displayedTabUrl,
-    inputValue,
+    inputValue ?? '',
     searchEngines,
     defaultEngineId,
     undefined,
@@ -116,7 +116,7 @@ export const Omnibox = ({
   );
 
   const onValueChange = useCallback<
-    AutocompleteRootProps<OmniboxSuggestionItem>['onValueChange']
+    NonNullable<AutocompleteRootProps<OmniboxSuggestionItem>['onValueChange']>
   >(
     (value, details) => {
       if (details.reason !== 'escape-key') {
@@ -140,7 +140,7 @@ export const Omnibox = ({
   const onSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (inputValue.trim() === '') {
+      if (!inputValue || inputValue.trim() === '') {
         return;
       }
       // Convert input to proper URL (handles localhost, search queries, etc.)
@@ -250,7 +250,7 @@ export const Omnibox = ({
             )}
           />
           {shouldShowBreadcrumbs && !isOmniboxOpen && (
-            <InternalPageBreadcrumbs url={displayedTabUrl} />
+            <InternalPageBreadcrumbs url={displayedTabUrl ?? ''} />
           )}
         </div>
         <Autocomplete.Portal>
@@ -273,7 +273,7 @@ export const Omnibox = ({
               {suggestionGroups.filter((g) => g.items.length > 0).length ===
                 0 && (
                 <Autocomplete.Empty className="p-3.5 text-muted-foreground text-sm empty:m-0 empty:p-0">
-                  {inputValue.trim() !== ''
+                  {inputValue && inputValue.trim() !== ''
                     ? 'No suggestions found.'
                     : 'No browsing history yet.'}
                 </Autocomplete.Empty>

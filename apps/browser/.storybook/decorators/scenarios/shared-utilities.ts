@@ -699,6 +699,7 @@ export function createGrepSearchToolPart(
       result: {
         totalMatches,
         matches: [],
+        truncated: false,
       },
     },
   } as AgentToolUIPart;

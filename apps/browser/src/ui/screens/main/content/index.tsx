@@ -127,9 +127,10 @@ export function MainSection({
 
   const handleUIFocused = useCallback(
     (_e: FocusEvent) => {
-      setTabUiState(activeTabId, {
-        focusedPanel: 'stagewise-ui',
-      });
+      if (activeTabId)
+        setTabUiState(activeTabId, {
+          focusedPanel: 'stagewise-ui',
+        });
     },
     [activeTabId, setTabUiState],
   );

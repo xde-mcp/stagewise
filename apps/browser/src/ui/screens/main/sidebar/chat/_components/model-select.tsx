@@ -45,8 +45,8 @@ interface ModelSelectProps {
 
 export function ModelSelect({ onModelChange }: ModelSelectProps) {
   const [openAgent] = useOpenAgent();
-  const selectedModel = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.activeModelId,
+  const selectedModel = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.activeModelId : null,
   );
   const setSelectedModel = useKartonProcedure((p) => p.agents.setActiveModelId);
 
@@ -55,6 +55,7 @@ export function ModelSelect({ onModelChange }: ModelSelectProps) {
       side="top"
       value={selectedModel}
       onValueChange={(value) => {
+        if (!openAgent) return;
         setSelectedModel(openAgent, value as ModelId);
         onModelChange?.();
       }}

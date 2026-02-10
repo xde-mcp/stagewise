@@ -13,8 +13,8 @@ injectStealthOverrides();
 
 declare global {
   interface Window {
-    tunnelKeyDown: (keyDownEvent: KeyboardEvent) => void;
-    tunnelWheel: (wheelEvent: WheelEvent) => void;
+    tunnelKeyDown?: (keyDownEvent: KeyboardEvent) => void;
+    tunnelWheel?: (wheelEvent: WheelEvent) => void;
   }
 }
 
@@ -388,7 +388,7 @@ window.addEventListener(
       e.preventDefault();
       e.stopImmediatePropagation();
       e.stopPropagation();
-      window.tunnelKeyDown(e);
+      window.tunnelKeyDown?.(e);
     }
   },
   { capture: true },
@@ -399,7 +399,7 @@ window.addEventListener('keydown', (e) => {
   // Only tunnel up if event was not captured by a dominant listener in the capture phase
   if (e.defaultPrevented) return;
   if (shouldChromeConsumeEvent(e)) return;
-  window.tunnelKeyDown(e);
+  window.tunnelKeyDown?.(e);
 });
 
 // Capture wheel events with CMD/Ctrl for zoom
@@ -411,7 +411,7 @@ window.addEventListener(
       e.preventDefault();
       e.stopImmediatePropagation();
       e.stopPropagation();
-      window.tunnelWheel(e);
+      window.tunnelWheel?.(e);
       return;
     }
 
@@ -422,7 +422,7 @@ window.addEventListener(
       e.preventDefault();
       e.stopImmediatePropagation();
       e.stopPropagation();
-      window.tunnelWheel(e);
+      window.tunnelWheel?.(e);
     }
   },
   { capture: true, passive: false },

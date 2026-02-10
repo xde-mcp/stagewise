@@ -17,8 +17,8 @@ type AgentPreviewBadgeProps = {
 
 export function AgentPreviewBadge({ onClick }: AgentPreviewBadgeProps) {
   const [openAgent] = useOpenAgent();
-  const isWorking = useKartonState(
-    (s) => s.agents.instances[openAgent]?.state.isWorking || false,
+  const isWorking = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
   );
 
   return (

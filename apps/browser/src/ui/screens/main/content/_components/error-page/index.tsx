@@ -14,7 +14,13 @@ export function ErrorPage() {
       id="error-page-container"
     >
       <div className="w-full max-w-2xl">
-        <ErrorContentRouter code={error.code} message={error.message} />
+        <ErrorContentRouter
+          code={error.code}
+          message={
+            error.message ??
+            'There was an error loading this page. Please try again later.'
+          }
+        />
       </div>
     </div>
   );

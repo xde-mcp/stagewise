@@ -23,8 +23,8 @@ export function ChatPanel() {
   }, [agents, openAgent]);
 
   const isWorking = useKartonState(
-    useComparingSelector(
-      (s) => s.agents.instances[openAgent]?.state.isWorking || false,
+    useComparingSelector((s) =>
+      openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
     ),
   );
   const isConnected = useKartonConnected();
@@ -92,7 +92,7 @@ export function ChatPanel() {
     [forwardDropEvent],
   );
 
-  if (openAgent === null || !agents[openAgent])
+  if (openAgent === null || openAgent === undefined || !agents[openAgent])
     return (
       <div className="flex size-full items-center justify-center text-muted-foreground">
         No agent selected

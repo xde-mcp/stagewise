@@ -156,21 +156,45 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
           <ResourceRequestsControlButton tabId={tabId} isActive={isActive} />
           <DownloadsControlButton isActive={isActive} />
 
-          <ColorSchemeWidget
-            tab={tab}
-            sortableProps={
-              /* @ts-ignore */
-              { isDragging: false, dragHandleProps: {} }
-            }
-          />
+          {tab && (
+            <ColorSchemeWidget
+              tab={tab}
+              sortableProps={{
+                isDragging: false,
+                dragHandleProps: {
+                  listeners: undefined,
+                  attributes: {
+                    role: 'button',
+                    tabIndex: 0,
+                    'aria-disabled': false,
+                    'aria-pressed': false,
+                    'aria-roledescription': '',
+                    'aria-describedby': '',
+                  },
+                },
+              }}
+            />
+          )}
 
-          <ChromeDevToolsWidget
-            tab={tab}
-            sortableProps={
-              /* @ts-ignore */
-              { isDragging: false, dragHandleProps: {} }
-            }
-          />
+          {tab && (
+            <ChromeDevToolsWidget
+              tab={tab}
+              sortableProps={{
+                isDragging: false,
+                dragHandleProps: {
+                  listeners: undefined,
+                  attributes: {
+                    role: 'button',
+                    tabIndex: 0,
+                    'aria-disabled': false,
+                    'aria-pressed': false,
+                    'aria-roledescription': '',
+                    'aria-describedby': '',
+                  },
+                },
+              }}
+            />
+          )}
 
           {/*
           <Tooltip>

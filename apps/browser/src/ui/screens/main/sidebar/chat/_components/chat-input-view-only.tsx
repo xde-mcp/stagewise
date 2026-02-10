@@ -92,7 +92,7 @@ export function ChatInputViewOnly({
       )}
       style={maskStyle}
     >
-      {(tipTapContent as TiptapDoc).content.map((node, index) => (
+      {(tipTapContent as TiptapDoc)?.content?.map((node, index) => (
         <RenderNode key={getNodeKey(node, index)} node={node} />
       ))}
     </div>

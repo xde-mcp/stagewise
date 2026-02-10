@@ -270,6 +270,7 @@ export const WorkspaceFileLink = ({
   }, [filePath]);
 
   const processedHref = useMemo(() => {
+    if (!openAgent) return '';
     const pathWithLine = lineNumber ? `${filePath}:${lineNumber}` : filePath;
     let href = filePathTools.getFileIDEHref(pathWithLine);
     href = href.replaceAll(
