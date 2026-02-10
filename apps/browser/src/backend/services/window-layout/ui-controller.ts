@@ -233,6 +233,25 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
       this.emit('uiReady');
     });
 
+    // Auto-recover from renderer crashes
+    this.view.webContents.on('render-process-gone', (_event, details) => {
+      this.logger.error(
+        `[UIController] UI renderer process gone: reason=${details.reason}, exitCode=${details.exitCode}`,
+      );
+      // Don't attempt recovery if the process was intentionally killed (e.g. app closing)
+      if (details.reason === 'clean-exit') return;
+
+      this.logger.info('[UIController] Attempting to reload UI...');
+      // Re-listen for did-finish-load to re-emit uiReady
+      this.view.webContents.once('did-finish-load', () => {
+        this.logger.info('[UIController] UI recovered after crash');
+        const bounds = this.view.getBounds();
+        this.view.setBounds({ ...bounds });
+        this.emit('uiReady');
+      });
+      this.loadApp();
+    });
+
     this.loadApp();
     this.registerKartonProcedures();
   }
