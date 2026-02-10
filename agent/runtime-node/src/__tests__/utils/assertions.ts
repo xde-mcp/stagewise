@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import type { GrepMatch, GrepResult } from '@stagewise/agent-runtime-interface';
+import type { GrepMatch, GrepResult } from '../../types.js';
 
 /**
  * Asserts that a grep result is successful

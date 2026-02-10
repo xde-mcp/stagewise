@@ -1,16 +1,16 @@
 import { BINARY_DETECTION } from '../shared.js';
 import type {
-  BaseFileSystemProvider,
+  FileSystemOperations,
   GrepMatch,
   GrepResult,
   GrepOptions,
-} from '@stagewise/agent-runtime-interface';
+} from '../types.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { minimatch } from 'minimatch';
 
 export async function grepNodeFallback(
-  fileSystem: BaseFileSystemProvider,
+  fileSystem: FileSystemOperations,
   pattern: string,
   options?: GrepOptions,
 ): Promise<GrepResult> {

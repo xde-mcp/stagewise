@@ -1,15 +1,15 @@
 import { promises as fs, type Dirent } from 'node:fs';
 import path, { join } from 'node:path';
 import type {
-  BaseFileSystemProvider,
+  FileSystemOperations,
   GlobOptions,
   GlobResult,
-} from '@stagewise/agent-runtime-interface';
+} from '../types.js';
 import { makeRe as makeGlobRe, minimatch } from 'minimatch';
 
 export async function globNodeFallback(
   pattern: string,
-  fileSystem: BaseFileSystemProvider,
+  fileSystem: FileSystemOperations,
   options?: GlobOptions,
 ): Promise<GlobResult> {
   try {

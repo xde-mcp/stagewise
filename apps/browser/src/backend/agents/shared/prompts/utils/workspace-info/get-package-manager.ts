@@ -1,4 +1,4 @@
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { join } from 'node:path';
 import { findProjectRoot } from './get-project-root.js';
 
@@ -53,7 +53,7 @@ export interface PackageManagerInfo {
  * ```
  */
 export async function getPackageManager(
-  clientRuntime: ClientRuntime,
+  clientRuntime: ClientRuntimeNode,
 ): Promise<PackageManagerInfo | null> {
   const fileSystem = clientRuntime.fileSystem;
   const rootPath = await findProjectRoot(clientRuntime);

@@ -4,7 +4,6 @@
  */
 
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
 import type { KartonService } from '../karton';
 import type { Logger } from '../logger';
 import type { TelemetryService } from '../telemetry';
@@ -286,7 +285,7 @@ export class WorkspaceService extends DisposableService {
     });
   }
 
-  private async checkAndGenerateStagewiseMd(_clientRuntime: ClientRuntime) {
+  private async checkAndGenerateStagewiseMd(_clientRuntime: ClientRuntimeNode) {
     const stagewiseMdDirPath = this.workspacePathsService!.workspaceDataPath;
     if (existsSync(path.join(stagewiseMdDirPath, STAGEWISE_MD_FILENAME))) {
       this.logger.debug(

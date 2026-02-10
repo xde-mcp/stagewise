@@ -1,4 +1,4 @@
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import type { KartonService } from '../../karton';
 import type { Logger } from '../../logger';
 import type { TelemetryService } from '../../telemetry';
@@ -9,14 +9,14 @@ import { DisposableService } from '../../disposable';
 export class RagService extends DisposableService {
   private readonly logger: Logger;
   private readonly uiKarton: KartonService;
-  private readonly clientRuntime: ClientRuntime;
+  private readonly clientRuntime: ClientRuntimeNode;
   private readonly telemetryService: TelemetryService;
 
   private constructor(
     logger: Logger,
     telemetryService: TelemetryService,
     uiKarton: KartonService,
-    clientRuntime: ClientRuntime,
+    clientRuntime: ClientRuntimeNode,
   ) {
     super();
     this.logger = logger;
@@ -106,7 +106,7 @@ export class RagService extends DisposableService {
     logger: Logger,
     telemetryService: TelemetryService,
     uiKarton: KartonService,
-    clientRuntime: ClientRuntime,
+    clientRuntime: ClientRuntimeNode,
   ) {
     const instance = new RagService(
       logger,
@@ -122,7 +122,7 @@ export class RagService extends DisposableService {
 
 const getFilePathsForReactComponentInfo = async (
   componentInfo: ReactSelectedElementInfo,
-  clientRuntime: ClientRuntime,
+  clientRuntime: ClientRuntimeNode,
 ): Promise<{
   codeMetadata: SelectedElement['codeMetadata'];
   coveredLevels: number;

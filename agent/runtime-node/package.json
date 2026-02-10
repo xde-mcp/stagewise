@@ -34,7 +34,6 @@
     "yauzl": "^3.2.0"
   },
   "devDependencies": {
-    "@stagewise/agent-runtime-interface": "workspace:*",
     "@types/express": "^5.0.3",
     "@types/node": "^20.0.0",
     "@types/proxy-from-env": "^1.0.4",

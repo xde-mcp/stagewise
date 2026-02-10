@@ -1,4 +1,4 @@
-import type { ClientRuntimeNode as ClientRuntime } from '@stagewise/agent-runtime-node';
+import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { isBinaryFile } from 'isbinaryfile';
 import { MAX_DIFF_TEXT_FILE_SIZE } from '@shared/karton-contracts/ui/shared-types';
 import fs from 'node:fs/promises';
@@ -277,7 +277,7 @@ export function rethrowCappedToolOutputError(error: unknown): never {
  * @returns Object with isWithinLimit boolean and fileSize if available
  */
 export async function checkFileSize(
-  clientRuntime: ClientRuntime,
+  clientRuntime: ClientRuntimeNode,
   filePath: string,
   maxSize: number = FILE_SIZE_LIMITS.DEFAULT_MAX_FILE_SIZE,
 ): Promise<{ isWithinLimit: boolean; fileSize?: number; error?: string }> {

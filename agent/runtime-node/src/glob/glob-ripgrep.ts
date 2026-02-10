@@ -1,8 +1,8 @@
 import type {
-  BaseFileSystemProvider,
+  FileSystemOperations,
   GlobResult,
   GlobOptions,
-} from '@stagewise/agent-runtime-interface';
+} from '../types.js';
 import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
@@ -118,7 +118,7 @@ async function parseRipgrepGlobOutput(
  * @returns GlobResult if successful, null if ripgrep unavailable/failed
  */
 export async function globWithRipgrep(
-  fileSystem: BaseFileSystemProvider,
+  fileSystem: FileSystemOperations,
   pattern: string,
   rgBinaryBasePath: string,
   options?: GlobOptions,

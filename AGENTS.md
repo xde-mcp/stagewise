@@ -65,10 +65,7 @@ plugins/
   angular/       - Angular framework plugin
 
 agent/
-  runtime-interface/ - Agent runtime interface definitions
   runtime-node/     - Node.js agent runtime implementation
-  tools/           - Agent tools and utilities
-  types/           - Shared agent type definitions
 
 examples/        - Framework integration examples (Next.js, Vue, Angular, etc.)
 ```

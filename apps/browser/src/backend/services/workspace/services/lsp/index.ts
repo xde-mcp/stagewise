@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import type {
   Diagnostic,
   Position,
@@ -41,7 +41,7 @@ export interface LspServiceEvents {
  */
 export class LspService extends DisposableService {
   private readonly logger: Logger;
-  private readonly clientRuntime: ClientRuntime;
+  private readonly clientRuntime: ClientRuntimeNode;
   private readonly emitter = new EventEmitter();
 
   /** Active LSP client instances: serverID -> LspClient */
@@ -56,7 +56,7 @@ export class LspService extends DisposableService {
   /** Cache of server activation checks */
   private activationCache = new Map<string, boolean>();
 
-  private constructor(logger: Logger, clientRuntime: ClientRuntime) {
+  private constructor(logger: Logger, clientRuntime: ClientRuntimeNode) {
     super();
     this.logger = logger;
     this.clientRuntime = clientRuntime;
@@ -67,7 +67,7 @@ export class LspService extends DisposableService {
    */
   public static async create(
     logger: Logger,
-    clientRuntime: ClientRuntime,
+    clientRuntime: ClientRuntimeNode,
   ): Promise<LspService> {
     const instance = new LspService(logger, clientRuntime);
     logger.debug(

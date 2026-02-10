@@ -1,4 +1,4 @@
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
@@ -29,7 +29,7 @@ export type WorkspaceInfo = {
 };
 
 export async function getWorkspaceInfo(
-  clientRuntime: ClientRuntime,
+  clientRuntime: ClientRuntimeNode,
   onError?: (error: Error) => void,
 ): Promise<WorkspaceInfo> {
   // Gather all project information
@@ -94,7 +94,7 @@ const packageJsonSchema = z.looseObject({
  * The returned dependencies are a unified (and de-duped) list of all dependencies, devDependencies and peerDependencies.
  */
 const getPackagesInPath = async (
-  clientRuntime: ClientRuntime,
+  clientRuntime: ClientRuntimeNode,
   rootPath: string,
   onError?: (error: Error) => void,
 ): Promise<Package[]> => {

@@ -1,4 +1,4 @@
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { join, dirname, resolve } from 'node:path';
 
 /**
@@ -31,7 +31,7 @@ import { join, dirname, resolve } from 'node:path';
  * ```
  */
 export async function findProjectRoot(
-  clientRuntime: ClientRuntime,
+  clientRuntime: ClientRuntimeNode,
 ): Promise<string | null> {
   const fileSystem = clientRuntime.fileSystem;
   let currentDir = fileSystem.getCurrentWorkingDirectory();

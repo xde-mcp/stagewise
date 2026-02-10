@@ -1,13 +1,13 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
+import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { capToolOutput } from '@/services/toolbox/utils';
 import { resolve } from 'node:path';
 
 const AGENTS_MD_FILENAME = 'AGENTS.md';
 
 export async function readAgentsMd(
-  clientRuntime: ClientRuntime,
+  clientRuntime: ClientRuntimeNode,
 ): Promise<string | null> {
   const path = clientRuntime.fileSystem.getCurrentWorkingDirectory();
   const agentsMdPath = resolve(path, AGENTS_MD_FILENAME);

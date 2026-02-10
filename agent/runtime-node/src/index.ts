@@ -5,18 +5,35 @@ import { promises as fs } from 'node:fs';
 import { minimatch } from 'minimatch';
 import ignore from 'ignore';
 import chokidar from 'chokidar';
-import {
-  BaseFileSystemProvider,
-  type ClientRuntime,
-  type FileChangeEvent,
-  type GrepResult,
-  type GlobResult,
-  type SearchReplaceMatch,
-  type SearchReplaceResult,
-  type GlobOptions,
-  type GrepOptions,
-} from '@stagewise/agent-runtime-interface';
 import { BINARY_DETECTION } from './shared.js';
+import type {
+  FileSystemProviderConfig,
+  FileChangeEvent,
+  GrepResult,
+  GlobResult,
+  GrepOptions,
+  GlobOptions,
+  SearchReplaceMatch,
+  SearchReplaceResult,
+} from './types.js';
+
+// Re-export all types for consumers
+export type {
+  FileSystemProviderConfig,
+  FileSystemOperations,
+  FileChangeEvent,
+  FileOperationResult,
+  FileContentResult,
+  DirectoryEntry,
+  DirectoryListResult,
+  GrepOptions,
+  GrepMatch,
+  GrepResult,
+  GlobOptions,
+  GlobResult,
+  SearchReplaceMatch,
+  SearchReplaceResult,
+} from './types.js';
 
 interface GitignoreInfo {
   ignore: ReturnType<typeof ignore>;
@@ -24,13 +41,18 @@ interface GitignoreInfo {
   patterns: string[];
 }
 
-export class NodeFileSystemProvider extends BaseFileSystemProvider {
+export class NodeFileSystemProvider {
+  private config: FileSystemProviderConfig;
   private gitignoreMap: Map<string, GitignoreInfo> = new Map();
   private gitignoreInitialized = false;
   /** Hot-path cache: gitignore entries sorted by directory depth (deep → shallow) */
   private sortedGitignoreEntries: GitignoreInfo[] = [];
 
-  getCurrentWorkingDirectory(): string {
+  constructor(config: FileSystemProviderConfig) {
+    this.config = config;
+  }
+
+  getCurrentWorkingDirectory() {
     return this.config.workingDirectory;
   }
 
@@ -740,8 +762,8 @@ export interface ClientRuntimeNodeConfig {
   rgBinaryBasePath: string;
 }
 
-export class ClientRuntimeNode implements ClientRuntime {
-  public fileSystem: BaseFileSystemProvider;
+export class ClientRuntimeNode {
+  public readonly fileSystem: NodeFileSystemProvider;
 
   constructor(config: ClientRuntimeNodeConfig) {
     this.fileSystem = new NodeFileSystemProvider({

@@ -1,14 +1,14 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import type { Readable } from 'node:stream';
-import type {
-  GrepMatch,
-  GrepResult,
-  BaseFileSystemProvider,
-  GrepOptions,
-} from '@stagewise/agent-runtime-interface';
 import { createInterface } from 'node:readline';
 import path, { relative } from 'node:path';
+import type {
+  FileSystemOperations,
+  GrepMatch,
+  GrepResult,
+  GrepOptions,
+} from '../types.js';
 import { getRipgrepPath } from '../vscode-ripgrep/get-path.js';
 
 /**
@@ -272,7 +272,7 @@ async function parseRipgrepGrepOutput(
  * @returns GrepResult if successful, null if ripgrep unavailable/failed
  */
 export async function grepWithRipgrep(
-  fileSystem: BaseFileSystemProvider,
+  fileSystem: FileSystemOperations,
   pattern: string,
   rgBinaryBasePath: string,
   options?: GrepOptions,

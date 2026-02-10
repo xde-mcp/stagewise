@@ -1,13 +1,13 @@
 import type {
-  BaseFileSystemProvider,
+  FileSystemOperations,
   GrepOptions,
   GrepResult,
-} from '@stagewise/agent-runtime-interface';
+} from '../types.js';
 import { grepNodeFallback } from './grep-node-fallback.js';
 import { grepWithRipgrep } from './grep-ripgrep.js';
 
 export async function grep(
-  fileSystem: BaseFileSystemProvider,
+  fileSystem: FileSystemOperations,
   pattern: string,
   rgBinaryBasePath: string,
   options?: GrepOptions,

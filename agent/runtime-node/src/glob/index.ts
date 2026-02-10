@@ -1,13 +1,13 @@
 import type {
-  BaseFileSystemProvider,
+  FileSystemOperations,
   GlobResult,
   GlobOptions,
-} from '@stagewise/agent-runtime-interface';
+} from '../types.js';
 import { globWithRipgrep } from './glob-ripgrep.js';
 import { globNodeFallback } from './glob-node-fallback.js';
 
 export async function glob(
-  fileSystem: BaseFileSystemProvider,
+  fileSystem: FileSystemOperations,
   pattern: string,
   rgBinaryBasePath: string,
   options?: GlobOptions,

@@ -1,6 +1,5 @@
 {
   "extends": "../../packages/typescript-config/base.json",
-  "references": [{ "path": "../runtime-interface" }],
   "compilerOptions": {
     "noEmit": false,
     "outDir": "./dist",
