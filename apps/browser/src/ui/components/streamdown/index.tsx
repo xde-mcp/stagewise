@@ -247,6 +247,7 @@ export const Streamdown = ({
         components={{
           code: MemoCode,
           a: MemoAnchor,
+          hr: MemoHr,
           h1: MemoH1,
           h2: MemoH2,
           h3: MemoH3,
@@ -517,6 +518,20 @@ const MemoAnchor = memo<
 );
 MemoAnchor.displayName = 'MarkdownAnchor';
 
+const HrComponent = ({
+  className,
+  ...props
+}: DetailedHTMLProps<HTMLAttributes<HTMLHRElement>, HTMLHRElement> &
+  ExtraProps) => {
+  return (
+    <hr
+      className={cn('mx-auto my-6 w-15/16 border-border-subtle', className)}
+      data-streamdown="horizontal-rule"
+      {...props}
+    />
+  );
+};
+
 // Custom heading components for compact chat rendering
 const H1Component = ({
   className,
@@ -619,6 +634,11 @@ const H6Component = ({
     </h6>
   );
 };
+
+const MemoHr = memo<
+  DetailedHTMLProps<HTMLAttributes<HTMLHRElement>, HTMLHRElement> & ExtraProps
+>(HrComponent, (p, n) => p.className === n.className);
+MemoHr.displayName = 'MarkdownHr';
 
 const MemoH1 = memo<
   DetailedHTMLProps<HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement> &
