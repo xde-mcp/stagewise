@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 // import { STAGEWISE_MD_FILENAME } from '../../generate-stagewise-md';
 import { existsSync } from 'node:fs';
 
-const STAGEWISE_MD_FILENAME = 'STAGEWISE.md';
+export const STAGEWISE_MD_FILENAME = 'STAGEWISE.md';
 
 export async function readStagewiseMd(path: string): Promise<string | null> {
   try {

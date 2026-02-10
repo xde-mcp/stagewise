@@ -17,13 +17,8 @@ import type { GlobalDataPathService } from '@/services/global-data-path';
 import { DisposableService } from '../disposable';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
-import {
-  generateStagewiseMd,
-  STAGEWISE_MD_FILENAME,
-} from '../agent/generate-stagewise-md';
-import { getModelOptions } from '../agent/utils/get-model-settings';
+import { STAGEWISE_MD_FILENAME } from '@/agents/shared/prompts/utils/read-stagewise-md';
 import type { AuthService } from '../auth';
-import { generateId } from 'ai';
 
 type WorkspaceChangedEvent =
   | { type: 'loaded'; selectedPath: string; name: string }
@@ -291,7 +286,7 @@ export class WorkspaceService extends DisposableService {
     });
   }
 
-  private async checkAndGenerateStagewiseMd(clientRuntime: ClientRuntime) {
+  private async checkAndGenerateStagewiseMd(_clientRuntime: ClientRuntime) {
     const stagewiseMdDirPath = this.workspacePathsService!.workspaceDataPath;
     if (existsSync(path.join(stagewiseMdDirPath, STAGEWISE_MD_FILENAME))) {
       this.logger.debug(
@@ -306,31 +301,15 @@ export class WorkspaceService extends DisposableService {
     const authKey = this.authService.accessToken;
     if (!authKey) return;
 
-    const posthogTraceId = generateId();
-
-    const modelOptions = getModelOptions('claude-haiku-4-5', authKey);
-    const modelOptionsWithTracing = {
-      model: this.telemetryService.withTracing(modelOptions.model, {
-        posthogTraceId,
-        posthogProperties: {
-          $ai_span_name: 'generate-stagewise-md',
-          modelId: modelOptions.model.modelId,
-          posthogTraceId,
-        },
-      }),
-      providerOptions: modelOptions.providerOptions,
-      headers: modelOptions.headers,
-    };
-
-    this.logger.debug('[WorkspaceService] Generating stagewise.md...');
-    await generateStagewiseMd(
-      modelOptionsWithTracing,
-      clientRuntime,
-      new ClientRuntimeNode({
-        workingDirectory: stagewiseMdDirPath,
-        rgBinaryBasePath: this.globalDataPathService.globalDataPath,
-      }),
-    );
+    // TODO: Implement stagewise.md generation with new agents approach
+    // await generateStagewiseMd(
+    //   modelOptionsWithTracing,
+    //   clientRuntime,
+    //   new ClientRuntimeNode({
+    //     workingDirectory: stagewiseMdDirPath,
+    //     rgBinaryBasePath: this.globalDataPathService.globalDataPath,
+    //   }),
+    // );
   }
 
   public async unloadWorkspace() {

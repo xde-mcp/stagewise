@@ -24,7 +24,7 @@ import { HistoryService } from './services/history';
 import { FaviconService } from './services/favicon';
 import { WebDataService } from './services/webdata';
 import { DownloadsService } from './services/download-manager';
-import { DiffHistoryService } from './services/agent/diff-history/index.new';
+import { DiffHistoryService } from './services/diff-history';
 import { AutoUpdateService } from './services/auto-update';
 import { DevToolAPIService } from './services/dev-tool-api';
 import {
@@ -37,9 +37,11 @@ import { ensureRipgrepInstalled } from '@stagewise/agent-runtime-node';
 import { shell } from 'electron';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { ToolboxService } from './services/toolbox';
-import { readStagewiseMd } from './services/agent/prompt-builder/utils/read-stagewise-md';
-import { readAgentsMd } from './services/agent/prompt-builder/utils/read-agents-md';
-import { STAGEWISE_MD_FILENAME } from './services/agent/generate-stagewise-md';
+import {
+  readStagewiseMd,
+  STAGEWISE_MD_FILENAME,
+} from './agents/shared/prompts/utils/read-stagewise-md';
+import { readAgentsMd } from './agents/shared/prompts/utils/read-agents-md';
 import { resolve } from 'node:path';
 import { ModelProviderService } from './agents/model-provider';
 

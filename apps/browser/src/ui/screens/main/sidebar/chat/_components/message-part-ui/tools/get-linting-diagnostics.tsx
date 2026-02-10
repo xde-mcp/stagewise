@@ -9,7 +9,7 @@ import { Loader2Icon, XCircleIcon } from 'lucide-react';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { cn } from '@/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
-import type { LintingDiagnostic } from '@stagewise/agent-tools';
+import type { LintingDiagnostic } from '@shared/karton-contracts/ui/agent/tools/types';
 
 export const GetLintingDiagnosticsToolPart = ({
   part,

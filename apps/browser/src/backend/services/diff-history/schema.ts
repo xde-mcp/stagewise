@@ -6,7 +6,7 @@ import {
   blob,
   primaryKey,
 } from 'drizzle-orm/sqlite-core';
-import { metaTable } from '../../../utils/migrate-database/types';
+import { metaTable } from '@/utils/migrate-database/types';
 
 export const meta = metaTable;
 export type AgentInstanceId = string;

@@ -8,7 +8,6 @@ import initSql from './schema.sql?raw';
 import { getArbitraryModel, getModelOptions } from './utils/get-model-settings';
 import type { ModelId } from '@shared/available-models';
 import type { GlobalDataPathService } from '../global-data-path';
-import { DiffHistoryService } from './diff-history';
 import { isContextLimitError } from './utils/is-context-limit-error';
 import { generateStagewiseMd } from './generate-stagewise-md';
 import type { KartonService } from '../karton';
@@ -134,7 +133,6 @@ const DEFAULT_AGENT_TIMEOUT = 180000; // 3 minutes
 const MAX_RECURSION_DEPTH = 50;
 
 export class AgentService {
-  private diffHistoryService: DiffHistoryService | null = null;
   private logger: Logger;
   private telemetryService: TelemetryService;
   private uiKarton: KartonService;
@@ -1002,12 +1000,6 @@ export class AgentService {
       }
     });
 
-    this.diffHistoryService = await DiffHistoryService.create(
-      this.logger,
-      this.uiKarton,
-      // this.globalDataPathService,
-    );
-
     // Initialize client
     await this.initializeClient();
 
@@ -1150,56 +1142,22 @@ export class AgentService {
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.acceptAllPendingEdits',
-        async (_callingClientId: string) => {
-          this.diffHistoryService?.acceptPendingChanges();
-        },
+        async (_callingClientId: string) => {},
       );
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.rejectAllPendingEdits',
-        async (_callingClientId: string) => {
-          const rejected = this.diffHistoryService?.rejectPendingChanges();
-          const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
-          if (!rejected || !chatId) return;
-
-          const existingRejectedEdits = this.rejectedEditsPerChat.get(chatId);
-          this.rejectedEditsPerChat.set(
-            chatId,
-            new Set([
-              ...(existingRejectedEdits ?? []),
-              ...Object.keys(rejected.filesToWrite),
-              ...Object.keys(rejected.filesToDelete),
-            ]),
-          );
-        },
+        async (_callingClientId: string) => {},
       );
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.acceptPendingEdit',
-        async (_callingClientId: string, filePath: string) => {
-          // Use partialAccept to accept only this specific file
-          this.diffHistoryService?.partialAccept([filePath]);
-        },
+        async (_callingClientId: string, _filePath: string) => {},
       );
 
       this.uiKarton.registerServerProcedureHandler(
         'agentChat.rejectPendingEdit',
-        async (_callingClientId: string, filePath: string) => {
-          const rejected = this.diffHistoryService?.partialReject([filePath]);
-          const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
-          if (!rejected || !chatId) return;
-
-          // Track rejected edits for this chat
-          const existingRejectedEdits = this.rejectedEditsPerChat.get(chatId);
-          this.rejectedEditsPerChat.set(
-            chatId,
-            new Set([
-              ...(existingRejectedEdits ?? []),
-              ...Object.keys(rejected.filesToWrite),
-              ...Object.keys(rejected.filesToDelete),
-            ]),
-          );
-        },
+        async (_callingClientId: string, _filePath: string) => {},
       );
 
       this.uiKarton.registerServerProcedureHandler(
@@ -1801,36 +1759,6 @@ export class AgentService {
             (result) => {
               if (!this.isWorking) return;
               if ('result' in result && hasDiffMetadata(result.result)) {
-                const absolutePath = this.clientRuntime?.fileSystem.resolvePath(
-                  result.result.hiddenFromLLM.diff.path,
-                );
-                if (!absolutePath) return;
-                const beforeContent = result.result.hiddenFromLLM.diff.before;
-                const afterContent = result.result.hiddenFromLLM.diff.after;
-                // Always ensure an initial snapshot exists.
-                // For existing files: add original content to initial snapshot
-                // For new files: create empty initial snapshot (file won't be in it)
-                // This ensures AGENT_EDIT is never history[0], so baseline != current
-                if (beforeContent !== null) {
-                  this.diffHistoryService?.addInitialFileSnapshotIfNeeded({
-                    [absolutePath]: beforeContent,
-                  });
-                } else {
-                  // New file - ensure initial snapshot exists but don't include this file
-                  // Also handle case where file was externally deleted after being accepted
-                  this.diffHistoryService?.addInitialFileSnapshotIfNeeded({});
-                  // Check if file exists in baseline but was deleted externally
-                  // If so, record the deletion to update the baseline
-                  this.diffHistoryService?.recordExternalDeletionIfNeeded(
-                    absolutePath,
-                  );
-                }
-                // Use pushAgentFileEdit which handles merging with current state
-                // Pass null for deletions, content for creates/updates
-                this.diffHistoryService?.pushAgentFileEdit(
-                  absolutePath,
-                  afterContent ?? null,
-                );
               }
               // Strip 'nonSerializableMetadata' from result, attach the rest to the tool output
               const cleanResult =
@@ -2296,8 +2224,6 @@ export class AgentService {
     const _idsAfter = new Set(toolCallIdsAfterUserMessage);
     const toolCallsUndone: Map<string, number> = new Map();
 
-    this.diffHistoryService?.revertToMessage(userMessageId);
-
     this.uiKarton.setState((draft) => {
       if (userMessageIndex !== -1) {
         const chat = draft.agentChat?.activeChat;
@@ -2556,60 +2482,26 @@ export class AgentService {
   /**
    * Accept all pending edits for the active chat
    */
-  public acceptAllPendingEdits(): void {
-    this.diffHistoryService?.acceptPendingChanges();
-  }
+  public acceptAllPendingEdits(): void {}
 
   /**
    * Reject all pending edits for the active chat
    */
-  public rejectAllPendingEdits(): void {
-    const rejected = this.diffHistoryService?.rejectPendingChanges();
-    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
-    if (!rejected || !chatId) return;
-
-    const existingRejectedEdits = this.rejectedEditsPerChat.get(chatId);
-    this.rejectedEditsPerChat.set(
-      chatId,
-      new Set([
-        ...(existingRejectedEdits ?? []),
-        ...Object.keys(rejected.filesToWrite),
-        ...Object.keys(rejected.filesToDelete),
-      ]),
-    );
-  }
+  public rejectAllPendingEdits(): void {}
 
   /**
    * Accept a single pending edit by file path
    */
-  public acceptPendingEdit(filePath: string): void {
-    this.diffHistoryService?.partialAccept([filePath]);
-  }
+  public acceptPendingEdit(_filePath: string): void {}
 
   /**
    * Reject a single pending edit by file path
    */
-  public rejectPendingEdit(filePath: string): void {
-    const rejected = this.diffHistoryService?.partialReject([filePath]);
-    const chatId = this.uiKarton.state.agentChat?.activeChat?.id;
-    if (!rejected || !chatId) return;
-
-    const existingRejectedEdits = this.rejectedEditsPerChat.get(chatId);
-    this.rejectedEditsPerChat.set(
-      chatId,
-      new Set([
-        ...(existingRejectedEdits ?? []),
-        ...Object.keys(rejected.filesToWrite),
-        ...Object.keys(rejected.filesToDelete),
-      ]),
-    );
-  }
+  public rejectPendingEdit(_filePath: string): void {}
 
   /**
    * Resets the diff history. Call acceptAllPendingEdits() first to clear UI state.
    * Used when workspace changes to prevent operations on invalid paths.
    */
-  public resetDiffHistory(): void {
-    this.diffHistoryService?.reset();
-  }
+  public resetDiffHistory(): void {}
 }

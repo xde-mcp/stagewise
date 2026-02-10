@@ -3,13 +3,13 @@ import { SandboxService } from '../sandbox';
 import type { KartonService } from '@/services/karton';
 import type { GlobalConfigService } from '@/services/global-config';
 import { DisposableService } from '@/services/disposable';
-import type { DiffHistoryService } from '@/services/agent/diff-history/index.new';
+import type { DiffHistoryService } from '@/services/diff-history';
 import type { WindowLayoutService } from '@/services/window-layout';
 import type { AuthService } from '@/services/auth';
 import type { TelemetryService } from '@/services/telemetry';
 import type { GlobalDataPathService } from '@/services/global-data-path';
 import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
-import { createAuthenticatedClient } from '@/services/agent/utils/create-authenticated-client';
+import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import { LspService } from '@/services/workspace/services/lsp';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import {

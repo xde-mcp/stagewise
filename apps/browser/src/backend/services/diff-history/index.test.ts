@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DiffHistoryService } from './index.new';
+import { DiffHistoryService } from '.';
 import { Logger } from '@/services/logger';
 import type { KartonService } from '@/services/karton';
 import type { GlobalDataPathService } from '@/services/global-data-path';

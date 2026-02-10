@@ -7,7 +7,7 @@ import os from 'node:os';
 
 import * as schema from '../schema';
 import initSchemaSql from '../schema.sql?raw';
-import { migrateDatabase } from '../../../../utils/migrate-database';
+import { migrateDatabase } from '../../../utils/migrate-database';
 import {
   computeOid,
   getSnapshot,
