@@ -1503,6 +1503,21 @@ export abstract class BaseAgent<
           }
         }
       });
+
+      // LLM providers don't support reasoning/thinking as the last part of a message.
+      // Strip trailing reasoning parts from the last assistant message after abort.
+      while (
+        lastMsg.parts.length > 0 &&
+        lastMsg.parts[lastMsg.parts.length - 1].type === 'reasoning'
+      ) {
+        lastMsg.parts.pop();
+        lastMsg.metadata?.partsMetadata?.pop();
+      }
+
+      // If the message is now empty (only had reasoning parts), remove it entirely.
+      if (lastMsg.parts.length === 0) {
+        draft.history.pop();
+      }
     });
   }
 
