@@ -138,7 +138,7 @@ export const ToolPartUI = ({
             <div
               className={cn(
                 'mask-alpha',
-                showBorder ? 'max-h-32' : 'max-h-none',
+                showBorder ? 'max-h-64' : 'max-h-none',
                 contentFooter && 'mb-6',
               )}
               style={maskStyle}
