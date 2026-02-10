@@ -211,7 +211,7 @@ function AgentErrorMessage({
   return (
     <div className="flex select-text flex-col gap-1">
       <div className="flex select-text flex-row items-baseline justify-start gap-1">
-        <IconTriangleWarning className="size-3 translate-y-[2px]" />
+        <IconTriangleWarning className="size-3 translate-y-[2px] text-muted-foreground" />
         <span className="select-text font-medium text-foreground text-sm">
           {heading}
         </span>
@@ -263,7 +263,7 @@ function OtherErrorMessage({ error }: { error: AgentErrorWithOtherError }) {
   return (
     <div className="flex select-text flex-col gap-1">
       <div className="flex select-text flex-row items-baseline justify-start gap-1">
-        <IconTriangleWarning className="size-3 translate-y-[2px]" />
+        <IconTriangleWarning className="size-3 translate-y-[2px] text-muted-foreground" />
         <span className="select-text font-medium text-foreground text-sm">
           Agent Error
         </span>

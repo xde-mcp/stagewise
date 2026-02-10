@@ -55,11 +55,15 @@ export interface ErrorDisplayProps {
 export function ErrorDisplay(props: ErrorDisplayProps) {
   return (
     <div className="flex w-full max-w-lg flex-col items-stretch justify-center gap-6">
-      <div className="items-bottom flex flex-row-reverse items-end justify-between gap-6 fill-base-500">
+      <div className="items-bottom flex flex-row-reverse items-end justify-between gap-6">
         {props.graphic ?? <div />}
         {
           <IconTriangleWarningFillDuo18
-            className={cn(props.dangerous ? 'size-24 text-red-600' : 'size-16')}
+            className={cn(
+              props.dangerous
+                ? 'size-24 text-red-600'
+                : 'size-16 text-muted-foreground',
+            )}
           />
         }
       </div>
