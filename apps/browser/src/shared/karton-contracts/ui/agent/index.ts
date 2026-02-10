@@ -1,4 +1,4 @@
-import type { UIDataTypes, UIMessage } from 'ai';
+import type { ToolUIPart, UIDataTypes, UIMessage } from 'ai';
 import type { ModelId } from '@shared/available-models';
 import type { UserMessageMetadata } from './metadata';
 import type { StagewiseUITools } from './tools/types';
@@ -12,6 +12,8 @@ export type AgentMessage = UIMessage<
   UIDataTypes,
   StagewiseUITools
 >;
+
+export type AgentToolUIPart = ToolUIPart<StagewiseUITools>;
 
 export type AgentState = {
   title: string; // The title of the agent - may not be necessary

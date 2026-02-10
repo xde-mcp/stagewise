@@ -1,12 +1,14 @@
 import type { Decorator } from '@storybook/react';
 import { useEffect, useState, useMemo } from 'react';
-import { MockKartonProvider } from '../mocks/mock-hooks';
-import type {
-  AppState,
-  ChatMessage,
-  TextUIPart,
-} from '@shared/karton-contracts/ui';
+import { MockKartonProvider, MockOpenAgentProvider } from '../mocks/mock-hooks';
+import type { AppState, TextUIPart } from '@shared/karton-contracts/ui';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { StreamingConfig } from '../mocks/streaming-configs';
+import {
+  DEFAULT_STORY_AGENT_ID,
+  updateAgentState,
+  getAgentHistory,
+} from './scenarios/shared-utilities';
 
 /**
  * Storybook decorator that simulates streaming assistant responses.
@@ -119,11 +121,13 @@ function StreamingSimulator({
   ]);
 
   // Build the streaming message state
+  const agentId = config.agentInstanceId ?? DEFAULT_STORY_AGENT_ID;
+
   const streamingState = useMemo(() => {
-    const existingChat = baseMockState?.agentChat?.activeChat;
+    const history = getAgentHistory(baseMockState ?? {}, agentId);
 
     // Find and update the target message
-    const updatedMessages = (existingChat?.messages || []).map((msg) => {
+    const updatedHistory = history.map((msg) => {
       if (msg.id !== config.messageId) return msg;
 
       // Update text parts
@@ -141,30 +145,27 @@ function StreamingSimulator({
       return {
         ...msg,
         parts: updatedParts,
-      } as ChatMessage;
+      } as AgentMessage;
     });
 
-    return {
-      ...baseMockState,
-      workspace: {
-        ...baseMockState?.workspace,
-      },
-      agentChat: {
-        ...baseMockState?.agentChat,
-        activeChat: existingChat
-          ? {
-              ...existingChat,
-              messages: updatedMessages,
-            }
-          : undefined,
-        isWorking,
-      },
-    } as Partial<AppState>;
-  }, [baseMockState, config.messageId, currentText, isComplete, isWorking]);
+    return updateAgentState(baseMockState ?? {}, agentId, () => ({
+      history: updatedHistory,
+      isWorking,
+    }));
+  }, [
+    baseMockState,
+    agentId,
+    config.messageId,
+    currentText,
+    isComplete,
+    isWorking,
+  ]);
 
   return (
     <MockKartonProvider mockState={streamingState}>
-      {children}
+      <MockOpenAgentProvider agentInstanceId={agentId}>
+        {children}
+      </MockOpenAgentProvider>
     </MockKartonProvider>
   );
 }

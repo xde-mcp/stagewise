@@ -135,65 +135,6 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.27)(jiti@2.6.1)(jsdom@26.1.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
-  agent/tools:
-    dependencies:
-      '@ai-sdk/anthropic':
-        specifier: 3.0.7
-        version: 3.0.7(zod@4.3.5)
-      '@ai-sdk/provider':
-        specifier: 3.0.1
-        version: 3.0.1
-      '@stagewise/api-client':
-        specifier: 2.1.0
-        version: 2.1.0(typescript@5.9.3)
-      ai:
-        specifier: 6.0.72
-        version: 6.0.72(zod@4.3.5)
-    devDependencies:
-      '@stagewise/agent-runtime-interface':
-        specifier: workspace:*
-        version: link:../runtime-interface
-      '@stagewise/agent-types':
-        specifier: workspace:*
-        version: link:../types
-      '@vitest/coverage-v8':
-        specifier: ^3.2.4
-        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.10.9)(jiti@2.6.1)(jsdom@26.1.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
-      esbuild:
-        specifier: 0.25.9
-        version: 0.25.9
-      rimraf:
-        specifier: ^5.0.0
-        version: 5.0.10
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.9)(jiti@2.6.1)(jsdom@26.1.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
-      zod:
-        specifier: 4.3.5
-        version: 4.3.5
-
-  agent/types:
-    dependencies:
-      ai:
-        specifier: 6.0.72
-        version: 6.0.72(zod@4.3.5)
-    devDependencies:
-      '@stagewise/api-client':
-        specifier: 2.1.0
-        version: 2.1.0(typescript@5.9.3)
-      rimraf:
-        specifier: ^5.0.0
-        version: 5.0.10
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
-      zod:
-        specifier: 4.3.5
-        version: 4.3.5
-
   apps/browser:
     dependencies:
       '@bokuweb/zstd-wasm':
@@ -296,12 +237,6 @@ importers:
       '@stagewise/agent-runtime-node':
         specifier: workspace:*
         version: link:../../agent/runtime-node
-      '@stagewise/agent-tools':
-        specifier: workspace:*
-        version: link:../../agent/tools
-      '@stagewise/agent-types':
-        specifier: workspace:*
-        version: link:../../agent/types
       '@stagewise/api-client':
         specifier: 2.1.0
         version: 2.1.0(typescript@5.9.3)
@@ -9615,7 +9550,7 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
-    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   temp-dir@3.0.0:
     resolution: {integrity: sha512-nHc6S/bwIilKHNRgK/3jlhDoIHcp45YgyiwcAk46Tr0LfEqGBVpmiAyuiuxeVE44m3mXnEeVhaipLOEWmH+Njw==}
@@ -14192,25 +14127,6 @@ snapshots:
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
       vitest: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.27)(jiti@2.6.1)(jsdom@26.1.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
-    transitivePeerDependencies:
-      - supports-color
-
-  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.10.9)(jiti@2.6.1)(jsdom@26.1.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
-    dependencies:
-      '@ampproject/remapping': 2.3.0
-      '@bcoe/v8-coverage': 1.0.2
-      ast-v8-to-istanbul: 0.3.10
-      debug: 4.4.3(supports-color@5.5.0)
-      istanbul-lib-coverage: 3.2.2
-      istanbul-lib-report: 3.0.1
-      istanbul-lib-source-maps: 5.0.6
-      istanbul-reports: 3.2.0
-      magic-string: 0.30.21
-      magicast: 0.3.5
-      std-env: 3.10.0
-      test-exclude: 7.0.1
-      tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.9)(jiti@2.6.1)(jsdom@26.1.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
     transitivePeerDependencies:
       - supports-color
 

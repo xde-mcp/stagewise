@@ -1,18 +1,10 @@
 import { z } from 'zod';
 import type { ModelId } from '@shared/available-models';
-import type { ExampleUserInputOutput } from '@stagewise/agent-tools';
 import type { UserMessageMetadata } from './agent/metadata';
 import type { ReactSelectedElementInfo } from '../../selected-elements/react';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import type { SelectedElement } from '../../selected-elements';
-import type {
-  UIMessage,
-  UIDataTypes,
-  UIMessagePart as AIMessagePart,
-} from 'ai';
-import type { UITools, ToolPart } from '@stagewise/agent-tools';
-import type { FileDiff as NewFileDiff } from './shared-types';
-import type { FileDiff } from '@stagewise/agent-types';
+import type { FileDiff } from './shared-types';
 import type {
   FilePickerRequest,
   GlobalConfig,
@@ -40,8 +32,6 @@ import type {
   AgentHistoryEntry,
   AgentMessage,
 } from './agent';
-
-export type ChatMessage = UIMessage<UserMessageMetadata, UIDataTypes, UITools>;
 
 /** Speed data point for download speed history */
 export type DownloadSpeedDataPoint = {
@@ -80,13 +70,10 @@ export type DownloadSummary = {
 };
 export type { UserMessageMetadata, ReactSelectedElementInfo };
 export type { SelectedElement } from '../../selected-elements';
-export type UIMessagePart = AIMessagePart<UIDataTypes, UITools>;
 
 export type InspirationWebsite = Awaited<
   ReturnType<TRPCClient<AppRouter>['inspiration']['list']['query']>
 >;
-
-export type { FileDiff };
 
 export type {
   TextUIPart,
@@ -95,8 +82,6 @@ export type {
   DynamicToolUIPart,
   ToolUIPart,
 } from 'ai';
-
-export type { ToolPart };
 
 // Permission settings types (Chrome-style model)
 export type {
@@ -111,10 +96,6 @@ export { PermissionSetting, configurablePermissionTypes };
 // Dev toolbar types
 export type { WidgetId, DevToolbarOriginSettings };
 
-export type History = ChatMessage[];
-
-type ChatId = string;
-
 /**
  * Lightweight chat metadata for the chat history list.
  * Does not include messages - those are loaded on demand.
@@ -124,26 +105,6 @@ export type ChatSummary = {
   title: string;
   createdAt: Date;
   updatedAt: Date;
-};
-
-export type Chat = {
-  id: string;
-  title: string;
-  createdAt: Date;
-  messages: History;
-  error?: AgentError;
-  usage: { maxContextWindowSize: number; usedContextWindowSize: number };
-  pendingEdits: FileDiff[];
-  draftInputContent?: string; // TipTap JSON string for unsent input
-};
-
-/**
- * A message that has been queued for sending when the agent is busy.
- */
-export type QueuedMessage = {
-  id: string;
-  message: ChatMessage;
-  queuedAt: Date;
 };
 
 export enum AgentErrorType {
@@ -495,20 +456,6 @@ export type AppState = {
       host?: string;
     };
   };
-  agentChat: {
-    selectedModel: ModelSettings;
-    /** The currently active chat loaded in memory (null if none) */
-    activeChat: Chat | null;
-    /** Paginated list of chat metadata for history dropdown (most recent first) */
-    chatList: ChatSummary[];
-    /** Whether there are more chats in DB beyond what's loaded in chatList */
-    hasMoreChats: boolean;
-    isWorking: boolean;
-    /** Queue of messages waiting to be sent, keyed by chat ID */
-    messageQueue: Record<ChatId, QueuedMessage[]>;
-    /** Chats where queue processing is paused (e.g., after an error) */
-    queuePausedChats: Record<ChatId, boolean>;
-  } | null;
   agents: {
     instances: {
       [agentInstanceId: string]: {
@@ -523,8 +470,8 @@ export type AppState = {
   };
   toolbox: {
     [agentInstanceId: string]: {
-      pendingFileDiffs: NewFileDiff[];
-      editSummary: NewFileDiff[];
+      pendingFileDiffs: FileDiff[];
+      editSummary: FileDiff[];
     };
   };
   workspace: {
@@ -666,57 +613,6 @@ export type AuthStatus =
 export type KartonContract = {
   state: AppState;
   serverProcedures: {
-    agentChat: {
-      create: (draftContent?: string) => Promise<string>;
-      switch: (chatId: string, oldChatDraft?: string) => Promise<void>;
-      delete: (chatId: string) => Promise<void>;
-      sendUserMessage: (message: ChatMessage) => Promise<void>;
-      retrySendingUserMessage: () => Promise<void>;
-      /** Abort the current agent call. Returns restoration info if early abort conditions are met. */
-      abortAgentCall: () => Promise<{
-        /** Whether the user message was restored (chat reverted to pre-message state) */
-        restored: boolean;
-        /** The user message to repopulate in the input (only present if restored is true) */
-        userMessage?: ChatMessage;
-      }>;
-      approveToolCall: (toolCallId: string) => Promise<void>;
-      rejectToolCall: (toolCallId: string) => Promise<void>;
-      submitUserInteractionToolInput: (
-        toolCallId: string,
-        input: ExampleUserInputOutput & { type: 'exampleUserInputTool' },
-        // | (YourNewUserInputOutput & { type: 'yourNewUserInputTool' }),
-      ) => Promise<{ success: true } | { success: false; error: string }>; // Returns zod validation success or failure
-      cancelUserInteractionToolInput: (toolCallId: string) => Promise<void>; // Cancels the user interaction tool input.
-      acceptAllPendingEdits: () => Promise<void>;
-      rejectAllPendingEdits: () => Promise<void>;
-      acceptPendingEdit: (path: string) => Promise<void>;
-      rejectPendingEdit: (path: string) => Promise<void>;
-      undoEditsUntilUserMessage: (
-        userMessageId: string,
-        chatId: string,
-        shouldUndoUserMessage?: boolean,
-      ) => Promise<void>;
-      setSelectedModel: (model: ModelId) => Promise<void>;
-      // Message queue procedures
-      /** Queue a message to be sent when the agent finishes (called automatically by sendUserMessage when agent is working) */
-      queueUserMessage: (message: ChatMessage) => Promise<void>;
-      /** Remove a specific queued message */
-      removeQueuedMessage: (
-        chatId: string,
-        queuedMessageId: string,
-      ) => Promise<void>;
-      /** Clear all queued messages for a chat */
-      clearMessageQueue: (chatId: string) => Promise<void>;
-      /** Resume queue processing after it was paused (e.g., after an error) */
-      resumeMessageQueue: (chatId: string) => Promise<void>;
-      /** Abort current agent call and immediately send a queued message */
-      sendQueuedMessageNow: (
-        chatId: string,
-        queuedMessageId: string,
-      ) => Promise<void>;
-      /** Load more chats into the chatList (pagination) */
-      loadMoreChats: () => Promise<{ loaded: number; hasMore: boolean }>;
-    };
     agents: {
       create: (initialInputState?: string) => Promise<string>;
       resume: (agentId: string) => Promise<void>;
@@ -1004,7 +900,6 @@ export const defaultState: KartonContract['state'] = {
       host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
     },
   },
-  agentChat: null,
   agents: { instances: {} },
   toolbox: {},
   workspace: null,

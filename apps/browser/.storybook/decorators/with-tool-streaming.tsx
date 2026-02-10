@@ -1,11 +1,16 @@
 import type { Decorator } from '@storybook/react';
 import { useEffect, useState, useMemo } from 'react';
-import { MockKartonProvider } from '../mocks/mock-hooks';
+import { MockKartonProvider, MockOpenAgentProvider } from '../mocks/mock-hooks';
+import type { AppState } from '@shared/karton-contracts/ui';
 import type {
-  AppState,
-  ChatMessage,
-  ToolPart,
-} from '@shared/karton-contracts/ui';
+  AgentMessage,
+  AgentToolUIPart,
+} from '@shared/karton-contracts/ui/agent';
+import {
+  DEFAULT_STORY_AGENT_ID,
+  updateAgentState,
+  getAgentHistory,
+} from './scenarios/shared-utilities';
 
 export interface ToolStreamingPhase {
   /** Duration in milliseconds */
@@ -46,6 +51,8 @@ export interface ToolStreamingConfig {
   phases: ToolStreamingPhase[];
   /** Whether to loop the animation */
   loop?: boolean;
+  /** Agent instance ID - defaults to DEFAULT_STORY_AGENT_ID */
+  agentInstanceId?: string;
 }
 
 /**
@@ -210,11 +217,13 @@ function ToolStreamingSimulator({
   ]);
 
   // Build the tool streaming state
+  const agentId = config.agentInstanceId ?? DEFAULT_STORY_AGENT_ID;
+
   const streamingState = useMemo(() => {
-    const existingChat = baseMockState?.agentChat?.activeChat;
+    const history = getAgentHistory(baseMockState ?? {}, agentId);
 
     // Find and update the target message
-    const updatedMessages = (existingChat?.messages || []).map((msg) => {
+    const updatedHistory = history.map((msg) => {
       if (msg.id !== config.messageId) return msg;
 
       // Update tool parts
@@ -224,13 +233,13 @@ function ToolStreamingSimulator({
           'toolCallId' in part &&
           part.toolCallId === config.toolCallId
         ) {
-          const toolPart = part as ToolPart;
+          const toolPart = part as AgentToolUIPart;
 
           // Build updated tool part based on current phase
-          const updatedToolPart: ToolPart = {
+          const updatedAgentToolUIPart: AgentToolUIPart = {
             ...toolPart,
             state: currentPhase?.state,
-          } as ToolPart;
+          } as AgentToolUIPart;
 
           // Add phase-specific data
           if (currentPhase?.state === 'input-streaming') {
@@ -248,21 +257,21 @@ function ToolStreamingSimulator({
               );
             }
 
-            updatedToolPart.input = inputData;
+            updatedAgentToolUIPart.input = inputData;
           } else if (currentPhase?.state === 'input-available') {
-            updatedToolPart.input =
+            updatedAgentToolUIPart.input =
               currentPhase.completeInput || toolPart.input;
           } else if (currentPhase?.state === 'output-available') {
-            updatedToolPart.input =
+            updatedAgentToolUIPart.input =
               currentPhase.completeInput || toolPart.input;
-            (updatedToolPart as any).output = currentPhase.output;
+            (updatedAgentToolUIPart as any).output = currentPhase.output;
           } else if (currentPhase?.state === 'output-error') {
-            updatedToolPart.input =
+            updatedAgentToolUIPart.input =
               currentPhase.completeInput || toolPart.input;
-            (updatedToolPart as any).errorText = currentPhase.errorText;
+            (updatedAgentToolUIPart as any).errorText = currentPhase.errorText;
           }
 
-          return updatedToolPart;
+          return updatedAgentToolUIPart;
         }
         return part;
       });
@@ -270,27 +279,16 @@ function ToolStreamingSimulator({
       return {
         ...msg,
         parts: updatedParts,
-      } as ChatMessage;
+      } as AgentMessage;
     });
 
-    return {
-      ...baseMockState,
-      workspace: {
-        ...baseMockState?.workspace,
-      },
-      agentChat: {
-        ...baseMockState?.agentChat,
-        activeChat: existingChat
-          ? {
-              ...existingChat,
-              messages: updatedMessages,
-            }
-          : undefined,
-        isWorking,
-      },
-    } as Partial<AppState>;
+    return updateAgentState(baseMockState ?? {}, agentId, () => ({
+      history: updatedHistory,
+      isWorking,
+    }));
   }, [
     baseMockState,
+    agentId,
     config.messageId,
     config.toolCallId,
     currentPhase,
@@ -300,7 +298,9 @@ function ToolStreamingSimulator({
 
   return (
     <MockKartonProvider mockState={streamingState}>
-      {children}
+      <MockOpenAgentProvider agentInstanceId={agentId}>
+        {children}
+      </MockOpenAgentProvider>
     </MockKartonProvider>
   );
 }

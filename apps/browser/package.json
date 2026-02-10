@@ -58,8 +58,6 @@
     "@shikijs/colorized-brackets": "3.21.0",
     "@stagewise/agent-runtime-interface": "workspace:*",
     "@stagewise/agent-runtime-node": "workspace:*",
-    "@stagewise/agent-tools": "workspace:*",
-    "@stagewise/agent-types": "workspace:*",
     "@stagewise/api-client": "2.1.0",
     "@stagewise/karton": "workspace:*",
     "@stagewise/stage-ui": "workspace:*",

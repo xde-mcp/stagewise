@@ -16,6 +16,9 @@ export interface StreamingConfig {
 
   /** Whether to loop the animation */
   loop?: boolean;
+
+  /** Agent instance ID - defaults to DEFAULT_STORY_AGENT_ID */
+  agentInstanceId?: string;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { defaultRehypePlugins, Streamdown as StreamdownBase } from 'streamdown';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 import { CodeBlock } from '../ui/code-block';
 import { StreamingCodeBlock } from '../ui/streaming-code-block';
 import { Mermaid } from '../ui/mermaid';
@@ -21,7 +22,6 @@ import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollb
 import { CopyCheckIcon, CopyIcon } from 'lucide-react';
 import type { BundledLanguage } from 'shiki';
 import type { ExtraProps } from 'react-markdown';
-import { useKartonState } from '@/hooks/use-karton';
 import {
   Tooltip,
   TooltipContent,
@@ -461,9 +461,7 @@ const AnchorComponent = ({
   HTMLAnchorElement
 > &
   ExtraProps) => {
-  const conversationId = useKartonState(
-    (s) => s.agentChat?.activeChat?.id ?? 'unknown',
-  );
+  const [openAgent] = useOpenAgent();
 
   // Parse href for attachment links (element:, image:, file:, text-clip:, wsfile:, color:)
   const attachmentLink = useMemo(() => parseAttachmentLink(href), [href]);
@@ -474,9 +472,9 @@ const AnchorComponent = ({
     if (!href) return '';
     return href.replaceAll(
       encodeURIComponent('{{CONVERSATION_ID}}'),
-      conversationId,
+      openAgent,
     );
-  }, [conversationId, href]);
+  }, [openAgent, href]);
 
   // If it's an attachment link, render the appropriate component
   if (attachmentLink) return <AttachmentLinkRouter linkData={attachmentLink} />;

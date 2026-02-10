@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { ClientRuntime } from '@stagewise/agent-runtime-interface';
-import { capToolOutput } from '@stagewise/agent-tools';
+import { capToolOutput } from '@/services/toolbox/utils';
 import { resolve } from 'node:path';
 
 const AGENTS_MD_FILENAME = 'AGENTS.md';

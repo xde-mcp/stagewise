@@ -1,6 +1,9 @@
 import type { Decorator } from '@storybook/react';
 import { useState, useEffect } from 'react';
-import { MockKartonProvider } from '../../mocks/mock-hooks';
+import {
+  MockKartonProvider,
+  MockOpenAgentProvider,
+} from '../../mocks/mock-hooks';
 import type { AppState } from '@shared/karton-contracts/ui';
 import { TimelineExecutor, type TimelineEvent } from './timeline-engine';
 import {
@@ -10,6 +13,7 @@ import {
   createTextPart,
   REALISTIC_TIMING,
   splitIntoChunks,
+  DEFAULT_STORY_AGENT_ID,
 } from './shared-utilities';
 
 /**
@@ -104,6 +108,7 @@ function SimpleResponseScenarioSimulator({
       (newState) => {
         setCurrentState(newState);
       },
+      DEFAULT_STORY_AGENT_ID,
     );
 
     setExecutor(newExecutor);
@@ -135,6 +140,7 @@ function SimpleResponseScenarioSimulator({
             (newState) => {
               setCurrentState(newState);
             },
+            DEFAULT_STORY_AGENT_ID,
           );
           setExecutor(newExecutor);
           newExecutor.start();
@@ -146,7 +152,11 @@ function SimpleResponseScenarioSimulator({
   }, [config.loop, executor, baseMockState]);
 
   return (
-    <MockKartonProvider mockState={currentState}>{children}</MockKartonProvider>
+    <MockKartonProvider mockState={currentState}>
+      <MockOpenAgentProvider agentInstanceId={DEFAULT_STORY_AGENT_ID}>
+        {children}
+      </MockOpenAgentProvider>
+    </MockKartonProvider>
   );
 }
 

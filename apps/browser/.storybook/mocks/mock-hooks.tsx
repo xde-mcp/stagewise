@@ -9,10 +9,11 @@
  * These defaults ensure tool components (OverwriteFileTool, MultiEditTool) work without errors.
  */
 
-import { useContext, useCallback, useRef } from 'react';
+import { useContext, useCallback, useRef, useState } from 'react';
 import { createContext, type ReactNode, useMemo } from 'react';
 import type { AppState, KartonContract } from '@shared/karton-contracts/ui';
 import { defaultState } from '@shared/karton-contracts/ui';
+import { DEFAULT_STORY_AGENT_ID } from '../decorators/scenarios/shared-utilities';
 
 // Create the mock Karton context
 interface MockKartonContextValue {
@@ -56,6 +57,13 @@ export const MockKartonProvider: React.FC<MockKartonProviderProps> = ({
       globalConfig: {
         ...completeDefaultState.globalConfig,
         ...mockState.globalConfig,
+      },
+      // Properly merge agents.instances
+      agents: {
+        instances: {
+          ...completeDefaultState.agents?.instances,
+          ...mockState.agents?.instances,
+        },
       },
       workspace: mockState.workspace
         ? {
@@ -180,3 +188,28 @@ export function useChatActions() {
 
   return { setChatInput };
 }
+
+// Mock context for open agent
+const MockOpenAgentContext = createContext<
+  ReturnType<typeof useState<string | null>>
+>([null, () => {}]);
+
+export interface MockOpenAgentProviderProps {
+  children: ReactNode;
+  agentInstanceId?: string;
+}
+
+export const MockOpenAgentProvider: React.FC<MockOpenAgentProviderProps> = ({
+  children,
+  agentInstanceId = DEFAULT_STORY_AGENT_ID,
+}) => {
+  const state = useState<string | null>(agentInstanceId);
+  return (
+    <MockOpenAgentContext.Provider value={state}>
+      {children}
+    </MockOpenAgentContext.Provider>
+  );
+};
+
+// Mock implementation of useOpenAgent
+export const useOpenAgent = () => useContext(MockOpenAgentContext);

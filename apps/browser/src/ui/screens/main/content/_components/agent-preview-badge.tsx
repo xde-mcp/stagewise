@@ -9,13 +9,17 @@ import { HotkeyActions } from '@shared/hotkeys';
 import { HotkeyComboText } from '@/components/hotkey-combo-text';
 import { useKartonState } from '@/hooks/use-karton';
 import { cn } from '@/utils';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 type AgentPreviewBadgeProps = {
   onClick: () => void;
 };
 
 export function AgentPreviewBadge({ onClick }: AgentPreviewBadgeProps) {
-  const isWorking = useKartonState((s) => s.agentChat?.isWorking || false);
+  const [openAgent] = useOpenAgent();
+  const isWorking = useKartonState(
+    (s) => s.agents.instances[openAgent]?.state.isWorking || false,
+  );
 
   return (
     <div className="flex h-full shrink-0 flex-row items-center rounded-lg rounded-br-[6px] p-1 pr-2">

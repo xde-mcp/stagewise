@@ -1,11 +1,21 @@
 import type {
   AppState,
-  ChatMessage,
   TextUIPart,
   ReasoningUIPart,
-  ToolPart,
   FileUIPart,
 } from '@shared/karton-contracts/ui';
+import {
+  AgentTypes,
+  type AgentMessage,
+  type AgentToolUIPart,
+  type AgentState,
+} from '@shared/karton-contracts/ui/agent';
+import type { ModelId } from '@shared/available-models';
+
+/**
+ * Type for an agent instance in the state
+ */
+export type AgentInstance = AppState['agents']['instances'][string];
 
 /**
  * Generate a unique ID for messages and tool calls
@@ -155,7 +165,7 @@ export function createUserMessage(
     selectedElements?: any[];
     fileAttachments?: FileUIPart[];
   },
-): ChatMessage {
+): AgentMessage {
   const parts = [...(options?.fileAttachments || []), createTextPart(text)];
 
   return {
@@ -175,7 +185,7 @@ export function createUserMessage(
  */
 export function createAssistantMessage(
   options: { id?: string; parts?: any[]; thinkingDuration?: number } = {},
-): ChatMessage {
+): AgentMessage {
   return {
     id: options.id || generateId(),
     role: 'assistant',
@@ -188,6 +198,33 @@ export function createAssistantMessage(
         : {}),
     },
   };
+}
+
+/**
+ * Create an assistant message with text content (convenience wrapper)
+ * This provides a simpler API for stories that just need text + optional tools
+ */
+export function createAssistantMessageWithText(
+  text: string,
+  options?: {
+    id?: string;
+    isStreaming?: boolean;
+    toolParts?: any[];
+    thinkingPart?: ReasoningUIPart;
+    thinkingDuration?: number;
+  },
+): AgentMessage {
+  const parts: any[] = [
+    ...(options?.thinkingPart ? [options.thinkingPart] : []),
+    ...(options?.toolParts || []),
+    createTextPart(text, options?.isStreaming ? 'streaming' : undefined),
+  ];
+
+  return createAssistantMessage({
+    id: options?.id,
+    parts,
+    thinkingDuration: options?.thinkingDuration,
+  });
 }
 
 /**
@@ -204,7 +241,7 @@ export function createReadFileToolPart(
     toolCallId?: string;
     explanation?: string;
   },
-): ToolPart {
+): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
 
   if (state === 'input-streaming') {
@@ -216,7 +253,7 @@ export function createReadFileToolPart(
         relative_path: relativePath,
         explanation: options?.explanation || 'Reading file',
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   if (state === 'input-available') {
@@ -228,7 +265,7 @@ export function createReadFileToolPart(
         relative_path: relativePath,
         explanation: options?.explanation || 'Reading file',
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   // state === 'output-available'
@@ -252,7 +289,7 @@ export function createReadFileToolPart(
         cappedSize: content.length,
       },
     },
-  } as ToolPart;
+  } as AgentToolUIPart;
 }
 
 /**
@@ -269,7 +306,7 @@ export function createOverwriteFileToolPart(
     toolCallId?: string;
     oldContent?: string;
   },
-): ToolPart {
+): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
   const beforeContent =
     options?.oldContent ||
@@ -284,7 +321,7 @@ export function createOverwriteFileToolPart(
         relative_path: relativePath,
         content,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   if (state === 'input-available') {
@@ -296,7 +333,7 @@ export function createOverwriteFileToolPart(
         relative_path: relativePath,
         content,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   // state === 'output-available'
@@ -310,18 +347,15 @@ export function createOverwriteFileToolPart(
     },
     output: {
       message: 'File updated successfully',
-      hiddenFromLLM: {
-        diff: {
-          path: relativePath,
-          before: beforeContent,
-          after: content,
-        },
+      _diff: {
+        before: beforeContent,
+        after: content,
       },
       nonSerializableMetadata: {
         undoExecute: null,
       },
     },
-  } as ToolPart;
+  } as AgentToolUIPart;
 }
 
 /**
@@ -338,7 +372,7 @@ export function createMultiEditToolPart(
     toolCallId?: string;
     oldContent?: string;
   },
-): ToolPart {
+): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
   const beforeContent =
     options?.oldContent ||
@@ -353,7 +387,7 @@ export function createMultiEditToolPart(
         relative_path: relativePath,
         edits: [{ old_string: beforeContent, new_string: newContent }],
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   if (state === 'input-available') {
@@ -365,7 +399,7 @@ export function createMultiEditToolPart(
         relative_path: relativePath,
         edits: [{ old_string: beforeContent, new_string: newContent }],
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   // state === 'output-available'
@@ -382,18 +416,15 @@ export function createMultiEditToolPart(
       result: {
         editsApplied: 1,
       },
-      hiddenFromLLM: {
-        diff: {
-          path: relativePath,
-          before: beforeContent,
-          after: newContent,
-        },
+      _diff: {
+        before: beforeContent,
+        after: newContent,
       },
       nonSerializableMetadata: {
         undoExecute: null,
       },
     },
-  } as ToolPart;
+  } as AgentToolUIPart;
 }
 
 /**
@@ -409,7 +440,7 @@ export function createDeleteFileToolPart(
     toolCallId?: string;
     deletedContent?: string;
   },
-): ToolPart {
+): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
   const fileContent =
     options?.deletedContent ||
@@ -423,7 +454,7 @@ export function createDeleteFileToolPart(
       input: {
         relative_path: relativePath,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   if (state === 'input-available') {
@@ -434,7 +465,7 @@ export function createDeleteFileToolPart(
       input: {
         relative_path: relativePath,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   // state === 'output-available'
@@ -447,15 +478,12 @@ export function createDeleteFileToolPart(
     },
     output: {
       message: 'File deleted successfully',
-      hiddenFromLLM: {
-        diff: {
-          path: relativePath,
-          before: fileContent,
-          after: '',
-        },
+      _diff: {
+        before: fileContent,
+        after: null, // null indicates file was deleted
       },
     },
-  } as ToolPart;
+  } as AgentToolUIPart;
 }
 
 /**
@@ -480,7 +508,7 @@ export function createListFilesToolPart(
     pattern?: string;
     maxDepth?: number;
   },
-): ToolPart {
+): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
   const totalFiles = files.filter((f) => f.type === 'file').length;
   const totalDirectories = files.filter((f) => f.type === 'directory').length;
@@ -496,7 +524,7 @@ export function createListFilesToolPart(
         pattern: options?.pattern,
         maxDepth: options?.maxDepth,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   if (state === 'input-available') {
@@ -510,7 +538,7 @@ export function createListFilesToolPart(
         pattern: options?.pattern,
         maxDepth: options?.maxDepth,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   // state === 'output-available'
@@ -543,7 +571,7 @@ export function createListFilesToolPart(
         itemsRemoved: 0,
       },
     },
-  } as ToolPart;
+  } as AgentToolUIPart;
 }
 
 /**
@@ -561,7 +589,7 @@ export function createGlobToolPart(
     relativePath?: string;
     matchedPaths?: string[];
   },
-): ToolPart {
+): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
 
   if (state === 'input-streaming') {
@@ -573,7 +601,7 @@ export function createGlobToolPart(
         pattern,
         relative_path: options?.relativePath,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   if (state === 'input-available') {
@@ -585,7 +613,7 @@ export function createGlobToolPart(
         pattern,
         relative_path: options?.relativePath,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   // state === 'output-available'
@@ -606,7 +634,7 @@ export function createGlobToolPart(
         itemsRemoved: 0,
       },
     },
-  } as ToolPart;
+  } as AgentToolUIPart;
 }
 
 /**
@@ -624,7 +652,7 @@ export function createGrepSearchToolPart(
     caseSensitive?: boolean;
     explanation?: string;
   },
-): ToolPart {
+): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
 
   if (state === 'input-streaming') {
@@ -638,7 +666,7 @@ export function createGrepSearchToolPart(
         explanation: options?.explanation || 'Searching for pattern',
         case_sensitive: options?.caseSensitive ?? false,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   if (state === 'input-available') {
@@ -652,7 +680,7 @@ export function createGrepSearchToolPart(
         explanation: options?.explanation || 'Searching for pattern',
         case_sensitive: options?.caseSensitive ?? false,
       },
-    } as ToolPart;
+    } as AgentToolUIPart;
   }
 
   // state === 'output-available'
@@ -673,86 +701,261 @@ export function createGrepSearchToolPart(
         matches: [],
       },
     },
-  } as ToolPart;
+  } as AgentToolUIPart;
+}
+
+// ============================================================================
+// Agent Instance Helpers
+// ============================================================================
+
+/**
+ * Default agent instance ID used for stories
+ */
+export const DEFAULT_STORY_AGENT_ID = 'story-agent-1';
+
+/**
+ * Generate a unique agent instance ID
+ */
+export function generateAgentInstanceId(): string {
+  return `agent-${generateId()}`;
 }
 
 /**
- * Update a specific message in the state
+ * Create an agent instance configuration for the state
  */
-export function updateMessageInState(
+export function createAgentInstance(
+  type: AgentTypes = AgentTypes.CHAT,
+  options?: {
+    title?: string;
+    canSelectModel?: boolean;
+    allowUserInput?: boolean;
+    activeModelId?: ModelId;
+    initialHistory?: AgentMessage[];
+    isWorking?: boolean;
+    inputState?: string;
+  },
+): AgentInstance {
+  return {
+    type,
+    canSelectModel: options?.canSelectModel ?? true,
+    requiredModelCapabilities: {
+      inputModalities: {
+        text: true,
+        image: true,
+        video: false,
+        audio: false,
+        file: true,
+      },
+      outputModalities: {
+        text: true,
+        image: false,
+        video: false,
+        audio: false,
+        file: false,
+      },
+      toolCalling: true,
+      intelligence: { canPlan: true, canCode: true },
+    },
+    allowUserInput: options?.allowUserInput ?? true,
+    parentAgentInstanceId: null,
+    state: {
+      title: options?.title ?? 'Test Agent',
+      isWorking: options?.isWorking ?? false,
+      history: options?.initialHistory ?? [],
+      compactedHistory: undefined,
+      lastCompactedMessageId: undefined,
+      queuedMessages: [],
+      activeModelId: options?.activeModelId ?? 'claude-sonnet-4-5',
+      inputState: options?.inputState ?? '',
+      usedTokens: 0,
+    },
+  };
+}
+
+/**
+ * Create initial state with a single agent instance
+ */
+export function createStateWithAgent(
+  agentInstanceId: string,
+  agentInstance: AgentInstance,
+  additionalState?: Partial<AppState>,
+): Partial<AppState> {
+  return {
+    ...additionalState,
+    agents: {
+      instances: {
+        ...(additionalState?.agents?.instances ?? {}),
+        [agentInstanceId]: agentInstance,
+      },
+    },
+  };
+}
+
+/**
+ * Create initial state with default agent (convenience function)
+ */
+export function createDefaultAgentState(
+  options?: {
+    initialHistory?: AgentMessage[];
+    isWorking?: boolean;
+    title?: string;
+    activeModelId?: ModelId;
+    canSelectModel?: boolean;
+    allowUserInput?: boolean;
+    inputState?: string;
+  },
+  additionalState?: Partial<AppState>,
+): Partial<AppState> {
+  return createStateWithAgent(
+    DEFAULT_STORY_AGENT_ID,
+    createAgentInstance(AgentTypes.CHAT, options),
+    additionalState,
+  );
+}
+
+// ============================================================================
+// Agent State Manipulation Helpers
+// ============================================================================
+
+/**
+ * Update a specific message in an agent's history
+ */
+export function updateMessageInAgentState(
   state: Partial<AppState>,
+  agentInstanceId: string,
   messageId: string,
-  updater: (message: ChatMessage) => ChatMessage,
+  updater: (message: AgentMessage) => AgentMessage,
 ): Partial<AppState> {
-  const existingChat = state.agentChat?.activeChat;
+  const agentInstance = state.agents?.instances?.[agentInstanceId];
+  if (!agentInstance) return state;
 
-  const updatedMessages = (existingChat?.messages || []).map((msg) => {
-    if (msg.id === messageId) {
-      return updater(msg);
-    }
-    return msg;
-  });
+  const updatedHistory = agentInstance.state.history.map((msg) =>
+    msg.id === messageId ? updater(msg) : msg,
+  );
 
   return {
     ...state,
-    workspace: {
-      ...state.workspace,
+    agents: {
+      ...state.agents,
+      instances: {
+        ...state.agents?.instances,
+        [agentInstanceId]: {
+          ...agentInstance,
+          state: {
+            ...agentInstance.state,
+            history: updatedHistory,
+          },
+        },
+      },
     },
-    agentChat: {
-      ...state.agentChat,
-      activeChat: existingChat
-        ? {
-            ...existingChat,
-            messages: updatedMessages,
-          }
-        : undefined,
-    },
-  } as Partial<AppState>;
+  };
 }
 
 /**
- * Add a new message to the state
+ * Add a message to an agent's history
  */
-export function addMessageToState(
+export function addMessageToAgentState(
   state: Partial<AppState>,
-  message: ChatMessage,
+  agentInstanceId: string,
+  message: AgentMessage,
 ): Partial<AppState> {
-  const existingChat = state.agentChat?.activeChat;
-
-  const updatedMessages = [...(existingChat?.messages || []), message];
+  const agentInstance = state.agents?.instances?.[agentInstanceId];
+  if (!agentInstance) return state;
 
   return {
     ...state,
-    workspace: {
-      ...state.workspace,
+    agents: {
+      ...state.agents,
+      instances: {
+        ...state.agents?.instances,
+        [agentInstanceId]: {
+          ...agentInstance,
+          state: {
+            ...agentInstance.state,
+            history: [...agentInstance.state.history, message],
+          },
+        },
+      },
     },
-    agentChat: {
-      ...state.agentChat,
-      activeChat: existingChat
-        ? {
-            ...existingChat,
-            messages: updatedMessages,
-          }
-        : undefined,
-    },
-  } as Partial<AppState>;
+  };
 }
 
 /**
- * Set the isWorking flag in the state
+ * Set the isWorking flag for an agent
  */
-export function setIsWorkingInState(
+export function setAgentIsWorking(
   state: Partial<AppState>,
+  agentInstanceId: string,
   isWorking: boolean,
 ): Partial<AppState> {
+  const agentInstance = state.agents?.instances?.[agentInstanceId];
+  if (!agentInstance) return state;
+
   return {
     ...state,
-    workspace: {
-      ...state.workspace,
+    agents: {
+      ...state.agents,
+      instances: {
+        ...state.agents?.instances,
+        [agentInstanceId]: {
+          ...agentInstance,
+          state: {
+            ...agentInstance.state,
+            isWorking,
+          },
+        },
+      },
     },
-    agentChat: {
-      ...state.agentChat,
-      isWorking,
+  };
+}
+
+/**
+ * Update the agent state with a recipe function (Immer-like pattern)
+ */
+export function updateAgentState(
+  state: Partial<AppState>,
+  agentInstanceId: string,
+  updater: (agentState: AgentState) => Partial<AgentState>,
+): Partial<AppState> {
+  const agentInstance = state.agents?.instances?.[agentInstanceId];
+  if (!agentInstance) return state;
+
+  const updates = updater(agentInstance.state);
+
+  return {
+    ...state,
+    agents: {
+      ...state.agents,
+      instances: {
+        ...state.agents?.instances,
+        [agentInstanceId]: {
+          ...agentInstance,
+          state: {
+            ...agentInstance.state,
+            ...updates,
+          },
+        },
+      },
     },
-  } as Partial<AppState>;
+  };
+}
+
+/**
+ * Get the history from an agent instance in state
+ */
+export function getAgentHistory(
+  state: Partial<AppState>,
+  agentInstanceId: string,
+): AgentMessage[] {
+  return state.agents?.instances?.[agentInstanceId]?.state.history ?? [];
+}
+
+/**
+ * Get the isWorking flag from an agent instance in state
+ */
+export function getAgentIsWorking(
+  state: Partial<AppState>,
+  agentInstanceId: string,
+): boolean {
+  return state.agents?.instances?.[agentInstanceId]?.state.isWorking ?? false;
 }

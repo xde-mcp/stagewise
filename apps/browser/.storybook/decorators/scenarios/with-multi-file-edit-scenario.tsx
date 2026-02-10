@@ -1,6 +1,9 @@
 import type { Decorator } from '@storybook/react';
 import { useState, useEffect } from 'react';
-import { MockKartonProvider } from '../../mocks/mock-hooks';
+import {
+  MockKartonProvider,
+  MockOpenAgentProvider,
+} from '../../mocks/mock-hooks';
 import type { AppState } from '@shared/karton-contracts/ui';
 import { TimelineExecutor, type TimelineEvent } from './timeline-engine';
 import {
@@ -11,6 +14,7 @@ import {
   createMultiEditToolPart,
   REALISTIC_TIMING,
   getRandomDuration,
+  DEFAULT_STORY_AGENT_ID,
 } from './shared-utilities';
 
 /**
@@ -113,6 +117,7 @@ function MultiFileEditScenarioSimulator({
       timeline,
       baseMockState || {},
       setCurrentState,
+      DEFAULT_STORY_AGENT_ID,
     );
     setExecutor(newExecutor);
     newExecutor.start();
@@ -133,6 +138,7 @@ function MultiFileEditScenarioSimulator({
             timeline,
             baseMockState || {},
             setCurrentState,
+            DEFAULT_STORY_AGENT_ID,
           );
           setExecutor(newExecutor);
           newExecutor.start();
@@ -144,7 +150,11 @@ function MultiFileEditScenarioSimulator({
   }, [config.loop, executor, baseMockState]);
 
   return (
-    <MockKartonProvider mockState={currentState}>{children}</MockKartonProvider>
+    <MockKartonProvider mockState={currentState}>
+      <MockOpenAgentProvider agentInstanceId={DEFAULT_STORY_AGENT_ID}>
+        {children}
+      </MockOpenAgentProvider>
+    </MockKartonProvider>
   );
 }
 
@@ -301,12 +311,9 @@ function buildMultiFileEditTimeline(
         result: {
           editsApplied: 1,
         },
-        hiddenFromLLM: {
-          diff: {
-            path: file.path,
-            before: file.beforeContent,
-            after: file.afterContent,
-          },
+        _diff: {
+          before: file.beforeContent,
+          after: file.afterContent,
         },
         nonSerializableMetadata: {
           undoExecute: null,

@@ -27,76 +27,78 @@ export default {
 Pass mock state via story parameters. The mock system provides sensible defaults, but you can override specific fields:
 
 ```tsx
+import { createDefaultAgentState, createUserMessage } from '@sb/decorators/scenarios/shared-utilities';
+
 export const MyStory: Story = {
   parameters: {
-    mockKartonState: {
-      // Global configuration (defaults provided)
-      globalConfig: {
-        openFilesInIde: 'vscode', // or 'cursor', 'webstorm', 'other'
-      },
-      // Workspace state (defaults provided)
-      workspace: {
-        agent: {
-          accessPath: '/mock/workspace/path', // Required for file IDE links
-        },
-      },
-      agentChat: {
-        activeChatId: 'chat-1',
-        chats: {
-          'chat-1': {
-            title: 'Test Chat',
-            messages: [...],
-            // ...
-          },
-        },
+    mockKartonState: createDefaultAgentState(
+      {
+        activeModelId: 'anthropic-claude-3-5-sonnet',
+        history: [
+          createUserMessage('Hello, how can you help?'),
+        ],
         isWorking: false,
       },
-    },
+      {
+        // Global configuration (defaults provided)
+        globalConfig: {
+          openFilesInIde: 'vscode', // or 'cursor', 'webstorm', 'other'
+        },
+        // Workspace state (defaults provided)
+        workspace: {
+          agent: {
+            accessPath: '/mock/workspace/path', // Required for file IDE links
+          },
+        },
+      }
+    ),
   },
 };
 ```
 
-**Note:** The decorator automatically provides defaults for `globalConfig.openFilesInIde` and `workspace.agent.accessPath`, so you only need to override them if you want specific values.
+**Note:** The `createDefaultAgentState` helper automatically provides defaults for common fields. The `withMockKarton` decorator also provides `MockOpenAgentProvider` context for components that use the `useOpenAgent` hook.
 
 ### 3. Using Mock Data Helpers
 
-The `chat-data.ts` file provides helper functions to create common chat scenarios:
+The `shared-utilities.ts` file provides helper functions to create agent state and messages:
 
 ```tsx
 import {
-  createSimpleChat,
-  createChatWithToolCalls,
   createUserMessage,
   createAssistantMessage,
-} from '../../../.storybook/mocks/chat-data';
+  createAssistantMessageWithText,
+  createDefaultAgentState,
+  createOverwriteFileToolPart,
+  DEFAULT_STORY_AGENT_ID,
+} from '@sb/decorators/scenarios/shared-utilities';
 
-// Use preset scenarios
-const chat = createSimpleChat();
-
-// Or create custom messages
-const userMsg = createUserMessage('Hello!');
-const assistantMsg = createAssistantMessage('Hi there!', {
-  toolParts: [createOverwriteFileToolPart('file.ts', 'content')],
+// Create default agent state with messages
+const state = createDefaultAgentState({
+  activeModelId: 'model-id',
+  history: [
+    createUserMessage('Hello!'),
+    createAssistantMessageWithText('Hi there!', {
+      toolParts: [createOverwriteFileToolPart('file.ts', 'content', 'complete')],
+    }),
+  ],
 });
 ```
 
 ## Available Helpers
 
-### Chat Scenarios
+### State Builders
 
-- `createEmptyChat()` - Empty chat with no messages
-- `createSimpleChat()` - Simple back-and-forth conversation
-- `createChatWithManyMessages()` - Long conversation with 10+ messages
-- `createStreamingChat()` - Chat with incomplete streaming message
-- `createChatWithToolCalls()` - Chat with tool call examples
-- `createChatWithError()` - Chat with error state
-- `createChatWithFileAttachments()` - Chat with file attachments
+- `createDefaultAgentState(options?, additionalState?)` - Create complete agent state
+- `createAgentInstance(type?, options?)` - Create a single agent instance
+- `createStateWithAgent(agentId, agentInstance, additionalState?)` - Create state with specific agent
 
 ### Message Builders
 
 - `createUserMessage(text, options?)` - Create user message
-- `createAssistantMessage(text, options?)` - Create assistant message
-- `createTextPart(text)` - Create text message part
+- `createAssistantMessage(options?)` - Create assistant message with parts
+- `createAssistantMessageWithText(text, options?)` - Convenience wrapper that auto-creates text part
+- `createTextPart(text, state?)` - Create text message part
+- `createReasoningPart(text, state?)` - Create thinking/reasoning part
 - `createFilePart(filename, mediaType, url)` - Create file attachment
 
 ### Tool Part Builders
@@ -104,13 +106,18 @@ const assistantMsg = createAssistantMessage('Hi there!', {
 - `createOverwriteFileToolPart(path, content, state?, oldContent?)` - File overwrite tool with diff support
 - `createReadFileToolPart(path, content, state?)` - File read tool
 - `createMultiEditToolPart(path, newContent, state?, oldContent?)` - Multi-edit tool with diff support
+- `createListFilesToolPart(path, result, state?)` - List files tool
+- `createGlobToolPart(pattern, result, state?)` - Glob pattern search tool
+- `createGrepSearchToolPart(query, result, state?)` - Grep search tool
+- `createDeleteFileToolPart(path, state?)` - Delete file tool
 
 ### States
 
 Tool calls can be in different states:
-- `'streaming'` - Tool call in progress (no result yet)
-- `'complete'` - Tool call completed successfully
-- `'error'` - Tool call failed
+- `'input-streaming'` - Tool input being generated
+- `'input-available'` - Tool input complete, awaiting execution
+- `'output-available'` - Tool executed successfully
+- `'output-error'` - Tool execution failed
 
 ## Streaming Simulation
 
@@ -121,37 +128,24 @@ The mock system supports simulating streaming assistant responses for realistic 
 Use the `withStreamingMessage` decorator to animate message content progressively:
 
 ```tsx
-import { withStreamingMessage } from '../../../.storybook/decorators/with-streaming-message';
-import { createStreamingConfig } from '../../../.storybook/mocks/streaming-configs';
+import { withStreamingMessage } from '@sb/decorators/with-streaming-message';
+import { createStreamingConfig } from '@sb/mocks/streaming-configs';
+import { createDefaultAgentState, createAssistantMessage } from '@sb/decorators/scenarios/shared-utilities';
 
 export const StreamingExample: Story = {
   decorators: [withStreamingMessage, withMockKarton],
-  args: {
-    message: createAssistantMessage('', { id: 'streaming-msg' }),
-    isLastMessage: true,
-  },
   parameters: {
     streamingConfig: createStreamingConfig(
       'streaming-msg',
       "Hey there! I hope you're doing well.",
       'normalWord'  // preset: 'fastChar', 'normalWord', 'slowSentence', 'oneShot'
     ),
-    mockKartonState: {
-      workspace: {
-      },
-      agentChat: {
-        activeChatId: 'test-chat',
-        chats: {
-          'test-chat': {
-            messages: [
-              createAssistantMessage('', { id: 'streaming-msg' }),
-            ],
-            // ...
-          },
-        },
-        isWorking: true,
-      },
-    },
+    mockKartonState: createDefaultAgentState({
+      history: [
+        createAssistantMessage({ id: 'streaming-msg', parts: [] }),
+      ],
+      isWorking: true,
+    }),
   },
 };
 ```
@@ -218,12 +212,15 @@ See the existing stories for examples:
 ```
 .storybook/
 ├── decorators/
-│   ├── mock-karton-provider.tsx     # Core mock provider implementation
 │   ├── with-mock-karton.tsx         # Storybook decorator for static state
-│   └── with-streaming-message.tsx   # Storybook decorator for streaming simulation
+│   ├── with-streaming-message.tsx   # Storybook decorator for streaming simulation
+│   ├── with-tool-streaming.tsx      # Storybook decorator for tool streaming
+│   └── scenarios/
+│       ├── shared-utilities.ts      # Mock data generators and state helpers
+│       ├── timeline-engine.ts       # Timeline-based scenario execution
+│       └── with-*-scenario.tsx      # Various scenario decorators
 └── mocks/
-    ├── chat-data.ts                 # Mock data generators
-    ├── mock-hooks.tsx               # Mock hook implementations
+    ├── mock-hooks.tsx               # Mock hook implementations (MockKartonProvider, MockOpenAgentProvider)
     ├── streaming-configs.ts         # Streaming configuration and presets
     └── README.md                    # This file
 ```

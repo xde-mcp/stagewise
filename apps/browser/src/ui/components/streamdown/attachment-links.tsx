@@ -8,6 +8,7 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { useKartonState } from '@/hooks/use-karton';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 import { usePostHog } from 'posthog-js/react';
 import {
   useAttachmentMetadata,
@@ -259,9 +260,7 @@ export const WorkspaceFileLink = ({
   incomplete,
 }: WorkspaceFileLinkProps) => {
   const posthog = usePostHog();
-  const conversationId = useKartonState(
-    (s) => s.agentChat?.activeChat?.id ?? 'unknown',
-  );
+  const [openAgent] = useOpenAgent();
   const openInIdeChoice = useKartonState((s) => s.globalConfig.openFilesInIde);
   const ideName = IDE_SELECTION_ITEMS[openInIdeChoice];
   const filePathTools = useFileIDEHref();
@@ -275,10 +274,10 @@ export const WorkspaceFileLink = ({
     let href = filePathTools.getFileIDEHref(pathWithLine);
     href = href.replaceAll(
       encodeURIComponent('{{CONVERSATION_ID}}'),
-      conversationId,
+      openAgent,
     );
     return href;
-  }, [filePath, lineNumber, filePathTools, conversationId]);
+  }, [filePath, lineNumber, filePathTools, openAgent]);
 
   return (
     <Tooltip>

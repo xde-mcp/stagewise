@@ -11,20 +11,32 @@ import {
   withErrorRecoveryScenario,
   withComplexRefactoringScenario,
 } from '@sb/decorators/scenarios';
-import { createEmptyChat } from '@sb/mocks/chat-data';
+import { createDefaultAgentState } from '@sb/decorators/scenarios/shared-utilities';
 import { availableModels } from '@shared/available-models';
 
 const meta: Meta<typeof ChatHistory> = {
   title: 'Chat/Agent/Scenarios/Agent Lifecycle',
   component: ChatHistory,
   tags: ['autodocs'],
+  decorators: [
+    // Virtuoso requires a container with defined height to calculate viewport
+    (Story) => (
+      <div style={{ height: '100vh', minHeight: '400px' }}>
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;
 type Story = StoryObj<typeof ChatHistory>;
 
 // Base mock state for all stories
+// Scenario decorators handle agent state internally, so we only need workspace config
 const baseState: Partial<AppState> = {
+  ...createDefaultAgentState({
+    activeModelId: availableModels[0]?.modelId,
+  }),
   workspace: {
     path: '/Users/user/projects/my-app',
     paths: {
@@ -40,15 +52,6 @@ const baseState: Partial<AppState> = {
     agent: {
       accessPath: '/Users/user/projects/my-app',
     },
-  },
-  agentChat: {
-    activeChat: { ...createEmptyChat(), id: 'streaming-chat' },
-    chatList: [],
-    hasMoreChats: false,
-    isWorking: false,
-    messageQueue: {},
-    queuePausedChats: {},
-    selectedModel: availableModels[0],
   },
   userExperience: {
     storedExperienceData: {

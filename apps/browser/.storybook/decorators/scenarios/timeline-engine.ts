@@ -1,5 +1,11 @@
 import type { AppState } from '@shared/karton-contracts/ui';
-import { splitIntoChunks } from './shared-utilities';
+import {
+  splitIntoChunks,
+  DEFAULT_STORY_AGENT_ID,
+  addMessageToAgentState,
+  setAgentIsWorking,
+  updateMessageInAgentState,
+} from './shared-utilities';
 
 /**
  * Timeline event types
@@ -123,6 +129,7 @@ interface TimelineExecutionState {
   isPaused: boolean;
   events: TimelineEvent[];
   streamingStates: Map<string, StreamingState>;
+  agentInstanceId: string;
 }
 
 /**
@@ -150,6 +157,7 @@ export class TimelineExecutor {
     events: TimelineEvent[],
     initialState: Partial<AppState>,
     onStateChange: (state: Partial<AppState>) => void,
+    agentInstanceId: string = DEFAULT_STORY_AGENT_ID,
   ) {
     // Sort events by timestamp
     const sortedEvents = [...events].sort((a, b) => a.timestamp - b.timestamp);
@@ -161,6 +169,7 @@ export class TimelineExecutor {
       isPaused: false,
       events: sortedEvents,
       streamingStates: new Map(),
+      agentInstanceId,
     };
 
     this.onStateChange = onStateChange;
@@ -280,25 +289,11 @@ export class TimelineExecutor {
    * Add a new message
    */
   private handleAddMessage(event: AddMessageEvent): void {
-    const existingChat = this.state.currentState.agentChat?.activeChat;
-
-    const updatedMessages = [...(existingChat?.messages || []), event.message];
-
-    this.state.currentState = {
-      ...this.state.currentState,
-      workspace: {
-        ...this.state.currentState.workspace,
-      },
-      agentChat: {
-        ...this.state.currentState.agentChat,
-        activeChat: existingChat
-          ? {
-              ...existingChat,
-              messages: updatedMessages,
-            }
-          : undefined,
-      },
-    } as Partial<AppState>;
+    this.state.currentState = addMessageToAgentState(
+      this.state.currentState,
+      this.state.agentInstanceId,
+      event.message,
+    );
 
     this.emitStateChange();
   }
@@ -557,16 +552,11 @@ export class TimelineExecutor {
    * Set isWorking flag
    */
   private handleSetIsWorking(event: SetIsWorkingEvent): void {
-    this.state.currentState = {
-      ...this.state.currentState,
-      workspace: {
-        ...this.state.currentState.workspace,
-      },
-      agentChat: {
-        ...this.state.currentState.agentChat,
-        isWorking: event.isWorking,
-      },
-    } as Partial<AppState>;
+    this.state.currentState = setAgentIsWorking(
+      this.state.currentState,
+      this.state.agentInstanceId,
+      event.isWorking,
+    );
 
     this.emitStateChange();
   }
@@ -578,30 +568,12 @@ export class TimelineExecutor {
     messageId: string,
     updater: (message: any) => any,
   ): void {
-    const existingChat = this.state.currentState.agentChat?.activeChat;
-
-    const updatedMessages = (existingChat?.messages || []).map((msg: any) => {
-      if (msg.id === messageId) {
-        return updater(msg);
-      }
-      return msg;
-    });
-
-    this.state.currentState = {
-      ...this.state.currentState,
-      workspace: {
-        ...this.state.currentState.workspace,
-      },
-      agentChat: {
-        ...this.state.currentState.agentChat,
-        activeChat: existingChat
-          ? {
-              ...existingChat,
-              messages: updatedMessages,
-            }
-          : undefined,
-      },
-    } as Partial<AppState>;
+    this.state.currentState = updateMessageInAgentState(
+      this.state.currentState,
+      this.state.agentInstanceId,
+      messageId,
+      updater,
+    );
 
     this.emitStateChange();
   }

@@ -56,9 +56,9 @@ export {
   createListFilesToolPart,
   createGlobToolPart,
   createGrepSearchToolPart,
-  updateMessageInState,
-  addMessageToState,
-  setIsWorkingInState,
+  updateMessageInAgentState,
+  addMessageToAgentState,
+  setAgentIsWorking,
 } from './shared-utilities';
 
 // Scenario decorators

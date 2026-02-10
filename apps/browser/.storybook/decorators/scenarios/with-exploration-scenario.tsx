@@ -1,6 +1,9 @@
 import type { Decorator } from '@storybook/react';
 import { useState, useEffect } from 'react';
-import { MockKartonProvider } from '../../mocks/mock-hooks';
+import {
+  MockKartonProvider,
+  MockOpenAgentProvider,
+} from '../../mocks/mock-hooks';
 import type { AppState } from '@shared/karton-contracts/ui';
 import { TimelineExecutor, type TimelineEvent } from './timeline-engine';
 import {
@@ -16,6 +19,7 @@ import {
   createGrepSearchToolPart,
   REALISTIC_TIMING,
   getRandomDuration,
+  DEFAULT_STORY_AGENT_ID,
 } from './shared-utilities';
 
 /**
@@ -139,6 +143,7 @@ function ExplorationScenarioSimulator({
       timeline,
       baseMockState || {},
       setCurrentState,
+      DEFAULT_STORY_AGENT_ID,
     );
     setExecutor(newExecutor);
     newExecutor.start();
@@ -159,6 +164,7 @@ function ExplorationScenarioSimulator({
             timeline,
             baseMockState || {},
             setCurrentState,
+            DEFAULT_STORY_AGENT_ID,
           );
           setExecutor(newExecutor);
           newExecutor.start();
@@ -170,7 +176,11 @@ function ExplorationScenarioSimulator({
   }, [config.loop, executor, baseMockState]);
 
   return (
-    <MockKartonProvider mockState={currentState}>{children}</MockKartonProvider>
+    <MockKartonProvider mockState={currentState}>
+      <MockOpenAgentProvider agentInstanceId={DEFAULT_STORY_AGENT_ID}>
+        {children}
+      </MockOpenAgentProvider>
+    </MockKartonProvider>
   );
 }
 
@@ -574,12 +584,9 @@ function buildExplorationTimeline(
             editsApplied: 1,
           },
         }),
-        hiddenFromLLM: {
-          diff: {
-            path: edit.path,
-            before: edit.beforeContent,
-            after: edit.afterContent,
-          },
+        _diff: {
+          before: edit.beforeContent,
+          after: edit.afterContent,
         },
         nonSerializableMetadata: {
           undoExecute: null,
