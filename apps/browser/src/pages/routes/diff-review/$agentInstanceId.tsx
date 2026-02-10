@@ -153,6 +153,14 @@ const FileDiffItem: FC<{
   );
 };
 
+function EmptyContainer({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-screen w-screen flex-col items-center justify-center bg-background px-4">
+      {children}
+    </div>
+  );
+}
+
 function Page() {
   const { agentInstanceId } = Route.useParams();
   const isConnected = useKartonConnected();
@@ -354,32 +362,32 @@ function Page() {
   // Loading state while waiting for connection or fetching
   if (!isConnected || isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <EmptyContainer>
         <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
-      </div>
+      </EmptyContainer>
     );
   }
 
   // No chat found
   if (!chatFound) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-4">
+      <EmptyContainer>
         <p className="text-muted-foreground text-sm">Chat not found</p>
-      </div>
+      </EmptyContainer>
     );
   }
 
   // No pending edits
   if (pendingEdits.length === 0) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-4">
+      <EmptyContainer>
         <p className="text-muted-foreground text-sm">No pending changes</p>
-      </div>
+      </EmptyContainer>
     );
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-background">
+    <div className="flex h-screen w-screen flex-col bg-background">
       {/* Header */}
       <div className="flex items-center border-border-subtle border-b px-6 py-4">
         <div className="mx-auto flex w-full max-w-4xl items-center gap-3">
