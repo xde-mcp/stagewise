@@ -1,6 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AnimatedGradientBackground } from '@ui/components/ui/animated-gradient-background';
-import { Logo } from '@ui/components/ui/logo';
 import { SidebarNav } from '@/components/sidebar-nav';
 import {
   IconGearFillDuo18,
@@ -20,6 +18,7 @@ import {
 import { Outlet } from '@tanstack/react-router';
 import { buttonVariants } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
+import LogoImage from '@assets/icons/icon-64.png';
 
 export const Route = createFileRoute('/_internal-app')({
   component: RouteComponent,
@@ -42,13 +41,11 @@ function Sidebar() {
   return (
     <div className="flex h-full min-w-fit max-w-64 basis-1/4 flex-col items-start justify-between gap-2 py-2 pl-2">
       <div className="flex flex-row items-center justify-start gap-4 dark:drop-shadow-md">
-        <div className="-ml-0.5 flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full">
-          <AnimatedGradientBackground className="absolute inset-0 z-0 size-full" />
-          <Logo
-            color="white"
-            className="z-10 mr-px mb-px size-1/2 shadow-2xs"
-          />
-        </div>
+        <img
+          src={LogoImage}
+          alt="stagewise"
+          className="size-10 rounded-full ring-1 ring-derived-strong"
+        />
       </div>
       <div className="mt-6 flex w-full flex-1 flex-col items-start justify-start">
         <SidebarNav>
