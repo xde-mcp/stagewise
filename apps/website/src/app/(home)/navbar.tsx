@@ -1,18 +1,16 @@
 'use client';
 
-import { AnimatedGradientBackground } from '@/components/landing/animated-gradient-background';
-import { Logo } from '@/components/landing/logo';
+import { LogoText } from '@stagewise/stage-ui/components/logo-text';
+import Image from 'next/image';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { MenuIcon, XIcon } from 'lucide-react';
-import {
-  IconUserSettingsFillDuo18,
-  IconDownload4FillDuo18,
-} from 'nucleo-ui-fill-duo-18';
+import { IconUserSettingsFillDuo18 } from 'nucleo-ui-fill-duo-18';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 function NavbarButton({
   children,
@@ -39,36 +37,6 @@ function NavbarButton({
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string>('#');
-  const [isMobile, setIsMobile] = useState(false);
-  const [isOsSupported, setIsOsSupported] = useState(true);
-
-  // Detect user OS and set download URL
-  useEffect(() => {
-    const platform = navigator.platform.toLowerCase();
-    const userAgent = navigator.userAgent.toLowerCase();
-
-    // Detect mobile devices
-    const mobileCheck =
-      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-        userAgent,
-      );
-    setIsMobile(mobileCheck);
-
-    if (platform.includes('mac') || userAgent.includes('mac')) {
-      setDownloadUrl(
-        'https://dl.stagewise.io/download/stagewise/beta/macos/arm64',
-      );
-    } else if (platform.includes('win') || userAgent.includes('win')) {
-      setDownloadUrl('https://dl.stagewise.io/download/stagewise/beta/win/x64');
-    } else if (platform.includes('linux') || userAgent.includes('linux')) {
-      setDownloadUrl(
-        'https://dl.stagewise.io/download/stagewise/beta/linux/deb/x86_64',
-      );
-    } else {
-      setIsOsSupported(false);
-    }
-  }, []);
 
   return (
     <div className="fixed top-0 left-0 z-50 flex w-full justify-center bg-background/80 backdrop-blur-lg">
@@ -79,16 +47,20 @@ export function Navbar() {
             'h-[calc-size(auto,size)] h-auto border-zinc-200 border-b shadow-sm dark:border-zinc-800',
         )}
       >
-        <div className="flex w-full items-center justify-between sm:w-24">
+        <div className="flex w-full items-center justify-between sm:w-auto">
           <Link
             href="/"
-            className="relative size-10 scale-100 cursor-pointer overflow-hidden rounded-full shadow-md ring-1 ring-black/20 ring-inset"
+            className="flex items-center gap-2"
+            aria-label="stagewise"
           >
-            <AnimatedGradientBackground className="pointer-events-none absolute inset-0 size-full" />
-            <Logo
-              className="pointer-events-none absolute top-[24%] left-[24%] z-10 size-1/2 drop-shadow-xs"
-              color="white"
+            <Image
+              src="/icon.png"
+              alt=""
+              width={28}
+              height={28}
+              className="size-7 rounded-full ring-1 ring-border"
             />
+            <LogoText className="h-6 text-foreground dark:text-white" />
           </Link>
           <Button
             variant="secondary"
@@ -120,7 +92,7 @@ export function Navbar() {
             Account
             <IconUserSettingsFillDuo18 className="size-4" />
           </Link>
-          {!isMobile && isOsSupported && (
+          {/* {!isMobile && isOsSupported && (
             <Link
               href={downloadUrl}
               target="_blank"
@@ -130,7 +102,7 @@ export function Navbar() {
               Download
               <IconDownload4FillDuo18 className="size-4" />
             </Link>
-          )}
+          )} */}
         </div>
       </div>
     </div>

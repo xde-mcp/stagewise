@@ -25,7 +25,7 @@ export function Footer() {
             }
           >
             Backed by{' '}
-            <span className="mx-1 inline-flex size-4 items-center justify-center bg-[#f26622] font-normal text-white text-xs">
+            <span className="mr-1 ml-2 inline-flex size-4 items-center justify-center bg-[#f26622] font-normal text-white text-xs">
               Y
             </span>
             <span className="font-normal text-[#f26622]">Combinator</span>
@@ -56,6 +56,34 @@ export function Footer() {
             }
           >
             Discord
+            <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />
+          </Link>
+          <Link
+            href="https://x.com/stagewise_io"
+            className="group flex items-center text-zinc-900 transition-colors dark:text-white"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() =>
+              posthog?.capture('footer_link_click', {
+                destination: 'x',
+              })
+            }
+          >
+            X
+            <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />
+          </Link>
+          <Link
+            href="https://www.linkedin.com/company/stagewise-io"
+            className="group flex items-center text-zinc-900 transition-colors dark:text-white"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() =>
+              posthog?.capture('footer_link_click', {
+                destination: 'linkedin',
+              })
+            }
+          >
+            LinkedIn
             <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />
           </Link>
           <Link

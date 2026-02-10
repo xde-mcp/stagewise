@@ -32,8 +32,8 @@ export default async function PostPage(props: {
   const { title, description, body: MDXContent, date } = post.data;
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-12 p-4">
-      <div className="flex flex-col items-center gap-4 text-center">
+    <div className="flex w-full max-w-6xl flex-col gap-12 p-4">
+      <div className="flex flex-col items-start gap-4 text-left">
         <span className="text-base text-muted-foreground">
           {date.toLocaleString('en-US', {
             year: 'numeric',
@@ -41,7 +41,7 @@ export default async function PostPage(props: {
             day: 'numeric',
           })}
         </span>
-        <h1 className="font-bold text-3xl text-foreground tracking-tight md:text-5xl">
+        <h1 className="font-medium text-3xl text-foreground tracking-tight md:text-5xl">
           {title}
         </h1>
         <p className="text-lg text-muted-foreground">{description}</p>
@@ -70,7 +70,7 @@ export default async function PostPage(props: {
           </Link>
         </div>
       </div>
-      <div className="prose dark:prose-invert prose-zinc">
+      <div className="prose prose-zinc dark:prose-invert">
         <MDXContent
           components={getMDXComponents({
             // this allows you to link to other pages with relative file paths
@@ -88,7 +88,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata(props: {
   params: Promise<{ slug?: string[] }>;
-}) {
+}): Promise<Metadata> {
   const params = await props.params;
   const page = news.getPage(params.slug);
   if (!page) notFound();

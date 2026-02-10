@@ -1,16 +1,8 @@
 'use client';
 import Link from 'next/link';
 
-import {
-  IconChatBotFillDuo18,
-  IconColorPalette2FillDuo18,
-  IconDownload4FillDuo18,
-  IconLockFillDuo18,
-  IconSparkleFillDuo18,
-} from 'nucleo-ui-fill-duo-18';
 import { IconGithub } from 'nucleo-social-media';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
-import { cn } from '@stagewise/stage-ui/lib/utils';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { usePostHog } from 'posthog-js/react';
 import { useState, useEffect } from 'react';
@@ -27,8 +19,8 @@ function FeatureSection() {
             <h2 className="mb-4 font-medium text-2xl tracking-tight md:text-3xl">
               Built for web developers
             </h2>
-            <p className="text-lg text-muted-foreground">
-              Stagewise delivers a browser experience that is tailored to the
+            <p className="font-light text-base text-muted-foreground">
+              stagewise delivers a browsing experience that prioritizes the
               needs of web developers.
             </p>
           </div>
@@ -39,15 +31,19 @@ function FeatureSection() {
         <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row md:items-center md:gap-12 md:p-6">
           <div className="space-y-4">
             <p className="text-foreground text-xl">
-              No more context switching
+              DevTools-enhanced coding agent
               <br />
-              <span className="text-lg text-muted-foreground">
-                Prompt changes right where you see them - not in a separate code
-                editor.
+              <span className="font-light text-base text-muted-foreground">
+                stagewise integrates "stage", our agent with console and
+                debugger access to all tabs
               </span>
             </p>
-            <Link href="" className="text-primary-foreground hover:underline">
-              Learn more <IconArrowRightFill18 className="inline size-4" />
+            <Link
+              href="/features/stage"
+              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+            >
+              Learn more about stage{' '}
+              <IconArrowRightFill18 className="inline size-4" />
             </Link>
           </div>
           <Image
@@ -60,14 +56,19 @@ function FeatureSection() {
         <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
           <div className="space-y-4">
             <p className="text-foreground text-xl">
-              Efficient DevTools
+              Temporary or permanent changes
               <br />
-              <span className="text-lg text-muted-foreground">
-                A single layer of workflow-oriented and AI-native tools.
+              <span className="font-light text-base text-muted-foreground">
+                Make quick test changes to any page, or connect a codebase for
+                permanent edits.
               </span>
             </p>
-            <Link href="" className="text-primary-foreground hover:underline">
-              Learn more <IconArrowRightFill18 className="inline size-4" />
+            <Link
+              href="/features/code-changes"
+              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+            >
+              Learn more about code changes{' '}
+              <IconArrowRightFill18 className="inline size-4" />
             </Link>
           </div>
           <Image
@@ -82,13 +83,41 @@ function FeatureSection() {
             <p className="text-foreground text-xl">
               Powerful reverse engineering tools
               <br />
-              <span className="text-lg text-muted-foreground">
+              <span className="font-light text-base text-muted-foreground">
                 Understand and re-use components, style systems and color
                 palettes from any website.
               </span>
             </p>
-            <Link href="" className="text-primary-foreground hover:underline">
-              Learn more <IconArrowRightFill18 className="inline size-4" />
+            <Link
+              href="/features/reverse-engineering"
+              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+            >
+              Learn more about reverse-engineering{' '}
+              <IconArrowRightFill18 className="inline size-4" />
+            </Link>
+          </div>
+          <Image
+            src={agentInBrowserImage}
+            className="w-full shrink-0 rounded-md md:basis-2/3"
+            alt="Image showing a browser with an integrated coding agent"
+          />
+        </div>
+
+        <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
+          <div className="space-y-4">
+            <p className="text-foreground text-xl">
+              Integrated with your setup
+              <br />
+              <span className="font-light text-base text-muted-foreground">
+                Opt-in to view relevant and modified files in your favorite IDE
+              </span>
+            </p>
+            <Link
+              href="/features/ide-integrations"
+              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+            >
+              Learn more about IDE integrations{' '}
+              <IconArrowRightFill18 className="inline size-4" />
             </Link>
           </div>
           <Image
@@ -102,93 +131,73 @@ function FeatureSection() {
   );
 }
 
-function ProductValuesSection() {
+function NewsSection() {
+  const posts = [
+    {
+      title: 'Launching Chats in stagewise',
+      description:
+        'Today, stagewise becomes your AI-powered partner to build awesome frontends',
+      date: 'Aug 13, 2025',
+      href: '/news/launching-chats-in-stagewise',
+    },
+    {
+      title: 'Introducing the stagewise CLI',
+      description:
+        'Using stagewise becomes much easier with our new all-in-one CLI',
+      date: 'Jul 31, 2025',
+      href: '/news/introducing-the-stagewise-cli',
+    },
+    {
+      title: 'Launching the stagewise agent',
+      description:
+        'stagewise announces the release of a dedicated frontend design and coding agent purpose-built for browser-based frontend development',
+      date: 'Jul 25, 2025',
+      href: '/news/launching-the-stagewise-agent',
+    },
+    {
+      title: 'stagewise is Part of the YCombinator batch S25',
+      description:
+        'After initial success, the founders of stagewise are excited to announce their participation in the YCombinator S25 batch',
+      date: 'Jun 30, 2025',
+      href: '/news/stagewise-is-part-of-ycombinator-batch-s25',
+    },
+  ];
+
   return (
     <section className="relative z-10 w-full py-40 md:py-48">
-      <div className="flex justify-center">
-        <ScrollReveal>
-          <div className="mb-20 max-w-3xl pt-8 text-center">
-            <h2 className="mb-4 font-medium text-2xl tracking-tight md:text-3xl">
-              Focus on what matters
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Stagewise is a browser that focuses on what's important to you.
-            </p>
-          </div>
-        </ScrollReveal>
+      <ScrollReveal>
+        <h2 className="mb-10 font-medium text-2xl tracking-tight md:text-3xl">
+          From the news room
+        </h2>
+      </ScrollReveal>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-6 lg:grid-cols-4">
+        {posts.map((post, index) => (
+          <ScrollReveal key={post.href} delay={index * 100}>
+            <Link
+              href={post.href}
+              className="flex min-h-[180px] flex-col gap-4 rounded-lg bg-surface-1 p-6 transition-colors hover:bg-hover-derived"
+            >
+              <time className="font-light text-muted-foreground text-sm">
+                {post.date}
+              </time>
+              <p className="font-medium text-foreground text-lg leading-tight">
+                {post.title}
+              </p>
+            </Link>
+          </ScrollReveal>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:gap-10 lg:grid-cols-4 lg:gap-4 xl:gap-10">
-        <ScrollReveal>
-          <div className="aspect-square rounded-lg bg-surface-1 p-4 pt-8 md:p-6 md:pt-10">
-            <div className="space-y-4">
-              <IconLockFillDuo18 className="size-10" />
-              <p className="text-foreground text-xl">
-                Privacy first
-                <br />
-                <span className="text-lg text-muted-foreground">
-                  Your browsing history is never synced.
-                </span>
-              </p>
-              <Link href="" className="text-primary-foreground hover:underline">
-                Learn more <IconArrowRightFill18 className="inline size-4" />
-              </Link>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        <ScrollReveal delay={100}>
-          <div className="aspect-square rounded-lg bg-surface-1 p-4 pt-8 md:p-6 md:pt-10">
-            <div className="space-y-4">
-              <IconChatBotFillDuo18 className="size-10" />
-              <p className="text-foreground text-xl">
-                Powerful agent
-                <br />
-                <span className="text-lg text-muted-foreground">
-                  Coding, debugging, and more - all in one place.
-                </span>
-              </p>
-              <Link href="" className="text-primary-foreground hover:underline">
-                Learn more <IconArrowRightFill18 className="inline size-4" />
-              </Link>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        <ScrollReveal delay={200}>
-          <div className="aspect-square rounded-lg bg-surface-1 p-4 pt-8 md:p-6 md:pt-10">
-            <div className="space-y-4">
-              <IconColorPalette2FillDuo18 className="size-10" />
-              <p className="text-foreground text-xl">
-                Smart tools
-                <br />
-                <span className="text-lg text-muted-foreground">
-                  Developer Tools that save you time.
-                </span>
-              </p>
-              <Link href="" className="text-primary-foreground hover:underline">
-                Learn more <IconArrowRightFill18 className="inline size-4" />
-              </Link>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        <ScrollReveal delay={300}>
-          <div className="aspect-square rounded-lg bg-surface-1 p-4 pt-8 md:p-6 md:pt-10">
-            <div className="space-y-4">
-              <IconSparkleFillDuo18 className="size-10" />
-              <p className="text-foreground text-xl">
-                Pixel perfect
-                <br />
-                <span className="text-lg text-muted-foreground">
-                  Built to delight designers and developers alike.
-                </span>
-              </p>
-              <Link href="" className="text-primary-foreground hover:underline">
-                Learn more <IconArrowRightFill18 className="inline size-4" />
-              </Link>
-            </div>
-          </div>
+      <div className="flex justify-end">
+        <ScrollReveal delay={400}>
+          <Link
+            href="/news"
+            className="mt-10 inline-flex items-center gap-2 text-primary-foreground hover:text-hover-derived active:text-active-derived"
+          >
+            See more news
+            <IconArrowRightFill18 className="inline size-4" />
+          </Link>
         </ScrollReveal>
       </div>
     </section>
@@ -198,10 +207,6 @@ function ProductValuesSection() {
 export default function Home() {
   const posthog = usePostHog();
   const [starCount, setStarCount] = useState<number | null>(null);
-  const [userOS, setUserOS] = useState<string>('your OS');
-  const [downloadUrl, setDownloadUrl] = useState<string>('#');
-  const [isMobile, setIsMobile] = useState(false);
-  const [isOsSupported, setIsOsSupported] = useState(true);
 
   // Fetch GitHub star count
   useEffect(() => {
@@ -223,36 +228,6 @@ export default function Home() {
     fetchStarCount();
   }, []);
 
-  // Detect user OS and set download URL
-  useEffect(() => {
-    const platform = navigator.platform.toLowerCase();
-    const userAgent = navigator.userAgent.toLowerCase();
-
-    // Detect mobile devices
-    const mobileCheck =
-      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-        userAgent,
-      );
-    setIsMobile(mobileCheck);
-
-    if (platform.includes('mac') || userAgent.includes('mac')) {
-      setUserOS('macOS');
-      setDownloadUrl(
-        'https://dl.stagewise.io/download/stagewise/beta/macos/arm64',
-      );
-    } else if (platform.includes('win') || userAgent.includes('win')) {
-      setUserOS('Windows');
-      setDownloadUrl('https://dl.stagewise.io/download/stagewise/beta/win/x64');
-    } else if (platform.includes('linux') || userAgent.includes('linux')) {
-      setUserOS('Linux');
-      setDownloadUrl(
-        'https://dl.stagewise.io/download/stagewise/beta/linux/deb/x86_64',
-      );
-    } else {
-      setIsOsSupported(false);
-    }
-  }, []);
-
   // Format star count for display
   const formatStarCount = (count: number | null) => {
     if (count === null) return '3K+'; // Loading state
@@ -269,37 +244,31 @@ export default function Home() {
         <div className="flex justify-start">
           <div className="w-full max-w-7xl">
             <ScrollReveal>
-              <div className="mb-12 flex flex-col items-start px-4 text-left sm:px-0">
+              <div className="mt-4 mb-12 flex flex-col items-start px-4 text-left sm:px-0 md:mt-8 md:mb-20">
                 <h1 className="mb-8 font-medium text-3xl tracking-tight md:text-5xl">
                   <span className="text-foreground">
-                    Stagewise is a purpose-built
-                    <br />
-                    browser for web development.
+                    The browser for web developers.
                   </span>
                 </h1>
 
                 <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                  {!isOsSupported ? (
-                    <Button size="lg" variant="primary" disabled>
-                      OS not supported
+                  <form
+                    className="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
+                    action="https://waitlister.me/s/w86M0gTkD2fq"
+                    method="POST"
+                  >
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Enter your email"
+                      className="h-12 w-full rounded-md border border-input bg-background px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-64"
+                      required
+                    />
+                    <Button type="submit" size="lg" variant="primary">
+                      Join waitlist
+                      <IconArrowRightFill18 className="size-4" />
                     </Button>
-                  ) : isMobile ? (
-                    <Button size="lg" variant="primary" disabled>
-                      Download on Desktop
-                    </Button>
-                  ) : (
-                    <Link
-                      href={downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        buttonVariants({ size: 'lg', variant: 'primary' }),
-                      )}
-                    >
-                      Download for {userOS}
-                      <IconDownload4FillDuo18 className="size-4" />
-                    </Link>
-                  )}
+                  </form>
                   <a
                     href="https://github.com/stagewise-io/stagewise"
                     onClick={() => posthog?.capture('hero_github_star_click')}
@@ -317,8 +286,8 @@ export default function Home() {
             </ScrollReveal>
 
             <ScrollReveal delay={300}>
-              <div className="flex justify-end">
-                <div className="group relative mt-8 mb-16 max-w-4xl transform rounded-xl border border-zinc-900/50 dark:border-zinc-100/50">
+              <div className="w-full">
+                <div className="group relative mt-16 mb-16 transform rounded-xl border border-zinc-900/50 md:mt-40 dark:border-zinc-100/50">
                   <video
                     src="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-6-0-undo/landing-demo-undo.mp4"
                     width={1200}
@@ -358,8 +327,8 @@ export default function Home() {
       {/* Enhanced Bento Grid Features Section */}
       <FeatureSection />
 
-      {/* Product values section */}
-      <ProductValuesSection />
+      {/* News section */}
+      <NewsSection />
 
       {/* Second Get Started Section */}
       <section className="relative z-10 w-full py-40 md:py-48">
@@ -373,28 +342,23 @@ export default function Home() {
               </h2>
 
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                {!isOsSupported ? (
-                  <Button size="lg" variant="primary" disabled>
-                    OS not supported
+                <form
+                  className="flex flex-col items-center gap-3 sm:flex-row sm:items-center"
+                  action="https://waitlister.me/s/w86M0gTkD2fq"
+                  method="POST"
+                >
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    className="h-12 w-full rounded-md border border-input bg-background px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-64"
+                    required
+                  />
+                  <Button type="submit" size="lg" variant="primary">
+                    Join waitlist
+                    <IconArrowRightFill18 className="size-4" />
                   </Button>
-                ) : isMobile ? (
-                  <Button size="lg" variant="primary" disabled>
-                    Download on Desktop
-                  </Button>
-                ) : (
-                  <Link
-                    href={downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={buttonVariants({
-                      size: 'lg',
-                      variant: 'primary',
-                    })}
-                  >
-                    Download for {userOS}
-                    <IconDownload4FillDuo18 className="size-4" />
-                  </Link>
-                )}
+                </form>
               </div>
             </div>
           </ScrollReveal>

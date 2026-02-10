@@ -2,7 +2,9 @@ import './global.css';
 import { RootProvider } from 'fumadocs-ui/provider';
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
 import { PostHogProvider } from '@/components/posthog-provider';
 import { CookieBanner } from '@/components/cookie-banner';
 import { SystemThemeProvider } from '@/components/theme-switcher';
@@ -37,11 +39,7 @@ export const metadata: Metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${GeistSans.className}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={inter.className} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
