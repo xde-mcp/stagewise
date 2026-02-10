@@ -30,8 +30,8 @@ export function ToggleButton(props: ToggleButtonProps) {
           className={cn(
             'shrink-0',
             props.active
-              ? 'text-primary-foreground hover:text-primary-foreground!'
-              : 'text-foreground',
+              ? 'text-primary-foreground! hover:text-hover-derived!'
+              : '',
             props.isDragging && 'cursor-grabbing',
             props.triggerClassName,
           )}
