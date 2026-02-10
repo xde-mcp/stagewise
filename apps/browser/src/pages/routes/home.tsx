@@ -198,7 +198,7 @@ function StartPageWithConnectedWorkspace() {
           </span>
         )}
         {releaseChannel === 'prerelease' && (
-          <span className="ml-2 rounded-full border border-derived bg-primary-background px-2 py-px text-primary-foreground text-sm">
+          <span className="ml-2 rounded-full border border-derived px-2 py-px text-primary-foreground text-sm">
             Pre-Release Build
           </span>
         )}
