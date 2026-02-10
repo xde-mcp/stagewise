@@ -12,7 +12,6 @@ import type {
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { useMemo, memo } from 'react';
-import { useKartonState } from '@/hooks/use-karton';
 import { ThinkingPart } from './message-part-ui/thinking';
 import { FilePart } from './message-part-ui/file';
 import { TextPart } from './message-part-ui/text';
@@ -29,7 +28,6 @@ import { UnknownToolPart } from './message-part-ui/tools/unknown';
 import { ExecuteSandboxJsToolPart } from './message-part-ui/tools/execute-sandbox-js';
 import { ReadConsoleLogsToolPart } from './message-part-ui/tools/read-console-logs';
 import { isToolOrReasoningPart } from './message-utils';
-import { useOpenAgent } from '@/hooks/use-open-chat';
 
 type AssistantMessage = AgentMessage & { role: 'assistant' };
 
@@ -37,15 +35,12 @@ export const MessageAssistant = memo(
   function MessageAssistant({
     message: msg,
     isLastMessage,
+    isWorking,
   }: {
     message: AssistantMessage;
     isLastMessage: boolean;
+    isWorking: boolean;
   }) {
-    const [openAgent] = useOpenAgent();
-    const isWorking = useKartonState(
-      (s) => s.agents.instances[openAgent]?.state.isWorking || false,
-    );
-
     const isEmptyMessage = useMemo(() => {
       if (
         msg.parts
@@ -247,6 +242,11 @@ export const MessageAssistant = memo(
   (prevProps, nextProps) => {
     if (prevProps.message.id !== nextProps.message.id) return false;
     if (prevProps.isLastMessage !== nextProps.isLastMessage) return false;
+    // Only re-render for isWorking changes if this is the last message
+    // (shimmer effects only apply to last message)
+    if (prevProps.isLastMessage && prevProps.isWorking !== nextProps.isWorking)
+      return false;
+
     if (prevProps.message.parts.length !== nextProps.message.parts.length)
       return false;
 

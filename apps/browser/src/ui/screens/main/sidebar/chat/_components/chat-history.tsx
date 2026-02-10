@@ -249,11 +249,13 @@ export const ChatHistory = () => {
           <MessageUser
             message={message as AgentMessage & { role: 'user' }}
             isLastMessage={isLastMessage}
+            isWorking={isWorking ?? false}
           />
         ) : (
           <MessageAssistant
             message={message as AgentMessage & { role: 'assistant' }}
             isLastMessage={isLastMessage}
+            isWorking={isWorking ?? false}
           />
         );
 
@@ -303,6 +305,7 @@ export const ChatHistory = () => {
       showWorkingIndicator,
       paddingRight,
       spacerHeight,
+      isWorking,
     ],
   );
 

@@ -43,10 +43,12 @@ export const MessageUser = memo(
     message: msg,
     isLastMessage,
     measureRef,
+    isWorking,
   }: {
     message: UserMessage;
     isLastMessage: boolean;
     measureRef?: (el: HTMLDivElement | null) => void;
+    isWorking: boolean;
   }) {
     const chatInputRef = useRef<ChatInputHandle>(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -68,9 +70,6 @@ export const MessageUser = memo(
       (p) => p.agents.replaceUserMessage,
     );
     const [openAgent] = useOpenAgent();
-    const isWorking = useKartonState(
-      (s) => s.agents.instances[openAgent]?.state.isWorking || false,
-    );
 
     // Use message ID for scoping element selection
     const editMessageId = msg.id;
@@ -648,6 +647,7 @@ export const MessageUser = memo(
   (prevProps, nextProps) => {
     if (prevProps.message.id !== nextProps.message.id) return false;
     if (prevProps.isLastMessage !== nextProps.isLastMessage) return false;
+    if (prevProps.isWorking !== nextProps.isWorking) return false;
     if (!!prevProps.measureRef !== !!nextProps.measureRef) return false;
     if (prevProps.message.parts.length !== nextProps.message.parts.length)
       return false;
