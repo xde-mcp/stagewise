@@ -24,6 +24,8 @@ import { cn } from '@/utils';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { LogoWithText } from '@ui/components/ui/logo-with-text';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
+import { LogoText } from '@stagewise/stage-ui/components/logo-text';
+import LogoImage from '@assets/icons/icon-64.png';
 
 export const Route = createFileRoute('/home')({
   component: HomePage,
@@ -183,13 +185,23 @@ function StartPageWithConnectedWorkspace() {
     [openTab],
   );
 
+  const releaseChannel = useKartonState((s) => s.appInfo.releaseChannel);
+
   return (
     <div className="flex w-full max-w-7xl flex-col items-start gap-8 px-20">
       <div className="flex items-center gap-2">
-        <LogoWithText className="h-10 text-foreground" />
-        <div className="ml-1 inline-flex shrink-0 items-center font-normal text-primary-foreground text-xs">
-          Alpha
-        </div>
+        <img src={LogoImage} alt="stagewise Logo" className="size-8" />
+        <LogoText className="h-8 text-foreground" />
+        {releaseChannel === 'dev' && (
+          <span className="ml-2 rounded-full border border-derived bg-warning-background px-2 py-px text-sm text-warning-foreground">
+            Development Build
+          </span>
+        )}
+        {releaseChannel === 'prerelease' && (
+          <span className="ml-2 rounded-full border border-derived bg-primary-background px-2 py-px text-primary-foreground text-sm">
+            Pre-Release Build
+          </span>
+        )}
       </div>
       {workspaceStatus !== 'open' && <ConnectWorkspaceBanner />}
       {inspirationWebsitesWithScreenshot.websites.length > 0 && (
@@ -246,12 +258,15 @@ function OnboardingStartPage() {
     await openWorkspace(undefined);
   }, [openWorkspace]);
 
+  const releaseChannel = useKartonState((s) => s.appInfo.releaseChannel);
+
   return (
     <div className="flex w-full max-w-2xl flex-col items-start gap-4 px-10">
       <div className="flex items-center gap-2">
         <LogoWithText className="h-10 text-foreground" />
-        <div className="ml-1 inline-flex shrink-0 items-center font-normal text-primary-foreground text-xs">
-          Alpha
+        <div className="ml-1 inline-flex shrink-0 items-center font-normal text-warning-foreground text-xs">
+          {releaseChannel === 'dev' && 'Development Build'}
+          {releaseChannel === 'prerelease' && 'Pre-Release Build'}
         </div>
       </div>
       <div
