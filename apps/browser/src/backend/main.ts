@@ -44,6 +44,7 @@ import {
 import { readAgentsMd } from './agents/shared/prompts/utils/read-agents-md';
 import { resolve } from 'node:path';
 import { ModelProviderService } from './agents/model-provider';
+import type { ExternalFileDiff } from '@shared/karton-contracts/ui/shared-types';
 
 export type MainParameters = {
   launchOptions: {
@@ -804,7 +805,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       }
       diffHistoryService.acceptAndRejectHunks(
         pendingEdits.flatMap((e) =>
-          !e.isExternal ? e.hunks.map((h) => h.id) : [],
+          !e.isExternal ? e.hunks.map((h) => h.id) : [e.hunkId],
         ),
         [],
       );
@@ -824,7 +825,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       diffHistoryService.acceptAndRejectHunks(
         [],
         pendingEdits.flatMap((e) =>
-          !e.isExternal ? e.hunks.map((h) => h.id) : [],
+          !e.isExternal ? e.hunks.map((h) => h.id) : [e.hunkId],
         ),
       );
     },
@@ -841,7 +842,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         return;
       }
       const hunkIds = pendingEdits.flatMap((e) =>
-        e.fileId === fileId && !e.isExternal ? e.hunks.map((h) => h.id) : [],
+        e.fileId === fileId && !e.isExternal
+          ? e.hunks.map((h) => h.id)
+          : [(e as ExternalFileDiff).hunkId],
       );
       diffHistoryService.acceptAndRejectHunks(hunkIds, []);
     },
@@ -858,7 +861,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         return;
       }
       const hunkIds = pendingEdits.flatMap((e) =>
-        e.fileId === fileId && !e.isExternal ? e.hunks.map((h) => h.id) : [],
+        e.fileId === fileId && !e.isExternal
+          ? e.hunks.map((h) => h.id)
+          : [(e as ExternalFileDiff).hunkId],
       );
       diffHistoryService.acceptAndRejectHunks([], hunkIds);
     },
