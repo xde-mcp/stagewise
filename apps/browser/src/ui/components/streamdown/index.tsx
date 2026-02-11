@@ -9,19 +9,22 @@ import {
   type HTMLAttributes,
   type OlHTMLAttributes,
   type LiHTMLAttributes,
+  type ImgHTMLAttributes,
+  type BlockquoteHTMLAttributes,
   useState,
   isValidElement,
   type ReactNode,
   useContext,
   createContext,
   useRef,
+  useCallback,
   type AnchorHTMLAttributes,
   useMemo,
 } from 'react';
 import { cn } from '@ui/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { CopyCheckIcon, CopyIcon } from 'lucide-react';
+import { CopyCheckIcon, CopyIcon, DownloadIcon } from 'lucide-react';
 import type { BundledLanguage } from 'shiki';
 import type { ExtraProps } from 'react-markdown';
 import {
@@ -250,6 +253,9 @@ export const Streamdown = ({
           code: MemoCode,
           a: MemoAnchor,
           hr: MemoHr,
+          p: MemoP,
+          blockquote: MemoBlockquote,
+          img: MemoImg,
           h1: MemoH1,
           h2: MemoH2,
           h3: MemoH3,
@@ -536,6 +542,107 @@ const HrComponent = ({
   );
 };
 
+// Paragraph component for proper spacing
+const PComponent = ({
+  className,
+  children,
+  ...props
+}: DetailedHTMLProps<
+  HTMLAttributes<HTMLParagraphElement>,
+  HTMLParagraphElement
+> &
+  ExtraProps) => {
+  return (
+    <p className={cn('my-2', className)} data-streamdown="paragraph" {...props}>
+      {children}
+    </p>
+  );
+};
+
+// Blockquote component for quoted text
+const BlockquoteComponent = ({
+  className,
+  children,
+  ...props
+}: DetailedHTMLProps<
+  BlockquoteHTMLAttributes<HTMLQuoteElement>,
+  HTMLQuoteElement
+> &
+  ExtraProps) => {
+  return (
+    <blockquote
+      className={cn(
+        'my-2 border-border-subtle border-l-2 pl-2 font-normal text-muted-foreground italic',
+        className,
+      )}
+      data-streamdown="blockquote"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  );
+};
+
+// Image component for responsive images with download button
+const ImgComponent = ({
+  className,
+  alt,
+  src,
+  ...props
+}: DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement> &
+  ExtraProps) => {
+  const downloadImage = useCallback(async () => {
+    if (!src) return;
+
+    try {
+      // Fetch the image as a blob
+      const response = await fetch(src);
+      const blob = await response.blob();
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Extract filename from src or use default
+      const filename = src.split('/').pop()?.split('?')[0] || 'image.png';
+      link.download = filename;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download image:', err);
+    }
+  }, [src]);
+
+  return (
+    <div className="my-2 flex flex-col gap-1" data-streamdown="image-wrapper">
+      {/* Download control */}
+      <div className="flex items-center justify-end">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          onClick={downloadImage}
+          title="Download image"
+        >
+          <DownloadIcon className="size-3" />
+        </Button>
+      </div>
+
+      {/* Image */}
+      <img
+        className={cn('max-w-full rounded-lg', className)}
+        alt={alt ?? ''}
+        src={src}
+        data-streamdown="image"
+        {...props}
+      />
+    </div>
+  );
+};
+
 // Custom heading components for compact chat rendering
 const H1Component = ({
   className,
@@ -695,6 +802,39 @@ const MemoHr = memo<
   DetailedHTMLProps<HTMLAttributes<HTMLHRElement>, HTMLHRElement> & ExtraProps
 >(HrComponent, (p, n) => p.className === n.className);
 MemoHr.displayName = 'MarkdownHr';
+
+const MemoP = memo<
+  DetailedHTMLProps<
+    HTMLAttributes<HTMLParagraphElement>,
+    HTMLParagraphElement
+  > &
+    ExtraProps
+>(
+  PComponent,
+  (p, n) => p.children === n.children && p.className === n.className,
+);
+MemoP.displayName = 'MarkdownP';
+
+const MemoBlockquote = memo<
+  DetailedHTMLProps<
+    BlockquoteHTMLAttributes<HTMLQuoteElement>,
+    HTMLQuoteElement
+  > &
+    ExtraProps
+>(
+  BlockquoteComponent,
+  (p, n) => p.children === n.children && p.className === n.className,
+);
+MemoBlockquote.displayName = 'MarkdownBlockquote';
+
+const MemoImg = memo<
+  DetailedHTMLProps<ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement> &
+    ExtraProps
+>(
+  ImgComponent,
+  (p, n) => p.src === n.src && p.alt === n.alt && p.className === n.className,
+);
+MemoImg.displayName = 'MarkdownImg';
 
 const MemoH1 = memo<
   DetailedHTMLProps<HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement> &
