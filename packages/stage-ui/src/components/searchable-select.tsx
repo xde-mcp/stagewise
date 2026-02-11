@@ -338,7 +338,7 @@ export const SearchableSelect = ({
           >
             <SelectBase.Popup
               className={cn(
-                'flex origin-(--transform-origin) flex-col items-stretch gap-0.5 rounded-lg border border-border-subtle bg-background p-1 shadow-lg transition-[transform,scale,opacity] duration-150 ease-out data-ending-style:scale-90 data-starting-style:scale-90 data-ending-style:opacity-0 data-starting-style:opacity-0',
+                'flex max-w-72 origin-(--transform-origin) flex-col items-stretch gap-0.5 rounded-lg border border-border-subtle bg-background p-1 shadow-lg transition-[transform,scale,opacity] duration-150 ease-out data-ending-style:scale-90 data-starting-style:scale-90 data-ending-style:opacity-0 data-starting-style:opacity-0',
                 sizes.popup[size],
               )}
             >
