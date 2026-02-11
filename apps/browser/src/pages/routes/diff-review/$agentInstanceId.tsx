@@ -16,7 +16,11 @@ import {
 import { diffLines, type ChangeObject } from 'diff';
 import { DiffPreview } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/diff-preview';
 import { FileIcon } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/file-icon';
-import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
+import type {
+  FileDiff,
+  ExternalFileDiff,
+} from '@shared/karton-contracts/ui/shared-types';
+import { ExternalFilePreview } from './_components/external-file-preview';
 import {
   Tooltip,
   TooltipTrigger,
@@ -50,6 +54,7 @@ const FileDiffItem: FC<{
     linesAdded: number;
     linesRemoved: number;
     elementId: string;
+    externalFileDiff?: ExternalFileDiff;
   };
   onAccept: (fileId: string) => void;
   onReject: (fileId: string) => void;
@@ -85,6 +90,21 @@ const FileDiffItem: FC<{
                 <div className="max-w-md">{edit.path}</div>
               </TooltipContent>
             </Tooltip>
+            {edit.externalFileDiff?.changeType === 'created' && (
+              <span className="shrink-0 text-success-foreground text-xs">
+                (new)
+              </span>
+            )}
+            {edit.externalFileDiff?.changeType === 'deleted' && (
+              <span className="shrink-0 text-error-foreground text-xs">
+                (deleted)
+              </span>
+            )}
+            {edit.externalFileDiff?.changeType === 'modified' && (
+              <span className="shrink-0 text-muted-foreground text-xs">
+                (modified)
+              </span>
+            )}
             {edit.linesAdded > 0 && (
               <span className="shrink-0 text-success-foreground text-xs">
                 +{edit.linesAdded}
@@ -141,11 +161,15 @@ const FileDiffItem: FC<{
         <CollapsibleContent>
           {/* Diff content */}
           <div>
-            <DiffPreview
-              diff={edit.diff}
-              filePath={edit.path}
-              collapsed={true}
-            />
+            {edit.externalFileDiff ? (
+              <ExternalFilePreview fileDiff={edit.externalFileDiff} />
+            ) : (
+              <DiffPreview
+                diff={edit.diff}
+                filePath={edit.path}
+                collapsed={true}
+              />
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -295,6 +319,8 @@ function Page() {
         linesRemoved,
         // Create a stable id for scrolling based on the path
         elementId: `file-${encodeURIComponent(edit.path)}`,
+        // Include external file diff data if this is an external file
+        externalFileDiff: edit.isExternal ? edit : undefined,
       };
     });
   }, [pendingEdits]);

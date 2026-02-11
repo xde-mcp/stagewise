@@ -38,6 +38,7 @@ import type {
   AddSearchEngineInput,
   InspirationWebsite,
   ContextFilesResult,
+  ExternalFileContentResult,
 } from '@shared/karton-contracts/pages-api/types';
 import { DisposableService } from './disposable';
 
@@ -97,6 +98,9 @@ export class PagesService extends DisposableService {
   ) => Promise<void>;
   private setGlobalConfigHandler?: (config: GlobalConfig) => Promise<void>;
   private getContextFilesHandler?: () => Promise<ContextFilesResult>;
+  private getExternalFileContentHandler?: (
+    oid: string,
+  ) => Promise<ExternalFileContentResult | null>;
 
   private constructor(
     logger: Logger,
@@ -862,6 +866,22 @@ export class PagesService extends DisposableService {
       },
     );
 
+    this.kartonServer.registerServerProcedureHandler(
+      'getExternalFileContent',
+      async (
+        _callingClientId: string,
+        oid: string,
+      ): Promise<ExternalFileContentResult | null> => {
+        if (!this.getExternalFileContentHandler) {
+          this.logger.warn(
+            '[PagesService] getExternalFileContent called but no handler is set',
+          );
+          return null;
+        }
+        return this.getExternalFileContentHandler(oid);
+      },
+    );
+
     // Search engine procedures
     this.kartonServer.registerServerProcedureHandler(
       'getSearchEngines',
@@ -1116,6 +1136,16 @@ export class PagesService extends DisposableService {
   }
 
   /**
+   * Set the handler for getting external file content by blob OID.
+   * This should be called by main.ts to wire up to DiffHistoryService.
+   */
+  public setGetExternalFileContentHandler(
+    handler: (oid: string) => Promise<ExternalFileContentResult | null>,
+  ): void {
+    this.getExternalFileContentHandler = handler;
+  }
+
+  /**
    * Register handlers for preferences operations.
    * Called by PreferencesService during initialization.
    */
@@ -1361,6 +1391,7 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('rejectAllPendingEdits');
     this.kartonServer.removeServerProcedureHandler('acceptPendingEdit');
     this.kartonServer.removeServerProcedureHandler('rejectPendingEdit');
+    this.kartonServer.removeServerProcedureHandler('getExternalFileContent');
     this.kartonServer.removeServerProcedureHandler('getPreferences');
     this.kartonServer.removeServerProcedureHandler('updatePreferences');
     this.kartonServer.removeServerProcedureHandler('getSearchEngines');
@@ -1390,6 +1421,7 @@ export class PagesService extends DisposableService {
     this.openWorkspaceHandler = undefined;
     this.trustCertificateAndReloadHandler = undefined;
     this.getContextFilesHandler = undefined;
+    this.getExternalFileContentHandler = undefined;
 
     await this.transport.close();
     this.logger.debug('[PagesService] Teardown complete');

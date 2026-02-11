@@ -17,6 +17,7 @@ import type {
   StoredExperienceData,
   WorkspaceStatus,
   ContextFilesResult,
+  ExternalFileContentResult,
 } from './types';
 import type { UserPreferences, Patch, GlobalConfig } from '../ui/shared-types';
 import type { FileDiff } from '../ui/shared-types';
@@ -88,6 +89,14 @@ export type PagesApiContract = {
     acceptPendingEdit: (agentInstanceId: string, path: string) => Promise<void>;
     /** Reject a single pending edit by file path */
     rejectPendingEdit: (agentInstanceId: string, path: string) => Promise<void>;
+    /**
+     * Get content of an external (binary/large) file by its blob OID.
+     * Returns base64-encoded content and inferred MIME type.
+     * Returns null if the blob is not found.
+     */
+    getExternalFileContent: (
+      oid: string,
+    ) => Promise<ExternalFileContentResult | null>;
     /** Get current user preferences */
     getPreferences: () => Promise<UserPreferences>;
     /** Update user preferences by applying Immer patches */

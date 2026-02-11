@@ -27,6 +27,7 @@ import {
   storeFileContent,
   storeLargeContent,
   hasPendingEditsForFilepath,
+  streamContent,
 } from './utils/db';
 import {
   acceptAndRejectHunks as acceptAndRejectHunksUtils,
@@ -551,6 +552,117 @@ export class DiffHistoryService extends DisposableService {
       for (const agentInstanceId of this.activeAgentInstanceIds)
         await this.updateDiffKartonState(agentInstanceId);
     await this.updateWatcher();
+  }
+
+  /**
+   * Retrieves the content of an external (binary/large) file by its blob OID.
+   * Returns base64-encoded content and inferred MIME type based on common file extensions.
+   *
+   * @param oid - The blob OID (SHA-256 hash) of the external file
+   * @returns Object with base64 content and MIME type, or null if blob not found
+   */
+  public async getExternalFileContent(
+    oid: string,
+  ): Promise<{ content: string; mimeType: string | null } | null> {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of streamContent(this.blobsDir, oid))
+        chunks.push(chunk);
+
+      const content = Buffer.concat(chunks).toString('base64');
+
+      // Infer MIME type from content magic bytes (first few bytes)
+      const mimeType = this.inferMimeTypeFromBuffer(
+        chunks[0] ?? Buffer.alloc(0),
+      );
+
+      return { content, mimeType };
+    } catch (error) {
+      // Blob file doesn't exist or can't be read
+      this.logError(
+        `Failed to read external file content for oid ${oid}`,
+        error,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Infers MIME type from buffer magic bytes.
+   * Supports common image and document formats.
+   */
+  private inferMimeTypeFromBuffer(buffer: Buffer): string | null {
+    if (buffer.length < 4) return null;
+
+    // Check magic bytes for common formats
+    // PNG: 89 50 4E 47
+    if (
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47
+    ) {
+      return 'image/png';
+    }
+    // JPEG: FF D8 FF
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      return 'image/jpeg';
+    }
+    // GIF: 47 49 46 38
+    if (
+      buffer[0] === 0x47 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x38
+    ) {
+      return 'image/gif';
+    }
+    // WebP: 52 49 46 46 ... 57 45 42 50
+    if (
+      buffer[0] === 0x52 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x46 &&
+      buffer.length >= 12 &&
+      buffer[8] === 0x57 &&
+      buffer[9] === 0x45 &&
+      buffer[10] === 0x42 &&
+      buffer[11] === 0x50
+    ) {
+      return 'image/webp';
+    }
+    // BMP: 42 4D
+    if (buffer[0] === 0x42 && buffer[1] === 0x4d) {
+      return 'image/bmp';
+    }
+    // ICO: 00 00 01 00
+    if (
+      buffer[0] === 0x00 &&
+      buffer[1] === 0x00 &&
+      buffer[2] === 0x01 &&
+      buffer[3] === 0x00
+    ) {
+      return 'image/x-icon';
+    }
+    // PDF: 25 50 44 46
+    if (
+      buffer[0] === 0x25 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x44 &&
+      buffer[3] === 0x46
+    ) {
+      return 'application/pdf';
+    }
+    // SVG starts with "<?xml" or "<svg" (text-based)
+    const textStart = buffer.toString('utf8', 0, Math.min(buffer.length, 100));
+    if (
+      textStart.includes('<svg') ||
+      (textStart.includes('<?xml') && textStart.includes('svg'))
+    ) {
+      return 'image/svg+xml';
+    }
+
+    return null;
   }
 
   private async getEditSummaryForAgentInstanceId(

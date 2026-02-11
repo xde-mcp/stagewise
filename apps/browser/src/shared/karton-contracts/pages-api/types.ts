@@ -321,3 +321,11 @@ export interface ContextFilesResult {
   /** AGENTS.md file info (user-created coding guidelines) */
   agentsMd: ContextFileInfo;
 }
+
+/** Result of getExternalFileContent procedure */
+export interface ExternalFileContentResult {
+  /** Base64-encoded file content */
+  content: string;
+  /** MIME type inferred from file extension (null if unknown) */
+  mimeType: string | null;
+}

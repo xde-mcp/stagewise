@@ -488,6 +488,12 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     };
   });
 
+  // Set the getExternalFileContent handler for pages-api contract
+  // This allows pages routes (like diff-review) to fetch binary/large file content
+  pagesService.setGetExternalFileContentHandler(async (oid: string) => {
+    return diffHistoryService.getExternalFileContent(oid);
+  });
+
   // Subscribe to UI Karton state changes to sync pending edits to Pages API state
   // This enables real-time updates in the diff-review page
   let previousPendingEditsSnapshot = '';
