@@ -7,7 +7,14 @@ import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { usePostHog } from 'posthog-js/react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import agentInBrowserImage from './_components/feature-images/agent_in_browser.png';
+import agentIdeIntegrationDark from './_components/feature-images/agent-ide-integration-dark.png';
+import agentIdeIntegrationLight from './_components/feature-images/agent-ide-integration-light.png';
+import reverseEngineeringDark from './_components/feature-images/reverse-engineering-dark.png';
+import reverseEngineeringLight from './_components/feature-images/reverse-engineering-light.png';
+import debuggerAccessDark from './_components/feature-images/debugger-access-dark.png';
+import debuggerAccessLight from './_components/feature-images/debugger-access-light.png';
+import experimentsDark from './_components/feature-images/experiments-dark.png';
+import experimentsLight from './_components/feature-images/experiments-light.png';
 import { IconArrowRightFill18 } from 'nucleo-ui-fill-18';
 
 function FeatureSection() {
@@ -28,104 +35,141 @@ function FeatureSection() {
       </div>
 
       <div className="flex flex-col items-stretch gap-10 md:gap-20">
-        <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row md:items-center md:gap-12 md:p-6">
-          <div className="space-y-4">
-            <p className="text-foreground text-xl">
-              DevTools-enhanced coding agent
-              <br />
-              <span className="font-light text-base text-muted-foreground">
-                stagewise integrates "stage", our agent with console and
-                debugger access to all tabs
-              </span>
-            </p>
-            <Link
-              href="/features/stage"
-              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
-            >
-              Learn more about stage{' '}
-              <IconArrowRightFill18 className="inline size-4" />
-            </Link>
+        <ScrollReveal delay={100}>
+          <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row md:items-center md:gap-12 md:p-6">
+            <div className="space-y-4">
+              <p className="text-foreground text-xl">
+                DevTools-enhanced coding agent
+                <br />
+                <span className="font-light text-base text-muted-foreground">
+                  stagewise integrates Stage, our agent with console and
+                  debugger access to all tabs
+                </span>
+              </p>
+              <Link
+                href="/features/stage"
+                className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+              >
+                Learn more about Stage{' '}
+                <IconArrowRightFill18 className="inline size-4" />
+              </Link>
+            </div>
+            {/* Light mode image */}
+            <Image
+              src={debuggerAccessLight}
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:hidden"
+              alt="DevTools-enhanced coding agent with console and debugger access"
+            />
+            {/* Dark mode image */}
+            <Image
+              src={debuggerAccessDark}
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:block"
+              alt="DevTools-enhanced coding agent with console and debugger access"
+            />
           </div>
-          <Image
-            src={agentInBrowserImage}
-            className="w-full shrink-0 rounded-md md:basis-2/3"
-            alt="Image showing a browser with an integrated coding agent"
-          />
-        </div>
+        </ScrollReveal>
 
-        <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
-          <div className="space-y-4">
-            <p className="text-foreground text-xl">
-              Temporary or permanent changes
-              <br />
-              <span className="font-light text-base text-muted-foreground">
-                Make quick test changes to any page, or connect a codebase for
-                permanent edits.
-              </span>
-            </p>
-            <Link
-              href="/features/code-changes"
-              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
-            >
-              Learn more about code changes{' '}
-              <IconArrowRightFill18 className="inline size-4" />
-            </Link>
+        <ScrollReveal delay={200}>
+          <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
+            <div className="space-y-4">
+              <p className="text-foreground text-xl">
+                Run quick experiments
+                <br />
+                <span className="font-light text-base text-muted-foreground">
+                  Make quick test changes to any page right inside the DOM with
+                  Stage.
+                </span>
+              </p>
+              <Link
+                href="/features/code-changes"
+                className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+              >
+                Learn more about in-page experiments{' '}
+                <IconArrowRightFill18 className="inline size-4" />
+              </Link>
+            </div>
+            {/* Light mode image */}
+            <Image
+              src={experimentsLight}
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:hidden"
+              alt="Temporary or permanent code changes with experiments"
+            />
+            {/* Dark mode image */}
+            <Image
+              src={experimentsDark}
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:block"
+              alt="Temporary or permanent code changes with experiments"
+            />
           </div>
-          <Image
-            src={agentInBrowserImage}
-            className="w-full shrink-0 rounded-md md:basis-2/3"
-            alt="Image showing a browser with an integrated coding agent"
-          />
-        </div>
+        </ScrollReveal>
 
-        <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row md:items-center md:gap-12 md:p-6">
-          <div className="space-y-4">
-            <p className="text-foreground text-xl">
-              Powerful reverse engineering tools
-              <br />
-              <span className="font-light text-base text-muted-foreground">
-                Understand and re-use components, style systems and color
-                palettes from any website.
-              </span>
-            </p>
-            <Link
-              href="/features/reverse-engineering"
-              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
-            >
-              Learn more about reverse-engineering{' '}
-              <IconArrowRightFill18 className="inline size-4" />
-            </Link>
+        <ScrollReveal delay={300}>
+          <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row md:items-center md:gap-12 md:p-6">
+            <div className="space-y-4">
+              <p className="text-foreground text-xl">
+                Powerful reverse engineering tools
+                <br />
+                <span className="font-light text-base text-muted-foreground">
+                  Understand and re-use components, style systems and color
+                  palettes from any website.
+                </span>
+              </p>
+              <Link
+                href="/features/reverse-engineering"
+                className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+              >
+                Learn more about reverse-engineering{' '}
+                <IconArrowRightFill18 className="inline size-4" />
+              </Link>
+            </div>
+            {/* Light mode image */}
+            <Image
+              src={reverseEngineeringLight}
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:hidden"
+              alt="Reverse engineering tools extracting styles from websites"
+            />
+            {/* Dark mode image */}
+            <Image
+              src={reverseEngineeringDark}
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:block"
+              alt="Reverse engineering tools extracting styles from websites"
+            />
           </div>
-          <Image
-            src={agentInBrowserImage}
-            className="w-full shrink-0 rounded-md md:basis-2/3"
-            alt="Image showing a browser with an integrated coding agent"
-          />
-        </div>
+        </ScrollReveal>
 
-        <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
-          <div className="space-y-4">
-            <p className="text-foreground text-xl">
-              Integrated with your setup
-              <br />
-              <span className="font-light text-base text-muted-foreground">
-                Opt-in to view relevant and modified files in your favorite IDE
-              </span>
-            </p>
-            <Link
-              href="/features/ide-integrations"
-              className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
-            >
-              Learn more about IDE integrations{' '}
-              <IconArrowRightFill18 className="inline size-4" />
-            </Link>
+        <ScrollReveal delay={400}>
+          <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
+            <div className="space-y-4">
+              <p className="text-foreground text-xl">
+                Integrated with your setup
+                <br />
+                <span className="font-light text-base text-muted-foreground">
+                  Opt-in to view relevant and modified files in your favorite
+                  IDE
+                </span>
+              </p>
+              <Link
+                href="/features/ide-integrations"
+                className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
+              >
+                Learn more about IDE integrations{' '}
+                <IconArrowRightFill18 className="inline size-4" />
+              </Link>
+            </div>
+            {/* Light mode image */}
+            <Image
+              src={agentIdeIntegrationLight}
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:hidden dark:border-zinc-800"
+              alt="IDE integration showing code changes in your favorite editor"
+            />
+            {/* Dark mode image */}
+            <Image
+              src={agentIdeIntegrationDark}
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-derived dark:block dark:border-zinc-800"
+              alt="IDE integration showing code changes in your favorite editor"
+            />
           </div>
-          <Image
-            src={agentInBrowserImage}
-            className="w-full shrink-0 rounded-md md:basis-2/3"
-            alt="Image showing a browser with an integrated coding agent"
-          />
-        </div>
+        </ScrollReveal>
       </div>
     </section>
   );
@@ -245,7 +289,7 @@ export default function Home() {
           <div className="w-full max-w-7xl">
             <ScrollReveal>
               <div className="mt-4 mb-12 flex flex-col items-start px-4 text-left sm:px-0 md:mt-8 md:mb-20">
-                <h1 className="mb-8 font-medium text-3xl tracking-tight md:text-5xl">
+                <h1 className="mb-2 font-medium text-3xl tracking-tight md:text-5xl">
                   <span className="text-foreground">
                     The browser for web developers.
                   </span>

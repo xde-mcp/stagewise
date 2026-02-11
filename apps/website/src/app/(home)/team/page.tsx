@@ -1,6 +1,7 @@
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import TeamPic from './team-pic.jpg';
 import Image from 'next/image';
+import { IconGithub } from 'nucleo-social-media';
 
 export default function TeamPage() {
   return (
@@ -8,38 +9,30 @@ export default function TeamPage() {
       <ScrollReveal>
         <div className="flex flex-col items-start gap-4 text-left">
           <h1 className="font-medium text-3xl text-foreground tracking-tight md:text-5xl">
-            About our team
+            Our Mission
           </h1>
         </div>
       </ScrollReveal>
 
       <section className="mt-12">
-        <div className="flex flex-col gap-8 md:flex-row md:gap-12">
+        <div className="flex flex-col gap-12 lg:flex-row">
+          {/* Main content */}
           <ScrollReveal delay={300}>
-            <div className="w-full shrink-0 scale-[1.02] transform overflow-hidden rounded-xl border border-zinc-900/50 shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-transform duration-500 md:w-80 dark:border-zinc-100/50 dark:shadow-[0_0_20px_rgba(255,255,255,0.05)]">
-              <Image
-                src={TeamPic}
-                alt="A picture of the two stagewise founders"
-                quality={95}
-                className="w-full"
-              />
-            </div>
-          </ScrollReveal>
-
-          <ScrollReveal delay={300}>
-            <div className="dark:prose-invert prose max-w-none">
+            <div className="prose dark:prose-invert max-w-none lg:flex-1">
               <p>
-                At its core, stagewise is the result of developers that are
-                driven by a single goal: to build tools we love to use.
+                stagewise is working towards a future where artificial
+                intelligence supports human creativity with software development
+                workflows and capabilities that match the users needs.
               </p>
+
               <p>
-                We are{' '}
+                Founded by{' '}
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/juliangoetze/"
                 >
-                  Julian
+                  Julian Götze
                 </a>{' '}
                 and{' '}
                 <a
@@ -47,53 +40,27 @@ export default function TeamPage() {
                   rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/glenntws/"
                 >
-                  Glenn
+                  Glenn Töws
                 </a>
-                , and we’ve built our team on a foundation of shared passion,
-                complementary interests, and a relentless focus on solving
-                real-world problems. This partnership allows us to move quickly,
-                turning user feedback and new ideas into polished features at a
-                rapid pace. We believe the best products come from a constant,
-                open dialogue between product vision and technical strategy.
+                , stagewise emerged from a fundamental belief: The next
+                generation of developers and designers deserve tools that
+                amplify their intent, not constrain it. The tools of the future
+                don't force users into a fixed way of working, but rather adapt
+                to their ways of thinking and doing.
               </p>
-              <h2>Our Story</h2>
+
+              <div className="my-8 overflow-hidden rounded-xl border border-zinc-900/50 shadow-[0_0_20px_rgba(0,0,0,0.15)] dark:border-zinc-100/50 dark:shadow-[0_0_20px_rgba(255,255,255,0.05)]">
+                <Image
+                  src={TeamPic}
+                  alt="The stagewise founding team"
+                  quality={95}
+                  className="w-full"
+                />
+              </div>
+
               <p>
-                Our journey as a team began at the{' '}
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href="https://www.linkedin.com/company/founders-foundation-ggmbh/"
-                >
-                  Founders Foundation
-                </a>{' '}
-                in Germany, where we connected over a shared ambition to build
-                better software. Our story wasn't a straight line to success. We
-                first chased an idea that didn't work out at all, but we
-                navigated that challenge together. That shared struggle was
-                critical, because it led us to the insight that now defines
-                stagewise.
-              </p>
-              <p>
-                As we built prototypes for new ideas, we both felt the same
-                frustration: the magical, high-speed experience of modern AI app
-                building tools vanished once moving into a real-world codebase.
-                We knew that there had to be a way to bring this visual
-                experience into production-level projects - and we found one!
-              </p>
-              <p>
-                Pooling our skills and teaming up with our friend{' '}
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href="https://www.linkedin.com/in/nicklas-scharpff/"
-                >
-                  Nicklas
-                </a>
-                , we repurposed the technical developments we made with the
-                previous venture idea and built an MVP to solve our own problem.
-              </p>
-              <p>
-                The explosion of support on{' '}
+                The company's early traction validates this vision. Within
+                months of launch, stagewise reached 6,000+ stars on{' '}
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
@@ -101,20 +68,64 @@ export default function TeamPage() {
                 >
                   GitHub
                 </a>{' '}
-                confirmed our shared belief:{' '}
-                <strong>this was a universal pain point.</strong>
-              </p>
-              <p>
-                This momentum, born from our collaborative effort, propelled us
-                into Y Combinator's{' '}
-                <a href="https://www.ycombinator.com/companies?batch=Summer%202025">
-                  Summer 2025 batch
+                and earned acceptance into{' '}
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://www.ycombinator.com/companies?batch=Summer%202025"
+                >
+                  Y Combinator's Summer 2025 batch
                 </a>
-                . Today, our teamwork is still the engine behind everything we
-                do. We are dedicated to growing stagewise and empowering
-                developers everywhere to build beautiful frontends without the
-                friction we once faced.
+                , signaling strong alignment with the market's evolving needs.
               </p>
+
+              <p>
+                Looking ahead, stagewise is building the infrastructure layer
+                for AI-native web development, fitting into a world where
+                creating exceptional user experiences requires neither extensive
+                technical overhead nor compromise on quality.
+              </p>
+            </div>
+          </ScrollReveal>
+
+          {/* CTA sidebar */}
+          <ScrollReveal delay={400}>
+            <div className="flex flex-col gap-8 border-zinc-900/30 lg:w-80 lg:shrink-0 lg:border-l lg:pl-8 dark:border-zinc-100/30">
+              <div>
+                <h3 className="mb-3 font-medium text-foreground text-xl">
+                  Join our team
+                </h3>
+                <p className="mb-4 text-muted-foreground text-sm">
+                  We're looking for talented engineers who want to shape the
+                  future of developer tooling. Write us with your name,
+                  location, and experience.
+                </p>
+                <a
+                  href="mailto:career@stagewise.io"
+                  className="text-primary-foreground underline underline-offset-4 transition-colors hover:text-hover-derived active:text-active-derived"
+                >
+                  career@stagewise.io
+                </a>
+              </div>
+
+              <div>
+                <h3 className="mb-3 font-medium text-foreground text-xl">
+                  Contribute on GitHub
+                </h3>
+                <p className="mb-4 text-muted-foreground text-sm">
+                  stagewise is open source. Join our community and help build
+                  the future of development.
+                </p>
+                <a
+                  href="https://github.com/stagewise-io/stagewise"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md border border-zinc-900/50 px-4 py-2 font-medium text-foreground text-sm transition-colors hover:bg-hover-derived dark:border-zinc-100/50"
+                >
+                  <IconGithub className="size-4" />
+                  View on GitHub
+                </a>
+              </div>
             </div>
           </ScrollReveal>
         </div>
