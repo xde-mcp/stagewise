@@ -775,6 +775,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     modelProviderService,
   );
 
+  // Wire AgentManagerService into WorkspaceService for STAGEWISE.md generation
+  workspaceService.setAgentManagerService(_agentManagerService);
+
   // No need to unregister this callback, as it will be destroyed when the main app shuts down
   authService.registerAuthStateChangeCallback((newAuthState) => {
     if (newAuthState.user) {

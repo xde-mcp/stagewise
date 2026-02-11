@@ -51,6 +51,15 @@ This context file powers a frontend-aware AI assistant, so thoroughly document e
 - Linting/formatting tools (especially CSS/style linting)
 - Code style patterns observed in components
 
+### Backend & Other Areas (Brief Overview)
+Don't ignore non-frontend aspects - include a general overview of:
+- API structure, endpoints, or backend services if present
+- Database or data layer patterns
+- Authentication/authorization approach
+- Any other significant architectural aspects
+
+Keep this section concise - just enough context so the AI assistant understands the full picture.
+
 ## Output Format
 
 Generate a well-structured STAGEWISE.md with clear markdown sections.

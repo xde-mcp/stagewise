@@ -18,6 +18,9 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { STAGEWISE_MD_FILENAME } from '@/agents/shared/prompts/utils/read-stagewise-md';
 import type { AuthService } from '../auth';
+import type { AgentManagerService } from '../agent-manager';
+import { AgentTypes } from '@shared/karton-contracts/ui/agent';
+import { randomUUID } from 'node:crypto';
 
 type WorkspaceChangedEvent =
   | { type: 'loaded'; selectedPath: string; name: string }
@@ -41,6 +44,9 @@ export class WorkspaceService extends DisposableService {
   private workspacePathsService: WorkspacePathsService | null = null;
   private ragService: RagService | null = null;
   private staticAnalysisService: StaticAnalysisService | null = null;
+
+  // AgentManagerService - set via setter after creation (due to circular dependency)
+  private agentManagerService: AgentManagerService | null = null;
 
   // Change listeners
   private workspaceChangeListeners: ((event: WorkspaceChangedEvent) => void)[] =
@@ -289,26 +295,90 @@ export class WorkspaceService extends DisposableService {
     const stagewiseMdDirPath = this.workspacePathsService!.workspaceDataPath;
     if (existsSync(path.join(stagewiseMdDirPath, STAGEWISE_MD_FILENAME))) {
       this.logger.debug(
-        `[WorkspaceService] stagewise.md already exists, skipping generation...`,
+        `[WorkspaceService] STAGEWISE.md already exists, skipping generation...`,
       );
       return;
     }
 
     // Make sure the access token is not expired
     await this.authService.refreshAuthState();
-    if (this.authService.authState.status !== 'authenticated') return;
+    if (this.authService.authState.status !== 'authenticated') {
+      this.logger.debug(
+        '[WorkspaceService] User not authenticated, skipping STAGEWISE.md generation',
+      );
+      return;
+    }
     const authKey = this.authService.accessToken;
     if (!authKey) return;
 
-    // TODO: Implement stagewise.md generation with new agents approach
-    // await generateStagewiseMd(
-    //   modelOptionsWithTracing,
-    //   clientRuntime,
-    //   new ClientRuntimeNode({
-    //     workingDirectory: stagewiseMdDirPath,
-    //     rgBinaryBasePath: this.globalDataPathService.globalDataPath,
-    //   }),
-    // );
+    // Check if AgentManagerService is available
+    if (!this.agentManagerService) {
+      this.logger.warn(
+        '[WorkspaceService] AgentManagerService not available, skipping STAGEWISE.md generation',
+      );
+      return;
+    }
+
+    this.logger.info(
+      '[WorkspaceService] Starting STAGEWISE.md generation for workspace...',
+    );
+
+    const spawnAgent = async (retryCount = 0): Promise<void> => {
+      try {
+        const agent = await this.agentManagerService!.createAgent(
+          AgentTypes.STAGEWISE_MD,
+          undefined,
+          {
+            parentInstanceId: '',
+            onFinish: (output: { message: string }) => {
+              this.logger.info(
+                `[WorkspaceService] STAGEWISE.md generated: ${output.message}`,
+              );
+            },
+            onError: async (error: Error) => {
+              if (retryCount < 2) {
+                this.logger.warn(
+                  `[WorkspaceService] STAGEWISE.md generation failed, retrying (${retryCount + 1}/2): ${error.message}`,
+                );
+                await spawnAgent(retryCount + 1);
+              } else {
+                this.logger.error(
+                  '[WorkspaceService] STAGEWISE.md generation failed after 2 retries',
+                  { error },
+                );
+              }
+            },
+          },
+        );
+
+        // Send initial message to trigger analysis
+        await agent.sendUserMessage({
+          id: randomUUID(),
+          role: 'user',
+          parts: [
+            {
+              type: 'text',
+              text: 'Analyze this project and generate a comprehensive STAGEWISE.md file. Start by exploring the project structure, then read key configuration files, and finally write the analysis using the writeStagewiseMdTool. Call the finish tool when done.',
+            },
+          ],
+        });
+      } catch (error) {
+        if (retryCount < 2) {
+          this.logger.warn(
+            `[WorkspaceService] Failed to spawn STAGEWISE.md agent, retrying (${retryCount + 1}/2)`,
+          );
+          await spawnAgent(retryCount + 1);
+        } else {
+          this.logger.error(
+            '[WorkspaceService] Failed to spawn STAGEWISE.md agent after 2 retries',
+            { error },
+          );
+        }
+      }
+    };
+
+    // Fire and forget - don't block workspace loading
+    void spawnAgent();
   }
 
   public async unloadWorkspace() {
@@ -396,5 +466,15 @@ export class WorkspaceService extends DisposableService {
       throw new Error('No workspace is loaded.');
     }
     return this.currentWorkspacePath;
+  }
+
+  /**
+   * Sets the AgentManagerService for spawning agents.
+   * Called from main.ts after AgentManagerService is created (due to circular dependency).
+   */
+  public setAgentManagerService(
+    agentManagerService: AgentManagerService,
+  ): void {
+    this.agentManagerService = agentManagerService;
   }
 }

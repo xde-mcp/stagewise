@@ -1,6 +1,9 @@
-import { useCallback, useMemo, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
-import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import {
+  AgentTypes,
+  type AgentMessage,
+} from '@shared/karton-contracts/ui/agent';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import {
   type StatusCardSection,
@@ -9,8 +12,13 @@ import {
 } from './shared';
 import { FileDiffSection, formatFileDiff } from './file-diff-section';
 import { MessageQueueSection } from './message-queue-section';
+import {
+  StagewiseMdStatusSection,
+  type StagewiseMdStatus,
+} from './stagewise-md-section';
 
 // Stable empty arrays to avoid infinite loop with useSyncExternalStore
+const EMPTY_HISTORY: AgentMessage[] = [];
 const EMPTY_QUEUE: (AgentMessage & { role: 'user' })[] = [];
 
 export function StatusCard() {
@@ -41,6 +49,61 @@ export function StatusCard() {
       ? (s.agents.instances[openAgentId]?.state.queuedMessages ?? EMPTY_QUEUE)
       : EMPTY_QUEUE,
   );
+
+  // Find the stagewise-md agent ID when it's running
+  const stagewiseMdAgentId = useKartonState((s) => {
+    const instances = s.agents.instances;
+    for (const agentId in instances) {
+      const agent = instances[agentId];
+      if (
+        agent.type === AgentTypes.STAGEWISE_MD &&
+        agent.state.isWorking === true
+      )
+        return agentId;
+    }
+    return null;
+  });
+
+  // Check if there's a running StagewiseMdAgent
+  const isStagewiseMdRunning = stagewiseMdAgentId !== null;
+
+  // Get agent history for status updates
+  const stagewiseMdHistory = useKartonState((s): AgentMessage[] =>
+    stagewiseMdAgentId
+      ? (s.agents.instances[stagewiseMdAgentId]?.state.history ?? EMPTY_HISTORY)
+      : EMPTY_HISTORY,
+  );
+
+  // Get workspace path for relativizing file paths in status text
+  const workspacePath = useKartonState(
+    (s) => s.workspace?.agent?.accessPath ?? null,
+  );
+
+  // Track StagewiseMd status with completion state
+  const [stagewiseMdStatus, setStagewiseMdStatus] =
+    useState<StagewiseMdStatus>('hidden');
+  const prevRunningRef = useRef(false);
+
+  useEffect(() => {
+    // Started running
+    if (isStagewiseMdRunning && !prevRunningRef.current)
+      setStagewiseMdStatus('running');
+    // Just finished - show completed state (user dismisses via "Done" button)
+    else if (!isStagewiseMdRunning && prevRunningRef.current)
+      setStagewiseMdStatus('completed');
+
+    prevRunningRef.current = isStagewiseMdRunning;
+  }, [isStagewiseMdRunning]);
+
+  // Dismiss callback for stagewise-md completion
+  const handleStagewiseMdDismiss = useCallback(() => {
+    setStagewiseMdStatus('hidden');
+  }, []);
+
+  // Show file callback - navigates to agent settings context files section
+  const handleStagewiseMdShowFile = useCallback(() => {
+    void createTab('stagewise://internal/agent-settings#context-files', true);
+  }, [createTab]);
 
   // Procedure to remove a queued message
   const deleteQueuedMessage = useKartonProcedure(
@@ -80,6 +143,16 @@ export function StatusCard() {
   const items = useMemo(() => {
     const result: StatusCardSection[] = [];
 
+    // Add StagewiseMd status indicator if running or just completed
+    const stagewiseMdSection = StagewiseMdStatusSection({
+      status: stagewiseMdStatus,
+      history: stagewiseMdHistory,
+      workspacePath,
+      onDismiss: handleStagewiseMdDismiss,
+      onShowFile: handleStagewiseMdShowFile,
+    });
+    if (stagewiseMdSection) result.push(stagewiseMdSection);
+
     const messageQueueSection = MessageQueueSection({
       queuedMessages: messageQueue ?? [],
       onRemoveMessage: async (messageId) => {
@@ -104,6 +177,11 @@ export function StatusCard() {
 
     return result;
   }, [
+    stagewiseMdStatus,
+    stagewiseMdHistory,
+    workspacePath,
+    handleStagewiseMdDismiss,
+    handleStagewiseMdShowFile,
     messageQueue,
     openAgentId,
     deleteQueuedMessage,
