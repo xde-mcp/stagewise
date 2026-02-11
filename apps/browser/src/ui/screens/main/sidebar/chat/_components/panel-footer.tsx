@@ -12,8 +12,6 @@ import {
   useState,
   useEffect,
   useRef,
-  useOptimistic,
-  startTransition,
   type RefObject,
 } from 'react';
 import {
@@ -71,23 +69,20 @@ export function ChatPanelFooter() {
     (p) => p.agents.updateInputState,
   );
 
-  const [optimisticChatInputState, setOptimisticChatInputState] =
-    useOptimistic<Content | null>(
-      chatInputState && chatInputState.length > 0
-        ? JSON.parse(chatInputState)
-        : null,
-    );
+  const [localInputState, setLocalInputState] = useState<Content | null>(() =>
+    chatInputState && chatInputState.length > 0
+      ? JSON.parse(chatInputState)
+      : null,
+  );
 
   const updateChatInputState = useCallback(
     (newInputState: Content) => {
-      const content = JSON.stringify(newInputState);
-      startTransition(async () => {
-        if (!openAgent) return;
-        setOptimisticChatInputState(newInputState);
-        void setChatInputState(openAgent, content);
-      });
+      setLocalInputState(newInputState);
+      if (openAgent) {
+        void setChatInputState(openAgent, JSON.stringify(newInputState));
+      }
     },
-    [openAgent],
+    [openAgent, setChatInputState],
   );
 
   const [localSelectedElements, setLocalSelectedElements] = useState<
@@ -278,7 +273,7 @@ export function ChatPanelFooter() {
       enableInputField &&
       (chatInputRef.current?.getTextContent()?.trim().length ?? 0) > 2
     );
-  }, [enableInputField, optimisticChatInputState]);
+  }, [enableInputField, localInputState]);
 
   const hasOpenedInternalPage = useMemo(() => {
     return activeTab?.url?.startsWith('stagewise://internal/') ?? false;
@@ -290,7 +285,7 @@ export function ChatPanelFooter() {
     // Collect metadata for selected elements and text clips
     const metadata = collectUserMessageMetadata(
       localSelectedElements,
-      optimisticChatInputState,
+      localInputState,
     );
 
     const markdownText = chatInputRef.current!.getTextContent();
@@ -308,8 +303,20 @@ export function ChatPanelFooter() {
       },
     };
 
+    // Save for restore on error
+    const previousContent = localInputState;
+
     clearAll();
     stopContextSelector();
+
+    // Clear input IMMEDIATELY (before network call)
+    chatInputRef.current?.clear();
+    const emptyDoc: Content = {
+      type: 'doc',
+      content: [{ type: 'paragraph' }],
+    };
+    setLocalInputState(emptyDoc);
+    if (openAgent) void setChatInputState(openAgent, JSON.stringify(emptyDoc));
 
     // Dispatch event to force scroll to bottom BEFORE sending (must happen before DOM updates)
     window.dispatchEvent(new Event('chat-message-sent'));
@@ -318,26 +325,25 @@ export function ChatPanelFooter() {
       // Send the message
       if (openAgent) await sendUserMessage(openAgent, message);
 
-      // Only clear input state after successful send
-      updateChatInputState({ type: 'doc', content: [{ type: 'paragraph' }] });
-
       // Keep input focused after sending - refocus in next tick
       setTimeout(() => {
         chatInputRef.current?.focus();
       }, 0);
     } catch (error) {
+      // Restore input on failure
+      setLocalInputState(previousContent);
       console.error('Failed to send message:', error);
-      // Input state is preserved so user can retry
     }
   }, [
-    optimisticChatInputState,
+    localInputState,
     canSendMessage,
     fileAttachments,
     localSelectedElements,
     sendUserMessage,
+    openAgent,
+    setChatInputState,
     clearAll,
     stopContextSelector,
-    updateChatInputState,
   ]);
 
   const usedTokens = useKartonState((s) =>
@@ -606,7 +612,7 @@ export function ChatPanelFooter() {
         <ChatInput
           key={openAgent}
           ref={chatInputRef as RefObject<ChatInputHandle>}
-          value={optimisticChatInputState}
+          value={localInputState}
           onChange={updateChatInputState}
           onSubmit={handleSubmit}
           disabled={!enableInputField}

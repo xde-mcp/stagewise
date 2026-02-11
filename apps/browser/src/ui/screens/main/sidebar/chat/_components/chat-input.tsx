@@ -88,6 +88,8 @@ export interface ChatInputHandle {
   getTextContent: () => string;
   /** Get the current TipTap JSON content as a string */
   getJsonContent: () => string;
+  /** Clear all editor content */
+  clear: () => void;
 }
 
 export const ChatInput = ({
