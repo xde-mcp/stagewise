@@ -177,6 +177,7 @@ export class SelectedElementTracker extends EventEmitter<ElementSelectorEventMap
 
     try {
       await this.sendCommand('DOM.enable');
+      await this.sendCommand('CSS.enable'); // Needed for CSS.getComputedStyleForNode, etc.
       await this.sendCommand('Page.enable');
       await this.sendCommand('Runtime.enable'); // Needed to find isolated worlds
       // Note: Runtime.enable will trigger Runtime.executionContextCreated events

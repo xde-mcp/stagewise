@@ -79,6 +79,16 @@ const html = await API.sendCDP("t_1", "Runtime.evaluate", {
 return html.result.value;
 \`\`\`
 
+### Monitor network requests (requires enabling domain first)
+\`\`\`
+// Network domain is NOT pre-enabled, so enable it first
+await API.sendCDP("t_1", "Network.enable");
+
+// Now you can use Network methods
+const cookies = await API.sendCDP("t_1", "Network.getCookies");
+return cookies;
+\`\`\`
+
 ## Use cases
 1. **Inspect & extract styles** from any website — use CDP to get computed styles, CSS rules, animations, and pseudo-elements.
 2. **Debug the user's app** — evaluate JS expressions in the page, inspect DOM state, check for errors.
@@ -90,9 +100,18 @@ return html.result.value;
 - For structured data, return objects/arrays directly (they are JSON-serialized automatically).
 - Use \`globalThis\` to persist data across multiple tool calls.
 - Tab handles like \`"t_1"\` are listed in the browser-information section of the system prompt.
-- The CDP debugger is already attached to each tab — no setup needed.
 - When running \`Runtime.evaluate\`, set \`returnByValue: true\` to get serialized JS values back, or omit it to get object references.
-- Selected elements include \`backendNodeId\` and \`frameId\` which can be used directly with CDP methods like \`DOM.resolveNode\`, \`DOM.describeNode\`, or \`DOM.pushNodeByBackendIdToFrontend\` (to get a \`nodeId\`).
+- Selected elements include \`tabHandle\`, \`backendNodeId\`, and \`frameId\` which can be used directly with CDP methods like \`DOM.resolveNode\`, \`DOM.describeNode\`, or \`DOM.pushNodeByBackendIdToFrontend\` (to get a \`nodeId\`).
+
+## Pre-enabled CDP domains
+The following CDP domains are already enabled for each tab — do NOT call \`.enable()\` on them:
+- \`DOM\` — DOM inspection and manipulation
+- \`CSS\` — Computed styles, style rules, etc.
+- \`Page\` — Page lifecycle, frames, navigation
+- \`Runtime\` — JavaScript execution and evaluation
+- \`Log\` and \`Console\` — Console message capture
+
+For other CDP domains (e.g., \`Network\`, \`Overlay\`, \`Input\`), call \`<Domain>.enable\` before using them.
 
 Parameters:
 - script (string, REQUIRED): JavaScript code to execute in the sandbox.
