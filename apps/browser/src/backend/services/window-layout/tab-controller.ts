@@ -412,6 +412,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
           if (info && lastHoveredElementId === elementId) {
             // Double-check elementId hasn't changed during async operation
             info.tabId = this.id;
+            info.tabHandle = this.handle;
             this.emit('elementHovered', info);
           }
         }, 200); // Wait 200ms after mouse stops moving
@@ -861,6 +862,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     const info = await this.selectedElementTracker.collectHoveredElementInfo();
     if (info) {
       info.tabId = this.id;
+      info.tabHandle = this.handle;
       this.emit('elementSelected', info);
 
       // Capture screenshot of the element (async, non-blocking)

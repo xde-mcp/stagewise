@@ -34,6 +34,7 @@ const baseSelectedElementSchema = z.object({
   frameTitle: z.string().nullable().optional(),
   backendNodeId: z.number().optional(),
   tabId: z.string().optional(),
+  tabHandle: z.string().optional(), // Human-readable handle for CDP (e.g., "t_1")
   codeMetadata: z
     .array(
       z.object({
@@ -148,6 +149,17 @@ const baseSelectedElementSchema = z.object({
           zIndex: z.string().optional(),
         })
         .optional(),
+    })
+    .optional(),
+  // Interaction state at the moment of selection (CSS pseudo-class states)
+  // IMPORTANT: computedStyles reflect the element's state at selection time.
+  // If hover is true, the styles may include :hover CSS rules.
+  interactionState: z
+    .object({
+      hover: z.boolean().optional(),
+      active: z.boolean().optional(),
+      focus: z.boolean().optional(),
+      focusWithin: z.boolean().optional(),
     })
     .optional(),
 });

@@ -269,7 +269,7 @@ const userMessageFormatDescription = xml({
                   _attr: {
                     name: 'selected-dom-element',
                     description:
-                      'A DOM element selected by [USER] from the dev app preview. Contains element details including tag name, xpath, bounding box position, computed styles, attributes, parent/child hierarchy, and related codebase files. Use this to understand which UI element [USER] is referring to and to locate the corresponding source code for modifications.',
+                      'A DOM element selected by [USER] from the dev app preview. Contains element details including tag name, xpath, bounding box position, computed styles, attributes, parent/child hierarchy, and related codebase files. Use this to understand which UI element [USER] is referring to and to locate the corresponding source code for modifications. IMPORTANT: The "interactionState" field indicates the CSS pseudo-class state at selection time (hover, active, focus, focusWithin). If "hover" is true, the "computedStyles" reflect :hover CSS rules, NOT the idle/default state. Account for this when analyzing colors, backgrounds, transforms, or other properties that commonly change on hover.',
                   },
                 },
               ],
@@ -586,7 +586,7 @@ function buildBrowserInformation(browser: BrowserSnapshot): string {
     return {
       tab: {
         _attr: {
-          id: tab.handle,
+          tabHandle: tab.handle,
           title: tab.title,
           url: tab.url,
           ...(tab.error
@@ -614,7 +614,7 @@ function buildBrowserInformation(browser: BrowserSnapshot): string {
       {
         _attr: {
           description:
-            'Information about the browser and tabs that [USER] has opened and [STAGE] has access to.',
+            'Information about the browser and tabs that [USER] has opened and [STAGE] has access to. Only use tabHandles listed here for CDP operations. Tabs from conversation history may no longer exist.',
           'total-tabs-open-count': browser.totalTabCount,
         },
       },

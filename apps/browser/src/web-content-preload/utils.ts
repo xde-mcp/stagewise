@@ -673,6 +673,39 @@ const getReactInfo = (element: Element): ReactSelectedElementInfo => {
   return hierarchy;
 };
 
+/**
+ * Detect the current CSS interaction state of an element.
+ * This helps the agent understand that computedStyles may reflect
+ * hover/active/focus states rather than the element's idle state.
+ * Only captures for the original element to reduce payload.
+ */
+const getInteractionState = (
+  element: Element,
+  mode: 'originalElement' | 'children' | 'parents' | 'siblings',
+): SelectedElement['interactionState'] | undefined => {
+  // Only capture interaction state for the original element
+  if (mode !== 'originalElement') {
+    return undefined;
+  }
+
+  try {
+    const state: NonNullable<SelectedElement['interactionState']> = {};
+    // Check CSS pseudo-class states using matches()
+    if (element.matches(':hover')) state.hover = true;
+
+    if (element.matches(':active')) state.active = true;
+
+    if (element.matches(':focus')) state.focus = true;
+
+    if (element.matches(':focus-within')) state.focusWithin = true;
+
+    // Only return if at least one state is active
+    return Object.keys(state).length > 0 ? state : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const serializeElementRecursive = (
   element: Element,
   mode: 'originalElement' | 'children' | 'parents' | 'siblings',
@@ -758,6 +791,10 @@ const serializeElementRecursive = (
   // Extract pseudo-element styles (::before, ::after) only for original element
   const pseudoElements = getPseudoElementStyles(element, mode);
 
+  // Extract interaction state (hover, active, focus) only for original element
+  // This helps the agent understand that computedStyles may reflect these states
+  const interactionState = getInteractionState(element, mode);
+
   return {
     id: backendNodeId ? backendNodeId.toString() : undefined,
     tagName: truncateString(element.nodeName, 96) ?? 'unknown',
@@ -781,6 +818,7 @@ const serializeElementRecursive = (
         : undefined,
     computedStyles,
     pseudoElements,
+    interactionState,
   };
 };
 

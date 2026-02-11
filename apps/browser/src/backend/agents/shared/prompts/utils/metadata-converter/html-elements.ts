@@ -189,6 +189,17 @@ function serializeSelectedElementPart(
         }
       : {};
 
+  // Interaction state (hover, active, focus) - only for original element (depth === 0)
+  // Indicates what CSS pseudo-class state the element was in when selected
+  const interactionStateChildNode: xml.XmlObject =
+    depth === 0 && element.interactionState
+      ? {
+          interactionState: {
+            _attr: element.interactionState,
+          },
+        }
+      : {};
+
   const ownPropertiesChildNodes: xml.XmlObject[] = !minimizeContent
     ? Object.entries(element.ownProperties ?? {})
         .slice(0, 10)
@@ -219,10 +230,11 @@ function serializeSelectedElementPart(
   const frameChildNode: xml.XmlObject = {
     frame: {
       _attr: {
-        tabId: element.tabId ?? 'unknown',
+        tabHandle: element.tabHandle ?? 'unknown',
+        frameId: element.frameId ?? 'unknown',
+        backendNodeId: element.backendNodeId ?? 'unknown',
         isMainFrame: element.isMainFrame ?? 'unknown',
-        frameLocation: element.frameLocation ?? 'unknown',
-        frameTitle: element.frameTitle ?? 'unknown',
+        url: element.frameLocation ?? 'unknown',
       },
     },
   };
@@ -276,6 +288,7 @@ function serializeSelectedElementPart(
       attributeChildNode,
       xpathChildNode,
       positionChildNode,
+      interactionStateChildNode,
       computedStylesChildNode,
       pseudoElementsChildNode,
       ...ownPropertiesChildNodes,

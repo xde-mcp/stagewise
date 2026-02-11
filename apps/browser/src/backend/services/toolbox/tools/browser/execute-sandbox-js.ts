@@ -28,10 +28,10 @@ The sandbox context is **persistent across calls** within your agent session. Th
 
 ## Available API
 
-### \`API.sendCDP(tabId, method, params?)\`
+### \`API.sendCDP(tabHandle, method, params?)\`
 Sends a **Chrome DevTools Protocol (CDP)** command to a specific browser tab and returns the result. This is your primary way to interact with web pages.
 
-- \`tabId\` (string): The tab handle (e.g. \`"t_1"\`) from browser-information in the system prompt.
+- \`tabHandle\` (string): The tab handle (e.g. \`"t_1"\`) from browser-information in the system prompt.
 - \`method\` (string): The CDP method name (e.g. \`"Runtime.evaluate"\`, \`"DOM.getDocument"\`).
 - \`params\` (object, optional): Parameters for the CDP method.
 - Returns: A Promise that resolves with the CDP result object.
@@ -92,6 +92,7 @@ return html.result.value;
 - Tab handles like \`"t_1"\` are listed in the browser-information section of the system prompt.
 - The CDP debugger is already attached to each tab — no setup needed.
 - When running \`Runtime.evaluate\`, set \`returnByValue: true\` to get serialized JS values back, or omit it to get object references.
+- Selected elements include \`backendNodeId\` and \`frameId\` which can be used directly with CDP methods like \`DOM.resolveNode\`, \`DOM.describeNode\`, or \`DOM.pushNodeByBackendIdToFrontend\` (to get a \`nodeId\`).
 
 Parameters:
 - script (string, REQUIRED): JavaScript code to execute in the sandbox.
