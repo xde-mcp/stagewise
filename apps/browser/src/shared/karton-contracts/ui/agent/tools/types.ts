@@ -357,6 +357,28 @@ export const updateStagewiseMdToolSchema = {
   outputSchema: updateStagewiseMdToolOutputSchema,
 } as const;
 
+export const writeStagewiseMdToolInputSchema = z.object({
+  content: z.string().describe('The complete STAGEWISE.md content to write'),
+});
+
+export const writeStagewiseMdToolOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  path: z.string(),
+});
+
+export type WriteStagewiseMdToolInput = z.infer<
+  typeof writeStagewiseMdToolInputSchema
+>;
+export type WriteStagewiseMdToolOutput = z.infer<
+  typeof writeStagewiseMdToolOutputSchema
+>;
+
+export const writeStagewiseMdToolSchema = {
+  inputSchema: writeStagewiseMdToolInputSchema,
+  outputSchema: writeStagewiseMdToolOutputSchema,
+} as const;
+
 export const executeSandboxJsToolInputSchema = z.object({
   script: z.string().describe('JavaScript code to execute'),
 });
@@ -524,6 +546,7 @@ export const allToolSchemas = {
   deleteFileTool: deleteFileToolSchema,
   getLintingDiagnosticsTool: getLintingDiagnosticsToolSchema,
   updateStagewiseMdTool: updateStagewiseMdToolSchema,
+  writeStagewiseMdTool: writeStagewiseMdToolSchema,
   executeSandboxJsTool: executeSandboxJsToolSchema,
   readConsoleLogsTool: readConsoleLogsToolSchema,
   getContext7LibraryDocsTool: getContext7LibraryDocsToolSchema,

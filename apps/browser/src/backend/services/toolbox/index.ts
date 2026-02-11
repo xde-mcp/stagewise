@@ -33,6 +33,7 @@ import {
 import { grepSearchTool } from './tools/file-modification/grep-search';
 import { executeSandboxJsTool } from './tools/browser/execute-sandbox-js';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
+import { writeStagewiseMdTool } from './tools/stagewise-data/write-stagewise-md';
 import { type Tool, tool } from 'ai';
 import {
   buildAgentFileEditContent,
@@ -347,6 +348,11 @@ export class ToolboxService extends DisposableService {
       case 'readConsoleLogsTool':
         if (!this.windowLayoutService) return null;
         return readConsoleLogsTool(this.windowLayoutService);
+      case 'writeStagewiseMdTool': {
+        const stagewiseDataPath = this.uiKarton.state.workspace?.paths.data;
+        if (!stagewiseDataPath) return null;
+        return writeStagewiseMdTool(stagewiseDataPath);
+      }
       default:
         this.logger.error('[ToolboxService] Tool not found', { tool });
         return null;
