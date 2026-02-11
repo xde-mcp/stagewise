@@ -56,7 +56,7 @@ export const BadgeContainer = forwardRef<HTMLSpanElement, BadgeContainerProps>(
       <span
         ref={ref}
         className={cn(
-          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded bg-inherit px-1.5 align-middle text-secondary-foreground ring-1',
+          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded bg-inherit px-1.5 align-middle text-foreground ring-1',
           'ring-1 ring-derived group-hover/chat-message-user:bg-hover-derived group-hover/chat-message-user:ring-derived-strong dark:bg-surface-tinted dark:group-hover/chat-message-user:ring-derived-strong',
           selected && 'ring-primary-foreground',
           className,
@@ -118,7 +118,7 @@ export const AttachmentBadge = forwardRef<
 
   // Show warning icon when there's a validation error
   const displayIcon = hasError ? (
-    <AlertTriangleIcon className="size-3 shrink-0 text-warning" />
+    <AlertTriangleIcon className="size-3 shrink-0 text-warning-foreground" />
   ) : (
     icon
   );
@@ -127,7 +127,7 @@ export const AttachmentBadge = forwardRef<
     <BadgeContainer
       ref={ref}
       selected={selected}
-      className={cn(hasError && 'opacity-50', className)}
+      className={cn('text-foreground', hasError && 'opacity-50', className)}
       {...props}
     >
       {/* Icon container - shows type icon normally, X on hover when editable */}
@@ -143,14 +143,14 @@ export const AttachmentBadge = forwardRef<
           )}
         >
           {/* Normal icon - hidden on hover */}
-          <span className="transition-opacity group-hover/badge:opacity-0">
+          <span className="text-foreground transition-opacity group-hover/badge:opacity-0">
             {displayIcon}
           </span>
           {/* X icon - shown on hover */}
-          <XIcon className="absolute inset-0 size-3 text-error opacity-0 transition-opacity group-hover/badge:opacity-100" />
+          <XIcon className="absolute inset-0 size-3 text-foreground opacity-0 transition-opacity group-hover/badge:opacity-100" />
         </span>
       ) : (
-        displayIcon
+        <span className="text-foreground">{displayIcon}</span>
       )}
 
       {/* Label */}
@@ -209,7 +209,7 @@ export function AttachmentBadgeWrapper({
         <Tooltip>
           <TooltipTrigger render={children} />
           <TooltipContent>
-            <span className="text-warning">{errorMessage}</span>
+            <span className="text-warning-foreground">{errorMessage}</span>
           </TooltipContent>
         </Tooltip>
       </Wrapper>
