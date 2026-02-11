@@ -435,6 +435,8 @@ export abstract class BaseAgent<
       draft.inputState = initialState?.inputState ?? draft.inputState;
       draft.usedTokens = initialState?.usedTokens ?? 0;
     });
+
+    this.onCreated();
   }
 
   /**
@@ -823,6 +825,19 @@ export abstract class BaseAgent<
   }
 
   /**
+   * Transforms/Updates the list of messages before a step is started.
+   *
+   * @note Called when the agent is created.
+   *
+   * @note Can be overridden by the inheriting class to add additional logic when the agent is created.
+   *
+   * @note Void for now, we may reconsider allowing promises in the future.
+   */
+  protected onCreated(): void {
+    return;
+  }
+
+  /**
    * Transforms/Updates UI messages into model messages that are sent to the model.
    *
    * @param messages - The UI messages to transform
@@ -984,6 +999,40 @@ export abstract class BaseAgent<
   }
 
   /**
+   * =======================================================
+   * PRIVATE METHODS (INTERNAL USE ONLY)
+   * =======================================================
+   */
+
+  private async updateTitle(): Promise<void> {
+    // Check if a title update is needed
+    if (!this.config.generateTitles) {
+      return;
+    }
+
+    const modulo = Math.max(0, this.config.updateTitlesEveryNUserMessages ?? 0);
+    const userMsgCount = this.state
+      .get()
+      .history.filter((message) => message.role === 'user').length;
+    if (userMsgCount !== 1 && userMsgCount % modulo !== 0) {
+      return;
+    }
+
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Updating title for agent. Agent Type: ${this.agentType}`,
+    );
+
+    const newTitle = await this.generateTitle(this.state.get().history);
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] New title generated: ${newTitle}`,
+    );
+    this.state.set((draft) => {
+      draft.title = newTitle;
+    });
+    // We don't do persistence here, since that happens after a step is finished
+  }
+
+  /**
    * Should be executed after a user or toool approval message was added to the agent
    */
   private async runStep(): Promise<void> {
@@ -1131,40 +1180,6 @@ export abstract class BaseAgent<
         `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
       );
     }
-  }
-
-  /**
-   * =======================================================
-   * PRIVATE METHODS (INTERNAL USE ONLY)
-   * =======================================================
-   */
-
-  private async updateTitle(): Promise<void> {
-    // Check if a title update is needed
-    if (!this.config.generateTitles) {
-      return;
-    }
-
-    const modulo = Math.max(0, this.config.updateTitlesEveryNUserMessages ?? 0);
-    const userMsgCount = this.state
-      .get()
-      .history.filter((message) => message.role === 'user').length;
-    if (userMsgCount !== 1 && userMsgCount % modulo !== 0) {
-      return;
-    }
-
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Updating title for agent. Agent Type: ${this.agentType}`,
-    );
-
-    const newTitle = await this.generateTitle(this.state.get().history);
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] New title generated: ${newTitle}`,
-    );
-    this.state.set((draft) => {
-      draft.title = newTitle;
-    });
-    // We don't do persistence here, since that happens after a step is finished
   }
 
   private async summarizeAndOverrideHistory(): Promise<void> {
