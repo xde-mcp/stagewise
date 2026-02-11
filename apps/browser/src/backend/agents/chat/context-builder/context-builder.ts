@@ -45,19 +45,15 @@ export async function buildChatSystemPrompt(
       ? 'project-connected'
       : 'project-not-connected';
 
-  const [
-    stagewiseMdContent,
-    agentsMdContent,
-    workspaceInfo,
-    diagnosticsByFile,
-  ] = await Promise.all([
-    toolbox.getStagewiseMd(),
-    toolbox.getAgentsMd(),
-    workspaceSnapshot.isConnected
-      ? toolbox.getWorkspaceInfo()
-      : Promise.resolve(null),
-    toolbox.getLspDiagnosticsForAgent(agentInstanceId),
-  ]);
+  const [projectMdContent, agentsMdContent, workspaceInfo, diagnosticsByFile] =
+    await Promise.all([
+      toolbox.getProjectMd(),
+      toolbox.getAgentsMd(),
+      workspaceSnapshot.isConnected
+        ? toolbox.getWorkspaceInfo()
+        : Promise.resolve(null),
+      toolbox.getLspDiagnosticsForAgent(agentInstanceId),
+    ]);
 
   const agentAccessPath = workspaceSnapshot.cwd ?? '';
 
@@ -77,9 +73,9 @@ export async function buildChatSystemPrompt(
   ${toolCallGuidelines}
   ${codingGuidelines}
   ${dontDos}
-  ${workspaceInfo ? buildWorkspaceInformation(workspaceSnapshot, workspaceInfo, !!stagewiseMdContent) : ''}
+  ${workspaceInfo ? buildWorkspaceInformation(workspaceSnapshot, workspaceInfo, !!projectMdContent) : ''}
   ${buildBrowserInformation(browserSnapshot)}
-  ${buildStagewiseMdSection(stagewiseMdContent)}
+  ${buildProjectMdSection(projectMdContent)}
   ${buildAgentsMdSection(agentsMdContent)}
   ${buildCurrentGoal(projectMode)}
   ${diagnosticsSection}
@@ -644,14 +640,14 @@ function buildBrowserInformation(browser: BrowserSnapshot): string {
 
 /**
  * Builds the workspace-information XML section.
- * When stagewiseMdExists is true, we skip the detailed packages-in-repo
- * list since STAGEWISE.md contains curated, semantic project info that's
+ * When projectMdExists is true, we skip the detailed packages-in-repo
+ * list since PROJECT.md contains curated, semantic project info that's
  * more valuable.
  */
 function buildWorkspaceInformation(
   workspace: WorkspaceSnapshot,
   workspaceInfo: WorkspaceInfo,
-  stagewiseMdExists: boolean,
+  projectMdExists: boolean,
 ): string {
   return xml({
     'workspace-info': [
@@ -691,7 +687,7 @@ function buildWorkspaceInformation(
                 },
               ]
             : []),
-          ...(!stagewiseMdExists && workspaceInfo.packagesInRepo.length > 0
+          ...(!projectMdExists && workspaceInfo.packagesInRepo.length > 0
             ? [
                 {
                   'packages-in-repo': [
@@ -822,17 +818,17 @@ function formatLspDiagnosticsByFile(
 }
 
 /**
- * Notice shown when STAGEWISE.md has not yet been generated for the
+ * Notice shown when PROJECT.md has not yet been generated for the
  * project.
  */
-function getStagewiseMdNotice(): string {
+function getProjectMdNotice(): string {
   return xml({
-    'stagewise-md-notice': {
+    'project-md-notice': {
       _attr: {
         status: 'not-generated',
       },
       _cdata: `
-A 'STAGEWISE.md' project context file has not yet been generated for this [WORKSPACE].
+A 'PROJECT.md' project context file has not yet been generated for this [WORKSPACE].
 This file provides curated, semantic information about the project structure, frameworks, and conventions.
 Without it, [STAGE] relies on real-time file inspection and the basic workspace info above.
 The file will either be generated automatically on project load, or when [STAGE] initiates a new generation of it through a tool call.
@@ -842,25 +838,25 @@ The file will either be generated automatically on project load, or when [STAGE]
 }
 
 /**
- * Returns the STAGEWISE.md section for the system prompt.
+ * Returns the PROJECT.md section for the system prompt.
  * If content exists, wraps it with a descriptive preface.
  * If no content, returns the notice explaining the file hasn't been
  * generated.
  */
-function buildStagewiseMdSection(stagewiseMdContent: string | null): string {
-  if (stagewiseMdContent === null) {
-    return getStagewiseMdNotice();
+function buildProjectMdSection(projectMdContent: string | null): string {
+  if (projectMdContent === null) {
+    return getProjectMdNotice();
   }
   return xml({
-    'stagewise-md': [
+    'project-md': [
       {
         _attr: {
           description:
-            'Project context file (STAGEWISE.md) containing curated, semantic information about the project structure, UI frameworks, styling conventions, and component patterns. Use this to understand how to write code that fits the project.',
+            'Project context file (PROJECT.md) containing curated, semantic information about the project structure, UI frameworks, styling conventions, and component patterns. Use this to understand how to write code that fits the project.',
         },
       },
       {
-        _cdata: stagewiseMdContent,
+        _cdata: projectMdContent,
       },
     ],
   });

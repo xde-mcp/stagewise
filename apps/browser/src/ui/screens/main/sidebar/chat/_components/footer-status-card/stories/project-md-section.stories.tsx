@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import {
-  StagewiseMdStatusSection,
-  type StagewiseMdStatus,
-} from '../stagewise-md-section';
+  ProjectMdStatusSection,
+  type ProjectMdStatus,
+} from '../project-md-section';
 import { StatusCardSectionComponent } from '../shared';
 
 // Helper to create mock assistant messages with tool parts
@@ -17,7 +17,7 @@ function createMockToolMessage(
     parts: [
       {
         type: toolType,
-        status: 'running',
+        state: 'input-available',
         input: input ?? {},
       } as AgentMessage['parts'][number],
     ],
@@ -25,18 +25,18 @@ function createMockToolMessage(
 }
 
 // Wrapper component to render the section
-interface StagewiseMdSectionStoryProps {
-  status: StagewiseMdStatus;
+interface ProjectMdSectionStoryProps {
+  status: ProjectMdStatus;
   history: AgentMessage[];
   workspacePath?: string | null;
 }
 
-function StagewiseMdSectionStory({
+function ProjectMdSectionStory({
   status,
   history,
   workspacePath,
-}: StagewiseMdSectionStoryProps) {
-  const section = StagewiseMdStatusSection({
+}: ProjectMdSectionStoryProps) {
+  const section = ProjectMdStatusSection({
     status,
     history,
     workspacePath,
@@ -62,9 +62,9 @@ function StagewiseMdSectionStory({
   );
 }
 
-const meta: Meta<typeof StagewiseMdSectionStory> = {
-  title: 'Chat/Footer Status Card/Stagewise MD Section',
-  component: StagewiseMdSectionStory,
+const meta: Meta<typeof ProjectMdSectionStory> = {
+  title: 'Chat/Footer Status Card/Project MD Section',
+  component: ProjectMdSectionStory,
   tags: ['autodocs'],
   decorators: [
     (Story) => (
@@ -77,19 +77,19 @@ const meta: Meta<typeof StagewiseMdSectionStory> = {
     status: {
       control: 'select',
       options: ['hidden', 'running', 'completed'],
-      description: 'Current status of the stagewise-md generation',
+      description: 'Current status of the project-md generation',
     },
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof StagewiseMdSectionStory>;
+type Story = StoryObj<typeof ProjectMdSectionStory>;
 
 /**
  * Hidden State
  *
  * When status is 'hidden', the section returns null and nothing is rendered.
- * This is the default state when no stagewise-md generation is in progress.
+ * This is the default state when no project-md generation is in progress.
  */
 export const Hidden: Story = {
   args: {
@@ -102,7 +102,7 @@ export const Hidden: Story = {
  * Running - Initial State
  *
  * When generation first starts with no tool calls yet.
- * Shows "Initializing STAGEWISE.md..."
+ * Shows "Initializing PROJECT.md..."
  */
 export const RunningInitial: Story = {
   name: 'Running / Initial',
@@ -185,16 +185,16 @@ export const RunningGrepSearch: Story = {
 };
 
 /**
- * Running - Writing STAGEWISE.md
+ * Running - Writing PROJECT.md
  *
- * When the agent is writing the final STAGEWISE.md file.
- * Shows "Writing STAGEWISE.md..."
+ * When the agent is writing the final PROJECT.md file.
+ * Shows "Writing PROJECT.md..."
  */
 export const RunningWritingFile: Story = {
-  name: 'Running / Writing STAGEWISE.md',
+  name: 'Running / Writing PROJECT.md',
   args: {
     status: 'running',
-    history: [createMockToolMessage('tool-writeStagewiseMdTool', {})],
+    history: [createMockToolMessage('tool-writeProjectMdTool', {})],
   },
 };
 
@@ -261,7 +261,7 @@ export const RunningAbsolutePathWithWorkspace: Story = {
  * Completed State
  *
  * When generation is complete, shows the file with action buttons.
- * - File icon and "STAGEWISE.md generated" text
+ * - File icon and "PROJECT.md generated" text
  * - "Done" button to dismiss
  * - "Show file" button to navigate to agent settings
  */

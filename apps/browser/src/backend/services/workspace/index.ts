@@ -16,7 +16,10 @@ import type { GlobalDataPathService } from '@/services/global-data-path';
 import { DisposableService } from '../disposable';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
-import { STAGEWISE_MD_FILENAME } from '@/agents/shared/prompts/utils/read-stagewise-md';
+import {
+  PROJECT_MD_FILENAME,
+  PROJECT_MD_DIR,
+} from '@/agents/shared/prompts/utils/read-project-md';
 import type { AuthService } from '../auth';
 import type { AgentManagerService } from '../agent-manager';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
@@ -243,7 +246,7 @@ export class WorkspaceService extends DisposableService {
       rgBinaryBasePath: this.globalDataPathService.globalDataPath,
     });
 
-    void this.checkAndGenerateStagewiseMd(clientRuntime);
+    void this.checkAndGenerateProjectMd(clientRuntime);
 
     this.staticAnalysisService = await StaticAnalysisService.create(
       this.logger,
@@ -287,15 +290,19 @@ export class WorkspaceService extends DisposableService {
           ? 'on_start_with_arg'
           : 'on_start'
         : 'at_runtime_by_user_action',
-      initial_setup: false, // TODO: Check if stagewise.md present in workspace data path
+      initial_setup: false, // TODO: Check if PROJECT.md present in .stagewise directory
     });
   }
 
-  private async checkAndGenerateStagewiseMd(_clientRuntime: ClientRuntimeNode) {
-    const stagewiseMdDirPath = this.workspacePathsService!.workspaceDataPath;
-    if (existsSync(path.join(stagewiseMdDirPath, STAGEWISE_MD_FILENAME))) {
+  private async checkAndGenerateProjectMd(_clientRuntime: ClientRuntimeNode) {
+    const projectMdPath = path.join(
+      this.currentWorkspacePath!,
+      PROJECT_MD_DIR,
+      PROJECT_MD_FILENAME,
+    );
+    if (existsSync(projectMdPath)) {
       this.logger.debug(
-        `[WorkspaceService] STAGEWISE.md already exists, skipping generation...`,
+        `[WorkspaceService] PROJECT.md already exists, skipping generation...`,
       );
       return;
     }
@@ -304,7 +311,7 @@ export class WorkspaceService extends DisposableService {
     await this.authService.refreshAuthState();
     if (this.authService.authState.status !== 'authenticated') {
       this.logger.debug(
-        '[WorkspaceService] User not authenticated, skipping STAGEWISE.md generation',
+        '[WorkspaceService] User not authenticated, skipping PROJECT.md generation',
       );
       return;
     }
@@ -314,36 +321,36 @@ export class WorkspaceService extends DisposableService {
     // Check if AgentManagerService is available
     if (!this.agentManagerService) {
       this.logger.warn(
-        '[WorkspaceService] AgentManagerService not available, skipping STAGEWISE.md generation',
+        '[WorkspaceService] AgentManagerService not available, skipping PROJECT.md generation',
       );
       return;
     }
 
     this.logger.info(
-      '[WorkspaceService] Starting STAGEWISE.md generation for workspace...',
+      '[WorkspaceService] Starting PROJECT.md generation for workspace...',
     );
 
     const spawnAgent = async (retryCount = 0): Promise<void> => {
       try {
         const agent = await this.agentManagerService!.createAgent(
-          AgentTypes.STAGEWISE_MD,
+          AgentTypes.PROJECT_MD,
           undefined,
           {
             parentInstanceId: '',
             onFinish: (output: { message: string }) => {
               this.logger.info(
-                `[WorkspaceService] STAGEWISE.md generated: ${output.message}`,
+                `[WorkspaceService] PROJECT.md generated: ${output.message}`,
               );
             },
             onError: async (error: Error) => {
               if (retryCount < 2) {
                 this.logger.warn(
-                  `[WorkspaceService] STAGEWISE.md generation failed, retrying (${retryCount + 1}/2): ${error.message}`,
+                  `[WorkspaceService] PROJECT.md generation failed, retrying (${retryCount + 1}/2): ${error.message}`,
                 );
                 await spawnAgent(retryCount + 1);
               } else {
                 this.logger.error(
-                  '[WorkspaceService] STAGEWISE.md generation failed after 2 retries',
+                  '[WorkspaceService] PROJECT.md generation failed after 2 retries',
                   { error },
                 );
               }
@@ -358,19 +365,19 @@ export class WorkspaceService extends DisposableService {
           parts: [
             {
               type: 'text',
-              text: 'Analyze the project and generate a comprehensive STAGEWISE.md file.',
+              text: 'Analyze the project and generate a comprehensive PROJECT.md file.',
             },
           ],
         });
       } catch (error) {
         if (retryCount < 2) {
           this.logger.warn(
-            `[WorkspaceService] Failed to spawn STAGEWISE.md agent, retrying (${retryCount + 1}/2)`,
+            `[WorkspaceService] Failed to spawn PROJECT.md agent, retrying (${retryCount + 1}/2)`,
           );
           await spawnAgent(retryCount + 1);
         } else {
           this.logger.error(
-            '[WorkspaceService] Failed to spawn STAGEWISE.md agent after 2 retries',
+            '[WorkspaceService] Failed to spawn PROJECT.md agent after 2 retries',
             { error },
           );
         }

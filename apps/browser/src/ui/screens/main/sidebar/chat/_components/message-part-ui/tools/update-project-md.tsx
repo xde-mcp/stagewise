@@ -8,19 +8,19 @@ import {
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { IconMagicWandFillDuo18 } from 'nucleo-ui-fill-duo-18';
 
-export const UpdateStagewiseMdToolPart = ({
+export const UpdateProjectMdToolPart = ({
   part,
   disableShimmer = false,
   minimal = false,
 }: {
   part: Extract<
     ToolUIPart<StagewiseUITools>,
-    { type: 'tool-updateStagewiseMdTool' }
+    { type: 'tool-updateProjectMdTool' }
   >;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {
-  const streamingText = `Triggering update of STAGEWISE.md...`;
+  const streamingText = `Triggering update of PROJECT.md...`;
 
   const finishedText =
     part.state === 'output-available' ? (
@@ -31,7 +31,7 @@ export const UpdateStagewiseMdToolPart = ({
               Triggered update{' '}
             </span>
             <span className="truncate font-normal opacity-75">
-              of STAGEWISE.md
+              of PROJECT.md
             </span>
           </span>
         </TooltipTrigger>

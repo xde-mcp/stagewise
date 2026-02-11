@@ -330,50 +330,50 @@ export const getLintingDiagnosticsToolSchema = {
   outputSchema: getLintingDiagnosticsToolOutputSchema,
 } as const;
 
-// IMPORTANT: This definition is tied to a child agent - so the types are not strictly coupled. Change this type when you change the input schema of the @stagewise-md.ts agent.
-export const updateStagewiseMdToolInputSchema = z.object({
+// IMPORTANT: This definition is tied to a child agent - so the types are not strictly coupled. Change this type when you change the input schema of the @project-md.ts agent.
+export const updateProjectMdToolInputSchema = z.object({
   updateReason: z
     .string()
     .min(5)
-    .describe('Brief reason for triggering the STAGEWISE.md update.'),
+    .describe('Brief reason for triggering the PROJECT.md update.'),
 });
 
-export const updateStagewiseMdToolOutputSchema = z.object({
+export const updateProjectMdToolOutputSchema = z.object({
   message: z.string(),
 });
 
-export type UpdateStagewiseMdToolInput = z.infer<
-  typeof updateStagewiseMdToolInputSchema
+export type UpdateProjectMdToolInput = z.infer<
+  typeof updateProjectMdToolInputSchema
 >;
-export type UpdateStagewiseMdToolOutput = z.infer<
-  typeof updateStagewiseMdToolOutputSchema
+export type UpdateProjectMdToolOutput = z.infer<
+  typeof updateProjectMdToolOutputSchema
 >;
 
-export const updateStagewiseMdToolSchema = {
-  inputSchema: updateStagewiseMdToolInputSchema,
-  outputSchema: updateStagewiseMdToolOutputSchema,
+export const updateProjectMdToolSchema = {
+  inputSchema: updateProjectMdToolInputSchema,
+  outputSchema: updateProjectMdToolOutputSchema,
 } as const;
 
-export const writeStagewiseMdToolInputSchema = z.object({
-  content: z.string().describe('The complete STAGEWISE.md content to write'),
+export const writeProjectMdToolInputSchema = z.object({
+  content: z.string().describe('The complete PROJECT.md content to write'),
 });
 
-export const writeStagewiseMdToolOutputSchema = z.object({
+export const writeProjectMdToolOutputSchema = z.object({
   success: z.boolean(),
   message: z.string(),
   path: z.string(),
 });
 
-export type WriteStagewiseMdToolInput = z.infer<
-  typeof writeStagewiseMdToolInputSchema
+export type WriteProjectMdToolInput = z.infer<
+  typeof writeProjectMdToolInputSchema
 >;
-export type WriteStagewiseMdToolOutput = z.infer<
-  typeof writeStagewiseMdToolOutputSchema
+export type WriteProjectMdToolOutput = z.infer<
+  typeof writeProjectMdToolOutputSchema
 >;
 
-export const writeStagewiseMdToolSchema = {
-  inputSchema: writeStagewiseMdToolInputSchema,
-  outputSchema: writeStagewiseMdToolOutputSchema,
+export const writeProjectMdToolSchema = {
+  inputSchema: writeProjectMdToolInputSchema,
+  outputSchema: writeProjectMdToolOutputSchema,
 } as const;
 
 export const executeSandboxJsToolInputSchema = z.object({
@@ -542,8 +542,8 @@ export const allToolSchemas = {
   multiEditTool: multiEditToolSchema,
   deleteFileTool: deleteFileToolSchema,
   getLintingDiagnosticsTool: getLintingDiagnosticsToolSchema,
-  updateStagewiseMdTool: updateStagewiseMdToolSchema,
-  writeStagewiseMdTool: writeStagewiseMdToolSchema,
+  updateProjectMdTool: updateProjectMdToolSchema,
+  writeProjectMdTool: writeProjectMdToolSchema,
   executeSandboxJsTool: executeSandboxJsToolSchema,
   readConsoleLogsTool: readConsoleLogsToolSchema,
   getContext7LibraryDocsTool: getContext7LibraryDocsToolSchema,

@@ -66,10 +66,10 @@ export class ChatAgent extends BaseAgent<never, undefined> {
       grepSearchTool: await box.getTool('grepSearchTool', id),
       readConsoleLogsTool: await box.getTool('readConsoleLogsTool', id),
       // IMPORTANT: The type for this tool is defined in @apps/browser/src/shared/karton-contracts/ui/agent/tools/types.ts - update the type when you change this input schema.
-      updateStagewiseMdTool: this.getSpawnChildAgentTool(
-        'Triggers an update of the STAGEWISE.md file. Use this whenever you find that the content of the STAGEWISE.md in the system context is outdated or needs to be updated. Provide a brief reason for the update.',
+      updateProjectMdTool: this.getSpawnChildAgentTool(
+        'Triggers an update of the PROJECT.md file. Use this whenever you find that the content of the PROJECT.md in the system context is outdated or needs to be updated. Provide a brief reason for the update.',
         z.object({ updateReason: z.string().min(5) }),
-        AgentTypes.STAGEWISE_MD,
+        AgentTypes.PROJECT_MD,
         (input) => {
           return { updateReason: input.updateReason };
         },

@@ -33,7 +33,7 @@ import {
 import { grepSearchTool } from './tools/file-modification/grep-search';
 import { executeSandboxJsTool } from './tools/browser/execute-sandbox-js';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
-import { writeStagewiseMdTool } from './tools/stagewise-data/write-stagewise-md';
+import { writeProjectMdTool } from './tools/stagewise-data/write-project-md';
 import { type Tool, tool } from 'ai';
 import {
   buildAgentFileEditContent,
@@ -57,7 +57,7 @@ import type {
 import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info';
 import { getWorkspaceInfo as getWorkspaceInfoUtil } from '@/agents/shared/prompts/utils/workspace-info';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
-import { readStagewiseMd } from '@/agents/shared/prompts/utils/read-stagewise-md';
+import { readProjectMd } from '@/agents/shared/prompts/utils/read-project-md';
 
 type AgentInstanceId = string;
 
@@ -348,10 +348,10 @@ export class ToolboxService extends DisposableService {
       case 'readConsoleLogsTool':
         if (!this.windowLayoutService) return null;
         return readConsoleLogsTool(this.windowLayoutService);
-      case 'writeStagewiseMdTool': {
-        const stagewiseDataPath = this.uiKarton.state.workspace?.paths.data;
-        if (!stagewiseDataPath) return null;
-        return writeStagewiseMdTool(stagewiseDataPath);
+      case 'writeProjectMdTool': {
+        const workspacePath = this.uiKarton.state.workspace?.path;
+        if (!workspacePath) return null;
+        return writeProjectMdTool(workspacePath);
       }
       default:
         this.logger.error('[ToolboxService] Tool not found', { tool });
@@ -381,7 +381,7 @@ export class ToolboxService extends DisposableService {
       isConnected: this.clientRuntime !== null,
       workspacePath: workspace?.path ?? null,
       cwd: this.clientRuntime?.fileSystem.getCurrentWorkingDirectory() ?? null,
-      stagewiseMdPath: workspace?.paths.data ?? null,
+      projectMdPath: workspace?.path ?? null,
     };
   }
 
@@ -433,10 +433,10 @@ export class ToolboxService extends DisposableService {
     return readAgentsMd(this.clientRuntime);
   }
 
-  public async getStagewiseMd(): Promise<string | null> {
-    const stagewiseMdPath = this.uiKarton.state.workspace?.paths.data ?? null;
-    if (!stagewiseMdPath) return null;
-    return readStagewiseMd(stagewiseMdPath);
+  public async getProjectMd(): Promise<string | null> {
+    const workspacePath = this.uiKarton.state.workspace?.path ?? null;
+    if (!workspacePath) return null;
+    return readProjectMd(workspacePath);
   }
 
   public async getLspDiagnosticsForAgent(

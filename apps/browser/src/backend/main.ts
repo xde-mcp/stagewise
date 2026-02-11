@@ -38,9 +38,10 @@ import { shell } from 'electron';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { ToolboxService } from './services/toolbox';
 import {
-  readStagewiseMd,
-  STAGEWISE_MD_FILENAME,
-} from './agents/shared/prompts/utils/read-stagewise-md';
+  readProjectMd,
+  PROJECT_MD_FILENAME,
+  PROJECT_MD_DIR,
+} from './agents/shared/prompts/utils/read-project-md';
 import { readAgentsMd } from './agents/shared/prompts/utils/read-agents-md';
 import { resolve } from 'node:path';
 import { ModelProviderService } from './agents/model-provider';
@@ -708,32 +709,30 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       return {
         workspaceLoaded: false,
         workspacePath: null,
-        stagewiseMd: { exists: false, path: null, content: null },
+        projectMd: { exists: false, path: null, content: null },
         agentsMd: { exists: false, path: null, content: null },
       };
     }
 
     const workspacePath = workspaceService.path;
-    const stagewiseMdDataPath = uiKarton.state.workspace?.paths.data ?? null;
 
-    // Read STAGEWISE.md from workspace data path
-    let stagewiseMdInfo: {
+    // Read PROJECT.md from .stagewise directory in workspace
+    let projectMdInfo: {
       exists: boolean;
       path: string | null;
       content: string | null;
     } = { exists: false, path: null, content: null };
-    if (stagewiseMdDataPath) {
-      const stagewiseMdFullPath = resolve(
-        stagewiseMdDataPath,
-        STAGEWISE_MD_FILENAME,
-      );
-      const stagewiseMdContent = await readStagewiseMd(stagewiseMdDataPath);
-      stagewiseMdInfo = {
-        exists: stagewiseMdContent !== null,
-        path: stagewiseMdFullPath,
-        content: stagewiseMdContent,
-      };
-    }
+    const projectMdFullPath = resolve(
+      workspacePath,
+      PROJECT_MD_DIR,
+      PROJECT_MD_FILENAME,
+    );
+    const projectMdContent = await readProjectMd(workspacePath);
+    projectMdInfo = {
+      exists: projectMdContent !== null,
+      path: projectMdFullPath,
+      content: projectMdContent,
+    };
 
     // Read AGENTS.md from workspace root
     let agentsMdInfo: {
@@ -756,7 +755,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     return {
       workspaceLoaded: true,
       workspacePath,
-      stagewiseMd: stagewiseMdInfo,
+      projectMd: projectMdInfo,
       agentsMd: agentsMdInfo,
     };
   });
@@ -775,7 +774,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     modelProviderService,
   );
 
-  // Wire AgentManagerService into WorkspaceService for STAGEWISE.md generation
+  // Wire AgentManagerService into WorkspaceService for PROJECT.md generation
   workspaceService.setAgentManagerService(_agentManagerService);
 
   // No need to unregister this callback, as it will be destroyed when the main app shuts down

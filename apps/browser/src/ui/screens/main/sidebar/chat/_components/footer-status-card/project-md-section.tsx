@@ -12,10 +12,10 @@ import {
 import type { ToolUIPart } from 'ai';
 import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 
-export type StagewiseMdStatus = 'hidden' | 'running' | 'completed';
+export type ProjectMdStatus = 'hidden' | 'running' | 'completed';
 
-export interface StagewiseMdStatusSectionProps {
-  status: StagewiseMdStatus;
+export interface ProjectMdStatusSectionProps {
+  status: ProjectMdStatus;
   history: AgentMessage[];
   workspacePath?: string | null;
   onDismiss: () => void;
@@ -54,7 +54,7 @@ function getStatusText(
   history: AgentMessage[],
   workspacePath: string | null | undefined,
 ): string {
-  const INITIALIZING_TEXT = 'Initializing STAGEWISE.md...';
+  const INITIALIZING_TEXT = 'Initializing .stagewise/PROJECT.md...';
   const ANALYZING_TEXT = 'Analyzing workspace...';
   const lastMessage = history?.filter((m) => m.role === 'assistant').at(-1);
 
@@ -91,19 +91,19 @@ function getStatusText(
       const query = lastToolPart.input?.query;
       return query ? `Searching code for ${query}...` : 'Searching code...';
     }
-    case 'tool-writeStagewiseMdTool': {
-      return 'Writing STAGEWISE.md...';
+    case 'tool-writeProjectMdTool': {
+      return 'Writing .stagewise/PROJECT.md...';
     }
     default: {
       if (!lastMessage) return INITIALIZING_TEXT;
 
-      const hadWritingStagewiseMd = lastMessage.parts.some(
-        (p) => p.type === 'tool-writeStagewiseMdTool',
+      const hadWritingProjectMd = lastMessage.parts.some(
+        (p) => p.type === 'tool-writeProjectMdTool',
       );
       const lastType = lastMessage.parts.at(-1)?.type;
       if (
         (lastType === 'reasoning' || lastType === 'text') &&
-        hadWritingStagewiseMd
+        hadWritingProjectMd
       )
         return 'Finishing up...';
 
@@ -124,45 +124,53 @@ function TooltipWrapper({
     <Tooltip>
       <TooltipTrigger>{children}</TooltipTrigger>
       <TooltipContent>
-        Initializing STAGEWISE.md for frontend-aware context.
+        Initializing .stagewise/PROJECT.md for frontend-aware project context.
       </TooltipContent>
     </Tooltip>
   );
 }
 
-export function StagewiseMdStatusSection({
+export function ProjectMdStatusSection({
   status,
   history,
   workspacePath,
   onDismiss,
   onShowFile,
-}: StagewiseMdStatusSectionProps): StatusCardSection | null {
+}: ProjectMdStatusSectionProps): StatusCardSection | null {
   if (status === 'hidden') return null;
 
   const isRunning = status === 'running';
   const statusText = getStatusText(history, workspacePath);
   return {
-    key: 'stagewise-md-status',
+    key: 'project-md-status',
     defaultOpen: true,
     trigger: () => (
       <TooltipWrapper showTooltip={isRunning}>
-        <div className="flex h-6 w-full cursor-default! flex-row items-center justify-between gap-2 pl-1.5 text-muted-foreground text-xs hover:text-foreground has-[button:hover]:text-muted-foreground">
+        <div className="flex h-6 w-full flex-row items-center justify-between gap-2 pl-1.5 text-muted-foreground text-xs hover:text-foreground has-[button:hover]:text-muted-foreground">
           {isRunning ? (
             <div className="flex flex-row items-center gap-2">
               <div className="relative flex size-3 shrink-0 items-center justify-center">
                 <Loader2Icon className="size-3 animate-spin text-primary-foreground" />
               </div>
               <span className="shimmer-text-primary truncate font-normal">
-                {statusText}
+                Generating project context
               </span>
             </div>
           ) : (
             <>
-              <div className="flex flex-row items-center gap-1">
-                <FileIcon filePath="STAGEWISE.md" className="size-5 shrink-0" />
-                <span className="text-foreground text-xs leading-none">
-                  STAGEWISE.md
-                </span>
+              <div className="flex flex-row items-center gap-1 truncate">
+                <FileIcon
+                  filePath=".stagewise/PROJECT.md"
+                  className="size-5 shrink-0"
+                />
+                <Tooltip>
+                  <TooltipTrigger>
+                    <span className="text-foreground text-xs leading-none">
+                      PROJECT.md
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>.stagewise/PROJECT.md</TooltipContent>
+                </Tooltip>
                 <span className="font-normal text-muted-foreground">
                   generated
                 </span>
@@ -171,7 +179,7 @@ export function StagewiseMdStatusSection({
                 <Button
                   variant="ghost"
                   size="xs"
-                  className="cursor-pointer"
+                  className="shrink-0 cursor-pointer"
                   onClick={(e: MouseEvent) => {
                     e.stopPropagation();
                     onDismiss();
@@ -182,7 +190,7 @@ export function StagewiseMdStatusSection({
                 <Button
                   variant="primary"
                   size="xs"
-                  className="cursor-pointer"
+                  className="shrink-0 cursor-pointer"
                   onClick={(e: MouseEvent) => {
                     e.stopPropagation();
                     onShowFile();
@@ -196,7 +204,14 @@ export function StagewiseMdStatusSection({
         </div>
       </TooltipWrapper>
     ),
-    contentClassName: 'px-1.5 pb-1',
-    content: undefined,
+    contentClassName: 'px-1.5 pb-1 pt-1.5',
+    content:
+      status === 'running' ? (
+        <div className="flex flex-row items-center justify-start gap-1">
+          <span className="font-normal text-muted-foreground text-xs leading-none">
+            {statusText}
+          </span>
+        </div>
+      ) : undefined,
   };
 }

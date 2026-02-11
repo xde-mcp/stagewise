@@ -15,7 +15,7 @@ import { SearchIcon } from 'lucide-react';
 import { GrepSearchToolPart } from './grep-search';
 import { ListFilesToolPart } from './list-files';
 import { ReadFileToolPart } from './read-file';
-import { UpdateStagewiseMdToolPart } from './update-stagewise-md';
+import { UpdateProjectMdToolPart } from './update-project-md';
 import { GetContext7LibraryDocsToolPart } from './get-context7-library-docs';
 import { ResolveContext7LibraryToolPart } from './resolve-context7-library';
 import { cn } from '@/utils';
@@ -52,7 +52,7 @@ export type ReadOnlyToolPart =
           | 'tool-executeSandboxJsTool'
           | 'tool-readConsoleLogsTool'
           | 'tool-getLintingDiagnosticsTool'
-          | 'tool-updateStagewiseMdTool';
+          | 'tool-updateProjectMdTool';
       }
     >
   | ReasoningUIPart;
@@ -71,7 +71,7 @@ export function isReadOnlyToolPart(
     part.type === 'tool-executeSandboxJsTool' ||
     part.type === 'tool-readConsoleLogsTool' ||
     part.type === 'tool-getLintingDiagnosticsTool' ||
-    part.type === 'tool-updateStagewiseMdTool'
+    part.type === 'tool-updateProjectMdTool'
   );
 }
 
@@ -186,9 +186,9 @@ const PartContent = ({
           capMaxHeight={capMaxHeight}
         />
       );
-    case 'tool-updateStagewiseMdTool':
+    case 'tool-updateProjectMdTool':
       return (
-        <UpdateStagewiseMdToolPart
+        <UpdateProjectMdToolPart
           key={part.toolCallId}
           part={part}
           disableShimmer={disableShimmer}

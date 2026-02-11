@@ -13,9 +13,9 @@ import {
 import { FileDiffSection, formatFileDiff } from './file-diff-section';
 import { MessageQueueSection } from './message-queue-section';
 import {
-  StagewiseMdStatusSection,
-  type StagewiseMdStatus,
-} from './stagewise-md-section';
+  ProjectMdStatusSection,
+  type ProjectMdStatus,
+} from './project-md-section';
 
 // Stable empty arrays to avoid infinite loop with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];
@@ -50,13 +50,13 @@ export function StatusCard() {
       : EMPTY_QUEUE,
   );
 
-  // Find the stagewise-md agent ID when it's running
-  const stagewiseMdAgentId = useKartonState((s) => {
+  // Find the project-md agent ID when it's running
+  const projectMdAgentId = useKartonState((s) => {
     const instances = s.agents.instances;
     for (const agentId in instances) {
       const agent = instances[agentId];
       if (
-        agent.type === AgentTypes.STAGEWISE_MD &&
+        agent.type === AgentTypes.PROJECT_MD &&
         agent.state.isWorking === true
       )
         return agentId;
@@ -64,13 +64,13 @@ export function StatusCard() {
     return null;
   });
 
-  // Check if there's a running StagewiseMdAgent
-  const isStagewiseMdRunning = stagewiseMdAgentId !== null;
+  // Check if there's a running ProjectMdAgent
+  const isProjectMdRunning = projectMdAgentId !== null;
 
   // Get agent history for status updates
-  const stagewiseMdHistory = useKartonState((s): AgentMessage[] =>
-    stagewiseMdAgentId
-      ? (s.agents.instances[stagewiseMdAgentId]?.state.history ?? EMPTY_HISTORY)
+  const projectMdHistory = useKartonState((s): AgentMessage[] =>
+    projectMdAgentId
+      ? (s.agents.instances[projectMdAgentId]?.state.history ?? EMPTY_HISTORY)
       : EMPTY_HISTORY,
   );
 
@@ -79,29 +79,29 @@ export function StatusCard() {
     (s) => s.workspace?.agent?.accessPath ?? null,
   );
 
-  // Track StagewiseMd status with completion state
-  const [stagewiseMdStatus, setStagewiseMdStatus] =
-    useState<StagewiseMdStatus>('hidden');
+  // Track ProjectMd status with completion state
+  const [projectMdStatus, setProjectMdStatus] =
+    useState<ProjectMdStatus>('hidden');
   const prevRunningRef = useRef(false);
 
   useEffect(() => {
     // Started running
-    if (isStagewiseMdRunning && !prevRunningRef.current)
-      setStagewiseMdStatus('running');
+    if (isProjectMdRunning && !prevRunningRef.current)
+      setProjectMdStatus('running');
     // Just finished - show completed state (user dismisses via "Done" button)
-    else if (!isStagewiseMdRunning && prevRunningRef.current)
-      setStagewiseMdStatus('completed');
+    else if (!isProjectMdRunning && prevRunningRef.current)
+      setProjectMdStatus('completed');
 
-    prevRunningRef.current = isStagewiseMdRunning;
-  }, [isStagewiseMdRunning]);
+    prevRunningRef.current = isProjectMdRunning;
+  }, [isProjectMdRunning]);
 
-  // Dismiss callback for stagewise-md completion
-  const handleStagewiseMdDismiss = useCallback(() => {
-    setStagewiseMdStatus('hidden');
+  // Dismiss callback for project-md completion
+  const handleProjectMdDismiss = useCallback(() => {
+    setProjectMdStatus('hidden');
   }, []);
 
   // Show file callback - navigates to agent settings context files section
-  const handleStagewiseMdShowFile = useCallback(() => {
+  const handleProjectMdShowFile = useCallback(() => {
     void createTab('stagewise://internal/agent-settings#context-files', true);
   }, [createTab]);
 
@@ -143,15 +143,15 @@ export function StatusCard() {
   const items = useMemo(() => {
     const result: StatusCardSection[] = [];
 
-    // Add StagewiseMd status indicator if running or just completed
-    const stagewiseMdSection = StagewiseMdStatusSection({
-      status: stagewiseMdStatus,
-      history: stagewiseMdHistory,
+    // Add ProjectMd status indicator if running or just completed
+    const projectMdSection = ProjectMdStatusSection({
+      status: projectMdStatus,
+      history: projectMdHistory,
       workspacePath,
-      onDismiss: handleStagewiseMdDismiss,
-      onShowFile: handleStagewiseMdShowFile,
+      onDismiss: handleProjectMdDismiss,
+      onShowFile: handleProjectMdShowFile,
     });
-    if (stagewiseMdSection) result.push(stagewiseMdSection);
+    if (projectMdSection) result.push(projectMdSection);
 
     const messageQueueSection = MessageQueueSection({
       queuedMessages: messageQueue ?? [],
@@ -177,11 +177,11 @@ export function StatusCard() {
 
     return result;
   }, [
-    stagewiseMdStatus,
-    stagewiseMdHistory,
+    projectMdStatus,
+    projectMdHistory,
     workspacePath,
-    handleStagewiseMdDismiss,
-    handleStagewiseMdShowFile,
+    handleProjectMdDismiss,
+    handleProjectMdShowFile,
     messageQueue,
     openAgentId,
     deleteQueuedMessage,

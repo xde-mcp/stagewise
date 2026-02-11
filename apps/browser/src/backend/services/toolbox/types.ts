@@ -27,7 +27,7 @@ export type WorkspaceSnapshot = {
   isConnected: boolean;
   workspacePath: string | null;
   cwd: string | null;
-  stagewiseMdPath: string | null;
+  projectMdPath: string | null;
 };
 
 /**
@@ -47,6 +47,6 @@ export type ToolboxContextProvider = Pick<
   | 'getWorkspaceInfo'
   | 'getBrowserSnapshot'
   | 'getAgentsMd'
-  | 'getStagewiseMd'
+  | 'getProjectMd'
   | 'getLspDiagnosticsForAgent'
 >;

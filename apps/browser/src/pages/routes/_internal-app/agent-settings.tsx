@@ -139,7 +139,7 @@ function ContextFilesSetting() {
   }
 
   const hasAnyContextFile =
-    contextFiles.stagewiseMd.exists || contextFiles.agentsMd.exists;
+    contextFiles.projectMd.exists || contextFiles.agentsMd.exists;
 
   if (!hasAnyContextFile) {
     return (
@@ -151,20 +151,20 @@ function ContextFilesSetting() {
     );
   }
 
-  // Determine default tab - prefer STAGEWISE.md if it exists
-  const defaultTab = contextFiles.stagewiseMd.exists ? 'stagewise' : 'agents';
+  // Determine default tab - prefer .stagewise/PROJECT.md if it exists
+  const defaultTab = contextFiles.projectMd.exists ? 'project' : 'agents';
 
   return (
     <Tabs defaultValue={defaultTab} className="w-full">
       <TabsList className="max-w-96">
-        {contextFiles.stagewiseMd.exists && (
+        {contextFiles.projectMd.exists && (
           <Tooltip>
             <TooltipTrigger>
-              <TabsTrigger value="stagewise">STAGEWISE.md</TabsTrigger>
+              <TabsTrigger value="project">PROJECT.md</TabsTrigger>
             </TooltipTrigger>
             <TooltipContent>
               <span className="block max-w-80 break-all">
-                {contextFiles.stagewiseMd.path}
+                {contextFiles.projectMd.path}
               </span>
             </TooltipContent>
           </Tooltip>
@@ -183,12 +183,12 @@ function ContextFilesSetting() {
         )}
       </TabsList>
 
-      {contextFiles.stagewiseMd.exists && (
-        <TabsContent value="stagewise" className="w-full">
+      {contextFiles.projectMd.exists && (
+        <TabsContent value="project" className="w-full">
           <ScrollFadeCodeBlock
-            code={contextFiles.stagewiseMd.content ?? ''}
-            description="Auto-generated project analysis stored in your workspace data folder."
-            filePath={contextFiles.stagewiseMd.path}
+            code={contextFiles.projectMd.content ?? ''}
+            description="Auto-generated project analysis stored in your project's .stagewise folder."
+            filePath={contextFiles.projectMd.path}
           />
         </TabsContent>
       )}

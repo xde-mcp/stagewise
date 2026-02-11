@@ -2,18 +2,18 @@ import { BaseAgent, type BaseAgentConfig } from '../shared/base-agent';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
 import { z } from 'zod';
-import { buildStagewiseMdSystemPrompt } from './context-builder';
+import { buildProjectMdSystemPrompt } from './context-builder';
 import { randomUUID } from 'node:crypto';
 
 const finishToolOutputSchema = z.object({
   message: z.string(),
 });
 
-export class StagewiseMdAgent extends BaseAgent<
+export class ProjectMdAgent extends BaseAgent<
   typeof finishToolOutputSchema,
   { updateReason: string } | undefined
 > {
-  public static readonly agentType = AgentTypes.STAGEWISE_MD;
+  public static readonly agentType = AgentTypes.PROJECT_MD;
   public static readonly config = {
     persistent: false, // Background task, no persistence needed
     defaultModelId: 'claude-haiku-4-5' as const,
@@ -47,17 +47,17 @@ export class StagewiseMdAgent extends BaseAgent<
 
   protected getSystemPrompt = async (): Promise<string> => {
     const reason = this.instanceConfig?.updateReason;
-    return await buildStagewiseMdSystemPrompt(this.toolbox, reason);
+    return await buildProjectMdSystemPrompt(this.toolbox, reason);
   };
 
   protected async onCreated(): Promise<void> {
     const reason = this.instanceConfig?.updateReason;
     if (!reason) return;
 
-    const stagewiseMd = await this.toolbox.getStagewiseMd();
-    const message = stagewiseMd
-      ? `The STAGEWISE.md file has already been generated. Update it with the following reason after analyzing the project again: ${reason}. \n\n The current content of the STAGEWISE.md file is: ${stagewiseMd}`
-      : `Generate a new STAGEWISE.md file after analyzing the project with the following reason: ${reason}`;
+    const projectMd = await this.toolbox.getProjectMd();
+    const message = projectMd
+      ? `The PROJECT.md file has already been generated. Update it with the following reason after analyzing the project again: ${reason}. \n\n The current content of the PROJECT.md file is: ${projectMd}`
+      : `Generate a new PROJECT.md file after analyzing the project with the following reason: ${reason}`;
 
     await this.sendUserMessage({
       id: randomUUID(),
@@ -79,7 +79,7 @@ export class StagewiseMdAgent extends BaseAgent<
       listFilesTool: await box.getTool('listFilesTool', id),
       globTool: await box.getTool('globTool', id),
       grepSearchTool: await box.getTool('grepSearchTool', id),
-      writeStagewiseMdTool: await box.getTool('writeStagewiseMdTool', id),
+      writeProjectMdTool: await box.getTool('writeProjectMdTool', id),
     };
     // Filter out null tools that miss dependencies in the toolbox
     return Object.fromEntries(
