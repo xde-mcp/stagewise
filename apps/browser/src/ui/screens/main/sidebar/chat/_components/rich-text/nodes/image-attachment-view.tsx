@@ -39,9 +39,9 @@ export function ImageAttachmentView(props: AttachmentNodeViewProps) {
 
   // Thumbnail icon - show image preview if URL exists, otherwise show placeholder
   const icon = hasUrl ? (
-    <span className="relative size-3 shrink-0 overflow-hidden rounded">
+    <div className="relative size-3 shrink-0 overflow-hidden rounded">
       <img src={url} alt={label} className="size-full object-cover" />
-    </span>
+    </div>
   ) : (
     <ImageIcon className="size-3 shrink-0" />
   );

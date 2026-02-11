@@ -185,7 +185,7 @@ function Wrapper({
     return <span className="inline shrink-0 px-0.5 pt-px">{children}</span>;
 
   return (
-    <NodeViewWrapper as="span" className="inline">
+    <NodeViewWrapper as="span" className="inline px-0.5">
       {children}
     </NodeViewWrapper>
   );
