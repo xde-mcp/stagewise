@@ -6,16 +6,74 @@ const pendingCdp = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
 >();
+const pendingFileOps = new Map<
+  string,
+  {
+    resolve: (value: { success: true; bytesWritten: number }) => void;
+    reject: (reason: unknown) => void;
+  }
+>();
+const pendingAttachmentOps = new Map<
+  string,
+  {
+    resolve: (value: {
+      id: string;
+      fileName: string;
+      mediaType: string;
+      content: Buffer;
+    }) => void;
+    reject: (reason: unknown) => void;
+  }
+>();
 const ipc = createWorkerIPC();
 let cdpReqId = 0;
+let fileReqId = 0;
+let attachmentReqId = 0;
 
-function getSandboxAPI() {
+function getSandboxAPI(agentId: string) {
   return {
     sendCDP(tabId: string, method: string, params?: any) {
       const id = `${cdpReqId++}`;
       return new Promise((resolve, reject) => {
         pendingCdp.set(id, { resolve, reject });
         ipc.send({ type: 'cdp', id, tabId, method, params });
+      });
+    },
+    writeFile(
+      relativePath: string,
+      content: Buffer | string,
+    ): Promise<{ success: true; bytesWritten: number }> {
+      const id = `${fileReqId++}`;
+      const isBase64 = Buffer.isBuffer(content);
+      const contentStr = isBase64 ? content.toString('base64') : content;
+
+      return new Promise((resolve, reject) => {
+        pendingFileOps.set(id, { resolve, reject });
+        ipc.send({
+          type: 'write-file',
+          id,
+          agentId,
+          relativePath,
+          content: contentStr,
+          isBase64,
+        });
+      });
+    },
+    getAttachment(attachmentId: string): Promise<{
+      id: string;
+      fileName: string;
+      mediaType: string;
+      content: Buffer;
+    }> {
+      const id = `${attachmentReqId++}`;
+      return new Promise((resolve, reject) => {
+        pendingAttachmentOps.set(id, { resolve, reject });
+        ipc.send({
+          type: 'get-attachment',
+          id,
+          agentId,
+          attachmentId,
+        });
       });
     },
   };
@@ -66,7 +124,7 @@ ipc.onMessage(async (msg) => {
   switch (msg.type) {
     case 'create-context': {
       const ctx = vm.createContext({
-        API: getSandboxAPI(),
+        API: getSandboxAPI(msg.agentId),
         ...getContextGlobals(),
       });
       contexts.set(msg.agentId, ctx);
@@ -119,6 +177,29 @@ ipc.onMessage(async (msg) => {
       if (!p) return;
       pendingCdp.delete(msg.id);
       msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
+      break;
+    }
+    case 'write-file-result': {
+      const p = pendingFileOps.get(msg.id);
+      if (!p) return;
+      pendingFileOps.delete(msg.id);
+      msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result!);
+      break;
+    }
+    case 'get-attachment-result': {
+      const p = pendingAttachmentOps.get(msg.id);
+      if (!p) return;
+      pendingAttachmentOps.delete(msg.id);
+      if (msg.error) p.reject(new Error(msg.error));
+      else if (msg.result) {
+        // Decode base64 content back to Buffer
+        p.resolve({
+          id: msg.result.id,
+          fileName: msg.result.fileName,
+          mediaType: msg.result.mediaType,
+          content: Buffer.from(msg.result.content, 'base64'),
+        });
+      }
       break;
     }
   }

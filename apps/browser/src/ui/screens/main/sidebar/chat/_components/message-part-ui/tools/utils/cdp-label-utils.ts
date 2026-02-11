@@ -9,6 +9,20 @@ export interface ParsedCDPCall {
 }
 
 /**
+ * Represents a parsed writeFile call extracted from a sandbox script.
+ */
+export interface ParsedWriteFileCall {
+  relativePath: string;
+}
+
+/**
+ * Represents a parsed getAttachment call extracted from a sandbox script.
+ */
+export interface ParsedGetAttachmentCall {
+  attachmentId: string;
+}
+
+/**
  * Human-readable labels for common CDP methods.
  * Each method maps to in-progress/completed labels and a preposition for the hostname.
  * - "from" for data retrieval (read, got, extracted)
@@ -156,6 +170,58 @@ export function parseCDPCalls(script: string): ParsedCDPCall[] {
   return calls;
 }
 
+/**
+ * Parses a sandbox script to extract writeFile calls.
+ * Matches patterns like: API.writeFile("path/to/file.json", ...)
+ */
+export function parseWriteFileCalls(script: string): ParsedWriteFileCall[] {
+  // Regex to match API.writeFile("relativePath", ...)
+  // Supports both single and double quotes
+  const regex = /API\.writeFile\s*\(\s*["']([^"']+)["']/g;
+  const calls: ParsedWriteFileCall[] = [];
+
+  let match = regex.exec(script);
+  while (match !== null) {
+    calls.push({
+      relativePath: match[1],
+    });
+    match = regex.exec(script);
+  }
+
+  return calls;
+}
+
+/**
+ * Parses a sandbox script to extract getAttachment calls.
+ * Matches patterns like: API.getAttachment("abc123")
+ */
+export function parseGetAttachmentCalls(
+  script: string,
+): ParsedGetAttachmentCall[] {
+  // Regex to match API.getAttachment("attachmentId")
+  // Supports both single and double quotes
+  const regex = /API\.getAttachment\s*\(\s*["']([^"']+)["']/g;
+  const calls: ParsedGetAttachmentCall[] = [];
+
+  let match = regex.exec(script);
+  while (match !== null) {
+    calls.push({
+      attachmentId: match[1],
+    });
+    match = regex.exec(script);
+  }
+
+  return calls;
+}
+
+/**
+ * Gets the filename from a path (last segment after /).
+ */
+function getFileName(relativePath: string): string {
+  const parts = relativePath.split('/');
+  return parts[parts.length - 1] || relativePath;
+}
+
 interface MethodLabelResult {
   label: string;
   preposition: 'on' | 'from' | 'of';
@@ -211,7 +277,8 @@ export function resolveTabHostname(
 }
 
 /**
- * Generates a contextual label for a sandbox script based on its CDP calls.
+ * Generates a contextual label for a sandbox script based on its CDP calls,
+ * file writes, and attachment reads.
  *
  * @param script - The sandbox script content
  * @param activeTabs - Current browser tabs from state
@@ -226,9 +293,48 @@ export function getSandboxLabel(
   if (!script) return isInProgress ? 'Running a script...' : 'Ran a script';
 
   const cdpCalls = parseCDPCalls(script);
+  const writeFileCalls = parseWriteFileCalls(script);
+  const getAttachmentCalls = parseGetAttachmentCalls(script);
 
-  if (cdpCalls.length === 0)
+  // No API calls found
+  if (
+    cdpCalls.length === 0 &&
+    writeFileCalls.length === 0 &&
+    getAttachmentCalls.length === 0
+  )
     return isInProgress ? 'Running a script...' : 'Ran a script';
+
+  // Only attachment reads, no CDP calls, no file writes
+  if (
+    cdpCalls.length === 0 &&
+    writeFileCalls.length === 0 &&
+    getAttachmentCalls.length > 0
+  ) {
+    if (getAttachmentCalls.length === 1)
+      return isInProgress ? 'Reading attachment...' : 'Read attachment';
+
+    return isInProgress
+      ? `Reading ${getAttachmentCalls.length} attachments...`
+      : `Read ${getAttachmentCalls.length} attachments`;
+  }
+
+  // Only file writes (possibly with attachment reads), no CDP calls
+  if (cdpCalls.length === 0 && writeFileCalls.length > 0) {
+    const attachmentSuffix =
+      getAttachmentCalls.length > 0
+        ? ` from ${getAttachmentCalls.length === 1 ? 'attachment' : `${getAttachmentCalls.length} attachments`}`
+        : '';
+
+    if (writeFileCalls.length === 1) {
+      const fileName = getFileName(writeFileCalls[0].relativePath);
+      return isInProgress
+        ? `Writing ${fileName}${attachmentSuffix}...`
+        : `Wrote ${fileName}${attachmentSuffix}`;
+    }
+    return isInProgress
+      ? `Writing ${writeFileCalls.length} files${attachmentSuffix}...`
+      : `Wrote ${writeFileCalls.length} files${attachmentSuffix}`;
+  }
 
   // Get unique tab handles
   const uniqueTabHandles = Array.from(
@@ -250,6 +356,16 @@ export function getSandboxLabel(
 
   // Build the suffix using the method-specific preposition
   const suffix = hostname ? ` ${preposition} ${hostname}` : '';
+
+  // If there are also file writes, mention them
+  if (writeFileCalls.length > 0) {
+    const fileInfo =
+      writeFileCalls.length === 1
+        ? getFileName(writeFileCalls[0].relativePath)
+        : `${writeFileCalls.length} files`;
+    if (isInProgress) return `${label}${suffix}, writing ${fileInfo}...`;
+    return `${label}${suffix}, wrote ${fileInfo}`;
+  }
 
   if (isInProgress) return `${label}${suffix}...`;
 

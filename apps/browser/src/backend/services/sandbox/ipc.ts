@@ -13,7 +13,24 @@ export type MainToWorkerMessage =
   | { type: 'create-context'; agentId: string }
   | { type: 'destroy-context'; agentId: string }
   | { type: 'execute'; id: string; agentId: string; code: string }
-  | { type: 'cdp-result'; id: string; result?: unknown; error?: string };
+  | { type: 'cdp-result'; id: string; result?: unknown; error?: string }
+  | {
+      type: 'write-file-result';
+      id: string;
+      result?: { success: true; bytesWritten: number };
+      error?: string;
+    }
+  | {
+      type: 'get-attachment-result';
+      id: string;
+      result?: {
+        id: string;
+        fileName: string;
+        mediaType: string;
+        content: string; // base64-encoded Buffer
+      };
+      error?: string;
+    };
 
 export type WorkerToMainMessage =
   | {
@@ -23,7 +40,21 @@ export type WorkerToMainMessage =
       method: string;
       params?: Record<string, unknown>;
     }
-  | { type: 'result'; id: string; value?: unknown; error?: string };
+  | { type: 'result'; id: string; value?: unknown; error?: string }
+  | {
+      type: 'write-file';
+      id: string;
+      agentId: string;
+      relativePath: string;
+      content: string; // UTF-8 string or base64-encoded binary
+      isBase64: boolean; // true if content is base64-encoded Buffer
+    }
+  | {
+      type: 'get-attachment';
+      id: string;
+      agentId: string;
+      attachmentId: string;
+    };
 
 /** Main-side: typed send + onMessage for a UtilityProcess child */
 export function createMainIPC(child: UtilityProcessHandle) {

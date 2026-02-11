@@ -368,19 +368,6 @@ export const ChatInput = ({
               '[&_.tiptap_p.is-editor-empty:first-child]:before:text-subtle-foreground',
             !disabled &&
               '[&_.tiptap_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
-            // Breathing room around the inline attachment nodes (all types)
-            '[&_.react-renderer.node-fileAttachment]:before:content-[""] [&_.react-renderer.node-fileAttachment]:after:content-[""]',
-            '[&_.react-renderer.node-fileAttachment]:before:inline-block [&_.react-renderer.node-fileAttachment]:after:inline-block',
-            '[&_.react-renderer.node-fileAttachment]:before:w-0.5 [&_.react-renderer.node-fileAttachment]:after:w-0.5',
-            '[&_.react-renderer.node-imageAttachment]:before:content-[""] [&_.react-renderer.node-imageAttachment]:after:content-[""]',
-            '[&_.react-renderer.node-imageAttachment]:before:inline-block [&_.react-renderer.node-imageAttachment]:after:inline-block',
-            '[&_.react-renderer.node-imageAttachment]:before:w-0.5 [&_.react-renderer.node-imageAttachment]:after:w-0.5',
-            '[&_.react-renderer.node-elementAttachment]:before:content-[""] [&_.react-renderer.node-elementAttachment]:after:content-[""]',
-            '[&_.react-renderer.node-elementAttachment]:before:inline-block [&_.react-renderer.node-elementAttachment]:after:inline-block',
-            '[&_.react-renderer.node-elementAttachment]:before:w-0.5 [&_.react-renderer.node-elementAttachment]:after:w-0.5',
-            '[&_.react-renderer.node-textClipAttachment]:before:content-[""] [&_.react-renderer.node-textClipAttachment]:after:content-[""]',
-            '[&_.react-renderer.node-textClipAttachment]:before:inline-block [&_.react-renderer.node-textClipAttachment]:after:inline-block',
-            '[&_.react-renderer.node-textClipAttachment]:before:w-0.5 [&_.react-renderer.node-textClipAttachment]:after:w-0.5',
           )}
         />
       </div>

@@ -113,9 +113,15 @@ export const isSupportedMimeType = (mimeType: string): boolean => {
   return supportedTypes.includes(mimeType.toLowerCase());
 };
 
-// Type-specific size limits (exported for reuse)
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images (Claude API limit)
-export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20MB for documents
+// Type-specific size limits (re-exported from shared-types for UI convenience)
+import {
+  MAX_IMAGE_SIZE as _MAX_IMAGE_SIZE,
+  MAX_DOCUMENT_SIZE as _MAX_DOCUMENT_SIZE,
+} from '@shared/karton-contracts/ui/shared-types';
+
+// Re-export for external consumers
+export const MAX_IMAGE_SIZE = _MAX_IMAGE_SIZE;
+export const MAX_DOCUMENT_SIZE = _MAX_DOCUMENT_SIZE;
 
 /**
  * Validate a raw File object BEFORE converting to data URL.

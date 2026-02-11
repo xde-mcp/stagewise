@@ -1,5 +1,13 @@
 import type { Logger } from '@/services/logger';
-import { SandboxService } from '../sandbox';
+import {
+  SandboxService,
+  type SandboxFileWriter,
+  type AttachmentResolver,
+} from '../sandbox';
+import {
+  MAX_IMAGE_SIZE,
+  MAX_DOCUMENT_SIZE,
+} from '@shared/karton-contracts/ui/shared-types';
 import type { KartonService } from '@/services/karton';
 import type { GlobalConfigService } from '@/services/global-config';
 import { DisposableService } from '@/services/disposable';
@@ -42,6 +50,7 @@ import {
 } from './utils';
 import { collectDiagnosticsForFiles } from './utils/context-getters';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import type { z } from 'zod';
 import {
   deleteFileToolInputSchema,
@@ -542,9 +551,157 @@ export class ToolboxService extends DisposableService {
 
     // Eagerly initialize the API client if auth is already available
     this.apiClient = this.getOrCreateApiClient();
+
+    // Create the file writer callback for sandbox file operations
+    // Content is already decoded to Buffer by SandboxService
+    const fileWriter: SandboxFileWriter = async (
+      agentId,
+      relativePath,
+      content,
+      toolCallId,
+    ) => {
+      if (!this.clientRuntime) {
+        throw new Error('No workspace connected');
+      }
+
+      const absolutePath =
+        this.clientRuntime.fileSystem.resolvePath(relativePath);
+      const workspaceRoot =
+        this.clientRuntime.fileSystem.getCurrentWorkingDirectory();
+
+      // Security check: ensure path is within workspace
+      if (!absolutePath.startsWith(workspaceRoot)) {
+        throw new Error('Path must be within workspace');
+      }
+
+      // Capture file state before write
+      const beforeState = await captureFileState(absolutePath, this.tempDir);
+
+      // Ensure parent directory exists and write file
+      const parentDir = path.dirname(absolutePath);
+      await fs.mkdir(parentDir, { recursive: true });
+      await fs.writeFile(absolutePath, content);
+
+      // Capture file state after write
+      const afterState = await captureFileState(absolutePath, this.tempDir);
+
+      // Register with diff-history
+      try {
+        const { editContent, tempFilesToCleanup } =
+          await buildAgentFileEditContent(
+            beforeState,
+            afterState,
+            this.tempDir,
+          );
+
+        // Sync with LSP if it's a text file
+        if (!editContent.isExternal && editContent.contentAfter !== null) {
+          void this.syncFileWithLsp(absolutePath, editContent.contentAfter);
+        }
+
+        await this.diffHistoryService.registerAgentEdit({
+          agentInstanceId: agentId,
+          path: absolutePath,
+          toolCallId,
+          ...editContent,
+        });
+
+        // Clean up temp files after registration
+        for (const tempFile of tempFilesToCleanup) {
+          void cleanupTempFile(tempFile);
+        }
+      } catch (error) {
+        this.logger.error(
+          '[ToolboxService] Failed to register sandbox file write',
+          {
+            error,
+            path: absolutePath,
+            toolCallId,
+          },
+        );
+        this.telemetryService.captureException(error as Error);
+        // Don't fail the file write if diff-history registration fails
+      }
+
+      // Track modified file for LSP diagnostics
+      if (!this.modifiedFilesPerAgent.has(agentId)) {
+        this.modifiedFilesPerAgent.set(agentId, new Set());
+      }
+      this.modifiedFilesPerAgent.get(agentId)!.add(absolutePath);
+
+      return { success: true as const, bytesWritten: content.length };
+    };
+
+    // Create the attachment resolver callback for sandbox attachment access
+    const attachmentResolver: AttachmentResolver = async (
+      agentId,
+      attachmentId,
+    ) => {
+      // Look up agent's message history from Karton state
+      const agentInstance = this.uiKarton.state.agents.instances[agentId];
+      if (!agentInstance) {
+        throw new Error(`Agent not found or has no message history`);
+      }
+
+      const history = agentInstance.state.history;
+      if (!history || history.length === 0) {
+        throw new Error(`Agent not found or has no message history`);
+      }
+
+      // Search all user messages for the attachment by ID
+      for (const message of history) {
+        if (message.role !== 'user') continue;
+
+        const fileAttachments = message.metadata?.fileAttachments;
+        if (!fileAttachments) continue;
+
+        const attachment = fileAttachments.find((f) => f.id === attachmentId);
+        if (!attachment) continue;
+
+        // Check if attachment has a validation error (e.g., unsupported type or size)
+        if (attachment.validationError)
+          throw new Error(
+            `Attachment is not supported: ${attachment.validationError}`,
+          );
+
+        // Check if attachment has a URL (data URL)
+        if (!attachment.url) throw new Error(`Attachment has no data URL`);
+
+        // Parse the data URL to extract content
+        const dataUrlMatch = attachment.url.match(/^data:([^;]+);base64,(.+)$/);
+        if (!dataUrlMatch)
+          throw new Error(`Attachment has invalid data URL format`);
+
+        const content = Buffer.from(dataUrlMatch[2], 'base64');
+
+        // Validate size limits based on media type
+        const isImage = attachment.mediaType.startsWith('image/');
+        const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
+        const maxSizeLabel = isImage ? '5MB' : '20MB';
+
+        if (content.length > maxSize)
+          throw new Error(
+            `${isImage ? 'Image' : 'Document'} attachment exceeds ${maxSizeLabel} limit`,
+          );
+
+        return {
+          id: attachment.id,
+          fileName: attachment.fileName ?? 'attachment',
+          mediaType: attachment.mediaType,
+          content,
+        };
+      }
+
+      throw new Error(
+        `Attachment with ID "${attachmentId}" not found in conversation`,
+      );
+    };
+
     this.sandboxService = await SandboxService.create(
       this.windowLayoutService,
       this.logger,
+      fileWriter,
+      attachmentResolver,
     );
 
     // Use arrow function to preserve `this` binding when called as callback

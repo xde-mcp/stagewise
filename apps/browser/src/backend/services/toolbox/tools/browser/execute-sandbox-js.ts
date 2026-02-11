@@ -36,6 +36,45 @@ Sends a **Chrome DevTools Protocol (CDP)** command to a specific browser tab and
 - \`params\` (object, optional): Parameters for the CDP method.
 - Returns: A Promise that resolves with the CDP result object.
 
+### \`API.writeFile(relativePath, content)\`
+Writes a file to the user's workspace. Changes are tracked in diff-history and can be undone.
+
+- \`relativePath\` (string): Path relative to workspace root (e.g. \`"src/output.json"\`, \`"screenshots/page.png"\`).
+- \`content\` (string | Buffer): File content — use string for text files, Buffer for binary files.
+- Returns: A Promise that resolves with \`{ success: true, bytesWritten: number }\`.
+- Throws: If no workspace is connected or path is outside workspace.
+
+**Examples:**
+\`\`\`js
+// Write a text file (e.g., JSON data)
+await API.writeFile("output/data.json", JSON.stringify(myData, null, 2));
+
+// Write a binary file (e.g., screenshot from CDP)
+const screenshot = await API.sendCDP("t_1", "Page.captureScreenshot", { format: "png" });
+await API.writeFile("screenshots/page.png", Buffer.from(screenshot.data, "base64"));
+\`\`\`
+
+### \`API.getAttachment(attachmentId)\`
+Retrieves a user-provided attachment (image, file) from the conversation by its ID. Use this to access files the user has attached to their messages.
+
+- \`attachmentId\` (string): The attachment ID from the user message (e.g., from \`[](image:abc123)\` or \`[](file:xyz789)\`).
+- Returns: A Promise that resolves with \`{ id, fileName, mediaType, content: Buffer }\`.
+- Throws: If attachment not found, exceeds size limits (5MB images, 20MB documents), or is unsupported.
+
+**Examples:**
+\`\`\`js
+// Get an image attachment and write it to the workspace
+const img = await API.getAttachment("abc123");
+await API.writeFile(\`uploads/\${img.fileName}\`, img.content);
+
+// Get a file attachment and process its content
+const file = await API.getAttachment("xyz789");
+if (file.mediaType === "application/json") {
+  const data = JSON.parse(file.content.toString("utf-8"));
+  return data;
+}
+\`\`\`
+
 ## Common CDP patterns
 
 ### Execute JavaScript in a page
@@ -94,6 +133,9 @@ return cookies;
 2. **Debug the user's app** — evaluate JS expressions in the page, inspect DOM state, check for errors.
 3. **Interact with pages** — click elements, fill forms, trigger events via CDP.
 4. **Multi-step analysis** — store intermediate results on \`globalThis\`, then run follow-up scripts to refine or combine them.
+5. **Save screenshots** — capture page screenshots via CDP and write them to the workspace using \`API.writeFile()\`.
+6. **Export data** — extract data from pages and save it as JSON, CSV, or other formats to the workspace.
+7. **Save user attachments** — retrieve images or files the user attached to messages via \`API.getAttachment()\` and write them to the workspace.
 
 ## Tips
 - Always use \`return\` to send data back — the return value is shown to the user as the tool result.
@@ -102,6 +144,18 @@ return cookies;
 - Tab handles like \`"t_1"\` are listed in the browser-information section of the system prompt.
 - When running \`Runtime.evaluate\`, set \`returnByValue: true\` to get serialized JS values back, or omit it to get object references.
 - Selected elements include \`tabHandle\`, \`backendNodeId\`, and \`frameId\` which can be used directly with CDP methods like \`DOM.resolveNode\`, \`DOM.describeNode\`, or \`DOM.pushNodeByBackendIdToFrontend\` (to get a \`nodeId\`).
+
+## Available globals
+The sandbox provides these Node.js/Web APIs in addition to V8 built-ins (Promise, Map, Set, Array, Object, JSON, Math, RegExp, Date, Error, typed arrays, etc.):
+
+- **Timers:** \`setTimeout\`, \`clearTimeout\`, \`setInterval\`, \`clearInterval\`
+- **Networking:** \`fetch\`, \`Headers\`, \`Request\`, \`Response\`, \`AbortController\`, \`AbortSignal\`
+- **Console:** \`console\`
+- **URLs:** \`URL\`, \`URLSearchParams\`
+- **Encoding:** \`TextEncoder\`, \`TextDecoder\`, \`atob\`, \`btoa\`
+- **Binary data:** \`Buffer\`, \`Blob\`
+- **Forms:** \`FormData\`
+- **Utilities:** \`structuredClone\`, \`queueMicrotask\`, \`crypto.randomUUID()\`
 
 ## Pre-enabled CDP domains
 The following CDP domains are already enabled for each tab — do NOT call \`.enable()\` on them:
@@ -124,8 +178,21 @@ export const executeSandboxJsTool = (
   return tool({
     description: DESCRIPTION,
     inputSchema: executeSandboxJsToolInputSchema,
-    execute: (params) =>
-      executeSandboxJsToolExecute(params, agentInstanceId, sandboxService),
+    execute: async (params, options) => {
+      const { toolCallId } = options as { toolCallId: string };
+      // Set the tool call ID for this execution so file writes are tracked correctly
+      sandboxService.setAgentToolCallId(agentInstanceId, toolCallId);
+      try {
+        return await executeSandboxJsToolExecute(
+          params,
+          agentInstanceId,
+          sandboxService,
+        );
+      } finally {
+        // Always clear the tool call ID after execution completes
+        sandboxService.clearAgentToolCallId(agentInstanceId);
+      }
+    },
   });
 };
 

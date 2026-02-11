@@ -593,3 +593,7 @@ export type ExternalFileResult = {
 export type FileResult = TextFileResult | ExternalFileResult;
 
 export const MAX_DIFF_TEXT_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+// Attachment size limits (for multimodal LLM input and sandbox access)
+export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images (Claude API limit)
+export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20MB for documents

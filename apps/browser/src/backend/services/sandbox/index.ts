@@ -7,6 +7,32 @@ import { fileURLToPath } from 'node:url';
 import { createMainIPC, type WorkerToMainMessage } from './ipc';
 
 /**
+ * Callback type for writing files from the sandbox to the user's workspace.
+ * Provided by ToolboxService to handle diff-history tracking.
+ * Content is always provided as a Buffer (already decoded from IPC transport).
+ */
+export type SandboxFileWriter = (
+  agentId: string,
+  relativePath: string,
+  content: Buffer,
+  toolCallId: string,
+) => Promise<{ success: true; bytesWritten: number }>;
+
+/**
+ * Callback type for resolving attachment data from user messages.
+ * Provided by ToolboxService to look up attachments by ID from agent history.
+ */
+export type AttachmentResolver = (
+  agentId: string,
+  attachmentId: string,
+) => Promise<{
+  id: string;
+  fileName: string;
+  mediaType: string;
+  content: Buffer;
+}>;
+
+/**
  * Resolve the path to the compiled sandbox worker script.
  * The worker is built as a separate CJS entry by Vite (see vite.sandbox-worker.config.ts)
  * and lives alongside main.js in .vite/build/.
@@ -36,28 +62,58 @@ interface PendingRequest {
 export class SandboxService extends DisposableService {
   private readonly windowLayoutService: WindowLayoutService;
   private readonly logger: Logger;
+  private readonly fileWriter?: SandboxFileWriter;
+  private readonly attachmentResolver?: AttachmentResolver;
   private workers: WorkerInfo[] = [];
   private agentToWorker = new Map<string, WorkerInfo>();
   private pendingRequests = new Map<string, PendingRequest>();
+  private agentToolCallIds = new Map<string, string>();
   private reqId = 0;
 
   constructor(
     windowLayoutService: WindowLayoutService,
     logger: Logger,
+    fileWriter?: SandboxFileWriter,
+    attachmentResolver?: AttachmentResolver,
     private poolSize = 4,
   ) {
     super();
     this.windowLayoutService = windowLayoutService;
     this.logger = logger;
+    this.fileWriter = fileWriter;
+    this.attachmentResolver = attachmentResolver;
   }
 
   public static async create(
     windowLayoutService: WindowLayoutService,
     logger: Logger,
+    fileWriter?: SandboxFileWriter,
+    attachmentResolver?: AttachmentResolver,
   ): Promise<SandboxService> {
-    const instance = new SandboxService(windowLayoutService, logger);
+    const instance = new SandboxService(
+      windowLayoutService,
+      logger,
+      fileWriter,
+      attachmentResolver,
+    );
     await instance.initialize();
     return instance;
+  }
+
+  /**
+   * Set the current tool call ID for an agent.
+   * Called by execute-sandbox-js tool before execution.
+   */
+  setAgentToolCallId(agentId: string, toolCallId: string) {
+    this.agentToolCallIds.set(agentId, toolCallId);
+  }
+
+  /**
+   * Clear the current tool call ID for an agent.
+   * Called by execute-sandbox-js tool after execution completes.
+   */
+  clearAgentToolCallId(agentId: string) {
+    this.agentToolCallIds.delete(agentId);
   }
 
   async initialize() {
@@ -102,6 +158,7 @@ export class SandboxService extends DisposableService {
     worker.agentIds.delete(agentId);
     worker.load--;
     this.agentToWorker.delete(agentId);
+    this.agentToolCallIds.delete(agentId);
   }
 
   async execute(
@@ -165,6 +222,86 @@ export class SandboxService extends DisposableService {
           : pending.resolve(msg.value);
         break;
       }
+      case 'write-file': {
+        // Worker sandbox wants to write a file — delegate to fileWriter callback
+        const toolCallId = this.agentToolCallIds.get(msg.agentId);
+        if (!this.fileWriter) {
+          this.safeSend(worker, {
+            type: 'write-file-result',
+            id: msg.id,
+            error: 'File writing is not configured',
+          });
+          return;
+        }
+        if (!toolCallId) {
+          this.safeSend(worker, {
+            type: 'write-file-result',
+            id: msg.id,
+            error: 'No active tool call context for file write',
+          });
+          return;
+        }
+        try {
+          // Decode content from IPC transport format back to Buffer
+          const contentBuffer = msg.isBase64
+            ? Buffer.from(msg.content, 'base64')
+            : Buffer.from(msg.content, 'utf-8');
+
+          const result = await this.fileWriter(
+            msg.agentId,
+            msg.relativePath,
+            contentBuffer,
+            toolCallId,
+          );
+          this.safeSend(worker, {
+            type: 'write-file-result',
+            id: msg.id,
+            result,
+          });
+        } catch (err) {
+          this.safeSend(worker, {
+            type: 'write-file-result',
+            id: msg.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        break;
+      }
+      case 'get-attachment': {
+        // Worker sandbox wants to retrieve an attachment — delegate to resolver
+        if (!this.attachmentResolver) {
+          this.safeSend(worker, {
+            type: 'get-attachment-result',
+            id: msg.id,
+            error: 'Attachment resolver is not configured',
+          });
+          return;
+        }
+        try {
+          const result = await this.attachmentResolver(
+            msg.agentId,
+            msg.attachmentId,
+          );
+          // Encode content as base64 for IPC transport
+          this.safeSend(worker, {
+            type: 'get-attachment-result',
+            id: msg.id,
+            result: {
+              id: result.id,
+              fileName: result.fileName,
+              mediaType: result.mediaType,
+              content: result.content.toString('base64'),
+            },
+          });
+        } catch (err) {
+          this.safeSend(worker, {
+            type: 'get-attachment-result',
+            id: msg.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -221,5 +358,6 @@ export class SandboxService extends DisposableService {
     this.workers = [];
     this.agentToWorker.clear();
     this.pendingRequests.clear();
+    this.agentToolCallIds.clear();
   }
 }
