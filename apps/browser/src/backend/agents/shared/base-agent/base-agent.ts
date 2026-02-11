@@ -1042,7 +1042,7 @@ export abstract class BaseAgent<
     }
 
     this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Updating title for agent. Agent Type: ${this.agentType}`,
+      `[BaseAgent:${this.instanceId}] Updating title for agent.`,
     );
 
     const newTitle = await this.generateTitle(this.state.get().history);
@@ -1056,7 +1056,7 @@ export abstract class BaseAgent<
   }
 
   /**
-   * Should be executed after a user or toool approval message was added to the agent
+   * Should be executed after a user or tool approval message was added to the agent
    */
   private async runStep(): Promise<void> {
     this.state.set((draft) => {
@@ -1070,6 +1070,10 @@ export abstract class BaseAgent<
       draft.history.push(...draft.queuedMessages);
       draft.queuedMessages = [];
     });
+
+    // Trigger an title update asynchronously once we know about the latest
+    this.logger.debug(`[BaseAgent:${this.instanceId}] Triggering title update`);
+    void this.updateTitle();
 
     // Get the current model
     const modelWithOptions = this.modelProviderService.getModelWithOptions(
@@ -1102,10 +1106,9 @@ export abstract class BaseAgent<
           }
         : undefined,
       maxRetries: resolvedConfig.maxRetries ?? 1,
-      maxOutputTokens: resolvedConfig.maxOutputTokens ?? 1000,
+      maxOutputTokens: resolvedConfig.maxOutputTokens ?? 5000,
       abortSignal: this.stepAbortController.signal,
       onAbort: () => {
-        /* no-op */
         this.state.set((draft) => {
           draft.isWorking = false;
         });
@@ -1114,28 +1117,14 @@ export abstract class BaseAgent<
         const shouldContinue = await this.handlePostStep(result);
         this.stepAbortController = null;
 
-        this.state.set((draft) => {
-          draft.usedTokens = result.usage.totalTokens ?? 0;
-        });
-
-        // Check the current token usage. If necessary, summarize the chat history.
-        // We always check the token usage in relation to the currently selected model.
-        const compactionThreshold =
-          this.config.summarizeChatHistoryThreshold ?? 0.5;
-        if (
-          compactionThreshold >= 0 &&
-          this.state.get().usedTokens / modelWithOptions.contextWindowSize >
-            compactionThreshold
-        ) {
-          await this.summarizeAndOverrideHistory();
-        }
-
         if (shouldContinue) {
-          void this.runStep();
+          // We use setTimeout to ensure the step is executed with a clean call stack to support infinite recursion.
+          setTimeout(() => void this.runStep(), 0);
         } else {
           this.state.set((draft) => {
             draft.isWorking = false;
           });
+          this.onIdle();
         }
       },
       onError: (ev) => {
@@ -1179,7 +1168,7 @@ export abstract class BaseAgent<
         chunking: 'word',
       }),
       temperature: resolvedConfig.temperature,
-      stopWhen: () => false,
+      stopWhen: () => true, // We always stop immediately and handle the execution of the next step manually
       topP: resolvedConfig.topP,
       topK: resolvedConfig.topK,
       presencePenalty: resolvedConfig.presencePenalty,
@@ -1193,11 +1182,6 @@ export abstract class BaseAgent<
       });
 
       await this.handleUiStream(uiStream);
-
-      // After the stream is finished, we check if the agent should run a new step (after emptying the queue and the approvals into the history)
-      if (this.state.get().queuedMessages.length > 0) {
-        void this.runStep();
-      }
     } catch (err) {
       this.logger.error(
         `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
@@ -1269,6 +1253,7 @@ export abstract class BaseAgent<
       // We should always continue if the user queued a message
       return true;
     }
+
     let stepsSinceLastMessage = 0;
     let lastUserMessageTime = 0;
     for (let i = this.state.get().history.length - 1; i >= 0; i--) {
@@ -1287,6 +1272,9 @@ export abstract class BaseAgent<
 
     // Check if the maximum number of steps has been reached
     if (this.config.maxSteps && stepsSinceLastMessage >= this.config.maxSteps) {
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Maximum number of steps reached: ${stepsSinceLastMessage} >= ${this.config.maxSteps}`,
+      );
       return false;
     }
 
@@ -1295,15 +1283,27 @@ export abstract class BaseAgent<
       this.config.maxTime &&
       Date.now() - lastUserMessageTime >= this.config.maxTime
     ) {
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Maximum time reached: ${Date.now() - lastUserMessageTime} >= ${this.config.maxTime}`,
+      );
       return false;
     }
 
     //Also return a no-continue if one of the called tools is a "finish" tool and only the "finish" tool was called
-    if (r.toolCalls.length === 1 && r.toolCalls[0]!.toolName === 'finish')
+    if (r.toolCalls.length === 1 && r.toolCalls[0]!.toolName === 'finish') {
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Only the "finish" tool was called`,
+      );
       return false;
+    }
 
     // Check if there are any open tool approval requests
-    if (r.content.some((p) => p.type === 'tool-approval-request')) return false;
+    if (r.content.some((p) => p.type === 'tool-approval-request')) {
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] There are open tool approval requests`,
+      );
+      return false;
+    }
 
     // If the user does not want to continue, we don't run a new step
     if (!userWantsToContinue) return false;
@@ -1312,9 +1312,14 @@ export abstract class BaseAgent<
     // because this is what AI-SDK with controlled tool execution promises us
 
     // Check if the finish reason is not tool-calls (which means user intervention is needed)
-    if (r.finishReason !== 'tool-calls') return false;
+    if (r.finishReason !== 'tool-calls') {
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] The finish reason is not "tool-calls", but "${r.finishReason}"`,
+      );
+      return false;
+    }
 
-    return false;
+    return true;
   }
 
   /**
@@ -1329,19 +1334,57 @@ export abstract class BaseAgent<
       `[BaseAgent:${this.instanceId}] Handling post step. Agent Type: ${this.agentType}`,
     );
 
-    await this.updateTitle();
+    this.state.set((draft) => {
+      draft.usedTokens = result.usage.totalTokens ?? 0;
+    });
+
+    // Check the current token usage. If necessary, summarize the chat history.
+    // We always check the token usage in relation to the currently selected model.
+    const compactionThreshold =
+      this.config.summarizeChatHistoryThreshold ?? 0.5;
+    if (
+      compactionThreshold >= 0 &&
+      this.state.get().usedTokens /
+        this.modelProviderService.getModelWithOptions(
+          this.state.get().activeModelId,
+          '',
+        ).contextWindowSize >
+        compactionThreshold
+    ) {
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Summarizing chat history...`,
+      );
+      await this.summarizeAndOverrideHistory();
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Chat history summarized.`,
+      );
+    }
 
     // Save the agent state for recovery
+    this.logger.debug(`[BaseAgent:${this.instanceId}] Saving state...`);
     await this.saveState();
+    this.logger.debug(`[BaseAgent:${this.instanceId}] State saved.`);
 
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Checking if user wants to continue...`,
+    );
     const userWantsToContinue = (await this.onStepFinished(result)) ?? true;
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] User wants to continue: ${userWantsToContinue}`,
+    );
+
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Checking if should run new step...`,
+    );
     const shouldRunNewStep = this.shouldRunNewStep(result, userWantsToContinue);
+    this.logger.debug(
+      `[BaseAgent:${this.instanceId}] Should run new step: ${shouldRunNewStep}`,
+    );
 
     if (!shouldRunNewStep) {
       this.logger.debug(
         `[BaseAgent:${this.instanceId}] Not running new step. Agent Type: ${this.agentType}`,
       );
-      this.onIdle();
       return false;
     }
 

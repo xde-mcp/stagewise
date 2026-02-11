@@ -220,9 +220,11 @@ export const generateSimpleTitle = async (
       (message) => message.role === 'user' || message.role === 'assistant',
     )
     .slice(-10)
-    .map(
-      (message) =>
-        `${message.role}: ${message.parts.map((part) => (part.type === 'text' ? part.text.replace(/[\n\r]+/g, '  ').slice(0, 200) : `(ATTACHED ${part.type})`)).join(' ')}`,
+    .map((message) =>
+      `${message.role}: ${message.parts.map((part) => (part.type === 'text' ? part.text.replace(/[\n\r]+/g, '  ').slice(0, 200) : `(ATTACHED ${part.type})`)).join(' ')}`.slice(
+        0,
+        500,
+      ),
     )
     .join('\n');
 
@@ -243,12 +245,12 @@ export const generateSimpleTitle = async (
         content: [
           {
             type: 'text',
-            text: `Extract a title for the user's current intent from the following conversation:\n<conversation>\n${messageList}\n</conversation>\n\nSummarize into a single short sentence.`,
+            text: `${messageList}`,
           },
         ],
       },
     ],
-    temperature: 0.3,
+    temperature: 0.15,
     maxOutputTokens: 100,
   }).then((result) => result.text);
 
