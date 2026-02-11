@@ -951,6 +951,14 @@ export abstract class BaseAgent<
 
   /**
    * Returns a tool that the agent can insert into it's tool list to spawn a child agent.
+   *
+   * @param description - The description of the tool
+   * @param inputSchema - The input schema of the tool
+   * @param agentType - The type of the agent to spawn
+   * @param configGetter - A function that returns the configuration for the child agent
+   * @param mode - The mode in which the child agent should be spawned (synchronous agents will block the parent agent until the child agent is finished, asynchronous agents will not block the parent agent)
+   *
+   * @returns A tool that the agent can insert into it's tool list to spawn a child agent.
    */
   protected getSpawnChildAgentTool<
     AT extends AgentTypes,
@@ -962,6 +970,7 @@ export abstract class BaseAgent<
     configGetter: (
       input: z.infer<SpawnToolInputSchema>,
     ) => InstanceType<AgentTypeMap[AT]>['instanceConfig'],
+    mode: 'synchronous' | 'asynchronous' = 'synchronous',
   ): Tool | null {
     if (AgentsMap[agentType].config.finishToolOutputSchema === null) {
       return null;
@@ -975,6 +984,20 @@ export abstract class BaseAgent<
       execute: async (input: any) => {
         const config = configGetter(input);
         // Use any for Promise type to avoid deep type instantiation
+        if (mode === 'asynchronous') {
+          this.spawnChildAgentHandler<AT>(
+            agentType,
+            config,
+            (_finishOutput) => {
+              // no-op for asynchronous mode
+            },
+            (_error) => {
+              // no-op for asynchronous mode
+            },
+          );
+          return { message: `Agent ${agentType} spawned asynchronously` };
+        }
+
         const childAgentPromise = new Promise<any>((resolve, reject) => {
           try {
             this.spawnChildAgentHandler<AT>(
