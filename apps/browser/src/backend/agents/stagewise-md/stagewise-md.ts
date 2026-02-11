@@ -3,6 +3,7 @@ import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
 import { z } from 'zod';
 import { buildStagewiseMdSystemPrompt } from './context-builder';
+import { randomUUID } from 'node:crypto';
 
 const finishToolOutputSchema = z.object({
   message: z.string(),
@@ -10,7 +11,7 @@ const finishToolOutputSchema = z.object({
 
 export class StagewiseMdAgent extends BaseAgent<
   typeof finishToolOutputSchema,
-  undefined
+  { updateReason: string } | undefined
 > {
   public static readonly agentType = AgentTypes.STAGEWISE_MD;
   public static readonly config = {
@@ -45,8 +46,30 @@ export class StagewiseMdAgent extends BaseAgent<
   } satisfies BaseAgentConfig<typeof finishToolOutputSchema>;
 
   protected getSystemPrompt = async (): Promise<string> => {
-    return buildStagewiseMdSystemPrompt(this.toolbox);
+    const reason = this.instanceConfig?.updateReason;
+    return await buildStagewiseMdSystemPrompt(this.toolbox, reason);
   };
+
+  protected async onCreated(): Promise<void> {
+    const reason = this.instanceConfig?.updateReason;
+    if (!reason) return;
+
+    const stagewiseMd = await this.toolbox.getStagewiseMd();
+    const message = stagewiseMd
+      ? `The STAGEWISE.md file has already been generated. Update it with the following reason after analyzing the project again: ${reason}. \n\n The current content of the STAGEWISE.md file is: ${stagewiseMd}`
+      : `Generate a new STAGEWISE.md file after analyzing the project with the following reason: ${reason}`;
+
+    await this.sendUserMessage({
+      id: randomUUID(),
+      role: 'user',
+      parts: [
+        {
+          type: 'text',
+          text: message,
+        },
+      ],
+    });
+  }
 
   protected getTools = async () => {
     const id = this.instanceId;

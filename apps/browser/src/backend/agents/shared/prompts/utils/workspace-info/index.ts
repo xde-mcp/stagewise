@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { getProjectRoot } from './get-project-root';
 import { getPackageManager } from './get-package-manager';
 
+export { formatWorkspaceInfoMarkdown } from './format-workspace-info';
+
 type Dependency = {
   name: string;
   version: string;

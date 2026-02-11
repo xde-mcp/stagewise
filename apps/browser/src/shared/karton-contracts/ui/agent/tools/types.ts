@@ -330,19 +330,16 @@ export const getLintingDiagnosticsToolSchema = {
   outputSchema: getLintingDiagnosticsToolOutputSchema,
 } as const;
 
+// IMPORTANT: This definition is tied to a child agent - so the types are not strictly coupled. Change this type when you change the input schema of the @stagewise-md.ts agent.
 export const updateStagewiseMdToolInputSchema = z.object({
-  reason: z
+  updateReason: z
     .string()
     .min(5)
-    .max(50)
-    .describe(
-      'Brief reason for triggering the stagewise.md update (5-50 characters).',
-    ),
+    .describe('Brief reason for triggering the STAGEWISE.md update.'),
 });
 
 export const updateStagewiseMdToolOutputSchema = z.object({
   message: z.string(),
-  reason: z.string(),
 });
 
 export type UpdateStagewiseMdToolInput = z.infer<

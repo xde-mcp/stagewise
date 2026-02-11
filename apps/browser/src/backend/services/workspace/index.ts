@@ -358,7 +358,7 @@ export class WorkspaceService extends DisposableService {
           parts: [
             {
               type: 'text',
-              text: 'Analyze this project and generate a comprehensive STAGEWISE.md file. Start by exploring the project structure, then read key configuration files, and finally write the analysis using the writeStagewiseMdTool. Call the finish tool when done.',
+              text: 'Analyze the project and generate a comprehensive STAGEWISE.md file.',
             },
           ],
         });

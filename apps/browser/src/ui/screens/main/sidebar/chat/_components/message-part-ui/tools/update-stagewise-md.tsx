@@ -6,7 +6,7 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
-import { IconMagicWandSparkle } from 'nucleo-glass';
+import { IconMagicWandFillDuo18 } from 'nucleo-ui-fill-duo-18';
 
 export const UpdateStagewiseMdToolPart = ({
   part,
@@ -20,26 +20,28 @@ export const UpdateStagewiseMdToolPart = ({
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {
-  const streamingText = `Updating project context...`;
+  const streamingText = `Triggering update of STAGEWISE.md...`;
 
   const finishedText =
     part.state === 'output-available' ? (
       <Tooltip>
         <TooltipTrigger>
           <span className="flex min-w-0 gap-1">
-            <span className="shrink-0 truncate font-medium">Updated </span>
+            <span className="shrink-0 truncate font-medium">
+              Triggered update{' '}
+            </span>
             <span className="truncate font-normal opacity-75">
-              project context
+              of STAGEWISE.md
             </span>
           </span>
         </TooltipTrigger>
-        <TooltipContent>{part.input?.reason}</TooltipContent>
+        <TooltipContent>{part.input?.updateReason}</TooltipContent>
       </Tooltip>
     ) : undefined;
 
   return (
     <ToolPartUINotCollapsible
-      icon={<IconMagicWandSparkle className="size-3 shrink-0" />}
+      icon={<IconMagicWandFillDuo18 className="size-3 shrink-0" />}
       part={part}
       minimal={minimal}
       disableShimmer={disableShimmer}
