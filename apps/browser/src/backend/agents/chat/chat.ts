@@ -1,4 +1,4 @@
-import { BaseAgent } from '../shared/base-agent';
+import { BaseAgent, type BaseAgentConfig } from '../shared/base-agent';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
 import { buildChatSystemPrompt } from './context-builder/context-builder';
@@ -29,11 +29,11 @@ export class ChatAgent extends BaseAgent<never, undefined> {
         canCode: true,
       },
     },
+    finishToolOutputSchema: undefined,
     allowUserInput: true,
     generateTitles: true,
-    finishToolOutputSchema: null,
     updateTitlesEveryNUserMessages: 5,
-  };
+  } satisfies BaseAgentConfig<never>;
 
   protected getSystemPrompt = async (): Promise<string> => {
     return buildChatSystemPrompt(this.toolbox, this.instanceId);

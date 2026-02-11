@@ -10,7 +10,6 @@ import {
   type InferUIMessageChunk,
   readUIMessageStream,
   tool,
-  type FlexibleSchema,
   type ToolUIPart,
 } from 'ai';
 import type {
@@ -82,7 +81,7 @@ export type BaseAgentConfig<TFinishToolOutputSchema extends z.ZodType | null> =
      * Allows to configure the output format of a finish tool that can be used by the agentto send response data to the parent agent (if one exists).
      * @note If set to undefined, the agent will not include a finish tool.
      */
-    finishToolOutputSchema: FlexibleSchema<TFinishToolOutputSchema> | undefined;
+    finishToolOutputSchema: TFinishToolOutputSchema | undefined;
 
     /**
      * Whether the agent should generate titles for it's instance.
@@ -345,7 +344,9 @@ export abstract class BaseAgent<
     onError: (error: Error) => void | Promise<void>,
   ) => Promise<
     BaseAgent<
-      (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'],
+      (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'] extends z.ZodType
+        ? (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
+        : never,
       InstanceType<AgentTypeMap[TAgentType]>['instanceConfig']
     >
   >;
@@ -353,7 +354,9 @@ export abstract class BaseAgent<
   // Handler that get's called when the agent calls the finish tool (notify the parent).
   // The finish tool should be added to the list of tools when calling `streamText` on every step (if it's configured).
   private readonly finishToolHandler?: (
-    finishOutput: z.infer<FlexibleSchema<TFinishToolOutputSchema>>,
+    finishOutput: TFinishToolOutputSchema extends z.ZodType
+      ? z.infer<TFinishToolOutputSchema>
+      : never,
   ) => void | Promise<void>;
   private readonly finishToolErrorHandler?: (
     error: Error,
@@ -384,12 +387,16 @@ export abstract class BaseAgent<
       onError: (error: Error) => void | Promise<void>,
     ) => Promise<
       BaseAgent<
-        (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'],
+        (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'] extends z.ZodType
+          ? (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
+          : never,
         InstanceType<AgentTypeMap[TAgentType]>['instanceConfig']
       >
     >,
     finishToolHandler?: (
-      finishOutput: z.infer<FlexibleSchema<TFinishToolOutputSchema>>,
+      finishOutput: TFinishToolOutputSchema extends z.ZodType
+        ? z.infer<TFinishToolOutputSchema>
+        : never,
     ) => void | Promise<void>,
     finishToolErrorHandler?: (error: Error) => void | Promise<void>,
     initialState?: Partial<AgentState>,
@@ -1398,7 +1405,12 @@ export abstract class BaseAgent<
         'Mark the conversation as done/finished. You must use this tool to mark the work/task as being done. Use it after all other tool calls are done.',
       inputSchema: this.config.finishToolOutputSchema,
       execute: async (input) => {
-        return await this.finishToolHandler?.(input);
+        // Type assertion needed because AI SDK infers `unknown` for generic schema types
+        return await this.finishToolHandler?.(
+          input as TFinishToolOutputSchema extends z.ZodType
+            ? z.infer<TFinishToolOutputSchema>
+            : never,
+        );
       },
     });
   }

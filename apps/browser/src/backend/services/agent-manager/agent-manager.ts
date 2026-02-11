@@ -24,7 +24,10 @@ import type { AgentState } from '@shared/karton-contracts/ui/agent';
  */
 
 export class AgentManagerService extends DisposableService {
-  private activeAgents = new Map<string, BaseAgent<any, any>>();
+  private activeAgents = new Map<
+    string,
+    BaseAgent<any, any> | BaseAgent<never, any>
+  >();
 
   private readonly karton: KartonService;
   private readonly globalDataPathService: GlobalDataPathService;
@@ -257,7 +260,9 @@ export class AgentManagerService extends DisposableService {
     initialInputState?: string,
   ): Promise<
     BaseAgent<
-      (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'],
+      (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'] extends z.ZodType
+        ? (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
+        : never,
       InstanceType<AgentTypeMap[TAgentType]>['instanceConfig']
     >
   > {
@@ -331,7 +336,12 @@ export class AgentManagerService extends DisposableService {
 
     this.activeAgents.set(agentInstanceId, agent);
 
-    return agent;
+    return agent as BaseAgent<
+      (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'] extends z.ZodType
+        ? (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
+        : never,
+      InstanceType<AgentTypeMap[TAgentType]>['instanceConfig']
+    >;
   }
 
   private async spawnChildAgent<TChildAgentType extends keyof AgentTypeMap>(
@@ -348,7 +358,9 @@ export class AgentManagerService extends DisposableService {
     onError: (error: Error) => void | Promise<void>,
   ): Promise<
     BaseAgent<
-      (typeof AgentsMap)[TChildAgentType]['config']['finishToolOutputSchema'],
+      (typeof AgentsMap)[TChildAgentType]['config']['finishToolOutputSchema'] extends z.ZodType
+        ? (typeof AgentsMap)[TChildAgentType]['config']['finishToolOutputSchema']
+        : never,
       InstanceType<AgentTypeMap[TChildAgentType]>['instanceConfig']
     >
   > {
