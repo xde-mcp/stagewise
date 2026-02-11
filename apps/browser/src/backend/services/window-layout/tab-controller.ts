@@ -237,6 +237,10 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private isRuntimeEnabled = false;
   private isEnablingCdpDomains = false; // Prevents concurrent enableCdpDomainsForConsole calls
 
+  // Tracks whether the initial page load has completed.
+  // Used to suppress CDP re-enable on subframe/SPA loading events (prevents feedback loop).
+  private initialLoadCompleted = false;
+
   // Error handling
   private errorHandler: TabErrorHandler | null = null;
 
@@ -1342,6 +1346,9 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.on('did-navigate', async (_event, url) => {
+      // Reset so the next did-stop-loading runs full setup (CDP enable, screenshot, etc.)
+      this.initialLoadCompleted = false;
+
       this.stopSearch(); // Clear search on navigation
 
       // Don't update URL in UI if navigating to an error page - keep showing the failed URL
@@ -1388,36 +1395,39 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.on('did-start-loading', () => {
-      this.updateState({
-        isLoading: true,
-        error: null,
-      });
-      // NOTE: We no longer clear console logs on navigation.
-      // The ring buffer (MAX_CONSOLE_LOGS) handles overflow automatically.
-      // Logs persist across navigations so the agent can see the full history.
-      // Reset Runtime enabled flags - will be re-enabled on did-stop-loading
-      this.isRuntimeEnabled = false;
-      this.isEnablingCdpDomains = false;
+      // After initial load, suppress UI flicker and CDP flag reset.
+      // Real navigations (did-navigate) reset initialLoadCompleted first.
+      if (!this.initialLoadCompleted) {
+        this.updateState({
+          isLoading: true,
+          error: null,
+        });
+        // Reset Runtime enabled flags - will be re-enabled on did-stop-loading
+        this.isRuntimeEnabled = false;
+        this.isEnablingCdpDomains = false;
+      }
     });
 
     wc.on('did-stop-loading', () => {
-      this.updateState({
-        isLoading: false,
-        error: null,
-      });
-      // Update audio state when page finishes loading
-      this.updateAudioState();
-      // Update zoom percentage when page finishes loading
-      const currentZoom = this.getZoomPercentage();
-      this.updateState({ zoomPercentage: currentZoom });
-      // Capture screenshot when page finishes loading
-      this.captureScreenshot().catch((err) => {
-        this.logger.debug(
-          `[TabController] Failed to capture screenshot on page load: ${err}`,
-        );
-      });
-      // Re-enable CDP domains for console log capture after navigation
-      this.enableCdpDomainsForConsole();
+      if (!this.initialLoadCompleted) {
+        // First load after navigation — run all setup work
+        this.initialLoadCompleted = true;
+        this.updateState({ isLoading: false, error: null });
+        this.updateAudioState();
+        const currentZoom = this.getZoomPercentage();
+        this.updateState({ zoomPercentage: currentZoom });
+        this.captureScreenshot().catch((err) => {
+          this.logger.debug(
+            `[TabController] Failed to capture screenshot on page load: ${err}`,
+          );
+        });
+        this.enableCdpDomainsForConsole();
+      } else {
+        // Subsequent stops (subframes/SPA) — only clear loading state.
+        // Skip CDP re-enable (which caused the feedback loop),
+        // skip screenshot/audio/zoom (wasted work on subframe events).
+        this.updateState({ isLoading: false });
+      }
     });
 
     // Note: Error handling UI is managed by TabErrorHandler (setupErrorHandler)
