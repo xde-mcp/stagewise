@@ -831,10 +831,10 @@ export abstract class BaseAgent<
    *
    * @note Can be overridden by the inheriting class to add additional logic when the agent is created.
    *
-   * @note Void for now, we may reconsider allowing promises in the future.
+   * @note TODO: Think about race-conditions when multiple consumers trigger user messages.
    */
-  protected onCreated(): void {
-    return;
+  protected onCreated(): Promise<void> {
+    return Promise.resolve();
   }
 
   /**
