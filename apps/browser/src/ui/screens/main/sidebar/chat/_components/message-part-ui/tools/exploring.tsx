@@ -24,6 +24,7 @@ import { ThinkingPart } from '../thinking';
 import { ReadConsoleLogsToolPart } from './read-console-logs';
 import { ExecuteSandboxJsToolPart } from './execute-sandbox-js';
 import { GetLintingDiagnosticsToolPart } from './get-linting-diagnostics';
+import { getSandboxLabel } from './utils/cdp-label-utils';
 
 // Context for tracking expanded children within exploring section
 interface ExploringContentContextValue {
@@ -438,11 +439,11 @@ export const ExploringToolParts = ({
         return `Searching docs for ${p.input.library}...`;
       }
       case 'tool-executeSandboxJsTool': {
-        const _p = lastNonReasoningPart as Extract<
+        const p = lastNonReasoningPart as Extract<
           ToolUIPart<StagewiseUITools>,
           { type: 'tool-executeSandboxJsTool' }
         >;
-        return 'Running sandbox JavaScript...';
+        return getSandboxLabel(p.input?.script, activeTabs, true);
       }
       case 'tool-readConsoleLogsTool': {
         const p = lastNonReasoningPart as Extract<

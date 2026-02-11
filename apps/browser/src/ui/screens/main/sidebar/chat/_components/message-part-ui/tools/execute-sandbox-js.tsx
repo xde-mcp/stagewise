@@ -20,6 +20,7 @@ import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import { useKartonState } from '@/hooks/use-karton';
 import type { ToolUIPart } from 'ai';
 import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import { getSandboxLabel } from './utils/cdp-label-utils';
 
 export const ExecuteSandboxJsToolPart = ({
   part,
@@ -39,7 +40,7 @@ export const ExecuteSandboxJsToolPart = ({
 }) => {
   const [scriptExpanded, setScriptExpanded] = useState(false);
   const [resultExpanded, setResultExpanded] = useState(true);
-  const _activeTabs = useKartonState((s) => s.browser.tabs);
+  const activeTabs = useKartonState((s) => s.browser.tabs);
 
   const streaming = useMemo(() => {
     return part.state === 'input-streaming' || part.state === 'input-available';
@@ -50,6 +51,15 @@ export const ExecuteSandboxJsToolPart = ({
     if (part.state === 'output-error') return 'error';
     return 'success';
   }, [part.state, streaming]);
+
+  // Generate contextual labels based on CDP calls in the script
+  const inProgressLabel = useMemo(() => {
+    return getSandboxLabel(part.input?.script, activeTabs, true);
+  }, [part.input?.script, activeTabs]);
+
+  const completedLabel = useMemo(() => {
+    return getSandboxLabel(part.input?.script, activeTabs, false);
+  }, [part.input?.script, activeTabs]);
 
   // Use the unified auto-expand hook
   const { expanded, handleUserSetExpanded } = useToolAutoExpand({
@@ -99,9 +109,15 @@ export const ExecuteSandboxJsToolPart = ({
             )}
           >
             {streaming ? (
-              <LoadingHeader disableShimmer={disableShimmer} />
+              <LoadingHeader
+                disableShimmer={disableShimmer}
+                label={inProgressLabel}
+              />
             ) : (
-              <SuccessHeader capMaxHeight={capMaxHeight} />
+              <SuccessHeader
+                capMaxHeight={capMaxHeight}
+                label={completedLabel}
+              />
             )}
           </div>
         </>
@@ -234,18 +250,20 @@ const ErrorHeader = ({
   );
 };
 
-const SuccessHeader = ({ capMaxHeight }: { capMaxHeight?: boolean }) => {
+const SuccessHeader = ({
+  capMaxHeight,
+  label,
+}: {
+  capMaxHeight?: boolean;
+  label: string;
+}) => {
   return (
     <div className="pointer-events-none flex flex-row items-center justify-start gap-1">
       <div className="pointer-events-auto flex flex-row items-center justify-start gap-1">
         <span
           className={cn('shrink-0 text-xs', !capMaxHeight && 'font-normal')}
         >
-          {capMaxHeight ? (
-            'Ran script'
-          ) : (
-            <span className="font-medium">Ran script</span>
-          )}
+          {capMaxHeight ? label : <span className="font-medium">{label}</span>}
         </span>
       </div>
     </div>
@@ -254,14 +272,11 @@ const SuccessHeader = ({ capMaxHeight }: { capMaxHeight?: boolean }) => {
 
 const LoadingHeader = ({
   disableShimmer,
-  hostname,
+  label,
 }: {
   disableShimmer?: boolean;
-  hostname?: string;
+  label: string;
 }) => {
-  const text = hostname
-    ? `Running script in ${hostname}...`
-    : 'Running console script...';
   return (
     <div className="flex flex-row items-center justify-start gap-1">
       <Loader2Icon
@@ -274,7 +289,7 @@ const LoadingHeader = ({
         dir="ltr"
         className={cn('text-xs', disableShimmer ? '' : 'shimmer-text-primary')}
       >
-        {text}
+        {label}
       </span>
     </div>
   );
