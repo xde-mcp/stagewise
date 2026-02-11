@@ -284,7 +284,7 @@ function Page() {
 
             <IdeSelectionSetting />
           </section>
-          <section className="mt-6 space-y-2">
+          <section id="context-files" className="mt-6 space-y-2">
             <div>
               <h2 className="font-medium text-foreground text-lg">Context</h2>
               <p className="text-muted-foreground text-sm">
