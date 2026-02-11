@@ -21,7 +21,7 @@
    ========================================================================== */
 
 @utility line-numbers-container {
-  @apply pl-0 pr-2 flex flex-col items-end text-muted-foreground/30 text-[10px]/4 shrink-0;
+  @apply pl-0 pr-2 flex flex-col items-end text-muted-foreground/30 text-[10px]/4 shrink-0 select-none;
 }
 
 /* ==========================================================================
