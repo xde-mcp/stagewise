@@ -48,9 +48,8 @@ export class UserExperienceService extends DisposableService {
   // Store bound callback reference for proper unregistration
   private readonly boundHandleServiceStateChange: () => void;
 
-  // Track last synced values to prevent infinite loops
+  // Track last synced storedExperienceData to prevent infinite loops
   private lastSyncedStoredExperienceData: string | null = null;
-  private lastSyncedWorkspaceStatus: string | null = null;
 
   // Flag to prevent re-entrant initialization
   private isLoadingStoredExperienceData = false;
@@ -426,7 +425,8 @@ export class UserExperienceService extends DisposableService {
   /**
    * Sync current home page state to PagesService.
    * Called when stored experience data or workspace status changes.
-   * Uses memoization to prevent infinite loops from recursive state updates.
+   * Uses memoization for storedExperienceData to prevent infinite loops.
+   * Always syncs workspaceStatus to ensure reliable cross-process updates.
    */
   private syncHomePageStateToPagesService(): void {
     if (!this.pagesService) {
@@ -434,32 +434,28 @@ export class UserExperienceService extends DisposableService {
     }
     const state = this.uiKarton.state;
 
-    // Stringify current values for comparison (cheap memoization)
+    // Stringify storedExperienceData for comparison (cheap memoization)
     const currentStoredData = JSON.stringify(
       state.userExperience.storedExperienceData,
     );
-    const currentWorkspaceStatus = JSON.stringify(state.workspaceStatus);
 
-    // Only sync if values actually changed to prevent infinite loops
+    // Check if storedExperienceData changed
     const storedDataChanged =
       currentStoredData !== this.lastSyncedStoredExperienceData;
-    const workspaceStatusChanged =
-      currentWorkspaceStatus !== this.lastSyncedWorkspaceStatus;
 
-    if (!storedDataChanged && !workspaceStatusChanged) return; // Nothing changed, skip sync
+    // Update memoization cache for storedExperienceData
+    if (storedDataChanged)
+      this.lastSyncedStoredExperienceData = currentStoredData;
 
-    // Update memoization cache
-    this.lastSyncedStoredExperienceData = currentStoredData;
-    this.lastSyncedWorkspaceStatus = currentWorkspaceStatus;
-
-    // Only include changed values in the sync
+    // Always sync workspaceStatus to ensure reliable updates across processes.
+    // This is critical because workspaceStatus changes originate from the UI Karton
+    // (via sidebar workspace.open) and must be propagated to the Pages Karton
+    // for the home page to react correctly.
     this.pagesService.syncHomePageState({
       storedExperienceData: storedDataChanged
         ? state.userExperience.storedExperienceData
         : undefined,
-      workspaceStatus: workspaceStatusChanged
-        ? state.workspaceStatus
-        : undefined,
+      workspaceStatus: state.workspaceStatus,
     });
   }
 
