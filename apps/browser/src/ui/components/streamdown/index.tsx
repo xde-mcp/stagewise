@@ -7,6 +7,8 @@ import {
   memo,
   type DetailedHTMLProps,
   type HTMLAttributes,
+  type OlHTMLAttributes,
+  type LiHTMLAttributes,
   useState,
   isValidElement,
   type ReactNode,
@@ -254,6 +256,9 @@ export const Streamdown = ({
           h4: MemoH4,
           h5: MemoH5,
           h6: MemoH6,
+          ul: MemoUl,
+          ol: MemoOl,
+          li: MemoLi,
           table: MemoTable,
           thead: MemoThead,
           tbody: MemoTbody,
@@ -634,6 +639,58 @@ const H6Component = ({
   );
 };
 
+// Custom list components for compact chat rendering
+const UlComponent = ({
+  className,
+  children,
+  ...props
+}: DetailedHTMLProps<HTMLAttributes<HTMLUListElement>, HTMLUListElement> &
+  ExtraProps) => {
+  return (
+    <ul
+      className={cn('my-2 ml-4 list-disc space-y-1', className)}
+      data-streamdown="unordered-list"
+      {...props}
+    >
+      {children}
+    </ul>
+  );
+};
+
+const OlComponent = ({
+  className,
+  children,
+  ...props
+}: DetailedHTMLProps<OlHTMLAttributes<HTMLOListElement>, HTMLOListElement> &
+  ExtraProps) => {
+  return (
+    <ol
+      className={cn('my-2 ml-4 list-decimal space-y-1', className)}
+      data-streamdown="ordered-list"
+      {...props}
+    >
+      {children}
+    </ol>
+  );
+};
+
+const LiComponent = ({
+  className,
+  children,
+  ...props
+}: DetailedHTMLProps<LiHTMLAttributes<HTMLLIElement>, HTMLLIElement> &
+  ExtraProps) => {
+  return (
+    <li
+      className={cn('pl-1', className)}
+      data-streamdown="list-item"
+      {...props}
+    >
+      {children}
+    </li>
+  );
+};
+
 const MemoHr = memo<
   DetailedHTMLProps<HTMLAttributes<HTMLHRElement>, HTMLHRElement> & ExtraProps
 >(HrComponent, (p, n) => p.className === n.className);
@@ -692,3 +749,29 @@ const MemoH6 = memo<
   (p, n) => p.children === n.children && p.className === n.className,
 );
 MemoH6.displayName = 'MarkdownH6';
+
+const MemoUl = memo<
+  DetailedHTMLProps<HTMLAttributes<HTMLUListElement>, HTMLUListElement> &
+    ExtraProps
+>(
+  UlComponent,
+  (p, n) => p.children === n.children && p.className === n.className,
+);
+MemoUl.displayName = 'MarkdownUl';
+
+const MemoOl = memo<
+  DetailedHTMLProps<OlHTMLAttributes<HTMLOListElement>, HTMLOListElement> &
+    ExtraProps
+>(
+  OlComponent,
+  (p, n) => p.children === n.children && p.className === n.className,
+);
+MemoOl.displayName = 'MarkdownOl';
+
+const MemoLi = memo<
+  DetailedHTMLProps<LiHTMLAttributes<HTMLLIElement>, HTMLLIElement> & ExtraProps
+>(
+  LiComponent,
+  (p, n) => p.children === n.children && p.className === n.className,
+);
+MemoLi.displayName = 'MarkdownLi';
