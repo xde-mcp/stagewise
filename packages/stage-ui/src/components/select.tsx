@@ -557,6 +557,7 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
                             value={item.value as any}
                             disabled={item.disabled}
                             className={cn(
+                              'group/item',
                               'w-full min-w-36 shrink-0 cursor-default select-none rounded-md outline-none',
                               'text-foreground transition-colors duration-150 ease-out',
                               'hover:bg-surface-1 data-[highlighted]:bg-surface-1',

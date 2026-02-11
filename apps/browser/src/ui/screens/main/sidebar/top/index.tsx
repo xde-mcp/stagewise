@@ -271,7 +271,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       items.push({
         value: 'open-folder',
         label: (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="flex items-center gap-1.5 text-muted-foreground group-hover/item:text-foreground">
             <IconPlusFill18 className="size-3.5" />
             <span>Connect a new workspace</span>
           </span>
