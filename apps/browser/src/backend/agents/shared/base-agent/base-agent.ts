@@ -465,7 +465,7 @@ export abstract class BaseAgent<
     const msg = { ...message, id: id };
 
     // If the agent is running, we queue the message
-    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
+    if (this.state.get().isWorking) {
       this.state.set((draft) => {
         draft.queuedMessages.push(msg);
       });
@@ -674,7 +674,7 @@ export abstract class BaseAgent<
     userMessageId: string,
     undoToolCalls: boolean,
   ): Promise<void> {
-    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
+    if (this.state.get().isWorking) {
       throw new Error(
         'Cannot revert to user message while agent is still running',
       );
@@ -721,16 +721,7 @@ export abstract class BaseAgent<
   }
 
   public async updateActiveModelId(modelId: ModelId): Promise<void> {
-    if (!this.config.allowModelSelection) {
-      throw new Error('Model selection is not allowed for this agent');
-    }
-
-    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
-      throw new Error(
-        'Cannot update active model id while agent is still running',
-      );
-    }
-
+    // We accept model updates at all times, and the UI has to make enforce that model changes aren't allowed
     this.state.set((draft) => {
       draft.activeModelId = modelId;
     });
@@ -1446,7 +1437,10 @@ export abstract class BaseAgent<
    * @returns Whether the agent can run a new step based on the given conditions.
    */
   private canRunStep(): boolean {
-    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
+    if (
+      this.state.get().isWorking ||
+      (this.stepAbortController && !this.stepAbortController.signal.aborted)
+    ) {
       return false;
     }
 
