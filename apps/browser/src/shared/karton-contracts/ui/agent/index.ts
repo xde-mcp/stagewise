@@ -5,6 +5,7 @@ import type { StagewiseUITools } from './tools/types';
 
 export enum AgentTypes {
   CHAT = 'chat',
+  STAGEWISE_MD = 'stagewise-md',
 }
 
 export type AgentMessage = UIMessage<
