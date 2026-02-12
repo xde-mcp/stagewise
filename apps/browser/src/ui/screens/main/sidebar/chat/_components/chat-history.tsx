@@ -461,6 +461,14 @@ export const ChatHistory = () => {
           >
             {messageComponent}
             {showWorkingIndicator && <MessageLoading />}
+            {error && isLastMessage && openAgent && (
+              <MessageRuntimeError
+                agentInstanceId={openAgent}
+                error={error}
+                canRetry={canRetry}
+                onRetry={() => void retryLastUserMessage(openAgent)}
+              />
+            )}
           </div>
         );
 
@@ -477,18 +485,6 @@ export const ChatHistory = () => {
             <div ref={lastAssistantMessageRef}>
               {showWorkingIndicator && <MessageLoading />}
             </div>
-          </div>
-        );
-      }
-
-      // Last user message but NOT the last message overall (assistant came after)
-      if (isLastUserMessage) {
-        return (
-          <div
-            className={cn('flex flex-col pl-4', index === 0 && 'pt-2.5')}
-            style={{ paddingRight }}
-          >
-            <div ref={lastUserMessageRef}>{messageComponent}</div>
             {error && isLastMessage && openAgent && (
               <MessageRuntimeError
                 agentInstanceId={openAgent}
@@ -501,12 +497,32 @@ export const ChatHistory = () => {
         );
       }
 
+      // Last user message but NOT the last message overall (assistant came after)
+      if (isLastUserMessage) {
+        return (
+          <div
+            className={cn('flex flex-col pl-4', index === 0 && 'pt-2.5')}
+            style={{ paddingRight }}
+          >
+            <div ref={lastUserMessageRef}>{messageComponent}</div>
+          </div>
+        );
+      }
+
       return (
         <div
           className={cn('pl-4', index === 0 && 'pt-2.5')}
           style={{ paddingRight }}
         >
           {messageComponent}
+          {error && isLastMessage && openAgent && (
+            <MessageRuntimeError
+              agentInstanceId={openAgent}
+              error={error}
+              canRetry={canRetry}
+              onRetry={() => void retryLastUserMessage(openAgent)}
+            />
+          )}
         </div>
       );
     },
