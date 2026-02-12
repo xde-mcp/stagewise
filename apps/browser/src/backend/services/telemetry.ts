@@ -228,7 +228,10 @@ export class TelemetryService extends DisposableService {
       ...properties,
       posthogProperties: {
         telemetry_level: telemetryLevel,
-        cli_version: process.env.CLI_VERSION,
+        app_version: __APP_VERSION__,
+        app_release_channel: __APP_RELEASE_CHANNEL__,
+        app_platform: __APP_PLATFORM__,
+        app_arch: __APP_ARCH__,
         ...properties?.posthogProperties,
       },
     });
@@ -274,7 +277,10 @@ export class TelemetryService extends DisposableService {
       const finalProperties = {
         ...properties,
         telemetry_level: telemetryLevel,
-        cli_version: process.env.CLI_VERSION,
+        app_version: __APP_VERSION__,
+        app_release_channel: __APP_RELEASE_CHANNEL__,
+        app_platform: __APP_PLATFORM__,
+        app_arch: __APP_ARCH__,
       };
 
       this.posthogClient.capture({
@@ -300,6 +306,11 @@ export class TelemetryService extends DisposableService {
     this.posthogClient.captureException(error, distinctId, {
       properties: {
         ...properties,
+        telemetry_level: telemetryLevel,
+        app_version: __APP_VERSION__,
+        app_release_channel: __APP_RELEASE_CHANNEL__,
+        app_platform: __APP_PLATFORM__,
+        app_arch: __APP_ARCH__,
       },
     });
   }

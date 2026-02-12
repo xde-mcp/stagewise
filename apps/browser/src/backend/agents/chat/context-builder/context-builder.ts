@@ -100,7 +100,7 @@ const productDescription = `A purpose-built browser for frontend development. AI
 
 const importantLinks = {
   reportAgentBehaviorIssue:
-    'https://github.com/stagewise-io/stagewise/issues/new?template=5.agent_behavior_issue.yml&conversation-id={{CONVERSATION_ID}}',
+    'https://github.com/stagewise-io/stagewise/issues/new?template=5.agent_issue.yml&conversation-id={{CONVERSATION_ID}}',
   reportBug:
     'https://github.com/stagewise-io/stagewise/issues/new?template=1.bug_report.yml',
   stagewiseLandingPage: 'https://stagewise.io',
@@ -108,7 +108,7 @@ const importantLinks = {
   stagewiseDiscord: 'https://stagewise.io/socials/discord',
   stagewiseX: 'https://stagewise.io/socials/x',
   stagewiseLinkedIn: 'https://stagewise.io/socials/linkedin',
-  stagewiseGitHub: 'https://github.com/stagewise-io/stagewise-io',
+  stagewiseGitHub: 'https://github.com/stagewise-io/stagewise',
   userMgmtConsole: 'https://console.stagewise.io',
 };
 

@@ -654,6 +654,41 @@ export abstract class BaseAgent<
   }
 
   /**
+   * Retries the last user message that resulted in an error.
+   *
+   * @note Only works if there is an error in the state and the last message is a user message.
+   *
+   * @note DO NOT OVERRIDE
+   */
+  public async retryLastUserMessage(): Promise<void> {
+    const currentState = this.state.get();
+
+    // Check if there's an error
+    if (!currentState.error) {
+      throw new Error('No error to retry');
+    }
+
+    // Find the last user message
+    const history = currentState.history;
+    let lastUserMessage: (AgentMessage & { role: 'user' }) | null = null;
+
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === 'user') {
+        lastUserMessage = history[i] as AgentMessage & { role: 'user' };
+        break;
+      }
+    }
+
+    if (!lastUserMessage) {
+      throw new Error('No user message found to retry');
+    }
+
+    // Revert to the last user message and resend it
+    await this.revertToUserMessage(lastUserMessage.id, false);
+    await this.sendUserMessage(lastUserMessage);
+  }
+
+  /**
    * Retrieves the current message history of the agent (including streaming messages).
    *
    * @note DO NOT OVERRIDE
@@ -1055,6 +1090,7 @@ export abstract class BaseAgent<
 
     this.state.set((draft) => {
       draft.isWorking = true;
+      draft.error = undefined; // Reset error at the start of each step
     });
 
     // Flush the queue into the history
@@ -1130,6 +1166,10 @@ export abstract class BaseAgent<
         this.stepAbortController = null;
         this.state.set((draft) => {
           draft.isWorking = false;
+          draft.error = {
+            message: `${error.name}: ${error.message}`,
+            stack: error.stack,
+          };
         });
       },
       experimental_repairToolCall: async (r) => {
@@ -1175,9 +1215,17 @@ export abstract class BaseAgent<
 
       await this.handleUiStream(uiStream);
     } catch (err) {
+      const error = err as Error;
       this.logger.error(
         `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
       );
+      this.state.set((draft) => {
+        draft.isWorking = false;
+        draft.error = {
+          message: error.message ?? 'Unknown error',
+          stack: error.stack,
+        };
+      });
     }
   }
 

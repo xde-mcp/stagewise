@@ -11,6 +11,7 @@ import { Button } from '@stagewise/stage-ui/components/button';
 import { MessageUser } from './message-user';
 import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
+import { MessageRuntimeError } from './message-runtime-error';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { cn } from '@ui/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
@@ -145,12 +146,18 @@ export const ChatHistory = () => {
   const { activeEditMessageId } = useMessageEditState();
   const createTab = useKartonProcedure((s) => s.browser.createTab);
   const sendUserMessage = useKartonProcedure((s) => s.agents.sendUserMessage);
+  const retryLastUserMessage = useKartonProcedure(
+    (s) => s.agents.retryLastUserMessage,
+  );
   const [openAgent] = useOpenAgent();
   const isWorking = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
   );
   const history = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.history : [],
+  );
+  const error = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.error : undefined,
   );
   const [removedSuggestionUrls, setRemovedSuggestionUrls] = useState<
     Set<string>
@@ -413,6 +420,13 @@ export const ChatHistory = () => {
     updateSpacerHeight,
   ]);
 
+  // Calculate if retry is possible (error exists, not working, and last message is user)
+  const canRetry = useMemo(() => {
+    if (!error || isWorking) return false;
+    const lastMessage = filteredMessages[filteredMessages.length - 1];
+    return lastMessage?.role === 'user';
+  }, [error, isWorking, filteredMessages]);
+
   // Render individual message item
   const itemContent = useCallback(
     (index: number, message: AgentMessage) => {
@@ -446,7 +460,6 @@ export const ChatHistory = () => {
             style={{ paddingRight }}
           >
             {messageComponent}
-            {/* history?.error && <MessageError error={history.error} /> */}
             {showWorkingIndicator && <MessageLoading />}
           </div>
         );
@@ -476,6 +489,14 @@ export const ChatHistory = () => {
             style={{ paddingRight }}
           >
             <div ref={lastUserMessageRef}>{messageComponent}</div>
+            {error && isLastMessage && openAgent && (
+              <MessageRuntimeError
+                agentInstanceId={openAgent}
+                error={error}
+                canRetry={canRetry}
+                onRetry={() => void retryLastUserMessage(openAgent)}
+              />
+            )}
           </div>
         );
       }
@@ -498,6 +519,7 @@ export const ChatHistory = () => {
       isWorking,
       lastUserMessageRef,
       lastAssistantMessageRef,
+      error,
     ],
   );
 

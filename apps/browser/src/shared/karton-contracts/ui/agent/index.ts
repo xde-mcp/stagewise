@@ -26,6 +26,7 @@ export type AgentState = {
   activeModelId: ModelId; // The model ID that the agent last used
   inputState: string; // Serialized input state - may be simple text or some stringified object if our input field needs that.
   usedTokens: number;
+  error?: { code?: number; message: string; stack?: string }; // Current error state (not persisted, only available during runtime for UI display)
 };
 
 export type ToolboxState = {

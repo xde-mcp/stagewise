@@ -647,6 +647,7 @@ export type KartonContract = {
         userMessageId: string,
         newMessage: AgentMessage & { role: 'user' },
       ) => Promise<string>;
+      retryLastUserMessage: (agentId: string) => Promise<void>;
       setActiveModelId: (agentId: string, modelId: ModelId) => Promise<void>;
     };
     toolbox: {

@@ -233,6 +233,12 @@ export class AgentManagerService extends DisposableService {
         await this.updateInputState(instanceId, inputState);
       },
     );
+    this.karton.registerServerProcedureHandler(
+      'agents.retryLastUserMessage',
+      async (_callingClientId: string, instanceId: string) => {
+        await this.retryLastUserMessage(instanceId);
+      },
+    );
   }
 
   protected async onTeardown(): Promise<void> {
@@ -657,6 +663,20 @@ export class AgentManagerService extends DisposableService {
     }
 
     return await agent.replaceUserMessage(userMessageId, newMessage);
+  }
+
+  /**
+   * Retry the last user message that resulted in an error
+   * @param instanceId
+   */
+  public async retryLastUserMessage(instanceId: string): Promise<void> {
+    const agent = this.activeAgents.get(instanceId);
+
+    if (!agent) {
+      throw new Error(`Agent with instance id ${instanceId} not found`);
+    }
+
+    await agent.retryLastUserMessage();
   }
 
   private async updateInputState(instanceId: string, inputString: string) {
