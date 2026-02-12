@@ -107,6 +107,17 @@ export function ChatPanelFooter() {
     setLocalSelectedElements([]);
   }, [openAgent]);
 
+  // Focus input when agent changes (e.g., new chat created or switched)
+  // This is needed because ChatInput has key={openAgent}, so it re-mounts
+  // and loses focus when the agent changes
+  useEffect(() => {
+    // Use requestAnimationFrame to ensure the ChatInput is mounted
+    if (openAgent)
+      requestAnimationFrame(() => {
+        chatInputRef.current?.focus();
+      });
+  }, [openAgent]);
+
   const activeTabId = useKartonState((s) => s.browser.activeTabId);
   const tabs = useKartonState((s) => s.browser.tabs);
   const activeTab = useMemo(() => {
@@ -539,9 +550,8 @@ export function ChatPanelFooter() {
    */
   const handleAttachmentRemoved = useCallback(
     (id: string, type: AttachmentType) => {
-      if (type === 'image' || type === 'file') {
-        removeFileAttachment(id);
-      } else if (type === 'element') {
+      if (type === 'image' || type === 'file') removeFileAttachment(id);
+      else if (type === 'element') {
         removeSelectedElementProc(id);
         setLocalSelectedElements((prev) =>
           prev.filter((el) => el.stagewiseId !== id),
