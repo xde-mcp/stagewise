@@ -48,7 +48,7 @@ export function ImageAttachmentView(props: AttachmentNodeViewProps) {
 
   // Preview card showing larger image on hover (only if URL exists)
   const previewContent = hasUrl ? (
-    <PreviewCardContent className="flex w-64 flex-col items-stretch gap-2">
+    <PreviewCardContent className="flex max-w-64 flex-col items-stretch gap-2">
       <div className="flex min-h-24 w-full items-center justify-center overflow-hidden rounded-sm bg-background ring-1 ring-border-subtle">
         <img
           src={url}
