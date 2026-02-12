@@ -323,7 +323,8 @@ export function ChatPanelFooter() {
     setLocalInputState(emptyDoc);
     if (openAgent) void setChatInputState(openAgent, JSON.stringify(emptyDoc));
 
-    // Dispatch event to force scroll to bottom BEFORE sending (must happen before DOM updates)
+    // Dispatch event to notify chat-history that a message is being sent
+    // This sets the pendingAutoScroll flag BEFORE the message is added to state
     window.dispatchEvent(new Event('chat-message-sent'));
 
     try {

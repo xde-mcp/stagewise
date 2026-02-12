@@ -251,6 +251,10 @@ export const MessageUser = memo(
 
         const markdownText = chatInputRef.current.getTextContent().trim();
 
+        // Dispatch event BEFORE replaceUserMessage so chat-history sets pendingAutoScroll flag
+        // before the message length changes (same pattern as panel-footer.tsx)
+        window.dispatchEvent(new Event('chat-message-sent'));
+
         // Single atomic operation - replaces old message with new one
         // This prevents race conditions where the component unmounts between
         // revert and send operations
@@ -274,9 +278,6 @@ export const MessageUser = memo(
               preservedTextClips.length > 0 ? preservedTextClips : undefined,
           },
         });
-
-        // Dispatch event to force scroll to bottom in chat history
-        window.dispatchEvent(new Event('chat-message-sent'));
 
         // Note: State cleanup is minimal since component will unmount after replaceUserMessage
         // The atomic operation completes before state updates trigger re-render

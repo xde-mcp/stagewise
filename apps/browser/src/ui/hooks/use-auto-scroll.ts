@@ -79,10 +79,13 @@ export function useAutoScroll(
   }, []);
 
   // Force enable auto-scroll (for external triggers like sending a message)
+  // NOTE: Does NOT scroll immediately - just enables auto-scroll.
+  // The MutationObserver will scroll when content actually changes.
+  // This prevents a "double scroll" where we scroll before new content exists.
   const forceEnableAutoScroll = useCallback(() => {
     isAutoScrollLockedRef.current = true;
-    scrollToBottom();
-  }, [scrollToBottom]);
+    // Don't call scrollToBottom() here - let MutationObserver handle it
+  }, []);
 
   // Check if auto-scroll is currently enabled
   const isAutoScrollEnabled = useCallback(() => {
@@ -145,8 +148,21 @@ export function useAutoScroll(
       viewport.addEventListener('scrollend', handleScrollEnd);
 
       // Setup MutationObserver for auto-scroll on content changes
+      // Use requestAnimationFrame to defer scroll, allowing spacer height
+      // updates to complete first (prevents flicker where content appears
+      // at wrong position for one frame)
+      let pendingScrollFrame: number | null = null;
       const observer = new MutationObserver(() => {
-        if (isAutoScrollLockedRef.current) scrollToBottom();
+        if (!isAutoScrollLockedRef.current) return;
+        // Cancel any pending scroll and schedule a new one
+        // This batches multiple rapid mutations into a single scroll
+        if (pendingScrollFrame !== null)
+          cancelAnimationFrame(pendingScrollFrame);
+
+        pendingScrollFrame = requestAnimationFrame(() => {
+          pendingScrollFrame = null;
+          scrollToBottom();
+        });
       });
       observer.observe(viewport, {
         childList: true,

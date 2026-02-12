@@ -25,11 +25,12 @@ import { useOpenAgent } from '@/hooks/use-open-chat';
 export const ChatHistory = () => {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [spacerHeight, setSpacerHeight] = useState(0);
   const scrollbarWidth = useScrollbarWidth();
 
   // Ref to store latest containerHeight for use in callback ref (avoids stale closure)
   const containerHeightRef = useRef(0);
+  // Ref to store computed spacer height (direct DOM mutation only, no state)
+  const spacerHeightRef = useRef(0);
 
   const paddingRight = useMemo(() => {
     return scrollbarWidth === 0 ? 18 : 5;
@@ -40,12 +41,18 @@ export const ChatHistory = () => {
   const lastAssistantElementRef = useRef<HTMLDivElement | null>(null);
 
   // Extracted measurement function - called from both callback ref and useLayoutEffect
+  // Uses direct DOM mutation only (no state) to avoid extra re-renders and flickering
   const updateSpacerHeight = useCallback(() => {
     const userMessageHeight =
       lastUserElementRef.current?.getBoundingClientRect().height ?? 0;
     const currentContainerHeight = containerHeightRef.current;
-    const minHeight = currentContainerHeight - (userMessageHeight + 10);
-    setSpacerHeight(minHeight);
+    const minHeight = Math.max(
+      0,
+      currentContainerHeight - (userMessageHeight + 10),
+    );
+    // Store in ref for potential future use
+    spacerHeightRef.current = minHeight;
+    // Direct DOM mutation - applies immediately before paint
     if (lastAssistantElementRef.current)
       lastAssistantElementRef.current.style.minHeight = `${minHeight}px`;
   }, []);
@@ -63,9 +70,22 @@ export const ChatHistory = () => {
   // Callback ref for last assistant message - stores element for measurement AND triggers height update
   const lastAssistantMessageRef = useCallback(
     (node: HTMLDivElement | null) => {
-      lastAssistantElementRef.current = node;
-      // Trigger height measurement when a new element is mounted
-      if (node) updateSpacerHeight();
+      // Only clear minHeight and update ref when a NEW element takes over (not when ref is detached)
+      // When node is null (ref detached), keep the old element reference so we can continue
+      // applying the spacer to it. This prevents flicker when user message is last.
+      if (node) {
+        // Clear minHeight from the previous element when a new one takes over
+        if (
+          lastAssistantElementRef.current &&
+          lastAssistantElementRef.current !== node
+        ) {
+          lastAssistantElementRef.current.style.minHeight = '';
+        }
+        lastAssistantElementRef.current = node;
+        updateSpacerHeight();
+      }
+      // When node is null, intentionally keep lastAssistantElementRef.current unchanged
+      // so updateSpacerHeight can still apply the spacer to the previous assistant message
     },
     [updateSpacerHeight],
   );
@@ -136,18 +156,6 @@ export const ChatHistory = () => {
     };
   }, [isAutoScrollEnabled, scrollToBottom, scroller]);
 
-  // Enable auto-scroll when a new message is sent (scrolls to bottom as well)
-  useEffect(() => {
-    window.addEventListener('chat-message-sent', () => {
-      forceEnableAutoScroll();
-    });
-    return () => {
-      window.removeEventListener('chat-message-sent', () => {
-        forceEnableAutoScroll();
-      });
-    };
-  }, [forceEnableAutoScroll]);
-
   // Shuffle suggestions once on mount using Fisher-Yates algorithm
   const [shuffledSuggestions] = useState(() => {
     const shuffled = [...suggestions];
@@ -191,6 +199,38 @@ export const ChatHistory = () => {
         return curr;
       }, []);
   }, [history]);
+
+  // Track when user sends a message - we'll enable auto-scroll once the message is in DOM
+  const pendingAutoScrollRef = useRef(false);
+  const prevMessagesLengthRef = useRef(filteredMessages.length);
+
+  // Listen for message-sent event, but DON'T enable auto-scroll immediately
+  // Just set a flag that we'll check when the message is actually added
+  useEffect(() => {
+    const handleMessageSent = () => {
+      pendingAutoScrollRef.current = true;
+    };
+    window.addEventListener('chat-message-sent', handleMessageSent);
+    return () => {
+      window.removeEventListener('chat-message-sent', handleMessageSent);
+    };
+  }, []);
+
+  // Enable auto-scroll ONLY when new message is actually in the DOM
+  useLayoutEffect(() => {
+    const prevLength = prevMessagesLengthRef.current;
+    const currentLength = filteredMessages.length;
+    prevMessagesLengthRef.current = currentLength;
+
+    // If messages increased AND we were waiting to auto-scroll, now enable it
+    if (currentLength > prevLength && pendingAutoScrollRef.current) {
+      pendingAutoScrollRef.current = false;
+      forceEnableAutoScroll();
+      // Also scroll immediately - the MutationObserver may have already fired
+      // while auto-scroll was disabled, so we need to scroll manually
+      scrollToBottom();
+    }
+  }, [filteredMessages.length, forceEnableAutoScroll, scrollToBottom]);
 
   // Determine if we should show the "Working..." indicator
   const showWorkingIndicator = useMemo(() => {
@@ -250,12 +290,13 @@ export const ChatHistory = () => {
         );
 
       // Attach ref to last assistant message wrapper for height measurement
+      // minHeight is set directly via DOM mutation in the callback ref (no React state)
       if (isLastAssistantMessage)
         return (
           <div
             ref={lastAssistantMessageRef}
             className="flex flex-col pb-[calc(64px+var(--status-card-height,0px))] pl-4"
-            style={{ minHeight: spacerHeight, paddingRight }}
+            style={{ paddingRight }}
           >
             {messageComponent}
             {/* history?.error && <MessageError error={history.error} /> */}
@@ -264,6 +305,23 @@ export const ChatHistory = () => {
         );
 
       // Attach ref to last user message wrapper for height measurement
+      // When user message is the ACTUAL last message, we need a spacer element AFTER it
+      if (isLastUserMessage && isLastMessage) {
+        return (
+          <div
+            className={cn('flex flex-col pl-4', index === 0 && 'pt-2.5')}
+            style={{ paddingRight }}
+          >
+            <div ref={lastUserMessageRef}>{messageComponent}</div>
+            {/* Spacer element that receives minHeight to push user message to top */}
+            <div ref={lastAssistantMessageRef}>
+              {showWorkingIndicator && <MessageLoading />}
+            </div>
+          </div>
+        );
+      }
+
+      // Last user message but NOT the last message overall (assistant came after)
       if (isLastUserMessage) {
         return (
           <div
@@ -271,10 +329,6 @@ export const ChatHistory = () => {
             style={{ paddingRight }}
           >
             <div ref={lastUserMessageRef}>{messageComponent}</div>
-            {showWorkingIndicator &&
-              (filteredMessages.length === 0 ||
-                filteredMessages[filteredMessages.length - 1]?.role ===
-                  'user') && <MessageLoading />}
           </div>
         );
       }
@@ -294,8 +348,9 @@ export const ChatHistory = () => {
       history,
       showWorkingIndicator,
       paddingRight,
-      spacerHeight,
       isWorking,
+      lastUserMessageRef,
+      lastAssistantMessageRef,
     ],
   );
 
