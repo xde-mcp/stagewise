@@ -9,7 +9,10 @@ import { migrateDatabase } from '@/utils/migrate-database';
 import initSql from './schema.sql?raw';
 import { registry, schemaVersion } from './migrations';
 import type { Logger } from '@/services/logger';
-import type { AgentHistoryEntry } from '@shared/karton-contracts/ui/agent';
+import {
+  AgentTypes,
+  type AgentHistoryEntry,
+} from '@shared/karton-contracts/ui/agent';
 
 export class AgentPersistenceDB {
   private _dbDriver: Client;
@@ -97,6 +100,7 @@ export class AgentPersistenceDB {
         and(
           notInArray(schema.agentInstances.id, excludeIds),
           isNull(schema.agentInstances.parentAgentInstanceId),
+          eq(schema.agentInstances.type, AgentTypes.CHAT),
           titleLike ? ilike(schema.agentInstances.title, titleLike) : undefined,
         ),
       );

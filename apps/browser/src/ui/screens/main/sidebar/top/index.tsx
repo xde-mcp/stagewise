@@ -30,7 +30,10 @@ import { HotkeyComboText } from '@/components/hotkey-combo-text';
 import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
 import { useChatDraft } from '@/hooks/use-chat-draft';
 import { useOpenAgent } from '@/hooks/use-open-chat';
-import type { AgentHistoryEntry } from '@shared/karton-contracts/ui/agent';
+import {
+  AgentTypes,
+  type AgentHistoryEntry,
+} from '@shared/karton-contracts/ui/agent';
 
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createAgent = useKartonProcedure((p) => p.agents.create);
@@ -62,16 +65,18 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   }, []);
 
   const activeAgentsList = useMemo(() => {
-    return Object.entries(activeAgents).map(([id, agent]) => ({
-      id: id,
-      title: agent.state.title,
-      createdAt: agent.state.history[0]?.metadata?.createdAt ?? new Date(0),
-      lastMessageAt:
-        agent.state.history[agent.state.history.length - 1]?.metadata
-          ?.createdAt ?? new Date(),
-      messageCount: agent.state.history.length,
-      parentAgentInstanceId: agent.parentAgentInstanceId,
-    }));
+    return Object.entries(activeAgents)
+      .filter(([_, agent]) => agent.type === AgentTypes.CHAT)
+      .map(([id, agent]) => ({
+        id: id,
+        title: agent.state.title,
+        createdAt: agent.state.history[0]?.metadata?.createdAt ?? new Date(0),
+        lastMessageAt:
+          agent.state.history[agent.state.history.length - 1]?.metadata
+            ?.createdAt ?? new Date(),
+        messageCount: agent.state.history.length,
+        parentAgentInstanceId: agent.parentAgentInstanceId,
+      }));
   }, [activeAgents]);
   const [agentsList, setAgentsList] = useState<
     Awaited<ReturnType<typeof getAgentsHistoryList>>
