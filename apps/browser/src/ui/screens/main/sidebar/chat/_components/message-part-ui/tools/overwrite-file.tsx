@@ -1,8 +1,5 @@
-import type { ToolUIPart } from 'ai';
-import type {
-  StagewiseUITools,
-  WithDiff,
-} from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
+import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
 import { FileIcon } from './shared/file-icon';
 import {
   Tooltip,
@@ -36,10 +33,7 @@ import {
 export const OverwriteFileToolPart = ({
   part,
 }: {
-  part: Extract<
-    ToolUIPart<StagewiseUITools>,
-    { type: 'tool-overwriteFileTool' }
-  >;
+  part: Extract<AgentToolUIPart, { type: 'tool-overwriteFileTool' }>;
 }) => {
   const [codeDiffCollapsed, setCodeDiffCollapsed] = useState(true);
   const [expanded, setExpanded] = useState(true);

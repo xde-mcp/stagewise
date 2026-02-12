@@ -8,8 +8,8 @@ import {
   useContext,
   useCallback,
 } from 'react';
-import type { ReasoningUIPart, ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { ReasoningUIPart } from 'ai';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { GlobToolPart } from './glob';
 import { SearchIcon } from 'lucide-react';
 import { GrepSearchToolPart } from './grep-search';
@@ -41,7 +41,7 @@ export const useExploringContentContext = () => {
 
 export type ReadOnlyToolPart =
   | Extract<
-      ToolUIPart<StagewiseUITools>,
+      AgentToolUIPart,
       {
         type:
           | 'tool-globTool'
@@ -59,7 +59,7 @@ export type ReadOnlyToolPart =
   | ReasoningUIPart;
 
 export function isReadOnlyToolPart(
-  part: ToolUIPart<StagewiseUITools> | ReasoningUIPart,
+  part: AgentToolUIPart | ReasoningUIPart,
 ): part is ReadOnlyToolPart {
   return (
     part.type === 'reasoning' ||
@@ -424,7 +424,7 @@ export const ExploringToolParts = ({
         return 'Exploring files...';
       case 'tool-getContext7LibraryDocsTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolUIPart<StagewiseUITools>,
+          AgentToolUIPart,
           { type: 'tool-getContext7LibraryDocsTool' }
         >;
         if (!p.input?.libraryId) return 'Exploring documentation...';
@@ -432,7 +432,7 @@ export const ExploringToolParts = ({
       }
       case 'tool-resolveContext7LibraryTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolUIPart<StagewiseUITools>,
+          AgentToolUIPart,
           { type: 'tool-resolveContext7LibraryTool' }
         >;
         if (!p.input?.library) return 'Exploring documentation...';
@@ -440,14 +440,14 @@ export const ExploringToolParts = ({
       }
       case 'tool-executeSandboxJsTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolUIPart<StagewiseUITools>,
+          AgentToolUIPart,
           { type: 'tool-executeSandboxJsTool' }
         >;
         return getSandboxLabel(p.input?.script, activeTabs, true);
       }
       case 'tool-readConsoleLogsTool': {
         const p = lastNonReasoningPart as Extract<
-          ToolUIPart<StagewiseUITools>,
+          AgentToolUIPart,
           { type: 'tool-readConsoleLogsTool' }
         >;
         const tab = Object.values(activeTabs).find(

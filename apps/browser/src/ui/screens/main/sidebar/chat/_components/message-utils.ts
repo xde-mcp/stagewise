@@ -1,21 +1,17 @@
-import type {
-  UIMessagePart,
-  ToolUIPart,
-  ReasoningUIPart,
-  UIDataTypes,
-} from 'ai';
+import type { UIMessagePart, ReasoningUIPart, UIDataTypes } from 'ai';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { UIAgentTools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 export function isToolPart(
-  part: UIMessagePart<UIDataTypes, StagewiseUITools>,
-): part is ToolUIPart<StagewiseUITools> {
+  part: UIMessagePart<UIDataTypes, UIAgentTools>,
+): part is AgentToolUIPart {
   return part.type === 'dynamic-tool' || part.type.startsWith('tool-');
 }
 
 export function isToolOrReasoningPart(
-  part: UIMessagePart<UIDataTypes, StagewiseUITools>,
-): part is ToolUIPart<StagewiseUITools> | ReasoningUIPart {
+  part: UIMessagePart<UIDataTypes, UIAgentTools>,
+): part is AgentToolUIPart | ReasoningUIPart {
   return (
     part.type === 'dynamic-tool' ||
     part.type.startsWith('tool-') ||

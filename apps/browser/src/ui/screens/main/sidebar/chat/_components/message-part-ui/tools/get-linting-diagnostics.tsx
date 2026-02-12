@@ -1,5 +1,3 @@
-import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import {
   IconTriangleWarningOutline18,
   IconCheck2Outline18,
@@ -10,6 +8,7 @@ import { ToolPartUI } from './shared/tool-part-ui';
 import { cn } from '@/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import type { LintingDiagnostic } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 export const GetLintingDiagnosticsToolPart = ({
   part,
@@ -17,10 +16,7 @@ export const GetLintingDiagnosticsToolPart = ({
   capMaxHeight = false,
   isLastPart = false,
 }: {
-  part: Extract<
-    ToolUIPart<StagewiseUITools>,
-    { type: 'tool-getLintingDiagnosticsTool' }
-  >;
+  part: Extract<AgentToolUIPart, { type: 'tool-getLintingDiagnosticsTool' }>;
   disableShimmer?: boolean;
   capMaxHeight?: boolean;
   isLastPart?: boolean;

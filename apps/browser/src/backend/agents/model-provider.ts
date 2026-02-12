@@ -35,11 +35,13 @@ export class ModelProviderService {
    *
    * @param modelId - The model ID to get.
    * @param traceId - The trace ID to use for tracing.
+   * @param otherPostHogProperties - Other properties to add to the posthog properties.
    * @returns
    */
   public getModelWithOptions(
     modelId: ModelId,
     traceId: string,
+    otherPostHogProperties?: Record<string, unknown>,
   ): {
     model: LanguageModelV3;
     providerOptions: Parameters<typeof streamText>[0]['providerOptions'];
@@ -71,6 +73,7 @@ export class ModelProviderService {
               posthogProperties: {
                 posthogTraceId: traceId,
                 modelId: modelSettings.modelId,
+                ...otherPostHogProperties,
               },
             },
           ),
@@ -97,6 +100,7 @@ export class ModelProviderService {
               posthogProperties: {
                 posthogTraceId: traceId,
                 modelId: modelSettings.modelId,
+                ...otherPostHogProperties,
               },
             },
           ),
@@ -120,6 +124,7 @@ export class ModelProviderService {
               posthogProperties: {
                 posthogTraceId: traceId,
                 modelId: modelSettings.modelId,
+                ...otherPostHogProperties,
               },
             },
           ),
@@ -144,6 +149,7 @@ export class ModelProviderService {
               posthogProperties: {
                 posthogTraceId: traceId,
                 modelId: fallbackModel.modelId,
+                ...otherPostHogProperties,
               },
             },
           ),

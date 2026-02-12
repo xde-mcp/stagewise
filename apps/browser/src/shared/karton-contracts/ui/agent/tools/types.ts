@@ -553,7 +553,7 @@ export const allToolSchemas = {
  * Inferred UI types for all tools.
  * Use this type for type-safe tool rendering in the UI.
  */
-export type StagewiseUITools = InferUITools<AllTools>;
+export type UIAgentTools = InferUITools<AllTools>;
 
 export type AllTools = typeof allToolSchemas;
 

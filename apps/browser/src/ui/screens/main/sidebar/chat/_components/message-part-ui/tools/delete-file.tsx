@@ -1,8 +1,4 @@
-import type {
-  StagewiseUITools,
-  WithDiff,
-} from '@shared/karton-contracts/ui/agent/tools/types';
-import type { ToolUIPart } from 'ai';
+import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
 import { DiffPreview } from './shared/diff-preview';
 import { ToolPartUI } from './shared/tool-part-ui';
 import {
@@ -23,11 +19,12 @@ import { diffLines } from 'diff';
 import { cn } from '@/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { usePostHog } from 'posthog-js/react';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 export const DeleteFileToolPart = ({
   part,
 }: {
-  part: Extract<ToolUIPart<StagewiseUITools>, { type: 'tool-deleteFileTool' }>;
+  part: Extract<AgentToolUIPart, { type: 'tool-deleteFileTool' }>;
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [collapsedDiffView, setCollapsedDiffView] = useState(true);

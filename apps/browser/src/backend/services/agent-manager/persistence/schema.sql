@@ -15,8 +15,6 @@ CREATE TABLE IF NOT EXISTS agentInstances(
   active_model_id TEXT NOT NULL,
   title TEXT NOT NULL,
   history TEXT NOT NULL,
-  last_compacted_message_id TEXT,
-  compacted_history TEXT,
   queued_messages TEXT NOT NULL,
   input_state TEXT NOT NULL,
   used_tokens INTEGER NOT NULL

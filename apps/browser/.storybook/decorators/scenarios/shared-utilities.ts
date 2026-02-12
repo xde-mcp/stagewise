@@ -763,8 +763,6 @@ export function createAgentInstance(
       title: options?.title ?? 'Test Agent',
       isWorking: options?.isWorking ?? false,
       history: options?.initialHistory ?? [],
-      compactedHistory: undefined,
-      lastCompactedMessageId: undefined,
       queuedMessages: [],
       activeModelId: options?.activeModelId ?? 'claude-sonnet-4-5',
       inputState: options?.inputState ?? '',

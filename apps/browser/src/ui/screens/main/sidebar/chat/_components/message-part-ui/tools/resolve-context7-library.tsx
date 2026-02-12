@@ -1,5 +1,4 @@
-import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { FileSearchIcon } from 'lucide-react';
 
@@ -8,10 +7,7 @@ export const ResolveContext7LibraryToolPart = ({
   disableShimmer = false,
   minimal = false,
 }: {
-  part: Extract<
-    ToolUIPart<StagewiseUITools>,
-    { type: 'tool-resolveContext7LibraryTool' }
-  >;
+  part: Extract<AgentToolUIPart, { type: 'tool-resolveContext7LibraryTool' }>;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {

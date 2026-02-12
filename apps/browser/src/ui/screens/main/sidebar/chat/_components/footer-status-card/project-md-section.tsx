@@ -9,8 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 export type ProjectMdStatus = 'hidden' | 'running' | 'completed';
 
@@ -64,7 +63,7 @@ function getStatusText(
   const lastMessage = assistantMessages?.at(-1);
 
   // Search through all assistant messages in reverse order to find the last valid tool part
-  let lastToolPart: ToolUIPart<StagewiseUITools> | undefined;
+  let lastToolPart: AgentToolUIPart | undefined;
   for (
     let i = (assistantMessages?.length ?? 0) - 1;
     i >= 0 && !lastToolPart;
@@ -73,7 +72,7 @@ function getStatusText(
     const msg = assistantMessages![i];
     const toolParts = msg.parts.filter((p) =>
       p.type.startsWith('tool-'),
-    ) as ToolUIPart<StagewiseUITools>[];
+    ) as AgentToolUIPart[];
     const filteredParts = toolParts.filter(
       (p) => p.state === 'input-available' || p.state === 'output-available',
     );

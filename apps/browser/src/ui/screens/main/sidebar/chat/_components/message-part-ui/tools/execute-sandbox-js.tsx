@@ -18,8 +18,7 @@ import { StreamingCodeBlock } from '@/components/ui/streaming-code-block';
 import { cn } from '@/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import { useKartonState } from '@/hooks/use-karton';
-import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { getSandboxLabel } from './utils/cdp-label-utils';
 
 export const ExecuteSandboxJsToolPart = ({
@@ -29,10 +28,7 @@ export const ExecuteSandboxJsToolPart = ({
   disableShimmer = false,
   isLastPart = false,
 }: {
-  part: Extract<
-    ToolUIPart<StagewiseUITools>,
-    { type: 'tool-executeSandboxJsTool' }
-  >;
+  part: Extract<AgentToolUIPart, { type: 'tool-executeSandboxJsTool' }>;
   capMaxHeight?: boolean;
   showBorder?: boolean;
   disableShimmer?: boolean;

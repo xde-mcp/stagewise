@@ -1,8 +1,5 @@
-import type { ToolUIPart } from 'ai';
-import type {
-  StagewiseUITools,
-  WithDiff,
-} from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
+import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
 import { DiffPreview } from './shared/diff-preview';
 import { FileIcon } from './shared/file-icon';
 import { usePostHog } from 'posthog-js/react';
@@ -35,7 +32,7 @@ import {
 export const MultiEditToolPart = ({
   part,
 }: {
-  part: Extract<ToolUIPart<StagewiseUITools>, { type: 'tool-multiEditTool' }>;
+  part: Extract<AgentToolUIPart, { type: 'tool-multiEditTool' }>;
 }) => {
   const [expanded, setExpanded] = useState(true);
   const { getFileIDEHref } = useFileIDEHref();

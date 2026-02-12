@@ -46,14 +46,9 @@ const metadataSchema = z.object({
   selectedPreviewElements: z.array(selectedElementSchema).optional(),
   /** Text clip attachments - collapsed long text pasted by user */
   textClipAttachments: z.array(textClipAttachmentSchema).optional(),
-  autoCompactInformation: z
-    .object({
-      isAutoCompacted: z.literal(true),
-      compactedAt: z.date(),
-      chatSummary: z.string(),
-    })
-    .optional(),
-  rejectedEdits: z.array(z.string()).optional(),
+  /** Compressed history of the agent in markdown format. Contains information about the whole previous conversation. */
+  compressedHistory: z.string().optional(),
+  /** All file attachments for the message, containing data. We use this to fuly control how data get's attached in the final message. */
   fileAttachments: z.array(fileAttachmentSchema).optional(),
 });
 

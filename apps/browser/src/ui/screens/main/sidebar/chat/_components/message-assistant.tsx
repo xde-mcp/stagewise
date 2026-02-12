@@ -2,15 +2,17 @@ import { cn } from '@/utils';
 import { IconMagicWandSparkle } from 'nucleo-glass';
 import type {
   ReasoningUIPart,
-  ToolUIPart,
   DynamicToolUIPart,
   FileUIPart,
   TextUIPart,
   UIMessagePart,
   UIDataTypes,
 } from 'ai';
-import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type {
+  AgentMessage,
+  AgentToolUIPart,
+} from '@shared/karton-contracts/ui/agent';
+import type { UIAgentTools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { useMemo, memo } from 'react';
 import { ThinkingPart } from './message-part-ui/thinking';
 import { FilePart } from './message-part-ui/file';
@@ -34,7 +36,7 @@ type AssistantMessage = AgentMessage & { role: 'assistant' };
 /** Part with its original index in msg.parts for correct metadata lookup */
 type PartWithOriginalIndex =
   | {
-      part: UIMessagePart<UIDataTypes, StagewiseUITools>;
+      part: UIMessagePart<UIDataTypes, UIAgentTools>;
       originalIndex: number;
     }
   | {
@@ -76,6 +78,17 @@ export const MessageAssistant = memo(
 
     return (
       <div className={cn('flex w-full flex-col gap-1')}>
+        {msg.metadata?.compressedHistory && (
+          <div
+            key={`compact-${msg.id}`}
+            className="mt-2 flex w-full flex-row items-center gap-2 text-xs"
+          >
+            <IconMagicWandSparkle className="size-3 text-muted-foreground" />
+            <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
+              Summarized previous chat history
+            </span>
+          </div>
+        )}
         <div className="w-full">
           <div
             className={cn(
@@ -216,11 +229,7 @@ export const MessageAssistant = memo(
                             isLastMessage
                           }
                           key={stableKey}
-                          part={
-                            part as
-                              | ToolUIPart<StagewiseUITools>
-                              | DynamicToolUIPart
-                          }
+                          part={part as AgentToolUIPart | DynamicToolUIPart}
                         />
                       );
                   }
@@ -229,17 +238,6 @@ export const MessageAssistant = memo(
             </div>
           </div>
         </div>
-        {msg.metadata?.autoCompactInformation?.isAutoCompacted && (
-          <div
-            key={`compact-${msg.id}`}
-            className="mt-2 flex w-full flex-row items-center gap-2 text-xs"
-          >
-            <IconMagicWandSparkle className="size-3 text-muted-foreground" />
-            <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
-              Summarized chat history
-            </span>
-          </div>
-        )}
       </div>
     );
   },
@@ -256,10 +254,8 @@ export const MessageAssistant = memo(
       return false;
 
     // Check for autoCompactInformation changes
-    const prevAutoCompact =
-      prevProps.message.metadata?.autoCompactInformation?.isAutoCompacted;
-    const nextAutoCompact =
-      nextProps.message.metadata?.autoCompactInformation?.isAutoCompacted;
+    const prevAutoCompact = prevProps.message.metadata?.compressedHistory;
+    const nextAutoCompact = nextProps.message.metadata?.compressedHistory;
     if (prevAutoCompact !== nextAutoCompact) return false;
 
     // Deep compare parts by type and key content

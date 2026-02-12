@@ -10,7 +10,7 @@ import {
   type InferUIMessageChunk,
   readUIMessageStream,
   tool,
-  type ToolUIPart,
+  type DynamicToolUIPart,
 } from 'ai';
 import type {
   AgentMessage,
@@ -26,16 +26,14 @@ import type { TelemetryService } from '@/services/telemetry';
 import type { Logger } from '@/services/logger';
 import type { ModelProviderService } from '../../model-provider';
 import {
-  convertStagewiseUIToModelMessages,
+  convertAgentMessagesToModelMessages,
   capitalizeFirstLetter,
   generateSimpleTitle,
-  generateChatSummary,
+  generateSimpleCompressedHistory,
 } from './utils';
 import { randomUUID } from 'node:crypto';
-import type {
-  StagewiseToolSet,
-  StagewiseUITools,
-} from '@shared/karton-contracts/ui/agent/tools/types';
+import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { AgentsMap } from '../../agents-map';
 
 /**
@@ -426,9 +424,6 @@ export abstract class BaseAgent<
           },
         )}`;
       draft.history = initialState?.history ?? [];
-      draft.compactedHistory = initialState?.compactedHistory ?? undefined;
-      draft.lastCompactedMessageId =
-        initialState?.lastCompactedMessageId ?? undefined;
       draft.queuedMessages = initialState?.queuedMessages ?? [];
       draft.activeModelId =
         initialState?.activeModelId ?? this.config.defaultModelId;
@@ -512,19 +507,25 @@ export abstract class BaseAgent<
           const toolPartIndex = msg.parts.findIndex(
             (part) =>
               (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
-              (part as ToolUIPart<StagewiseUITools>).approval?.id ===
+              (part as AgentToolUIPart | DynamicToolUIPart).approval?.id ===
                 approvalId,
           );
           if (toolPartIndex !== -1) {
             if (
-              (msg.parts[toolPartIndex] as ToolUIPart).state ===
-              'approval-requested'
+              (msg.parts[toolPartIndex] as AgentToolUIPart | DynamicToolUIPart)
+                .state === 'approval-requested'
             ) {
               const updatedToolPart = {
-                ...(msg.parts[toolPartIndex] as ToolUIPart),
+                ...(msg.parts[toolPartIndex] as
+                  | AgentToolUIPart
+                  | DynamicToolUIPart),
                 state: 'approval-responded',
                 approval: {
-                  ...(msg.parts[toolPartIndex] as ToolUIPart).approval,
+                  ...(
+                    msg.parts[toolPartIndex] as
+                      | AgentToolUIPart
+                      | DynamicToolUIPart
+                  ).approval,
                   approved: approved,
                   reason: reason,
                 },
@@ -731,9 +732,9 @@ export abstract class BaseAgent<
           msg.parts.filter(
             (part) =>
               part.type.startsWith('tool-') || part.type === 'dynamic-tool',
-          ) as ToolUIPart[],
+          ) as (AgentToolUIPart | DynamicToolUIPart)[],
       )
-      .map((part) => (part as ToolUIPart).toolCallId);
+      .map((part) => (part as AgentToolUIPart | DynamicToolUIPart).toolCallId);
 
     if (undoneToolCallIds.length > 0 && undoToolCalls) {
       await this.toolbox.undoToolCalls(undoneToolCallIds);
@@ -796,37 +797,21 @@ export abstract class BaseAgent<
   }
 
   /**
-   * Summarizes the chat history. Override to customize the summarization logic.
+   * Compresses the agent history. Override to customize the comapction logic.
    *
-   * @param messages - The chat history for which the title should be generated.
+   * @param history - The agent history for which the compaction should be generated
    *
-   * @returns The new (summarized/compacted) chat history.
+   * @returns A compoacted text that represents the given agent history.
    *
    * @note Will only be called automatically, if `summarizeChatHistoryThreshold` in agent config is set to a value greater than 0.
    */
-  protected async summarizeChatHistory(
-    messages: AgentMessage[],
-    _lastCompactedMessageId: string,
-  ): Promise<AgentMessage[]> {
+  protected async compressHistory(history: AgentMessage[]): Promise<string> {
     // The standard compaction logic is very simple. We can make this more sophisticated later on.
-    const summary = await generateChatSummary(
-      messages,
+    return await generateSimpleCompressedHistory(
+      history,
       this.modelProviderService,
       this.instanceId,
     );
-
-    return [
-      {
-        id: randomUUID(),
-        role: 'user',
-        parts: [
-          {
-            type: 'text',
-            text: `The previous chat history is too long for the model context window. Here is a summary of the conversation that you should to understand our previous history. When responding, don't explicitly mention the fact that the conversation is summarized and instead continue with the conversation regularly. Here is the summary: ${summary}`,
-          },
-        ],
-      },
-    ];
   }
 
   /**
@@ -874,6 +859,8 @@ export abstract class BaseAgent<
    *
    * @note By default converts all UI message to model messages with default stagewise conventions and standard system prompt.
    *
+   * @note Also applies compacted conversation
+   *
    * @note Can be overriden by the inheriting class to transform the messages differently.
    *
    * @note If transformed model messages should simply be customized, override `transformModelMessagesBeforeStep` instead.
@@ -884,10 +871,11 @@ export abstract class BaseAgent<
     messages: AgentMessage[],
     systemPrompt: string,
   ): Promise<ModelMessage[]> {
-    return convertStagewiseUIToModelMessages(
+    return convertAgentMessagesToModelMessages(
       messages,
       systemPrompt,
       await this.getToolsForStep(),
+      this.config.uncompactedMessagesToKeep ?? 5,
     );
   }
 
@@ -1229,36 +1217,37 @@ export abstract class BaseAgent<
     }
   }
 
-  private async summarizeAndOverrideHistory(): Promise<void> {
-    const uncompactedCount = Math.max(
-      5,
-      this.config.uncompactedMessagesToKeep ?? 5,
+  private async compressHistoryInternal(): Promise<void> {
+    const state = this.state.get();
+
+    const lastUncompactedMessageIndex =
+      state.history.length -
+      Math.max(5, this.config.uncompactedMessagesToKeep ?? 0);
+
+    if (lastUncompactedMessageIndex < 1) return;
+
+    // We fetch all the messages that should be compacted (everything up until the current messages - the amount of uncompacted messages to keep).
+    const messagesToCompact = state.history.slice(
+      0,
+      lastUncompactedMessageIndex,
     );
-    const uncompactedIndex =
-      this.state.get().history.length - 1 - uncompactedCount;
 
-    // TODO: Make compaction "recursive" by using the compacted history for new compaction.
+    // if the last message already includes a compacted chat history, we skip compaction
+    if (
+      state.history[lastUncompactedMessageIndex].metadata?.compressedHistory
+    ) {
+      return;
+    }
 
-    //Not enough messages to compact
-    if (uncompactedIndex < 0) return;
-
-    const lastCompactedMessageId =
-      this.state.get().history[
-        this.state.get().history.length - 1 - uncompactedCount
-      ]?.id;
-
-    // SHould never happen but whatever...
-    if (!lastCompactedMessageId) return;
-
-    const summarizedHistory = await this.summarizeChatHistory(
-      this.state.get().history.slice(0, uncompactedIndex),
-      lastCompactedMessageId,
-    );
+    const compressedHistory = await this.compressHistory(messagesToCompact);
 
     this.state.set((draft) => {
-      draft.compactedHistory = summarizedHistory;
-      draft.lastCompactedMessageId = lastCompactedMessageId;
+      if (draft.history[lastUncompactedMessageIndex].metadata) {
+        draft.history[lastUncompactedMessageIndex].metadata.compressedHistory =
+          compressedHistory;
+      }
     });
+
     await this.saveState();
   }
 
@@ -1394,7 +1383,7 @@ export abstract class BaseAgent<
       this.logger.debug(
         `[BaseAgent:${this.instanceId}] Summarizing chat history...`,
       );
-      await this.summarizeAndOverrideHistory();
+      await this.compressHistoryInternal();
       this.logger.debug(
         `[BaseAgent:${this.instanceId}] Chat history summarized.`,
       );
@@ -1440,22 +1429,7 @@ export abstract class BaseAgent<
    * Only used internally - calls all the configurable steps to got from History to Model Messages.
    */
   private async generateContextForNewStep(): Promise<ModelMessage[]> {
-    let messages = this.state.get().history;
-    // Apply compacted messages to the history if existing
-    const compactedHistory = this.state.get().compactedHistory;
-    const lastCompactedMessageId = this.state.get().lastCompactedMessageId;
-    if (compactedHistory && lastCompactedMessageId) {
-      const lastCompactedMessageIndex = messages.findIndex(
-        (msg) => msg.id === lastCompactedMessageId,
-      );
-
-      if (lastCompactedMessageIndex !== -1) {
-        messages = [
-          ...compactedHistory,
-          ...messages.slice(lastCompactedMessageIndex),
-        ];
-      }
-    }
+    const messages = this.state.get().history;
 
     // First, we transform/filter the full history into UI messages we actually want
     const filteredUIMsgs = await this.transformMessagesBeforeStep(messages);
@@ -1501,11 +1475,14 @@ export abstract class BaseAgent<
             (p) =>
               (p.type.startsWith('tool-') || p.type === 'dynamic-tool') &&
               !(
-                (p as ToolUIPart).state === 'approval-responded' &&
-                !(p as ToolUIPart).approval?.approved
+                (p as AgentToolUIPart | DynamicToolUIPart).state ===
+                  'approval-responded' &&
+                !(p as AgentToolUIPart | DynamicToolUIPart).approval?.approved
               ) &&
-              (p as ToolUIPart).state !== 'output-available' &&
-              (p as ToolUIPart).state !== 'output-error',
+              (p as AgentToolUIPart | DynamicToolUIPart).state !==
+                'output-available' &&
+              (p as AgentToolUIPart | DynamicToolUIPart).state !==
+                'output-error',
           ),
       );
     return openToolCallRequests.length === 0;
@@ -1608,10 +1585,10 @@ export abstract class BaseAgent<
 
       lastMsg.parts.forEach((p, index) => {
         if (p.type === 'dynamic-tool' || p.type.startsWith('tool-')) {
-          const toolPart = p as ToolUIPart;
+          const toolPart = p as AgentToolUIPart | DynamicToolUIPart;
           if (toolPart.state === 'approval-requested') {
             // All tool call approvals should be rejected with the configured reason for abort.
-            const updatedToolPart: ToolUIPart = {
+            const updatedToolPart: AgentToolUIPart | DynamicToolUIPart = {
               ...toolPart,
               state: 'approval-responded',
               approval: {
@@ -1620,20 +1597,18 @@ export abstract class BaseAgent<
                 reason: toolCallRequestApprovalAbortReason,
               },
             };
-            // @ts-expect-error - We know that the tool part is a ToolUIPart
             lastMsg.parts[index] = updatedToolPart;
           } else if (
             toolPart.state !== 'output-available' &&
             toolPart.state !== 'output-error'
           ) {
-            // All tool calls that are still not done should be marked as failed with the configured abort reason.
-            const updatedToolPart: ToolUIPart = {
+            // @ts-expect-error - We know that the input is/maybe partial here, but we still keep the previous type because everything else doesn't make sense here
+            const updatedToolPart: AgentToolUIPart | DynamicToolUIPart = {
               ...toolPart,
               state: 'output-error',
               approval: undefined,
               errorText: toolCallAbortReason,
             };
-            // @ts-expect-error - We know that the tool part is a ToolUIPart
             lastMsg.parts[index] = updatedToolPart;
           }
         }

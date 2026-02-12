@@ -1,5 +1,4 @@
-import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { XIcon, TerminalIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import {
@@ -19,10 +18,7 @@ export const ReadConsoleLogsToolPart = ({
   disableShimmer = false,
   isLastPart = false,
 }: {
-  part: Extract<
-    ToolUIPart<StagewiseUITools>,
-    { type: 'tool-readConsoleLogsTool' }
-  >;
+  part: Extract<AgentToolUIPart, { type: 'tool-readConsoleLogsTool' }>;
   capMaxHeight?: boolean;
   disableShimmer?: boolean;
   isLastPart?: boolean;

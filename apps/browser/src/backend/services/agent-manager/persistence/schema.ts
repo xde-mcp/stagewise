@@ -78,8 +78,6 @@ export const agentInstances = sqliteTable(
     activeModelId: modelId('active_model_id').notNull(),
     title: text('title').notNull(),
     history: _sqliteJson('history').notNull().$type<AgentMessage[]>(),
-    lastCompactedMessageId: text('last_compacted_message_id'),
-    compactedHistory: _sqliteJson('compacted_history').$type<AgentMessage[]>(),
     queuedMessages: _sqliteJson('queued_messages')
       .notNull()
       .$type<(AgentMessage & { role: 'user' })[]>(),

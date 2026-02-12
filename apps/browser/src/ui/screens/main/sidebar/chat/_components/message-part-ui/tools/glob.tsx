@@ -1,5 +1,4 @@
-import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { FileSearchIcon } from 'lucide-react';
 
@@ -8,7 +7,7 @@ export const GlobToolPart = ({
   disableShimmer = false,
   minimal = false,
 }: {
-  part: Extract<ToolUIPart<StagewiseUITools>, { type: 'tool-globTool' }>;
+  part: Extract<AgentToolUIPart, { type: 'tool-globTool' }>;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {

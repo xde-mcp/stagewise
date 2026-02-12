@@ -1,5 +1,3 @@
-import type { ToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
 import {
   Tooltip,
   TooltipTrigger,
@@ -7,16 +5,14 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { IconMagicWandFillDuo18 } from 'nucleo-ui-fill-duo-18';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 export const UpdateProjectMdToolPart = ({
   part,
   disableShimmer = false,
   minimal = false,
 }: {
-  part: Extract<
-    ToolUIPart<StagewiseUITools>,
-    { type: 'tool-updateProjectMdTool' }
-  >;
+  part: Extract<AgentToolUIPart, { type: 'tool-updateProjectMdTool' }>;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {

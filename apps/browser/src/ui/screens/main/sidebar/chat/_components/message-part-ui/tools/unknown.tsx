@@ -1,5 +1,5 @@
-import type { ToolUIPart, DynamicToolUIPart } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { DynamicToolUIPart } from 'ai';
+import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { CircleQuestionMarkIcon } from 'lucide-react';
 
@@ -7,7 +7,7 @@ export const UnknownToolPart = ({
   part,
   shimmer = false,
 }: {
-  part: ToolUIPart<StagewiseUITools> | DynamicToolUIPart;
+  part: AgentToolUIPart | DynamicToolUIPart;
   shimmer?: boolean;
 }) => {
   const streamingText = `Calling tool ${part.type}...`;

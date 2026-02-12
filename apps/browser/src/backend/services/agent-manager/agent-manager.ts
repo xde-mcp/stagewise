@@ -280,8 +280,6 @@ export class AgentManagerService extends DisposableService {
       title: '',
       isWorking: false,
       history: [],
-      compactedHistory: undefined,
-      lastCompactedMessageId: undefined,
       queuedMessages: [],
       activeModelId: 'claude-haiku-4-5',
       inputState: initialInputState ?? '',
@@ -408,8 +406,6 @@ export class AgentManagerService extends DisposableService {
       {
         title: agent.title,
         history: agent.history,
-        compactedHistory: agent.compactedHistory ?? undefined,
-        lastCompactedMessageId: agent.lastCompactedMessageId ?? undefined,
         queuedMessages: agent.queuedMessages,
         activeModelId: agent.activeModelId,
         inputState: agent.inputState,
@@ -444,8 +440,6 @@ export class AgentManagerService extends DisposableService {
       lastMessageAt:
         agentState.history[agentState.history.length - 1].metadata?.createdAt ??
         new Date(), // Fallback should never be reached
-      lastCompactedMessageId: agentState.lastCompactedMessageId,
-      compactedHistory: agentState.compactedHistory,
       queuedMessages: agentState.queuedMessages,
       inputState: agentState.inputState,
       usedTokens: agentState.usedTokens,
