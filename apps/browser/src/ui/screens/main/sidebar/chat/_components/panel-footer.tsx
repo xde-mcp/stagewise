@@ -503,8 +503,6 @@ export function ChatPanelFooter() {
 
   useEventListener('sidebar-chat-panel-opened', () => {
     setChatInputActive(true);
-    // Enable element selection (allowed even while agent is working for queued messages)
-    startContextSelector();
   });
 
   const handleToggleElementSelection = useCallback(async () => {
