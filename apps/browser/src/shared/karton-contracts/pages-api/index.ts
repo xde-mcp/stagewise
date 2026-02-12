@@ -152,6 +152,7 @@ export const defaultState: PagesApiState = {
     storedExperienceData: {
       recentlyOpenedWorkspaces: [],
       hasSeenOnboardingFlow: false,
+      lastViewedChats: {},
     },
     workspaceStatus: 'closed',
   },

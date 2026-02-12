@@ -49,12 +49,18 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
   const openWorkspace = useKartonProcedure((p) => p.workspace.open);
+  const markChatAsViewed = useKartonProcedure(
+    (p) => p.userExperience.markChatAsViewed,
+  );
 
   // Workspace state
   const workspaceStatus = useKartonState((s) => s.workspaceStatus);
   const workspaceConnected = workspaceStatus === 'open';
   const recentlyOpenedWorkspaces = useKartonState(
     (s) => s.userExperience.storedExperienceData.recentlyOpenedWorkspaces,
+  );
+  const lastViewedChats = useKartonState(
+    (s) => s.userExperience.storedExperienceData.lastViewedChats,
   );
 
   // Tick every minute to refresh time-ago labels and groupings
@@ -76,7 +82,13 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             ?.createdAt ?? new Date(),
         messageCount: agent.state.history.length,
         parentAgentInstanceId: agent.parentAgentInstanceId,
-      }));
+        isWorking: agent.state.isWorking,
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.lastMessageAt).getTime() -
+          new Date(a.lastMessageAt).getTime(),
+      );
   }, [activeAgents]);
   const [agentsList, setAgentsList] = useState<
     Awaited<ReturnType<typeof getAgentsHistoryList>>
@@ -105,6 +117,19 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       setOpenAgent(Object.keys(activeAgents)[0]);
     }
   }, [openAgent, activeAgents]);
+
+  // Mark the chat as viewed when the user opens it and when they leave it
+  // The cleanup ensures that if the assistant responds while the chat is open,
+  // we update lastViewedAt when leaving so it doesn't show as "unseen"
+  useEffect(() => {
+    if (openAgent) {
+      void markChatAsViewed(openAgent);
+    }
+    return () => {
+      if (openAgent) void markChatAsViewed(openAgent);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when openAgent changes, not when procedure reference changes
+  }, [openAgent]);
 
   const showChatListButton = useMemo(() => {
     return agentsList.length > 0 || Object.keys(activeAgents).length > 1;
@@ -163,11 +188,37 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     const items: SearchableSelectItem[] = [];
     for (const [label, groupedAgents] of Object.entries(groupedChats)) {
       for (const agent of groupedAgents) {
+        // isWorking is only available for active agents
+        const isWorking = 'isWorking' in agent && agent.isWorking;
+        // Check if chat has unseen updates (lastMessageAt > lastViewedAt)
+        // Only show indicator for:
+        // - Messages within the last 24 hours (for backwards compatibility)
+        // - Not the currently open chat
+        // - Chats with at least one message
+        const lastViewedAt = lastViewedChats[agent.id] ?? 0;
+        const lastMessageTime = new Date(agent.lastMessageAt).getTime();
+        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+        const isCurrentlyOpen = agent.id === openAgent;
+        const hasMessages = agent.messageCount > 0;
+        const hasUnseenUpdates =
+          !isWorking &&
+          !isCurrentlyOpen &&
+          hasMessages &&
+          lastMessageTime > lastViewedAt &&
+          lastMessageTime > twentyFourHoursAgo;
         items.push({
           value: agent.id,
           label: (
             <span className="flex w-full items-center gap-2">
-              <span className="truncate">{agent.title}</span>
+              <span
+                className={cn(
+                  'truncate',
+                  isWorking && 'shimmer-text-primary',
+                  hasUnseenUpdates && 'animate-text-pulse-warning',
+                )}
+              >
+                {agent.title}
+              </span>
               <span className="shrink-0 text-subtle-foreground text-xs">
                 <TimeAgo
                   date={agent.lastMessageAt}
@@ -203,7 +254,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       });
     }
     return items;
-  }, [groupedChats, deleteAgent, minimalFormatter]);
+  }, [groupedChats, deleteAgent, minimalFormatter, lastViewedChats]);
 
   // Helper to create a new chat and focus the input
   const createAgentAndFocus = useCallback(async () => {

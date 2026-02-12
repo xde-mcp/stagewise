@@ -54,6 +54,34 @@
   }
 }
 
+/* Text color pulse (muted to foreground) */
+@utility animate-text-pulse {
+  animation: text-pulse 1.5s ease-in-out infinite;
+}
+@keyframes text-pulse {
+  0%,
+  100% {
+    color: var(--color-muted-foreground);
+  }
+  50% {
+    color: var(--color-foreground);
+  }
+}
+
+/* Text color pulse for unseen updates (foreground to warning) */
+@utility animate-text-pulse-warning {
+  animation: text-pulse-warning 1.5s ease-in-out infinite;
+}
+@keyframes text-pulse-warning {
+  0%,
+  100% {
+    color: var(--color-foreground);
+  }
+  50% {
+    color: var(--color-warning-foreground);
+  }
+}
+
 /* ==========================================================================
    Shimmer Text Animations
    Creates a shimmering highlight effect that moves across text.

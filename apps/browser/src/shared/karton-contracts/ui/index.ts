@@ -178,9 +178,12 @@ export const agentPreferencesSchema = z.object({
 
 export type AgentPreferences = z.infer<typeof agentPreferencesSchema>;
 
+export const lastViewedChatsSchema = z.record(z.string(), z.number());
+
 export const storedExperienceDataSchema = z.object({
   recentlyOpenedWorkspaces: recentlyOpenedWorkspacesArraySchema,
   hasSeenOnboardingFlow: z.boolean(),
+  lastViewedChats: lastViewedChatsSchema,
 });
 
 export type StoredExperienceData = z.infer<typeof storedExperienceDataSchema>;
@@ -672,6 +675,7 @@ export type KartonContract = {
           } | null,
         ) => Promise<void>;
       };
+      markChatAsViewed: (agentId: string) => Promise<void>;
     };
     filePicker: {
       createRequest: (request: FilePickerRequest) => Promise<string[]>;
@@ -923,6 +927,7 @@ export const defaultState: KartonContract['state'] = {
     storedExperienceData: {
       recentlyOpenedWorkspaces: [],
       hasSeenOnboardingFlow: false,
+      lastViewedChats: {},
     },
     devAppPreview: {
       isFullScreen: false,

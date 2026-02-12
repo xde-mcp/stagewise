@@ -47,6 +47,7 @@ const createStoryState = (
         storedExperienceData: {
           recentlyOpenedWorkspaces: [],
           hasSeenOnboardingFlow: false,
+          lastViewedChats: {},
         },
         devAppPreview: {
           isFullScreen: false,

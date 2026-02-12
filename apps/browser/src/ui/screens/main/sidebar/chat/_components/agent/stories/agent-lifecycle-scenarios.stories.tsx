@@ -57,6 +57,7 @@ const baseState: Partial<AppState> = {
     storedExperienceData: {
       recentlyOpenedWorkspaces: [],
       hasSeenOnboardingFlow: false,
+      lastViewedChats: {},
     },
     devAppPreview: {
       isFullScreen: false,

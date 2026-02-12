@@ -9,6 +9,7 @@
 import {
   recentlyOpenedWorkspacesArraySchema,
   onboardingStateSchema,
+  lastViewedChatsSchema,
   type StoredExperienceData,
   type RecentlyOpenedWorkspace,
   type InspirationWebsite,
@@ -133,6 +134,12 @@ export class UserExperienceService extends DisposableService {
           draft.userExperience.devAppPreview.isFullScreen =
             !draft.userExperience.devAppPreview.isFullScreen;
         });
+      },
+    );
+    this.uiKarton.registerServerProcedureHandler(
+      'userExperience.markChatAsViewed',
+      async (_callingClientId: string, agentId: string) => {
+        await this.markChatAsViewed(agentId);
       },
     );
   }
@@ -329,6 +336,26 @@ export class UserExperienceService extends DisposableService {
     });
   }
 
+  /**
+   * Read the last viewed chats from persisted data.
+   */
+  private async readLastViewedChats(): Promise<Record<string, number>> {
+    return readPersistedData('last-viewed-chats', lastViewedChatsSchema, {});
+  }
+
+  /**
+   * Write the last viewed chats to persisted data.
+   */
+  private async writeLastViewedChats(
+    lastViewedChats: Record<string, number>,
+  ): Promise<void> {
+    await writePersistedData(
+      'last-viewed-chats',
+      lastViewedChatsSchema,
+      lastViewedChats,
+    );
+  }
+
   public async saveRecentlyOpenedWorkspace({
     path: workspacePath,
     name,
@@ -380,15 +407,19 @@ export class UserExperienceService extends DisposableService {
 
   /**
    * Get combined stored experience data from separate files.
-   * This combines data from recently-opened-workspaces.json and onboarding-state.json.
+   * This combines data from recently-opened-workspaces.json, onboarding-state.json, and last-viewed-chats.json.
    */
   public async getStoredExperienceData(): Promise<StoredExperienceData> {
-    const [recentlyOpenedWorkspaces, hasSeenOnboardingFlow] = await Promise.all(
-      [this.readRecentlyOpenedWorkspaces(), this.readOnboardingState()],
-    );
+    const [recentlyOpenedWorkspaces, hasSeenOnboardingFlow, lastViewedChats] =
+      await Promise.all([
+        this.readRecentlyOpenedWorkspaces(),
+        this.readOnboardingState(),
+        this.readLastViewedChats(),
+      ]);
     return {
       recentlyOpenedWorkspaces,
       hasSeenOnboardingFlow,
+      lastViewedChats,
     };
   }
 
@@ -408,6 +439,32 @@ export class UserExperienceService extends DisposableService {
     } catch (error) {
       this.logger.error(
         `[UserExperienceService] Failed to save hasSeenOnboardingFlow. Error: ${error}`,
+      );
+    }
+  }
+
+  /**
+   * Mark a chat as viewed by the user.
+   * Updates the lastViewedChats record with the current timestamp.
+   */
+  public async markChatAsViewed(agentId: string) {
+    try {
+      const lastViewedChats = await this.readLastViewedChats();
+      lastViewedChats[agentId] = Date.now();
+      await this.writeLastViewedChats(lastViewedChats);
+      // Update UI state with combined data
+      const storedData = await this.getStoredExperienceData();
+      this.uiKarton.setState((draft) => {
+        draft.userExperience.storedExperienceData = storedData;
+      });
+      // Sync to pages API
+      this.syncHomePageStateToPagesService();
+      this.logger.debug(
+        `[UserExperienceService] Marked chat as viewed: ${agentId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[UserExperienceService] Failed to mark chat as viewed. Error: ${error}`,
       );
     }
   }
