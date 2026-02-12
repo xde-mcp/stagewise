@@ -323,12 +323,14 @@ export function ChatPanelFooter() {
     setLocalInputState(emptyDoc);
     if (openAgent) void setChatInputState(openAgent, JSON.stringify(emptyDoc));
 
-    // Dispatch event to notify chat-history that a message is being sent
-    // This sets the pendingAutoScroll flag BEFORE the message is added to state
-    window.dispatchEvent(new Event('chat-message-sent'));
+    // Dispatch event with message data for optimistic rendering
+    // ChatHistory will render this message IMMEDIATELY before server confirms
+    window.dispatchEvent(
+      new CustomEvent('chat-message-sent', { detail: { message } }),
+    );
 
     try {
-      // Send the message
+      // Send the message to server (optimistic message is already visible)
       if (openAgent) await sendUserMessage(openAgent, message);
 
       // Keep input focused after sending - refocus in next tick
@@ -338,6 +340,12 @@ export function ChatPanelFooter() {
     } catch (error) {
       // Restore input on failure
       setLocalInputState(previousContent);
+      // Remove the optimistic message on failure
+      window.dispatchEvent(
+        new CustomEvent('chat-message-failed', {
+          detail: { clientId: message.id },
+        }),
+      );
       console.error('Failed to send message:', error);
     }
   }, [

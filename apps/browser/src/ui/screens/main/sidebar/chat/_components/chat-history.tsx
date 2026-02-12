@@ -22,6 +22,32 @@ import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
 import { isEmptyAssistantMessage } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 
+// Extended type for optimistic messages (includes flag for UI distinction)
+type OptimisticMessage = AgentMessage & {
+  _optimistic?: boolean;
+  _clientId: string; // Client-generated ID for matching
+};
+
+// Custom event types for optimistic messaging
+declare global {
+  interface WindowEventMap {
+    'chat-message-sent': CustomEvent<{ message: AgentMessage }>;
+    'chat-message-failed': CustomEvent<{ clientId: string }>;
+    'chat-message-edited': CustomEvent<{
+      replacedMessageId: string;
+      newMessage: AgentMessage;
+    }>;
+  }
+}
+
+// Helper to extract text content from a message for matching
+function getMessageTextContent(message: AgentMessage): string {
+  return message.parts
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map((p) => p.text)
+    .join('');
+}
+
 export const ChatHistory = () => {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -177,7 +203,7 @@ export const ChatHistory = () => {
   };
 
   // All messages after filtering and merging consecutive assistant messages
-  const filteredMessages = useMemo(() => {
+  const serverMessages = useMemo(() => {
     if (!history) return [];
 
     return history
@@ -200,19 +226,128 @@ export const ChatHistory = () => {
       }, []);
   }, [history]);
 
+  // Optimistic messages - shown immediately before server confirms
+  const [optimisticMessages, setOptimisticMessages] = useState<
+    OptimisticMessage[]
+  >([]);
+
+  // Track message IDs that are being replaced (for edit mode)
+  // All messages from this ID onwards should be hidden until server confirms
+  const [replacedMessageId, setReplacedMessageId] = useState<string | null>(
+    null,
+  );
+
+  // Clear optimistic state when switching agents
+  useEffect(() => {
+    setOptimisticMessages([]);
+    setReplacedMessageId(null);
+  }, [openAgent]);
+
+  // Reconciliation: Remove optimistic messages that have been confirmed by server
+  // We match by text content since server generates new IDs
+  useEffect(() => {
+    if (optimisticMessages.length === 0 && replacedMessageId === null) return;
+
+    const serverUserMessages = serverMessages.filter((m) => m.role === 'user');
+
+    // Check each optimistic message to see if it's been confirmed
+    const confirmedClientIds: string[] = [];
+    for (const opt of optimisticMessages) {
+      const optText = getMessageTextContent(opt);
+      // Find a server message with matching text content
+      const isConfirmed = serverUserMessages.some(
+        (server) => getMessageTextContent(server) === optText,
+      );
+      if (isConfirmed) confirmedClientIds.push(opt._clientId);
+    }
+
+    // Remove confirmed messages from optimistic state
+    if (confirmedClientIds.length > 0)
+      setOptimisticMessages((prev) =>
+        prev.filter((m) => !confirmedClientIds.includes(m._clientId)),
+      );
+
+    // Clear replacedMessageId when the replaced message no longer exists in server state
+    // This indicates the server has processed the edit
+    if (replacedMessageId !== null) {
+      const replacedStillExists = serverMessages.some(
+        (m) => m.id === replacedMessageId,
+      );
+      if (!replacedStillExists) setReplacedMessageId(null);
+    }
+  }, [serverMessages, optimisticMessages, replacedMessageId]);
+
+  // Merge server messages with optimistic messages for display
+  // For edit mode: filter out the replaced message and all messages after it
+  const filteredMessages = useMemo(() => {
+    let displayMessages = serverMessages;
+
+    // If a message is being replaced (edit mode), hide it and all subsequent messages
+    if (replacedMessageId !== null) {
+      const replaceIndex = displayMessages.findIndex(
+        (m) => m.id === replacedMessageId,
+      );
+      // Keep only messages before the replaced one
+      if (replaceIndex !== -1)
+        displayMessages = displayMessages.slice(0, replaceIndex);
+    }
+
+    // Append optimistic messages
+    if (optimisticMessages.length > 0)
+      return [...displayMessages, ...optimisticMessages];
+
+    return displayMessages;
+  }, [serverMessages, optimisticMessages, replacedMessageId]);
+
   // Track when user sends a message - we'll enable auto-scroll once the message is in DOM
   const pendingAutoScrollRef = useRef(false);
   const prevMessagesLengthRef = useRef(filteredMessages.length);
 
-  // Listen for message-sent event, but DON'T enable auto-scroll immediately
-  // Just set a flag that we'll check when the message is actually added
+  // Listen for message-sent event with message data - add to optimistic state immediately
   useEffect(() => {
-    const handleMessageSent = () => {
+    const handleMessageSent = (e: CustomEvent<{ message: AgentMessage }>) => {
+      const message = e.detail.message;
+      // Add to optimistic messages immediately for instant rendering
+      const optimisticMsg: OptimisticMessage = {
+        ...message,
+        _optimistic: true,
+        _clientId: message.id, // Use original ID as client ID for matching
+      };
+      setOptimisticMessages((prev) => [...prev, optimisticMsg]);
       pendingAutoScrollRef.current = true;
     };
+
+    const handleMessageFailed = (e: CustomEvent<{ clientId: string }>) => {
+      // Remove failed optimistic message and clear replaced state
+      setOptimisticMessages((prev) =>
+        prev.filter((m) => m._clientId !== e.detail.clientId),
+      );
+      setReplacedMessageId(null);
+    };
+
+    const handleMessageEdited = (
+      e: CustomEvent<{ replacedMessageId: string; newMessage: AgentMessage }>,
+    ) => {
+      const { replacedMessageId: replaceId, newMessage } = e.detail;
+      // Mark the old message (and all after it) for hiding
+      setReplacedMessageId(replaceId);
+      // Add the new edited message as optimistic
+      const optimisticMsg: OptimisticMessage = {
+        ...newMessage,
+        _optimistic: true,
+        _clientId: newMessage.id,
+      };
+      setOptimisticMessages((prev) => [...prev, optimisticMsg]);
+      pendingAutoScrollRef.current = true;
+    };
+
     window.addEventListener('chat-message-sent', handleMessageSent);
+    window.addEventListener('chat-message-failed', handleMessageFailed);
+    window.addEventListener('chat-message-edited', handleMessageEdited);
     return () => {
       window.removeEventListener('chat-message-sent', handleMessageSent);
+      window.removeEventListener('chat-message-failed', handleMessageFailed);
+      window.removeEventListener('chat-message-edited', handleMessageEdited);
     };
   }, []);
 
@@ -222,15 +357,27 @@ export const ChatHistory = () => {
     const currentLength = filteredMessages.length;
     prevMessagesLengthRef.current = currentLength;
 
-    // If messages increased AND we were waiting to auto-scroll, now enable it
-    if (currentLength > prevLength && pendingAutoScrollRef.current) {
+    // Trigger auto-scroll when:
+    // 1. Messages increased (new message added) AND we were waiting to auto-scroll
+    // 2. OR we're in edit mode (replacedMessageId set) AND pending scroll
+    //    (edit mode may decrease length but we still want to scroll)
+    const shouldTrigger =
+      pendingAutoScrollRef.current &&
+      (currentLength > prevLength || replacedMessageId !== null);
+
+    if (shouldTrigger) {
       pendingAutoScrollRef.current = false;
       forceEnableAutoScroll();
       // Also scroll immediately - the MutationObserver may have already fired
       // while auto-scroll was disabled, so we need to scroll manually
       scrollToBottom();
     }
-  }, [filteredMessages.length, forceEnableAutoScroll, scrollToBottom]);
+  }, [
+    filteredMessages.length,
+    replacedMessageId,
+    forceEnableAutoScroll,
+    scrollToBottom,
+  ]);
 
   // Determine if we should show the "Working..." indicator
   const showWorkingIndicator = useMemo(() => {

@@ -214,6 +214,9 @@ export const MessageUser = memo(
         return;
       }
 
+      // Generate ID early so we can reference it in error handling
+      const newMessageId = generateId();
+
       try {
         const combinedSelectedElements = [
           ...selectedElementsFromWebcontents,
@@ -251,17 +254,9 @@ export const MessageUser = memo(
 
         const markdownText = chatInputRef.current.getTextContent().trim();
 
-        // Dispatch event BEFORE replaceUserMessage so chat-history sets pendingAutoScroll flag
-        // before the message length changes (same pattern as panel-footer.tsx)
-        window.dispatchEvent(new Event('chat-message-sent'));
-
-        // Single atomic operation - replaces old message with new one
-        // This prevents race conditions where the component unmounts between
-        // revert and send operations
-        // Note: We no longer store tipTapContent - the text part contains markdown
-        // with attachment links (e.g., [](image:abc123))
-        await replaceUserMessage(openAgent, msg.id, {
-          id: generateId(),
+        // Build the new message object
+        const newMessage: AgentMessage & { role: 'user' } = {
+          id: newMessageId,
           parts: [
             ...fileParts,
             {
@@ -277,12 +272,33 @@ export const MessageUser = memo(
             textClipAttachments:
               preservedTextClips.length > 0 ? preservedTextClips : undefined,
           },
-        });
+        };
+
+        // Dispatch event for optimistic UI - shows edited message immediately
+        // and hides the old message + subsequent messages
+        window.dispatchEvent(
+          new CustomEvent('chat-message-edited', {
+            detail: { replacedMessageId: msg.id, newMessage },
+          }),
+        );
+
+        // Single atomic operation - replaces old message with new one
+        // This prevents race conditions where the component unmounts between
+        // revert and send operations
+        // Note: We no longer store tipTapContent - the text part contains markdown
+        // with attachment links (e.g., [](image:abc123))
+        await replaceUserMessage(openAgent, msg.id, newMessage);
 
         // Note: State cleanup is minimal since component will unmount after replaceUserMessage
         // The atomic operation completes before state updates trigger re-render
       } catch (error) {
         console.warn('Failed to edit message:', error);
+        // Remove the optimistic message on failure
+        window.dispatchEvent(
+          new CustomEvent('chat-message-failed', {
+            detail: { clientId: newMessageId },
+          }),
+        );
         // On error, close popover but stay in edit mode so user can retry
         setIsConfirmOpen(false);
       }
