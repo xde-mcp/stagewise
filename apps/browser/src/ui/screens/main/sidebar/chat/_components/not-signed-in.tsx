@@ -1,7 +1,7 @@
 import { Button } from '@stagewise/stage-ui/components/button';
 import { IconOpenRectArrowInFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { useKartonProcedure } from '@/hooks/use-karton';
-import { StagewiseLogo } from '@/assets/stagewise';
+import { StagewiseOrb } from '@/assets/stagewise';
 
 export function NotSignedIn() {
   const startLogin = useKartonProcedure((p) => p.userAccount.startLogin);
@@ -9,7 +9,7 @@ export function NotSignedIn() {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-10 p-6 text-center">
       <div className="flex flex-col items-center justify-center gap-4">
-        <img src={StagewiseLogo} alt="stagewise" className="size-12" />
+        <img src={StagewiseOrb} alt="stagewise" className="size-12" />
         <span className="font-medium text-foreground text-xl">
           One last step...
         </span>
