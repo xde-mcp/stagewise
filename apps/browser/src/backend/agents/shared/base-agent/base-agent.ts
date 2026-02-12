@@ -1521,7 +1521,7 @@ export abstract class BaseAgent<
                 endedAt: undefined,
               };
               if (part.state === 'done') {
-                existingMessage.metadata!.partsMetadata[index].endedAt =
+                existingMessage.metadata!.partsMetadata[index].endedAt ??=
                   new Date();
               }
             }
