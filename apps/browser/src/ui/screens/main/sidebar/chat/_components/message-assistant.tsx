@@ -85,7 +85,7 @@ export const MessageAssistant = memo(
           >
             <IconMagicWandSparkle className="size-3 text-muted-foreground" />
             <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
-              Summarized previous chat history
+              Compressed previous conversation
             </span>
           </div>
         )}

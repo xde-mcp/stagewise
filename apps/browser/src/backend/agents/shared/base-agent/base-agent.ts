@@ -101,16 +101,16 @@ export type BaseAgentConfig<TFinishToolOutputSchema extends z.ZodType | null> =
      *
      * @default 0.5
      */
-    summarizeChatHistoryThreshold?: number;
+    historyCompressionThreshold?: number;
 
     /**
      * How many uncompacted messages to keep in the internal history. Only older messages beyond this limit will be compacted.
      *
      * @note The minimum value is 5, any lower value will be ignored.
      *
-     * @default 5
+     * @default 10
      */
-    uncompactedMessagesToKeep?: number;
+    minUncompressedMessages?: number;
 
     /**
      * A configurable uinterval of user messages after which the title should be updated.
@@ -875,7 +875,7 @@ export abstract class BaseAgent<
       messages,
       systemPrompt,
       await this.getToolsForStep(),
-      this.config.uncompactedMessagesToKeep ?? 5,
+      Math.max(this.config.minUncompressedMessages ?? 0, 5),
     );
   }
 
@@ -1041,9 +1041,19 @@ export abstract class BaseAgent<
    * =======================================================
    */
 
+  /**
+   * Execute once there's a good reason to update the title.
+   */
   private async updateTitle(): Promise<void> {
     // Check if a title update is needed
     if (!this.config.generateTitles) {
+      return;
+    }
+
+    // We only update whenever the last message is a user message (prevent repeated title updates when the assistant is running in loops)
+    const lastMessage =
+      this.state.get().history[this.state.get().history.length - 1];
+    if (lastMessage.role !== 'user') {
       return;
     }
 
@@ -1087,14 +1097,14 @@ export abstract class BaseAgent<
       draft.queuedMessages = [];
     });
 
-    // Trigger an title update asynchronously once we know about the latest
-    this.logger.debug(`[BaseAgent:${this.instanceId}] Triggering title update`);
-    void this.updateTitle();
-
     // Get the current model
     const modelWithOptions = this.modelProviderService.getModelWithOptions(
       this.state.get().activeModelId,
       this.instanceId,
+      {
+        $ai_span_name: `${this.agentType}-history`,
+        $ai_parent_id: this.instanceId,
+      },
     );
 
     const modelMessages = await this.generateContextForNewStep();
@@ -1148,10 +1158,6 @@ export abstract class BaseAgent<
         this.logger.error(
           `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
         );
-        try {
-          this.stepAbortController?.abort();
-        } catch {}
-        this.stepAbortController = null;
         this.state.set((draft) => {
           draft.isWorking = false;
           draft.error = {
@@ -1159,6 +1165,13 @@ export abstract class BaseAgent<
             stack: error.stack,
           };
         });
+        this.logger.debug(
+          `[BaseAgent:${this.instanceId}] Wrote error to public state`,
+        );
+        try {
+          this.stepAbortController?.abort();
+        } catch {}
+        this.stepAbortController = null;
       },
       experimental_repairToolCall: async (r) => {
         // Haiku often returns the tool input as string instead of object - we try to parse it as object
@@ -1196,6 +1209,10 @@ export abstract class BaseAgent<
       stopSequences: resolvedConfig.stopSequences,
       seed: resolvedConfig.seed,
     });
+
+    // Trigger an title update asynchronously once the user started sending a message
+    void this.updateTitle();
+
     try {
       const uiStream = stream.toUIMessageStream<AgentMessage>({
         generateMessageId: randomUUID,
@@ -1222,7 +1239,9 @@ export abstract class BaseAgent<
 
     const lastUncompactedMessageIndex =
       state.history.length -
-      Math.max(5, this.config.uncompactedMessagesToKeep ?? 0);
+      Math.max(5, this.config.minUncompressedMessages ?? 0);
+    const lastUncompactedMessageId =
+      state.history[lastUncompactedMessageIndex].id;
 
     if (lastUncompactedMessageIndex < 1) return;
 
@@ -1239,12 +1258,25 @@ export abstract class BaseAgent<
       return;
     }
 
+    this.logger.debug(`[BaseAgent:${this.instanceId}] Compressing history...`);
+
     const compressedHistory = await this.compressHistory(messagesToCompact);
 
     this.state.set((draft) => {
-      if (draft.history[lastUncompactedMessageIndex].metadata) {
-        draft.history[lastUncompactedMessageIndex].metadata.compressedHistory =
-          compressedHistory;
+      // We fetch the correct message again here, because users could've undone/manipulate messages while we were busy compressing the history
+      const lastUncompactedMessage = draft.history.find(
+        (m) => m.id === lastUncompactedMessageId,
+      );
+
+      if (lastUncompactedMessage?.metadata) {
+        this.logger.debug(
+          `[BaseAgent:${this.instanceId}] Stored compressed history in message ${lastUncompactedMessageId}`,
+        );
+        lastUncompactedMessage.metadata.compressedHistory = compressedHistory;
+      } else {
+        this.logger.warn(
+          `[BaseAgent:${this.instanceId}] Last uncompacted message not found in history after compressing history. Maybe the user undid/manipulated messages while we were busy compressing the history.`,
+        );
       }
     });
 
@@ -1359,18 +1391,16 @@ export abstract class BaseAgent<
   private async handlePostStep(
     result: StepResult<StagewiseToolSet>,
   ): Promise<boolean> {
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Handling post step. Agent Type: ${this.agentType}`,
-    );
-
     this.state.set((draft) => {
       draft.usedTokens = result.usage.totalTokens ?? 0;
     });
 
+    // Save the agent state for recovery
+    await this.saveState();
+
     // Check the current token usage. If necessary, summarize the chat history.
     // We always check the token usage in relation to the currently selected model.
-    const compactionThreshold =
-      this.config.summarizeChatHistoryThreshold ?? 0.5;
+    const compactionThreshold = this.config.historyCompressionThreshold ?? 0.5;
     if (
       compactionThreshold >= 0 &&
       this.state.get().usedTokens /
@@ -1380,35 +1410,11 @@ export abstract class BaseAgent<
         ).contextWindowSize >
         compactionThreshold
     ) {
-      this.logger.debug(
-        `[BaseAgent:${this.instanceId}] Summarizing chat history...`,
-      );
-      await this.compressHistoryInternal();
-      this.logger.debug(
-        `[BaseAgent:${this.instanceId}] Chat history summarized.`,
-      );
+      void this.compressHistoryInternal();
     }
 
-    // Save the agent state for recovery
-    this.logger.debug(`[BaseAgent:${this.instanceId}] Saving state...`);
-    await this.saveState();
-    this.logger.debug(`[BaseAgent:${this.instanceId}] State saved.`);
-
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Checking if user wants to continue...`,
-    );
     const userWantsToContinue = (await this.onStepFinished(result)) ?? true;
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] User wants to continue: ${userWantsToContinue}`,
-    );
-
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Checking if should run new step...`,
-    );
     const shouldRunNewStep = this.shouldRunNewStep(result, userWantsToContinue);
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Should run new step: ${shouldRunNewStep}`,
-    );
 
     if (!shouldRunNewStep) {
       this.logger.debug(

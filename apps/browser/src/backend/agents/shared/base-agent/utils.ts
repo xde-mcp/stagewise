@@ -41,7 +41,7 @@ function stripUnderscoreProperties(
  * @param messages Messages that should be converted to model messages.
  * @param systemPrompt The  system prompt to prepend to the messages.
  * @param tools The tools to use for the conversation.
- * @param minUncompactedCount The minimum number of uncompacted messages to keep in the conversation.
+ * @param minUncompressedCount The minimum number of uncompacted messages to keep in the conversation.
  *
  * @returns Model messages that represent the input messages.
  */
@@ -49,10 +49,11 @@ export const convertAgentMessagesToModelMessages = async (
   messages: AgentMessage[],
   systemPrompt: string,
   tools: ToolSet,
-  minUncompactedCount: number,
+  minUncompressedCount: number,
 ): Promise<ModelMessage[]> => {
   // We work backwards first because this makes it easier to apply compacted conversation later on.
-  const revertedModelMessages: ModelMessage[] = [];
+  // Every chunk is a turn of the conversation. We later flatten it. We store each chunk individually because some UI messages result in multiple model messages that need to have correct order.
+  const revertedModelMessageChunks: ModelMessage[][] = [];
 
   // Convert each UI message to model message format
   for (let msgIndex = messages.length - 1; msgIndex >= 0; msgIndex--) {
@@ -80,10 +81,10 @@ export const convertAgentMessagesToModelMessages = async (
           return part;
         }),
       };
-      revertedModelMessages.push(
-        ...(await convertToModelMessages([cleanedMessage], {
+      revertedModelMessageChunks.push(
+        await convertToModelMessages([cleanedMessage], {
           tools: tools,
-        })),
+        }),
       );
     } else {
       // Convert the message with the UI SDK, but do some post processing to convert metadata as well.
@@ -187,36 +188,42 @@ export const convertAgentMessagesToModelMessages = async (
         });
       }
 
-      revertedModelMessages.push({
-        role: 'user',
-        content: convertedMessage.content,
-      });
-
-      // if the message has compacted chat history, we append it to the model messages history as well and cancel the conversation of all following messages
-      const reverseMsgCount = messages.length - msgIndex;
-      if (
-        minUncompactedCount <= reverseMsgCount &&
-        message.metadata?.compressedHistory
-      ) {
-        const compactedHistoryData = xml({
-          'compacted-chat-history': {
-            _cdata: message.metadata.compressedHistory,
-          },
-        });
-        revertedModelMessages.push({
+      revertedModelMessageChunks.push([
+        {
           role: 'user',
-          content: [{ type: 'text', text: compactedHistoryData }],
-        });
-        break;
-      }
+          content: convertedMessage.content,
+        },
+      ]);
+    }
+
+    // if the message has compacted chat history, we append it to the model messages history as well and cancel the conversation of all following messages
+    const reverseMsgCount = messages.length - msgIndex;
+    if (
+      minUncompressedCount <= reverseMsgCount &&
+      message.metadata?.compressedHistory !== undefined
+    ) {
+      const compressedConversationHistory = xml({
+        'compressed-conversation-history': {
+          _cdata: message.metadata.compressedHistory,
+        },
+      });
+      revertedModelMessageChunks.push([
+        {
+          role: 'user',
+          content: [{ type: 'text', text: compressedConversationHistory }],
+        },
+      ]);
+      break;
     }
   }
 
   if (systemPrompt) {
-    revertedModelMessages.push({ role: 'system', content: systemPrompt });
+    revertedModelMessageChunks.push([
+      { role: 'system', content: systemPrompt },
+    ]);
   }
 
-  const modelMessages = [...revertedModelMessages].reverse();
+  const modelMessages = [...revertedModelMessageChunks].reverse().flat();
 
   return modelMessages;
 };
@@ -303,7 +310,7 @@ export const convertAgentMessagesToCompactMessageHistoryString = (
         });
 
       revertedCompactedHistoryStringParts.push(
-        `**User:** ${serializedParts.join(' ')} ${serializedFileAttachmentMetadataParts?.join(' ')} ${serializedTextClipAttachmentMetadataParts?.join(' ')} ${serializedSelectedPreviewElementsMetadataParts?.join(' ')}`.trim(),
+        `**User:** ${serializedParts.join(' ')} ${serializedFileAttachmentMetadataParts?.join(' ') ?? ''} ${serializedTextClipAttachmentMetadataParts?.join(' ') ?? ''} ${serializedSelectedPreviewElementsMetadataParts?.join(' ') ?? ''}`.trim(),
       );
 
       if (message.metadata?.compressedHistory) {
@@ -332,6 +339,7 @@ export const generateSimpleTitle = async (
     `${agentInstanceId}`,
     {
       $ai_span_name: 'title-generation',
+      $ai_parent_id: agentInstanceId,
     },
   );
 
@@ -358,14 +366,14 @@ export const generateSimpleTitle = async (
     messages: [
       {
         role: 'system',
-        content: `Summarize the current intention of the user into a very short and precise title with a maximum 7 words. Only output the short title, nothing else. Don't use markdown formatting. Output a single, raw, simple sentence. Don't mention "user" or "assistant". Write from the perspective of the user.`,
+        content: `Summarize the current intention of the user into a very short and precise title with a maximum of 7 words. Only output the short title, nothing else. Don't use markdown formatting. Output a single, raw, simple sentence. Don't mention "user" or "assistant". Write from the perspective of the user.`,
       },
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: `${messageList}`,
+            text: `<conversation>${messageList}</conversation> Generate a short title for this conversation.`,
           },
         ],
       },
@@ -387,6 +395,7 @@ export const generateSimpleCompressedHistory = async (
     `${agentInstanceId}`,
     {
       $ai_span_name: 'history-compression',
+      $ai_parent_id: `${agentInstanceId}`,
     },
   );
 

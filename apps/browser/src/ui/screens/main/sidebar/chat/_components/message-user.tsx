@@ -43,6 +43,7 @@ import { generateId } from 'ai';
 import type { AttachmentType } from './rich-text';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import type { Content } from '@tiptap/core';
+import { IconMagicWandSparkle } from 'nucleo-micro-bold';
 
 type UserMessage = AgentMessage & { role: 'user' };
 
@@ -532,6 +533,17 @@ export const MessageUser = memo(
           onDragEnter={isEditing ? editDragHandlers.onDragEnter : undefined}
           onDragLeave={isEditing ? editDragHandlers.onDragLeave : undefined}
         >
+          {msg.metadata?.compressedHistory && (
+            <div
+              key={`compact-${msg.id}`}
+              className="mt-2 flex w-full flex-row items-center gap-2 text-xs"
+            >
+              <IconMagicWandSparkle className="size-3 text-muted-foreground" />
+              <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
+                Compressed previous conversation
+              </span>
+            </div>
+          )}
           <div ref={measureRef} className="w-full">
             <div
               className={cn(

@@ -34,6 +34,8 @@ export class ChatAgent extends BaseAgent<never, undefined> {
     allowUserInput: true,
     generateTitles: true,
     updateTitlesEveryNUserMessages: 5,
+    historyCompressionThreshold: 0.3,
+    minUncompressedMessages: 10, // We keep this relatively high to ensure we always have enough turns for full context for the agent
   } satisfies BaseAgentConfig<never>;
 
   protected getSystemPrompt = async (): Promise<string> => {
