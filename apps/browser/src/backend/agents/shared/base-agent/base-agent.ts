@@ -1050,11 +1050,12 @@ export abstract class BaseAgent<
    * Should be executed after a user or tool approval message was added to the agent
    */
   private async runStep(): Promise<void> {
+    // Check canRunStep BEFORE setting isWorking to avoid deadlock
+    if (!this.canRunStep()) return;
+
     this.state.set((draft) => {
       draft.isWorking = true;
     });
-
-    if (!this.canRunStep()) return;
 
     // Flush the queue into the history
     this.state.set((draft) => {
@@ -1431,16 +1432,15 @@ export abstract class BaseAgent<
    * Checks if the message history is ready to be processed by the model
    *
    * We check for the following conditions:
+   *    - No step is currently running (stepAbortController exists and not aborted)
    *    - All non-provider tools with need for approval are executed and results are attached
    *    - All open tool approval requests are responded to (either deny or accept) in the last message of the history
    *
    * @returns Whether the agent can run a new step based on the given conditions.
    */
   private canRunStep(): boolean {
-    if (
-      this.state.get().isWorking ||
-      (this.stepAbortController && !this.stepAbortController.signal.aborted)
-    ) {
+    // Only check stepAbortController for concurrency - isWorking is just a UI state indicator
+    if (this.stepAbortController && !this.stepAbortController.signal.aborted) {
       return false;
     }
 
