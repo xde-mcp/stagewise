@@ -30,6 +30,7 @@ import { HotkeyComboText } from '@/components/hotkey-combo-text';
 import { usePostHog } from 'posthog-js/react';
 import {
   configureAttachmentExtensions,
+  ALL_ATTACHMENT_NODE_NAMES,
   type AttachmentAttributes,
   type AttachmentType,
 } from './rich-text';
@@ -303,16 +304,62 @@ export const ChatInput = ({
     }
   }, [value, editor]);
 
-  // NOTE: Previously had a MutationObserver here to fix cursor positioning around
-  // inline attachment badges by injecting zero-width spaces. However, this approach
-  // was fundamentally flawed because it modified the DOM directly without going
-  // through ProseMirror's transaction system, causing:
-  // 1. Document model desync (ProseMirror's model didn't match actual DOM)
-  // 2. "Position X out of range" errors on click/selection
-  // 3. Content loss when serializing (getJSON/getText read from corrupted model)
+  // Fix cursor positioning around inline attachment badges.
+  // Without whitespace adjacent to badges, ProseMirror inserts <img class="ProseMirror-separator">
+  // and <br class="ProseMirror-trailingBreak"> elements. The cursor ends up positioned between
+  // element children rather than inside a text node, causing the browser's Selection API to
+  // return a zero rect - resulting in a mispositioned, oversized cursor.
   //
-  // The cursor positioning is now handled via CSS pseudo-elements (see EditorContent className)
-  // which provides visual spacing without corrupting ProseMirror's state.
+  // This MutationObserver injects zero-width space text nodes (\u200B) at positions where
+  // the cursor would otherwise be at an element boundary with no text node to anchor to.
+  useEffect(() => {
+    const editorElement = editor?.view?.dom;
+    if (!editorElement) return;
+
+    // Build selector for all attachment node types
+    const attachmentSelectors = ALL_ATTACHMENT_NODE_NAMES.map(
+      (name) => `.react-renderer.node-${name}`,
+    ).join(', ');
+
+    const observer = new MutationObserver(() => {
+      editorElement
+        .querySelectorAll(attachmentSelectors)
+        .forEach((renderer) => {
+          // Fix BEFORE badge: ensure a text node exists so the cursor can anchor to it
+          const prev = renderer.previousSibling;
+          if (!prev || prev.nodeType !== 3) {
+            const textNode = document.createTextNode('\u200B');
+            renderer.parentNode?.insertBefore(textNode, renderer);
+          }
+
+          // Fix AFTER badge: ensure a text node exists before separator or next badge
+          const next = renderer.nextSibling;
+          if (next && next.nodeType !== 3) {
+            const isProblematic =
+              // Next is ProseMirror separator
+              (next.nodeName === 'IMG' &&
+                (next as Element).classList?.contains(
+                  'ProseMirror-separator',
+                )) ||
+              // Next is another badge (consecutive badges)
+              ALL_ATTACHMENT_NODE_NAMES.some((name) =>
+                (next as Element).classList?.contains(`node-${name}`),
+              );
+            if (isProblematic) {
+              const textNode = document.createTextNode('\u200B');
+              renderer.parentNode?.insertBefore(textNode, next);
+            }
+          }
+        });
+    });
+
+    observer.observe(editorElement, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => observer.disconnect();
+  }, [editor]);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -370,6 +417,31 @@ export const ChatInput = ({
               '[&_.tiptap_p.is-editor-empty:first-child]:before:text-subtle-foreground',
             !disabled &&
               '[&_.tiptap_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
+            // Breathing room around inline attachment nodes (all types)
+            // These pseudo-elements provide visual spacing for cursor positioning
+            // Height constraint (h-[1em]) prevents taller cursor when no text follows the attachment
+            '[&_.react-renderer.node-fileAttachment]:before:content-[""] [&_.react-renderer.node-fileAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-fileAttachment]:before:inline-block [&_.react-renderer.node-fileAttachment]:after:inline-block',
+            '[&_.react-renderer.node-fileAttachment]:before:w-0.5 [&_.react-renderer.node-fileAttachment]:after:w-0.5',
+            '[&_.react-renderer.node-fileAttachment]:before:h-[1em] [&_.react-renderer.node-fileAttachment]:after:h-[1em]',
+            '[&_.react-renderer.node-fileAttachment]:before:align-middle [&_.react-renderer.node-fileAttachment]:after:align-middle',
+            '[&_.react-renderer.node-imageAttachment]:before:content-[""] [&_.react-renderer.node-imageAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-imageAttachment]:before:inline-block [&_.react-renderer.node-imageAttachment]:after:inline-block',
+            '[&_.react-renderer.node-imageAttachment]:before:w-0.5 [&_.react-renderer.node-imageAttachment]:after:w-0.5',
+            '[&_.react-renderer.node-imageAttachment]:before:h-[1em] [&_.react-renderer.node-imageAttachment]:after:h-[1em]',
+            '[&_.react-renderer.node-imageAttachment]:before:align-middle [&_.react-renderer.node-imageAttachment]:after:align-middle',
+            '[&_.react-renderer.node-elementAttachment]:before:content-[""] [&_.react-renderer.node-elementAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-elementAttachment]:before:inline-block [&_.react-renderer.node-elementAttachment]:after:inline-block',
+            '[&_.react-renderer.node-elementAttachment]:before:w-0.5 [&_.react-renderer.node-elementAttachment]:after:w-0.5',
+            '[&_.react-renderer.node-elementAttachment]:before:h-[1em] [&_.react-renderer.node-elementAttachment]:after:h-[1em]',
+            '[&_.react-renderer.node-elementAttachment]:before:align-middle [&_.react-renderer.node-elementAttachment]:after:align-middle',
+            '[&_.react-renderer.node-textClipAttachment]:before:content-[""] [&_.react-renderer.node-textClipAttachment]:after:content-[""]',
+            '[&_.react-renderer.node-textClipAttachment]:before:inline-block [&_.react-renderer.node-textClipAttachment]:after:inline-block',
+            '[&_.react-renderer.node-textClipAttachment]:before:w-0.5 [&_.react-renderer.node-textClipAttachment]:after:w-0.5',
+            '[&_.react-renderer.node-textClipAttachment]:before:h-[1em] [&_.react-renderer.node-textClipAttachment]:after:h-[1em]',
+            '[&_.react-renderer.node-textClipAttachment]:before:align-middle [&_.react-renderer.node-textClipAttachment]:after:align-middle',
+            // Hide ProseMirror-separator elements to prevent cursor height issues at node boundaries
+            '[&_.ProseMirror-separator]:hidden',
           )}
         />
       </div>
