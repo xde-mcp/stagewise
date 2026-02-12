@@ -6,6 +6,7 @@ import {
   AttachmentBadgeWrapper,
 } from './view-utils';
 import type { AttachmentNodeViewProps, FileAttachmentAttrs } from './types';
+import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 
 /**
  * AttachmentNodeView is the default view component for attachment nodes.
@@ -25,9 +26,19 @@ export function AttachmentNodeView(props: AttachmentNodeViewProps) {
   const isEditable = !('viewOnly' in props);
   const hasError = !!attrs.validationError;
 
+  // Look up full attachment data from context (same pattern as image-attachment-view)
+  const { fileAttachments } = useMessageAttachments();
+  const attachment = useMemo(
+    () => fileAttachments.find((f) => f.id === attrs.id),
+    [fileAttachments, attrs.id],
+  );
+
+  // Prefer context data (saved attachments), fall back to attrs (new attachments being composed)
+  const label = attachment?.fileName ?? attrs.label;
+
   const displayLabel = useMemo(
-    () => truncateLabel(attrs.label, attrs.id),
-    [attrs.label, attrs.id],
+    () => truncateLabel(label, attrs.id),
+    [label, attrs.id],
   );
 
   // Default: file icon
@@ -35,8 +46,8 @@ export function AttachmentNodeView(props: AttachmentNodeViewProps) {
 
   // Render preview card content based on attachment type
   const previewContent = useMemo(() => {
-    return <span>{attrs.label}</span>;
-  }, [attrs.label]);
+    return <span>{label}</span>;
+  }, [label]);
 
   return (
     <AttachmentBadgeWrapper

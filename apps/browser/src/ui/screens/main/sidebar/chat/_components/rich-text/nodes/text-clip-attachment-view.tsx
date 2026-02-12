@@ -157,7 +157,7 @@ export function TextClipAttachmentView(props: AttachmentNodeViewProps) {
         >
           {/* Normal icon - hidden on hover */}
           <span className="transition-opacity group-hover/badge:opacity-0">
-            <ClipboardPaste className="size-3" />
+            <ClipboardPaste className="size-3 text-foreground" />
           </span>
           {/* X icon - shown on hover */}
           <XIcon className="absolute inset-0 size-3 text-error opacity-0 transition-opacity group-hover/badge:opacity-100" />

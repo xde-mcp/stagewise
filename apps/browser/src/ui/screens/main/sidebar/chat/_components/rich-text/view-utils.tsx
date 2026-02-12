@@ -147,7 +147,7 @@ export const AttachmentBadge = forwardRef<
             {displayIcon}
           </span>
           {/* X icon - shown on hover */}
-          <XIcon className="absolute inset-0 size-3 text-foreground opacity-0 transition-opacity group-hover/badge:opacity-100" />
+          <XIcon className="absolute inset-0 size-3 opacity-0 transition-opacity group-hover/badge:opacity-100" />
         </span>
       ) : (
         <span className="text-foreground">{displayIcon}</span>
