@@ -534,7 +534,7 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
                   ({ group, items: groupItems }, groupIndex) => (
                     <React.Fragment key={group ?? `ungrouped-${groupIndex}`}>
                       {group && (
-                        <div className="sticky top-0 shrink-0 bg-background px-2 py-1 font-normal text-muted-foreground/l25 text-xs dark:text-muted-foreground/l-18">
+                        <div className="shrink-0 px-2 py-1 font-normal text-muted-foreground/l25 text-xs dark:text-muted-foreground/l-18">
                           {group}
                         </div>
                       )}
