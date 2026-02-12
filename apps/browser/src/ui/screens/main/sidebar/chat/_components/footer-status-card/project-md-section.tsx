@@ -48,7 +48,9 @@ function relativizePath(
 }
 
 /**
- * Extract status text from the last tool call in agent history
+ * Extract status text from the last tool call in agent history.
+ * Searches through ALL assistant messages (in reverse order) to find the
+ * most recent tool part with a valid state, not just the last message.
  */
 function getStatusText(
   history: AgentMessage[],
@@ -56,17 +58,27 @@ function getStatusText(
 ): string {
   const INITIALIZING_TEXT = 'Initializing .stagewise/PROJECT.md...';
   const ANALYZING_TEXT = 'Analyzing workspace...';
-  const lastMessage = history?.filter((m) => m.role === 'assistant').at(-1);
 
-  const lastToolPart = (
-    lastMessage?.parts.filter((p) =>
+  // Get all assistant messages
+  const assistantMessages = history?.filter((m) => m.role === 'assistant');
+  const lastMessage = assistantMessages?.at(-1);
+
+  // Search through all assistant messages in reverse order to find the last valid tool part
+  let lastToolPart: ToolUIPart<StagewiseUITools> | undefined;
+  for (
+    let i = (assistantMessages?.length ?? 0) - 1;
+    i >= 0 && !lastToolPart;
+    i--
+  ) {
+    const msg = assistantMessages![i];
+    const toolParts = msg.parts.filter((p) =>
       p.type.startsWith('tool-'),
-    ) as ToolUIPart<StagewiseUITools>[]
-  )
-    ?.filter(
+    ) as ToolUIPart<StagewiseUITools>[];
+    const filteredParts = toolParts.filter(
       (p) => p.state === 'input-available' || p.state === 'output-available',
-    )
-    ?.at(-1);
+    );
+    lastToolPart = filteredParts.at(-1);
+  }
 
   switch (lastToolPart?.type) {
     case 'tool-readFileTool': {
@@ -97,8 +109,9 @@ function getStatusText(
     default: {
       if (!lastMessage) return INITIALIZING_TEXT;
 
-      const hadWritingProjectMd = lastMessage.parts.some(
-        (p) => p.type === 'tool-writeProjectMdTool',
+      // Check across all assistant messages for writeProjectMdTool
+      const hadWritingProjectMd = assistantMessages?.some((m) =>
+        m.parts.some((p) => p.type === 'tool-writeProjectMdTool'),
       );
       const lastType = lastMessage.parts.at(-1)?.type;
       if (
