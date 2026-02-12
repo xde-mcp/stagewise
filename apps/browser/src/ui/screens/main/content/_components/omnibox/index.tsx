@@ -218,7 +218,13 @@ export const Omnibox = ({
   const showDefaultBrowserInfo = false; // TODO
 
   return (
-    <form onSubmit={onSubmit} className="flex-1">
+    <form
+      onSubmit={onSubmit}
+      className="flex-1"
+      // When omnibox is open, mark it so WebContentsBoundsSyncer keeps UI in foreground
+      // This prevents the web content from stealing focus when hovering near the popup
+      data-omnibox-modal-active={isOmniboxOpen || undefined}
+    >
       <Autocomplete.Root
         items={suggestionGroups}
         openOnInputClick
@@ -229,7 +235,6 @@ export const Omnibox = ({
         onValueChange={onValueChange}
         highlightItemOnHover
         submitOnItemClick
-        modal
         autoHighlight="always"
         keepHighlight={true}
         mode="inline"

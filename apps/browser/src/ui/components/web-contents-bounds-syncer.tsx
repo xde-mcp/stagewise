@@ -92,7 +92,12 @@ export const WebContentsBoundsSyncer = () => {
               elementAtPoint.closest('[data-element-selector-overlay]') !==
                 null;
 
-            if (!isElementSelectorOverlay) {
+            // Check if omnibox modal is active - if so, keep UI on top
+            // so that the omnibox popup remains visible and interactive
+            const isOmniboxModalActive =
+              document.querySelector('[data-omnibox-modal-active]') !== null;
+
+            if (!isElementSelectorOverlay && !isOmniboxModalActive) {
               const hoverContainer = elementAtPoint.closest(
                 '[id^="dev-app-preview-container-"]',
               );
