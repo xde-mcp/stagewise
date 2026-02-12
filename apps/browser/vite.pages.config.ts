@@ -28,6 +28,8 @@ export default defineConfig({
       autoCodeSplitting: true,
       routesDirectory: 'routes',
       generatedRouteTree: 'routeTree.gen.ts',
+      // Ignore files inside _components directories (not routes)
+      routeFileIgnorePattern: '/_components/',
     }),
     react(),
     tailwindcss(),

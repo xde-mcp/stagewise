@@ -3,8 +3,13 @@ import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import { ChevronDownIcon } from 'lucide-react';
 import { FileIcon } from '../message-part-ui/tools/shared/file-icon';
 import { cn } from '@/utils';
-import { diffLines } from 'diff';
-import type { StatusCardSection, FormattedFileDiff } from './shared';
+import {
+  type StatusCardSection,
+  type FormattedFileDiff,
+  getLineStats,
+  getHunkIds,
+  hasRealChanges,
+} from './shared';
 
 export interface FileDiffSectionProps {
   pendingDiffs: FormattedFileDiff[];
@@ -15,30 +20,9 @@ export interface FileDiffSectionProps {
 }
 
 export function formatFileDiff(fileDiff: FileDiff): FormattedFileDiff {
-  const diff =
-    fileDiff.isExternal === true
-      ? diffLines('', '')
-      : diffLines(fileDiff.baseline ?? '', fileDiff.current ?? '');
-  const fileName = fileDiff.path.split('/').pop() ?? '';
-  const linesAdded = diff.reduce(
-    (acc, line) => acc + (line.added ? line.count : 0),
-    0,
-  );
-  const linesRemoved = diff.reduce(
-    (acc, line) => acc + (line.removed ? line.count : 0),
-    0,
-  );
-  const hunkIds =
-    fileDiff.isExternal === true
-      ? [fileDiff.hunkId]
-      : fileDiff.hunks.map((hunk) => hunk.id);
   return {
-    fileId: fileDiff.fileId,
-    path: fileDiff.path,
-    fileName,
-    linesAdded,
-    linesRemoved,
-    hunkIds,
+    ...fileDiff,
+    fileName: fileDiff.path.split('/').pop() ?? '',
   };
 }
 
@@ -49,6 +33,8 @@ function FileDiffFileItem({
   fileDiff: FormattedFileDiff;
   onOpenDiffReview: (fileId: string) => void;
 }) {
+  const { added, removed } = getLineStats(fileDiff);
+
   return (
     <button
       type="button"
@@ -58,15 +44,37 @@ function FileDiffFileItem({
       <span className="flex flex-row items-center justify-start gap-1 truncate text-xs">
         <FileIcon filePath={fileDiff.fileName} className="size-5 shrink-0" />
         <span className="text-xs leading-none">{fileDiff.fileName}</span>
-        {fileDiff.linesAdded > 0 && (
-          <span className="text-[10px] text-success-foreground leading-none hover:text-hover-derived">
-            +{fileDiff.linesAdded}
-          </span>
-        )}
-        {fileDiff.linesRemoved > 0 && (
-          <span className="text-[10px] text-error-foreground leading-none hover:text-hover-derived">
-            -{fileDiff.linesRemoved}
-          </span>
+        {fileDiff.isExternal ? (
+          <>
+            {fileDiff.changeType === 'created' && (
+              <span className="text-[10px] text-success-foreground leading-none">
+                (new)
+              </span>
+            )}
+            {fileDiff.changeType === 'deleted' && (
+              <span className="text-[10px] text-error-foreground leading-none">
+                (deleted)
+              </span>
+            )}
+            {fileDiff.changeType === 'modified' && (
+              <span className="text-[10px] text-muted-foreground leading-none">
+                (binary)
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            {added > 0 && (
+              <span className="text-[10px] text-success-foreground leading-none hover:text-hover-derived">
+                +{added}
+              </span>
+            )}
+            {removed > 0 && (
+              <span className="text-[10px] text-error-foreground leading-none hover:text-hover-derived">
+                -{removed}
+              </span>
+            )}
+          </>
         )}
       </span>
     </button>
@@ -84,7 +92,10 @@ export function FileDiffSection(
     onOpenDiffReview,
   } = props;
 
-  if (pendingDiffs?.length === 0 && diffSummary?.length === 0) return null;
+  // Filter out noops from summary (rejected edits with no actual changes)
+  const filteredSummary = diffSummary.filter(hasRealChanges);
+
+  if (pendingDiffs?.length === 0 && filteredSummary.length === 0) return null;
 
   const hasPendingDiffs = pendingDiffs?.length > 0;
 
@@ -105,7 +116,8 @@ export function FileDiffSection(
           `${pendingDiffs.length} Edit${pendingDiffs.length > 1 ? 's' : ''}`
         ) : (
           <span>
-            {diffSummary.length} Edit{diffSummary.length > 1 ? 's' : ''}
+            {filteredSummary.length} Edit
+            {filteredSummary.length > 1 ? 's' : ''}
           </span>
         )}
 
@@ -118,7 +130,7 @@ export function FileDiffSection(
               onClick={(e) => {
                 e.stopPropagation();
                 onRejectAll(
-                  pendingDiffs?.flatMap((diff) => diff.hunkIds) ?? [],
+                  pendingDiffs?.flatMap((diff) => getHunkIds(diff)) ?? [],
                 );
               }}
             >
@@ -131,7 +143,7 @@ export function FileDiffSection(
               onClick={(e) => {
                 e.stopPropagation();
                 onAcceptAll(
-                  pendingDiffs?.flatMap((diff) => diff.hunkIds) ?? [],
+                  pendingDiffs?.flatMap((diff) => getHunkIds(diff)) ?? [],
                 );
               }}
             >
@@ -154,8 +166,8 @@ export function FileDiffSection(
                 onOpenDiffReview={onOpenDiffReview}
               />
             ))
-          : diffSummary?.length > 0
-            ? diffSummary?.map((edit) => (
+          : filteredSummary.length > 0
+            ? filteredSummary.map((edit) => (
                 <FileDiffFileItem
                   key={edit.path}
                   fileDiff={edit}

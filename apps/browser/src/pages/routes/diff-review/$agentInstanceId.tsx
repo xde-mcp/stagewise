@@ -13,13 +13,13 @@ import {
   useKartonConnected,
   useKartonState,
 } from '@/hooks/use-karton';
-import { diffLines, type ChangeObject } from 'diff';
 import { DiffPreview } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/diff-preview';
 import { FileIcon } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/file-icon';
-import type {
-  FileDiff,
-  ExternalFileDiff,
-} from '@shared/karton-contracts/ui/shared-types';
+import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
+import {
+  type FormattedFileDiff,
+  getLineStats,
+} from '@ui/screens/main/sidebar/chat/_components/footer-status-card/shared';
 import { ExternalFilePreview } from './_components/external-file-preview';
 import {
   Tooltip,
@@ -45,21 +45,15 @@ export const Route = createFileRoute('/diff-review/$agentInstanceId')({
   }),
 });
 
+type FormattedFileDiffWithElementId = FormattedFileDiff & { elementId: string };
+
 const FileDiffItem: FC<{
-  edit: {
-    fileId: string;
-    fileName: string;
-    path: string;
-    diff: ChangeObject<string>[];
-    linesAdded: number;
-    linesRemoved: number;
-    elementId: string;
-    externalFileDiff?: ExternalFileDiff;
-  };
+  edit: FormattedFileDiffWithElementId;
   onAccept: (fileId: string) => void;
   onReject: (fileId: string) => void;
 }> = ({ edit, onAccept, onReject }) => {
   const [isOpen, setIsOpen] = useState(true);
+  const { added, removed } = getLineStats(edit);
 
   return (
     <div
@@ -90,29 +84,29 @@ const FileDiffItem: FC<{
                 <div className="max-w-md">{edit.path}</div>
               </TooltipContent>
             </Tooltip>
-            {edit.externalFileDiff?.changeType === 'created' && (
+            {edit.isExternal && edit.changeType === 'created' && (
               <span className="shrink-0 text-success-foreground text-xs">
                 (new)
               </span>
             )}
-            {edit.externalFileDiff?.changeType === 'deleted' && (
+            {edit.isExternal && edit.changeType === 'deleted' && (
               <span className="shrink-0 text-error-foreground text-xs">
                 (deleted)
               </span>
             )}
-            {edit.externalFileDiff?.changeType === 'modified' && (
+            {edit.isExternal && edit.changeType === 'modified' && (
               <span className="shrink-0 text-muted-foreground text-xs">
                 (modified)
               </span>
             )}
-            {edit.linesAdded > 0 && (
+            {added > 0 && (
               <span className="shrink-0 text-success-foreground text-xs">
-                +{edit.linesAdded}
+                +{added}
               </span>
             )}
-            {edit.linesRemoved > 0 && (
+            {removed > 0 && (
               <span className="shrink-0 text-error-foreground text-xs">
-                -{edit.linesRemoved}
+                -{removed}
               </span>
             )}
             <div className="ml-auto flex items-center gap-1">
@@ -161,11 +155,11 @@ const FileDiffItem: FC<{
         <CollapsibleContent>
           {/* Diff content */}
           <div>
-            {edit.externalFileDiff ? (
-              <ExternalFilePreview fileDiff={edit.externalFileDiff} />
+            {edit.isExternal ? (
+              <ExternalFilePreview fileDiff={edit} />
             ) : (
               <DiffPreview
-                diff={edit.diff}
+                diff={edit.lineChanges}
                 filePath={edit.path}
                 collapsed={true}
               />
@@ -296,33 +290,13 @@ function Page() {
     [agentInstanceId],
   );
 
-  const formattedEdits = useMemo(() => {
-    return pendingEdits.map((edit) => {
-      const diff = edit.isExternal
-        ? diffLines('', '')
-        : diffLines(edit.baseline ?? '', edit.current ?? '');
-      const fileName = edit.path.split('/').pop() ?? '';
-      const linesAdded = diff.reduce(
-        (acc, line) => acc + (line.added ? (line.count ?? 0) : 0),
-        0,
-      );
-      const linesRemoved = diff.reduce(
-        (acc, line) => acc + (line.removed ? (line.count ?? 0) : 0),
-        0,
-      );
-      return {
-        path: edit.path,
-        fileId: edit.fileId,
-        fileName,
-        diff,
-        linesAdded,
-        linesRemoved,
-        // Create a stable id for scrolling based on the path
-        elementId: `file-${encodeURIComponent(edit.path)}`,
-        // Include external file diff data if this is an external file
-        externalFileDiff: edit.isExternal ? edit : undefined,
-      };
-    });
+  const formattedEdits = useMemo((): FormattedFileDiffWithElementId[] => {
+    return pendingEdits.map((edit) => ({
+      ...edit,
+      fileName: edit.path.split('/').pop() ?? '',
+      // Create a stable id for scrolling based on the path
+      elementId: `file-${encodeURIComponent(edit.path)}`,
+    }));
   }, [pendingEdits]);
 
   // Scroll to file if hash is present in URL

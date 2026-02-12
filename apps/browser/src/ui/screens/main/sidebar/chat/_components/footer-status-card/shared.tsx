@@ -5,6 +5,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
+import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 
 /** Extract text content from a AgentMessage's parts */
 export function getMessageText(message: {
@@ -14,14 +15,39 @@ export function getMessageText(message: {
   return textPart && 'text' in textPart ? (textPart.text ?? '') : '';
 }
 
-export type FormattedFileDiff = {
-  fileId: string;
-  path: string;
+/** Extends FileDiff, only adds derived display prop */
+export type FormattedFileDiff = FileDiff & {
   fileName: string;
-  linesAdded: number;
-  linesRemoved: number;
-  hunkIds: string[];
 };
+
+/** Compute line stats on-demand from lineChanges */
+export function getLineStats(diff: FormattedFileDiff): {
+  added: number;
+  removed: number;
+} {
+  if (diff.isExternal) return { added: 0, removed: 0 };
+  return {
+    added: diff.lineChanges.reduce(
+      (acc, c) => acc + (c.added ? (c.count ?? 0) : 0),
+      0,
+    ),
+    removed: diff.lineChanges.reduce(
+      (acc, c) => acc + (c.removed ? (c.count ?? 0) : 0),
+      0,
+    ),
+  };
+}
+
+/** Check if diff represents a real change (not a noop) */
+export function hasRealChanges(diff: FormattedFileDiff): boolean {
+  if (diff.isExternal) return true; // External files are always real changes
+  return diff.lineChanges.some((c) => c.added || c.removed);
+}
+
+/** Get hunk IDs for accept/reject operations */
+export function getHunkIds(diff: FormattedFileDiff): string[] {
+  return diff.isExternal ? [diff.hunkId] : diff.hunks.map((h) => h.id);
+}
 
 export interface StatusCardSection {
   trigger: (isOpen: boolean) => React.ReactNode;
