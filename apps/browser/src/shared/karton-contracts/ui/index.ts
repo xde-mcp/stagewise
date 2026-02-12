@@ -573,12 +573,6 @@ export type AppState = {
       height: number;
       scale: number;
     } | null;
-    // Screenshots of selected elements to be auto-attached to chat, scoped by message ID
-    pendingElementScreenshots: {
-      id: string; // Unique ID for this screenshot
-      elementId: string; // stagewiseId of the element
-      dataUrl: string; // Base64 data URL of the screenshot
-    }[];
   };
 
   // Downloads state for the control button
@@ -945,7 +939,6 @@ export const defaultState: KartonContract['state'] = {
     selectedElements: [],
     hoveredElement: null,
     viewportSize: null,
-    pendingElementScreenshots: [],
   },
   downloads: {
     items: [],

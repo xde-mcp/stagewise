@@ -115,14 +115,6 @@ export const MessageUser = memo(
       (p) => p.browser.contextSelection.removeElement,
     );
 
-    // Watch for pending element screenshots and auto-add as file attachments
-    const pendingScreenshots = useKartonState(
-      (s) => s.browser.pendingElementScreenshots,
-    );
-    const clearPendingScreenshotsProc = useKartonProcedure(
-      (p) => p.browser.contextSelection.clearPendingScreenshots,
-    );
-
     // Edit mode state with mention IDs
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     // Store tiptap content when submit is clicked (before confirmation popover)
@@ -326,14 +318,6 @@ export const MessageUser = memo(
       },
       [removeFileAttachment, removeSelectedElement],
     );
-
-    // Auto-add pending element screenshots as file attachments during edit mode
-    useEffect(() => {
-      if (pendingScreenshots.length === 0) return;
-      // We might auto-add pending element screenshots as file attachments in the future, it's disabled for now
-      // Clear processed screenshots from state
-      void clearPendingScreenshotsProc();
-    }, [pendingScreenshots, clearPendingScreenshotsProc]);
 
     // Watch for selected elements via shared hook
     useElementSelectionWatcher({

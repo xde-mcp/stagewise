@@ -117,9 +117,6 @@ export function ChatPanelFooter() {
   const selectionModeActive = useKartonState(
     (s) => s.browser.contextSelectionMode,
   );
-  const pendingScreenshots = useKartonState(
-    (s) => s.browser.pendingElementScreenshots,
-  );
 
   const elementSelectionActive = useMemo(() => {
     if (activeEditMessageId) return false;
@@ -143,9 +140,6 @@ export function ChatPanelFooter() {
   );
   const removeSelectedElementProc = useKartonProcedure(
     (p) => p.browser.contextSelection.removeElement,
-  );
-  const clearPendingScreenshotsProc = useKartonProcedure(
-    (p) => p.browser.contextSelection.clearPendingScreenshots,
   );
 
   const isConnected = useKartonConnected();
@@ -562,14 +556,6 @@ export function ChatPanelFooter() {
     onFileDrop: addFileAttachment,
     onDropComplete: () => chatInputRef.current?.focus(),
   });
-
-  // Auto-add pending element screenshots as file attachments
-  useEffect(() => {
-    if (pendingScreenshots.length === 0) return;
-    // We might auto-add pending element screenshots as file attachments in the future, it's disabled for now
-    // Clear processed screenshots from state
-    void clearPendingScreenshotsProc();
-  }, [pendingScreenshots, clearPendingScreenshotsProc]);
 
   // Register main drop handler for forwarded events
   useEffect(() => {

@@ -133,9 +133,6 @@ export interface TabControllerEventMap {
   handleKeyDown: [keyDownEvent: SerializableKeyboardEvent];
   elementHovered: [element: SelectedElement | null];
   elementSelected: [element: SelectedElement];
-  elementScreenshotCaptured: [
-    screenshot: { elementId: string; dataUrl: string },
-  ];
   tabFocused: [tabId: string];
   viewportSizeChanged: [
     size: {
@@ -868,27 +865,6 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       info.tabId = this.id;
       info.tabHandle = this.handle;
       this.emit('elementSelected', info);
-
-      // Capture screenshot of the element (async, non-blocking)
-      this.captureElementScreenshot(
-        info.boundingClientRect,
-        50,
-        info.isMainFrame ?? true,
-        info.frameId,
-      )
-        .then((screenshot) => {
-          if (screenshot && info.stagewiseId) {
-            this.emit('elementScreenshotCaptured', {
-              elementId: info.stagewiseId,
-              dataUrl: screenshot,
-            });
-          }
-        })
-        .catch((err) => {
-          this.logger.debug(
-            `[TabController] Failed to capture element screenshot: ${err}`,
-          );
-        });
     }
   }
 
