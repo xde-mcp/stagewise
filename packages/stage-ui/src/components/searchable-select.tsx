@@ -12,8 +12,8 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import { cn } from '../lib/utils';
-import { OverlayScrollbar } from './overlay-scrollbar';
 
 type SearchableSelectSize = 'xs' | 'sm' | 'md';
 export type SearchableSelectTriggerVariant = 'ghost' | 'secondary';
@@ -105,6 +105,16 @@ export type SearchableSelectProps = Omit<
   customTrigger?: (
     triggerProps: React.ComponentPropsWithoutRef<'button'>,
   ) => ReactElement;
+  /**
+   * Additional class name(s) applied to the popup container.
+   * Useful for setting a min-width when items are virtualized.
+   */
+  popupClassName?: string;
+  /**
+   * Additional class name(s) applied to the virtualized list scroller.
+   * Use this to customize scrollbar appearance (e.g. `scrollbar-hover-only`).
+   */
+  listClassName?: string;
 };
 
 const triggerVariants = {
@@ -122,6 +132,8 @@ export const SearchableSelect = ({
   side = 'top',
   sideOffset = 4,
   customTrigger,
+  popupClassName,
+  listClassName,
   ...props
 }: SearchableSelectProps) => {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -191,6 +203,37 @@ export const SearchableSelect = ({
 
     return groups;
   }, [filteredItems]);
+
+  // Flatten grouped items into a single list for virtualization
+  type FlatEntry =
+    | { type: 'group-header'; group: string }
+    | { type: 'item'; item: SearchableSelectItem };
+
+  const flatList = useMemo<FlatEntry[]>(() => {
+    const list: FlatEntry[] = [];
+    for (const { group, items: groupItems } of groupedFilteredItems) {
+      if (group) {
+        list.push({ type: 'group-header', group });
+      }
+      for (const item of groupItems) {
+        list.push({ type: 'item', item });
+      }
+    }
+    return list;
+  }, [groupedFilteredItems]);
+
+  // Estimated row height per size variant
+  const estimatedItemSize: Record<SearchableSelectSize, number> = {
+    xs: 28,
+    sm: 34,
+    md: 40,
+  };
+
+  const MAX_LIST_HEIGHT = 192; // 12rem = max-h-48
+
+  // Only virtualize when items would overflow the max height
+  const needsVirtualization =
+    flatList.length * estimatedItemSize[size] > MAX_LIST_HEIGHT;
 
   // All items for Base UI's value management (ensures selection isn't lost during search)
   const allConvertedItems = useMemo(() => {
@@ -293,6 +336,85 @@ export const SearchableSelect = ({
     } satisfies Record<SearchableSelectSize, string>,
   };
 
+  // Shared renderer for a single flat list entry (group header or item row)
+  const renderFlatEntry = useCallback(
+    (entry: FlatEntry) => {
+      if (entry.type === 'group-header') {
+        return (
+          <div className="shrink-0 px-2 py-1 font-normal text-subtle-foreground text-xs">
+            {entry.group}
+          </div>
+        );
+      }
+
+      const item = entry.item;
+      const hasTooltip = !!(item.tooltipContent || item.tooltipComponent);
+
+      const Row = (
+        <SelectBase.Item
+          value={String(item.value)}
+          className={cn(
+            'group/item grid w-full min-w-24 cursor-default items-center gap-2 rounded-md bg-background text-foreground outline-none transition-colors duration-150 ease-out hover:bg-hover-derived',
+            item.action
+              ? 'grid-cols-[0.75rem_1fr_auto]'
+              : 'grid-cols-[0.75rem_1fr]',
+            sizes.item[size],
+          )}
+          onMouseEnter={
+            hasTooltip ? (e) => handleItemHover(item, e) : undefined
+          }
+          // Prevent Base UI from stealing focus from search input
+          onFocus={() => searchInputRef.current?.focus()}
+        >
+          <SelectBase.ItemIndicator className="col-start-1 shrink-0">
+            <CheckIcon className="size-full text-muted-foreground" />
+          </SelectBase.ItemIndicator>
+
+          <SelectBase.ItemText className="col-start-2 flex flex-row items-center justify-between gap-4">
+            <div
+              className={cn(
+                'flex min-w-0 flex-row items-center gap-2',
+                size === 'xs' ? 'text-xs' : 'text-sm',
+              )}
+            >
+              <span className="truncate">{item.label}</span>
+              {item.icon && (
+                <div className="flex size-4 shrink-0 items-center justify-center">
+                  {item.icon}
+                </div>
+              )}
+            </div>
+          </SelectBase.ItemText>
+
+          {item.action && (
+            <button
+              type="button"
+              className={cn(
+                'col-start-3 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
+                item.action.showOnHover &&
+                  'opacity-0 group-hover/item:opacity-100',
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                item.action?.onClick(String(item.value), e);
+              }}
+            >
+              {item.action.icon}
+            </button>
+          )}
+        </SelectBase.Item>
+      );
+
+      if (item.tooltipComponent) {
+        const TooltipComponent = item.tooltipComponent;
+        return <TooltipComponent item={item}>{Row}</TooltipComponent>;
+      }
+
+      return Row;
+    },
+    [size, sizes.item, handleItemHover],
+  );
+
   return (
     <SelectBase.Root
       {...props}
@@ -340,6 +462,7 @@ export const SearchableSelect = ({
               className={cn(
                 'flex max-w-72 origin-(--transform-origin) flex-col items-stretch gap-0.5 rounded-lg border border-border-subtle bg-background p-1 shadow-lg transition-[transform,scale,opacity] duration-150 ease-out data-ending-style:scale-90 data-starting-style:scale-90 data-ending-style:opacity-0 data-starting-style:opacity-0',
                 sizes.popup[size],
+                popupClassName,
               )}
             >
               <div className="mb-1 rounded-md">
@@ -354,111 +477,47 @@ export const SearchableSelect = ({
                     size === 'xs' ? 'text-xs' : 'text-sm',
                   )}
                   onKeyDown={(e) => {
-                    // prevent select typeahead from consuming input keystrokes
+                    // Let Escape and Tab propagate so the select can close
+                    if (e.key === 'Escape' || e.key === 'Tab') return;
+                    // Prevent select typeahead from consuming input keystrokes
                     e.stopPropagation();
                   }}
                 />
               </div>
-              <SelectBase.ScrollUpArrow />
               {filteredItems.length === 0 && (
                 <div className="px-2 py-1.5 text-muted-foreground text-xs">
                   No results
                 </div>
               )}
-              <OverlayScrollbar
-                className="max-h-48"
-                contentClassName="flex flex-col gap-0.5"
-              >
-                {groupedFilteredItems.map(
-                  ({ group, items: groupItems }, groupIndex) => (
-                    <div key={group ?? `ungrouped-${groupIndex}`}>
-                      {group && (
-                        <div className="shrink-0 px-2 py-1 font-normal text-subtle-foreground text-xs">
-                          {group}
-                        </div>
-                      )}
-                      {groupItems.map((item) => {
-                        const hasTooltip = !!(
-                          item.tooltipContent || item.tooltipComponent
-                        );
-                        const Row = (
-                          <SelectBase.Item
-                            key={String(item.value)}
-                            value={String(item.value)}
-                            className={cn(
-                              'group/item grid w-full min-w-24 cursor-default items-center gap-2 rounded-md bg-background text-foreground outline-none transition-colors duration-150 ease-out hover:bg-hover-derived',
-                              item.action
-                                ? 'grid-cols-[0.75rem_1fr_auto]'
-                                : 'grid-cols-[0.75rem_1fr]',
-                              sizes.item[size],
-                            )}
-                            onMouseEnter={
-                              hasTooltip
-                                ? (e) => handleItemHover(item, e)
-                                : undefined
-                            }
-                            // Prevent Base UI from stealing focus from search input
-                            onFocus={() => searchInputRef.current?.focus()}
-                          >
-                            <SelectBase.ItemIndicator className="col-start-1 shrink-0">
-                              <CheckIcon className="size-full text-muted-foreground" />
-                            </SelectBase.ItemIndicator>
-
-                            <SelectBase.ItemText className="col-start-2 flex flex-row items-center justify-between gap-4">
-                              <div
-                                className={cn(
-                                  'flex min-w-0 flex-row items-center gap-2',
-                                  size === 'xs' ? 'text-xs' : 'text-sm',
-                                )}
-                              >
-                                <span className="truncate">{item.label}</span>
-                                {item.icon && (
-                                  <div className="flex size-4 shrink-0 items-center justify-center">
-                                    {item.icon}
-                                  </div>
-                                )}
-                              </div>
-                            </SelectBase.ItemText>
-
-                            {item.action && (
-                              <button
-                                type="button"
-                                className={cn(
-                                  'col-start-3 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
-                                  item.action.showOnHover &&
-                                    'opacity-0 group-hover/item:opacity-100',
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  item.action?.onClick(String(item.value), e);
-                                }}
-                              >
-                                {item.action.icon}
-                              </button>
-                            )}
-                          </SelectBase.Item>
-                        );
-
-                        // For custom tooltip components, wrap with a div for hover tracking
-                        if (item.tooltipComponent) {
-                          const TooltipComponent = item.tooltipComponent;
-                          return (
-                            <TooltipComponent
-                              key={String(item.value)}
-                              item={item}
-                            >
-                              {Row}
-                            </TooltipComponent>
-                          );
+              {flatList.length > 0 &&
+                (needsVirtualization ? (
+                  <Virtuoso
+                    className={listClassName}
+                    style={{ height: MAX_LIST_HEIGHT }}
+                    data={flatList}
+                    overscan={100}
+                    itemContent={(_index, entry) => renderFlatEntry(entry)}
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      'flex max-h-48 flex-col overflow-y-auto',
+                      listClassName,
+                    )}
+                  >
+                    {flatList.map((entry) => (
+                      <div
+                        key={
+                          entry.type === 'group-header'
+                            ? `group-${entry.group}`
+                            : String(entry.item.value)
                         }
-
-                        return Row;
-                      })}
-                    </div>
-                  ),
-                )}
-              </OverlayScrollbar>
-              <SelectBase.ScrollDownArrow />
+                      >
+                        {renderFlatEntry(entry)}
+                      </div>
+                    ))}
+                  </div>
+                ))}
             </SelectBase.Popup>
 
             {/* Side panel for tooltip content */}

@@ -406,6 +406,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
               side="bottom"
               sideOffset={8}
               size="xs"
+              popupClassName="min-w-56"
+              listClassName="scrollbar-hover-only"
               customTrigger={(triggerProps) => (
                 <Tooltip>
                   <TooltipTrigger>
