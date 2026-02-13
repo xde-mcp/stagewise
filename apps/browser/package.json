@@ -12,8 +12,8 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "bundle:eslint": "tsx scripts/bundle-eslint-server.ts",
-    "make": "pnpm bundle:eslint && dotenv -e ../../.env.prod -- electron-forge make",
-    "package": "pnpm bundle:eslint && dotenv -e ../../.env -- electron-forge package",
+    "make": "pnpm bundle:eslint && NODE_OPTIONS=--max-old-space-size=8192 dotenv -e ../../.env.prod -- electron-forge make",
+    "package": "pnpm bundle:eslint && NODE_OPTIONS=--max-old-space-size=8192 dotenv -e ../../.env -- electron-forge package",
     "publish": "dotenv -e ../../.env -- electron-forge publish",
     "start": "pnpm typecheck && dotenv -e ../../.env.dev -- electron-forge start",
     "storybook": "storybook dev -p 6006",
