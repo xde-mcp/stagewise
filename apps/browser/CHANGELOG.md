@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0-alpha.2 (2026-02-13)
+
+### Bug Fixes
+
+* correct import path (b3fcf83)
+* more memory for build to prevent builttime crashes (a9f1822)
+
 ## 1.0.0-alpha.1 (2026-02-12)
 
 ### Features
