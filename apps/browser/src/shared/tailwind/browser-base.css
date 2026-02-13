@@ -115,3 +115,10 @@
 @utility scrollbar-visible {
   @apply scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-muted-foreground/10;
 }
+
+/* For Virtuoso container to avoid flickering due to layout shifts */
+@utility virtuoso-contain {
+  & [data-item-index] {
+    contain: layout style;
+  }
+}

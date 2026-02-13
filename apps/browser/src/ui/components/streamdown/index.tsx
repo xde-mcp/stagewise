@@ -243,6 +243,7 @@ export const Streamdown = ({
     <StreamdownProvider isStreaming={isAnimating}>
       <StreamdownBase
         isAnimating={isAnimating}
+        mode={isAnimating ? 'streaming' : 'static'}
         shikiTheme={['light-plus', 'dark-plus']}
         controls={{
           code: false,

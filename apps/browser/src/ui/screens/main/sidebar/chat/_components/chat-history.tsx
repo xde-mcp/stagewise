@@ -22,6 +22,7 @@ import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
 import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
 import { isEmptyAssistantMessage } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
+import { calculateChatItemHeights } from '@/utils/calculate-chat-item-height';
 
 // Extended type for optimistic messages (includes flag for UI distinction)
 type OptimisticMessage = AgentMessage & {
@@ -52,6 +53,7 @@ function getMessageTextContent(message: AgentMessage): string {
 export const ChatHistory = () => {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [containerHeight, setContainerHeight] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
   const scrollbarWidth = useScrollbarWidth();
 
   // Ref to store latest containerHeight for use in callback ref (avoids stale closure)
@@ -175,8 +177,10 @@ export const ChatHistory = () => {
       resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const newHeight = entry.contentRect.height;
+          const newWidth = entry.contentRect.width;
           containerHeightRef.current = newHeight;
           setContainerHeight(newHeight);
+          setContainerWidth(newWidth);
           if (isAutoScrollEnabled()) updateSpacerHeight();
         }
       });
@@ -305,6 +309,78 @@ export const ChatHistory = () => {
 
     return displayMessages;
   }, [serverMessages, optimisticMessages, replacedMessageId]);
+
+  // Cache for height calculations - keyed by message ID + parts length + width
+  // This prevents recalculating heights for stable messages during streaming
+  const heightCacheRef = useRef<Map<string, number>>(new Map());
+
+  // Calculate estimated heights for Virtuoso (with caching for performance)
+  const estimatedHeights = useMemo(() => {
+    if (filteredMessages.length === 0 || containerWidth === 0) return [];
+
+    const DEFAULT_STREAMING_HEIGHT = 200;
+    const cache = heightCacheRef.current;
+
+    // Find the last user message index to calculate spacer height
+    let lastUserMsgIdx = -1;
+    for (let i = filteredMessages.length - 1; i >= 0; i--) {
+      if (filteredMessages[i].role === 'user') {
+        lastUserMsgIdx = i;
+        break;
+      }
+    }
+
+    // Estimate the last user message height for spacer calculation
+    let estimatedLastUserMsgHeight = 50;
+    if (lastUserMsgIdx >= 0) {
+      const userMsg = filteredMessages[lastUserMsgIdx];
+      const userCacheKey = `${userMsg.id}:${userMsg.parts.length}:${containerWidth}`;
+      if (cache.has(userCacheKey))
+        estimatedLastUserMsgHeight = cache.get(userCacheKey)!;
+      else {
+        const heights = calculateChatItemHeights([userMsg], containerWidth);
+        estimatedLastUserMsgHeight = heights[0] ?? 50;
+      }
+    }
+
+    // Calculate spacer height (same logic as updateSpacerHeight)
+    // Spacer fills remaining viewport: containerHeight - userMessageHeight - 10
+    const spacerHeight = Math.max(
+      0,
+      containerHeight - estimatedLastUserMsgHeight - 10,
+    );
+
+    return filteredMessages.map((msg, index) => {
+      const isLastMsg = index === filteredMessages.length - 1;
+
+      // For the last message while agent is working, use default + spacer
+      if (isLastMsg && isWorking)
+        return DEFAULT_STREAMING_HEIGHT + spacerHeight;
+
+      // Create cache key from message ID + parts count + width
+      const cacheKey = `${msg.id}:${msg.parts.length}:${containerWidth}`;
+
+      // Get base height (cached or calculated)
+      let height: number;
+      if (cache.has(cacheKey)) height = cache.get(cacheKey)!;
+      else {
+        const heights = calculateChatItemHeights([msg], containerWidth);
+        height = heights[0] ?? 100;
+        cache.set(cacheKey, height);
+      }
+      // Add spacer height to the last message
+      if (isLastMsg) height += spacerHeight;
+
+      return height;
+    });
+  }, [filteredMessages, containerWidth, containerHeight, isWorking]);
+
+  // Clean up cache when agent changes
+  useEffect(() => {
+    heightCacheRef.current.clear();
+  }, [openAgent]);
+
+  // Calculate average estimated height for defaultItemHeight
 
   // Track when user sends a message - we'll enable auto-scroll once the message is in DOM
   const pendingAutoScrollRef = useRef(false);
@@ -529,7 +605,6 @@ export const ChatHistory = () => {
     [
       filteredMessages.length,
       lastUserMsgIndex,
-      history,
       showWorkingIndicator,
       paddingRight,
       isWorking,
@@ -587,13 +662,15 @@ export const ChatHistory = () => {
   return (
     <AttachmentMetadataProvider messages={filteredMessages}>
       <Virtuoso
+        initialTopMostItemIndex={Math.max(0, filteredMessages.length - 2)}
         style={{ scrollbarGutter: 'stable' }}
         key={openAgent ?? 'no-chat'}
         data={filteredMessages}
         ref={virtuosoRef}
-        className="scrollbar-hover-only -mr-[2px]"
+        className="scrollbar-hover-only virtuoso-contain -mr-[2px]"
         scrollerRef={scrollerRef}
-        increaseViewportBy={{ top: 3000, bottom: 3000 }} // Render items above and below viewport
+        increaseViewportBy={{ top: 400, bottom: 400 }} // Render items above and below viewport
+        heightEstimates={estimatedHeights}
         itemContent={itemContent}
         followOutput={false} // We use our own auto-scroll logic
         computeItemKey={(_, message) => message.id}
