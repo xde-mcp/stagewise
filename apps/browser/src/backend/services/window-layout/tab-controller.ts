@@ -176,6 +176,10 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     transition: PageTransition;
     referrerVisitId?: number;
   } | null = null;
+  // URL awaiting history logging (deferred until page load completes)
+  private pendingHistoryUrl: string | null = null;
+  // Whether the page set its own title during loading
+  private pageTitleWasSet = false;
 
   // Viewport size cache
   private currentViewportSize: {
@@ -1321,7 +1325,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       }
     });
 
-    wc.on('did-navigate', async (_event, url) => {
+    wc.on('did-navigate', (_event, url) => {
       // Reset so the next did-stop-loading runs full setup (CDP enable, screenshot, etc.)
       this.initialLoadCompleted = false;
 
@@ -1333,17 +1337,25 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
         ? (this.errorHandler?.getErrorState().originalFailedUrl ?? url)
         : url;
 
+      // Reset title and favicon for the new page (show domain + globe while loading)
+      const resetTitle = isErrorPage
+        ? this.currentState.title
+        : this.getDomainFromUrl(url);
+      this.pageTitleWasSet = false;
+
       this.updateState({
         url: displayUrl,
+        title: resetTitle,
+        faviconUrls: [],
         navigationHistory: {
           canGoBack: wc.navigationHistory.canGoBack(),
           canGoForward: wc.navigationHistory.canGoForward(),
         },
       });
 
-      // Log to history (skip error pages)
+      // Defer history logging until page load completes (skip error pages)
       if (!isErrorPage) {
-        await this.logNavigationToHistory(url);
+        this.pendingHistoryUrl = url;
       }
     });
 
@@ -1364,7 +1376,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
         },
       });
 
-      // Log to history (in-page navigations like hash changes, pushState) - skip error pages
+      // In-page navigations (hash changes, pushState) log immediately - page is already loaded
       if (!isErrorPage) {
         await this.logNavigationToHistory(url);
       }
@@ -1388,6 +1400,13 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       if (!this.initialLoadCompleted) {
         // First load after navigation — run all setup work
         this.initialLoadCompleted = true;
+
+        // If no title was set by the page, use domain as fallback
+        if (!this.pageTitleWasSet) {
+          const fallbackTitle = this.getDomainFromUrl(this.currentState.url);
+          this.updateState({ title: fallbackTitle });
+        }
+
         this.updateState({ isLoading: false, error: null });
         this.updateAudioState();
         const currentZoom = this.getZoomPercentage();
@@ -1398,6 +1417,17 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
           );
         });
         this.enableCdpDomainsForConsole();
+
+        // Now that the page is loaded, log to history with the final title
+        if (this.pendingHistoryUrl) {
+          const url = this.pendingHistoryUrl;
+          this.pendingHistoryUrl = null;
+          this.logNavigationToHistory(url).catch((err) => {
+            this.logger.error(
+              `[TabController] Failed to log deferred navigation to history: ${err}`,
+            );
+          });
+        }
       } else {
         // Subsequent stops (subframes/SPA) — only clear loading state.
         // Skip CDP re-enable (which caused the feedback loop),
@@ -1407,12 +1437,13 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     // Note: Error handling UI is managed by TabErrorHandler (setupErrorHandler)
-    // This handler only clears pending navigation to prevent failed loads from being logged
+    // This handler clears pending navigation to prevent failed loads from being logged
     wc.on('did-fail-load', (_event, errorCode) => {
       // Ignore abort errors (user stopped navigation)
       if (errorCode !== -3) {
-        // Clear pending navigation on failure - don't log failed navigations to history
+        // Clear pending navigation and history URL on failure
         this.pendingNavigation = null;
+        this.pendingHistoryUrl = null;
       }
     });
 
@@ -1422,6 +1453,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.on('page-title-updated', (_event, title) => {
+      this.pageTitleWasSet = true;
       this.updateState({ title });
     });
 
@@ -2881,6 +2913,19 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     } finally {
       // Clear pending navigation after logging (or if skipped)
       this.pendingNavigation = null;
+    }
+  }
+
+  /**
+   * Extracts the domain (hostname) from a URL for use as a fallback title.
+   * Returns the URL itself if parsing fails.
+   */
+  private getDomainFromUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname || url;
+    } catch {
+      return url;
     }
   }
 }

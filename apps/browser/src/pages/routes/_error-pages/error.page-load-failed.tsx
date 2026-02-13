@@ -128,8 +128,15 @@ type PageLoadErrorSearch = {
   tabId: string;
 };
 
+// Warning triangle SVG favicon for error pages (amber color, 16x16)
+const ERROR_FAVICON_SVG = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M7.134 1.5a1 1 0 011.732 0l6.062 10.5A1 1 0 0114.062 13.5H1.938a1 1 0 01-.866-1.5L7.134 1.5z' fill='%23f59e0b'/><path d='M8 5.5v3' stroke='white' stroke-width='1.5' stroke-linecap='round'/><circle cx='8' cy='11' r='.75' fill='white'/></svg>`;
+
 export const Route = createFileRoute('/_error-pages/error/page-load-failed')({
   component: RouteComponent,
+  head: () => ({
+    meta: [{ title: 'Page Load Error' }],
+    links: [{ rel: 'icon', type: 'image/svg+xml', href: ERROR_FAVICON_SVG }],
+  }),
   validateSearch: (search: Record<string, unknown>): PageLoadErrorSearch => {
     if (!search.errorCode || !search.tabId) {
       throw new Error('Invalid search parameters');
