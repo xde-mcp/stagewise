@@ -9,7 +9,7 @@ import type {
   UIDataTypes,
   TextUIPart,
 } from 'ai';
-import type { StagewiseUITools } from '@shared/karton-contracts/ui/agent/tools/types';
+import type { UIAgentTools } from '@shared/karton-contracts/ui/agent/tools/types';
 
 // =============================================================================
 // Height Constants (in pixels)
@@ -49,7 +49,7 @@ const HEIGHTS = {
 // Type Definitions
 // =============================================================================
 
-type MessagePart = UIMessagePart<UIDataTypes, StagewiseUITools>;
+type MessagePart = UIMessagePart<UIDataTypes, UIAgentTools>;
 
 /** Grouped parts structure - either a single part or a group of read-only parts */
 type GroupedPart =
@@ -86,7 +86,7 @@ function isReadOnlyToolPart(part: MessagePart): boolean {
  */
 function isToolOrReasoningPart(
   part: MessagePart,
-): part is ToolUIPart<StagewiseUITools> | ReasoningUIPart {
+): part is ToolUIPart<UIAgentTools> | ReasoningUIPart {
   return (
     part.type === 'dynamic-tool' ||
     part.type.startsWith('tool-') ||
@@ -220,7 +220,7 @@ function estimateReasoningPartHeight(_part: ReasoningUIPart): number {
  * Estimate height for write tools (multi-edit, overwrite, delete).
  * These render EXPANDED by default showing the file diff/content.
  */
-function estimateWriteToolHeight(_part: ToolUIPart<StagewiseUITools>): number {
+function estimateWriteToolHeight(_part: ToolUIPart<UIAgentTools>): number {
   // Write tools show expanded diff content (header + diff preview + footer)
   // They are NOT collapsed by default - they show the actual changes
   // Include border overhead for the tool container
@@ -285,7 +285,7 @@ function estimateAssistantMessageHeight(
         case 'tool-overwriteFileTool':
         case 'tool-deleteFileTool': {
           partHeight = estimateWriteToolHeight(
-            part as ToolUIPart<StagewiseUITools>,
+            part as ToolUIPart<UIAgentTools>,
           );
           break;
         }
