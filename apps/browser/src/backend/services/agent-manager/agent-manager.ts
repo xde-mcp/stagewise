@@ -274,14 +274,17 @@ export class AgentManagerService extends DisposableService {
   > {
     const agentInstanceId = instanceId ?? randomUUID();
 
+    // For new chat agents (not resumed), use the model from the last persisted chat
+    const lastChatModelId = await this.agentPersistenceDB?.getLastChatModelId();
+
     // Build state object outside setState to avoid "Type instantiation is excessively deep" error
     // caused by complex Draft<[]> inference from the 'ai' package's UIMessage type
-    const agentState: AgentState = {
+    const defaultState: AgentState = {
       title: '',
       isWorking: false,
       history: [],
       queuedMessages: [],
-      activeModelId: 'claude-haiku-4-5',
+      activeModelId: 'claude-sonnet-4-5',
       inputState: initialInputState ?? '',
       usedTokens: 0,
     };
@@ -295,7 +298,7 @@ export class AgentManagerService extends DisposableService {
         requiredModelCapabilities: AgentsMap[type].config.requiredCapabilities,
         allowUserInput: AgentsMap[type].config.allowUserInput,
         parentAgentInstanceId: parent?.parentInstanceId ?? null,
-        state: agentState,
+        state: defaultState,
       };
     });
 
@@ -335,7 +338,12 @@ export class AgentManagerService extends DisposableService {
       // @ts-ignore - The onFinish handler returns outputs with the configured schema of the agent. dunno why ts doesn't get this right.
       parent?.onFinish,
       parent?.onError,
-      initialState,
+      initialState ?? {
+        activeModelId:
+          lastChatModelId && type === AgentTypes.CHAT
+            ? lastChatModelId
+            : undefined,
+      },
     );
 
     this.activeAgents.set(agentInstanceId, agent);

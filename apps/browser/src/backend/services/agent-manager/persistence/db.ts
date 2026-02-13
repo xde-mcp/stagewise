@@ -168,6 +168,34 @@ export class AgentPersistenceDB {
   }
 
   /**
+   * Returns the activeModelId of the most recently persisted chat agent,
+   * or null if no chat agents exist.
+   */
+  public async getLastChatModelId(): Promise<
+    schema.StoredAgentInstance['activeModelId'] | null
+  > {
+    const results = await this._db
+      .select({ activeModelId: schema.agentInstances.activeModelId })
+      .from(schema.agentInstances)
+      .where(
+        and(
+          isNull(schema.agentInstances.parentAgentInstanceId),
+          eq(schema.agentInstances.type, AgentTypes.CHAT),
+        ),
+      )
+      .orderBy(desc(schema.agentInstances.lastMessageAt))
+      .limit(1)
+      .catch((error) => {
+        this._logger.error(
+          `[AgentPersistenceDB] Failed to fetch last chat model id: ${error}`,
+        );
+        return null;
+      });
+
+    return results?.[0]?.activeModelId ?? null;
+  }
+
+  /**
    * Deletes an agent instance from the persistence layer.
    *
    * @param id The id of the agent instance to delete
