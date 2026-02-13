@@ -21,7 +21,7 @@ const _releaseChannel = process.env.RELEASE_CHANNEL || 'dev';
 // https://vite.dev/config/
 export default defineConfig({
   root: path.resolve(__dirname, './src/pages'),
-  base: './',
+  base: '/',
   plugins: [
     tanstackRouter({
       target: 'react',
