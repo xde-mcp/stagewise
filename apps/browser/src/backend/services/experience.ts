@@ -52,6 +52,11 @@ export class UserExperienceService extends DisposableService {
   // Track last synced storedExperienceData to prevent infinite loops
   private lastSyncedStoredExperienceData: string | null = null;
 
+  // Serialize markChatAsViewed calls to prevent read-modify-write race conditions.
+  // Without this, concurrent calls can read the same file snapshot, each add their
+  // own entry to a local copy, then the second write overwrites the first's additions.
+  private markChatAsViewedQueue: Promise<void> = Promise.resolve();
+
   // Flag to prevent re-entrant initialization
   private isLoadingStoredExperienceData = false;
   private hasInitializedStoredExperienceData = false;
@@ -448,6 +453,15 @@ export class UserExperienceService extends DisposableService {
    * Updates the lastViewedChats record with the current timestamp.
    */
   public async markChatAsViewed(agentId: string) {
+    // Enqueue to serialize file I/O and prevent read-modify-write races
+    this.markChatAsViewedQueue = this.markChatAsViewedQueue.then(
+      () => this._markChatAsViewedImpl(agentId),
+      () => this._markChatAsViewedImpl(agentId),
+    );
+    return this.markChatAsViewedQueue;
+  }
+
+  private async _markChatAsViewedImpl(agentId: string) {
     try {
       const lastViewedChats = await this.readLastViewedChats();
       lastViewedChats[agentId] = Date.now();
