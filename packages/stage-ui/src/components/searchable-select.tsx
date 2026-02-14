@@ -1,6 +1,7 @@
 import { Select as SelectBase } from '@base-ui/react/select';
 import { CheckIcon, ChevronDownIcon } from 'lucide-react';
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -12,7 +13,6 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import { Virtuoso } from 'react-virtuoso';
 import { cn } from '../lib/utils';
 
 type SearchableSelectSize = 'xs' | 'sm' | 'md';
@@ -111,10 +111,15 @@ export type SearchableSelectProps = Omit<
    */
   popupClassName?: string;
   /**
-   * Additional class name(s) applied to the virtualized list scroller.
+   * Additional class name(s) applied to the list scroller.
    * Use this to customize scrollbar appearance (e.g. `scrollbar-hover-only`).
    */
   listClassName?: string;
+  /**
+   * Called when the user scrolls near the bottom of the list.
+   * Use this to implement infinite-scroll / load-more pagination.
+   */
+  onEndReached?: () => void;
 };
 
 const triggerVariants = {
@@ -124,7 +129,10 @@ const triggerVariants = {
     'border border-derived bg-surface-1 text-foreground hover:bg-hover-derived active:bg-active-derived data-popup-open:bg-hover-derived',
 } satisfies Record<SearchableSelectTriggerVariant, string>;
 
-export const SearchableSelect = ({
+// This avoids running the 5 internal useMemo chains (filteredItems, allConvertedItems,
+// selectedValueToTriggerLabel, groupedFilteredItems, flatList) when the parent re-renders
+// but the SearchableSelect's props are referentially stable.
+export const SearchableSelect = memo(function SearchableSelect({
   items,
   triggerClassName,
   size = 'xs',
@@ -134,11 +142,14 @@ export const SearchableSelect = ({
   customTrigger,
   popupClassName,
   listClassName,
+  onEndReached,
   ...props
-}: SearchableSelectProps) => {
+}: SearchableSelectProps) {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sidePanelRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [hoveredItem, setHoveredItem] = useState<SearchableSelectItem | null>(
@@ -187,53 +198,19 @@ export const SearchableSelect = ({
 
     for (const item of filteredItems) {
       if (item.group !== currentGroup) {
-        if (currentItems.length > 0) {
+        if (currentItems.length > 0)
           groups.push({ group: currentGroup, items: currentItems });
-        }
+
         currentGroup = item.group;
         currentItems = [item];
-      } else {
-        currentItems.push(item);
-      }
+      } else currentItems.push(item);
     }
 
-    if (currentItems.length > 0) {
+    if (currentItems.length > 0)
       groups.push({ group: currentGroup, items: currentItems });
-    }
 
     return groups;
   }, [filteredItems]);
-
-  // Flatten grouped items into a single list for virtualization
-  type FlatEntry =
-    | { type: 'group-header'; group: string }
-    | { type: 'item'; item: SearchableSelectItem };
-
-  const flatList = useMemo<FlatEntry[]>(() => {
-    const list: FlatEntry[] = [];
-    for (const { group, items: groupItems } of groupedFilteredItems) {
-      if (group) {
-        list.push({ type: 'group-header', group });
-      }
-      for (const item of groupItems) {
-        list.push({ type: 'item', item });
-      }
-    }
-    return list;
-  }, [groupedFilteredItems]);
-
-  // Estimated row height per size variant
-  const estimatedItemSize: Record<SearchableSelectSize, number> = {
-    xs: 28,
-    sm: 34,
-    md: 40,
-  };
-
-  const MAX_LIST_HEIGHT = 192; // 12rem = max-h-48
-
-  // Only virtualize when items would overflow the max height
-  const needsVirtualization =
-    flatList.length * estimatedItemSize[size] > MAX_LIST_HEIGHT;
 
   // All items for Base UI's value management (ensures selection isn't lost during search)
   const allConvertedItems = useMemo(() => {
@@ -245,10 +222,10 @@ export const SearchableSelect = ({
 
   const selectedValueToTriggerLabel = useMemo(() => {
     const map = new Map<string, ReactNode>();
-    for (const item of items) {
-      // Use triggerLabel if provided, otherwise fall back to label
+    // Use triggerLabel if provided, otherwise fall back to label
+    for (const item of items)
       map.set(String(item.value), item.triggerLabel ?? item.label);
-    }
+
     return map;
   }, [items]);
 
@@ -260,6 +237,30 @@ export const SearchableSelect = ({
     }, 0);
     return () => clearTimeout(id);
   }, [open]);
+
+  // IntersectionObserver for infinite-scroll: fires onEndReached when
+  // the sentinel at the bottom of the list becomes visible.
+  const onEndReachedRef = useRef(onEndReached);
+  onEndReachedRef.current = onEndReached;
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !onEndReachedRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onEndReachedRef.current?.();
+      },
+      {
+        root: listRef.current,
+        // Fire when sentinel is within 200px of the visible area
+        rootMargin: '0px 0px 200px 0px',
+      },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [open, filteredItems.length]);
 
   // Recalculate side panel offset after render when we know the panel height
   useLayoutEffect(() => {
@@ -336,85 +337,6 @@ export const SearchableSelect = ({
     } satisfies Record<SearchableSelectSize, string>,
   };
 
-  // Shared renderer for a single flat list entry (group header or item row)
-  const renderFlatEntry = useCallback(
-    (entry: FlatEntry) => {
-      if (entry.type === 'group-header') {
-        return (
-          <div className="shrink-0 px-2 py-1 font-normal text-subtle-foreground text-xs">
-            {entry.group}
-          </div>
-        );
-      }
-
-      const item = entry.item;
-      const hasTooltip = !!(item.tooltipContent || item.tooltipComponent);
-
-      const Row = (
-        <SelectBase.Item
-          value={String(item.value)}
-          className={cn(
-            'group/item grid w-full min-w-24 cursor-default items-center gap-2 rounded-md bg-background text-foreground outline-none transition-colors duration-150 ease-out hover:bg-hover-derived',
-            item.action
-              ? 'grid-cols-[0.75rem_1fr_auto]'
-              : 'grid-cols-[0.75rem_1fr]',
-            sizes.item[size],
-          )}
-          onMouseEnter={
-            hasTooltip ? (e) => handleItemHover(item, e) : undefined
-          }
-          // Prevent Base UI from stealing focus from search input
-          onFocus={() => searchInputRef.current?.focus()}
-        >
-          <SelectBase.ItemIndicator className="col-start-1 shrink-0">
-            <CheckIcon className="size-full text-muted-foreground" />
-          </SelectBase.ItemIndicator>
-
-          <SelectBase.ItemText className="col-start-2 flex flex-row items-center justify-between gap-4">
-            <div
-              className={cn(
-                'flex min-w-0 flex-row items-center gap-2',
-                size === 'xs' ? 'text-xs' : 'text-sm',
-              )}
-            >
-              <span className="truncate">{item.label}</span>
-              {item.icon && (
-                <div className="flex size-4 shrink-0 items-center justify-center">
-                  {item.icon}
-                </div>
-              )}
-            </div>
-          </SelectBase.ItemText>
-
-          {item.action && (
-            <button
-              type="button"
-              className={cn(
-                'col-start-3 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
-                item.action.showOnHover &&
-                  'opacity-0 group-hover/item:opacity-100',
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                item.action?.onClick(String(item.value), e);
-              }}
-            >
-              {item.action.icon}
-            </button>
-          )}
-        </SelectBase.Item>
-      );
-
-      if (item.tooltipComponent) {
-        const TooltipComponent = item.tooltipComponent;
-        return <TooltipComponent item={item}>{Row}</TooltipComponent>;
-      }
-
-      return Row;
-    },
-    [size, sizes.item, handleItemHover],
-  );
-
   return (
     <SelectBase.Root
       {...props}
@@ -489,35 +411,111 @@ export const SearchableSelect = ({
                   No results
                 </div>
               )}
-              {flatList.length > 0 &&
-                (needsVirtualization ? (
-                  <Virtuoso
-                    className={listClassName}
-                    style={{ height: MAX_LIST_HEIGHT }}
-                    data={flatList}
-                    overscan={100}
-                    itemContent={(_index, entry) => renderFlatEntry(entry)}
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      'flex max-h-48 flex-col overflow-y-auto',
-                      listClassName,
+              {filteredItems.length > 0 && (
+                <div
+                  ref={listRef}
+                  className={cn('max-h-48 overflow-y-auto', listClassName)}
+                >
+                  <SelectBase.List className="flex flex-col gap-0.5">
+                    {groupedFilteredItems.map(
+                      ({ group, items: groupItems }, groupIndex) => (
+                        <div key={group ?? `ungrouped-${groupIndex}`}>
+                          {group && (
+                            <div className="shrink-0 px-2 py-1 font-normal text-subtle-foreground text-xs">
+                              {group}
+                            </div>
+                          )}
+                          {groupItems.map((gItem) => {
+                            const hasTooltip = !!(
+                              gItem.tooltipContent || gItem.tooltipComponent
+                            );
+
+                            const Row = (
+                              <SelectBase.Item
+                                key={String(gItem.value)}
+                                value={String(gItem.value)}
+                                className={cn(
+                                  'group/item grid w-full min-w-24 cursor-default items-center gap-2 rounded-md bg-background text-foreground outline-none transition-colors duration-150 ease-out hover:bg-hover-derived',
+                                  gItem.action
+                                    ? 'grid-cols-[0.75rem_1fr_auto]'
+                                    : 'grid-cols-[0.75rem_1fr]',
+                                  sizes.item[size],
+                                )}
+                                onMouseEnter={
+                                  hasTooltip
+                                    ? (e) => handleItemHover(gItem, e)
+                                    : undefined
+                                }
+                                onFocus={() => searchInputRef.current?.focus()}
+                              >
+                                <SelectBase.ItemIndicator className="col-start-1 shrink-0">
+                                  <CheckIcon className="size-full text-muted-foreground" />
+                                </SelectBase.ItemIndicator>
+
+                                <SelectBase.ItemText className="col-start-2 flex flex-row items-center justify-between gap-4">
+                                  <div
+                                    className={cn(
+                                      'flex min-w-0 flex-row items-center gap-2',
+                                      size === 'xs' ? 'text-xs' : 'text-sm',
+                                    )}
+                                  >
+                                    <span className="truncate">
+                                      {gItem.label}
+                                    </span>
+                                    {gItem.icon && (
+                                      <div className="flex size-4 shrink-0 items-center justify-center">
+                                        {gItem.icon}
+                                      </div>
+                                    )}
+                                  </div>
+                                </SelectBase.ItemText>
+
+                                {gItem.action && (
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      'col-start-3 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground',
+                                      gItem.action.showOnHover &&
+                                        'opacity-0 group-hover/item:opacity-100',
+                                    )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      gItem.action?.onClick(
+                                        String(gItem.value),
+                                        e,
+                                      );
+                                    }}
+                                  >
+                                    {gItem.action.icon}
+                                  </button>
+                                )}
+                              </SelectBase.Item>
+                            );
+
+                            if (gItem.tooltipComponent) {
+                              const Comp = gItem.tooltipComponent;
+                              return (
+                                <Comp key={String(gItem.value)} item={gItem}>
+                                  {Row}
+                                </Comp>
+                              );
+                            }
+
+                            return Row;
+                          })}
+                        </div>
+                      ),
                     )}
-                  >
-                    {flatList.map((entry) => (
-                      <div
-                        key={
-                          entry.type === 'group-header'
-                            ? `group-${entry.group}`
-                            : String(entry.item.value)
-                        }
-                      >
-                        {renderFlatEntry(entry)}
-                      </div>
-                    ))}
-                  </div>
-                ))}
+                  </SelectBase.List>
+                  {onEndReached && (
+                    <div
+                      ref={sentinelRef}
+                      aria-hidden="true"
+                      className="h-px shrink-0"
+                    />
+                  )}
+                </div>
+              )}
             </SelectBase.Popup>
 
             {/* Side panel for tooltip content */}
@@ -539,4 +537,4 @@ export const SearchableSelect = ({
       </SelectBase.Portal>
     </SelectBase.Root>
   );
-};
+});

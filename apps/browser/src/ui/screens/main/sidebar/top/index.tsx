@@ -23,7 +23,7 @@ import { Select, type SelectItem } from '@stagewise/stage-ui/components/select';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import TimeAgo from 'react-timeago';
 import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
 import { HotkeyComboText } from '@/components/hotkey-combo-text';
@@ -63,10 +63,12 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     (s) => s.userExperience.storedExperienceData.lastViewedChats,
   );
 
-  // Tick every minute to refresh time-ago labels and groupings
+  // Tick every 5 minutes to refresh time-ago labels and groupings.
+  // The labels (Today, Yesterday, 2 days ago…) don't change meaningfully every minute,
+  // so a 5-minute interval avoids a ~25-40ms chatSelectItems recomputation every 60s.
   const [timeTick, setTimeTick] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setTimeTick((t) => t + 1), 60_000);
+    const interval = setInterval(() => setTimeTick((t) => t + 1), 300_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -93,6 +95,13 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const [agentsList, setAgentsList] = useState<
     Awaited<ReturnType<typeof getAgentsHistoryList>>
   >([]);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const isLoadingMoreRef = useRef(false);
+  // Track the raw number of items fetched from the backend (before active-agent filtering)
+  // so that the offset for subsequent pages is correct.
+  const rawFetchedCountRef = useRef(0);
+
+  const PAGE_SIZE = 200;
 
   const activeAgentIds = useMemo(() => {
     return Object.keys(activeAgents);
@@ -103,12 +112,18 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     if (Object.keys(activeAgents).length === 0) {
       return;
     }
-    getAgentsHistoryList(0, 200).then((a) => {
-      setAgentsList(
-        a.filter((agent) => !Object.keys(activeAgents).includes(agent.id)),
+    // Reset pagination state on fresh fetch
+    setHasMoreHistory(true);
+    isLoadingMoreRef.current = false;
+    rawFetchedCountRef.current = 0;
+    getAgentsHistoryList(0, PAGE_SIZE).then((a) => {
+      rawFetchedCountRef.current = a.length;
+      const filtered = a.filter(
+        (agent) => !Object.keys(activeAgents).includes(agent.id),
       );
+      setAgentsList(filtered);
+      if (a.length < PAGE_SIZE) setHasMoreHistory(false);
     });
-    // TODO: Later, we can add pagination...
   }, [activeAgentIds]);
 
   // If the open agent isn't active anymore, we need to update the open agent to the first active agent.
@@ -118,15 +133,32 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     }
   }, [openAgent, activeAgents]);
 
-  // Mark the chat as viewed when the user opens it and when they leave it
-  // The cleanup ensures that if the assistant responds while the chat is open,
-  // we update lastViewedAt when leaving so it doesn't show as "unseen"
+  // FIX 1: Defer markChatAsViewed to avoid triggering a re-render cascade during chat switch.
+  // Uses requestIdleCallback (with setTimeout fallback) so the lastViewedChats state update
+  // happens after the browser has finished painting the new chat, not during the switch.
   useEffect(() => {
-    if (openAgent) {
+    if (!openAgent) return;
+    const schedule =
+      typeof requestIdleCallback === 'function'
+        ? requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 150);
+    const cancel =
+      typeof cancelIdleCallback === 'function'
+        ? cancelIdleCallback
+        : clearTimeout;
+    const id = schedule(() => {
       void markChatAsViewed(openAgent);
-    }
+    });
     return () => {
-      if (openAgent) void markChatAsViewed(openAgent);
+      cancel(id as number);
+      // Still mark on cleanup (when leaving chat) but deferred
+      if (openAgent) {
+        const cleanupId = schedule(() => {
+          void markChatAsViewed(openAgent);
+        });
+        // Can't cancel cleanup from here, but it's fire-and-forget
+        void cleanupId;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when openAgent changes, not when procedure reference changes
   }, [openAgent]);
@@ -183,7 +215,30 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   // Get draft getter from context (provided by panel-footer)
   const { getDraft } = useChatDraft();
 
-  // Convert grouped chats to flat items with group property for SearchableSelect
+  // Use refs for values only needed inside callbacks (not during render).
+  // deleteAgent/agentsList are used in onClick handlers (only called on user interaction).
+  const deleteAgentRef = useRef(deleteAgent);
+  deleteAgentRef.current = deleteAgent;
+  const agentsListRef = useRef(agentsList);
+  agentsListRef.current = agentsList;
+  const openAgentRef = useRef(openAgent);
+  openAgentRef.current = openAgent;
+  const setAgentsListRef = useRef(setAgentsList);
+  setAgentsListRef.current = setAgentsList;
+
+  // Load more history entries when the user scrolls to the bottom of the list.
+  const loadMoreHistory = useCallback(() => {
+    if (!hasMoreHistory || isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    getAgentsHistoryList(rawFetchedCountRef.current, PAGE_SIZE).then((res) => {
+      rawFetchedCountRef.current += res.length;
+      isLoadingMoreRef.current = false;
+      if (res.length < PAGE_SIZE) setHasMoreHistory(false);
+
+      if (res.length > 0) setAgentsList((prev) => [...prev, ...res]);
+    });
+  }, [hasMoreHistory, getAgentsHistoryList]);
+
   const chatSelectItems = useMemo((): SearchableSelectItem[] => {
     const items: SearchableSelectItem[] = [];
     for (const [label, groupedAgents] of Object.entries(groupedChats)) {
@@ -196,11 +251,13 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
         // - Not the currently open chat
         // - Chats with at least one message
         const lastViewedAt = lastViewedChats[agent.id] ?? 0;
+        const hasTrackingEntry = agent.id in lastViewedChats;
         const lastMessageTime = new Date(agent.lastMessageAt).getTime();
         const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
         const isCurrentlyOpen = agent.id === openAgent;
         const hasMessages = agent.messageCount > 0;
         const hasUnseenUpdates =
+          hasTrackingEntry &&
           !isWorking &&
           !isCurrentlyOpen &&
           hasMessages &&
@@ -234,34 +291,25 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             icon: <IconTrash2Outline24 className="size-3" />,
             onClick: (value, e) => {
               e.stopPropagation();
-              void deleteAgent(value).catch((e) => console.error(e));
-              setAgentsList(agentsList.filter((agent) => agent.id !== value));
+              void deleteAgentRef.current(value).catch((e) => console.error(e));
+              setAgentsListRef.current(
+                agentsListRef.current.filter((agent) => agent.id !== value),
+              );
             },
             showOnHover: true,
           },
         });
       }
     }
-    // Add "Load more" item if there are more chats available
-    if (agentsList.length % 200 === 0) {
-      items.push({
-        value: '__load_more__',
-        label: (
-          <span className="text-muted-foreground text-xs">Load more...</span>
-        ),
-        searchText: '',
-        group: '',
-      });
-    }
     return items;
-  }, [groupedChats, deleteAgent, minimalFormatter, lastViewedChats]);
+  }, [groupedChats, minimalFormatter, lastViewedChats, openAgent]);
 
   // Helper to create a new chat and focus the input
   const createAgentAndFocus = useCallback(async () => {
     const currentInputState = getDraft();
     const newAgent = await createAgent(currentInputState || undefined);
     setOpenAgent(newAgent);
-    void getAgentsHistoryList(0, 200).then(setAgentsList);
+    void getAgentsHistoryList(0, PAGE_SIZE).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
   }, [createAgent, getDraft, getAgentsHistoryList]);
 
@@ -270,22 +318,19 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     if (showNewChatButton) void createAgentAndFocus();
   }, HotkeyActions.NEW_CHAT);
 
+  const resumeAgentRef = useRef(resumeAgent);
+  resumeAgentRef.current = resumeAgent;
+
   const handleAgentSelect = useCallback(
     (value: string | null) => {
       if (!value) return;
-      if (value === '__load_more__') {
-        void getAgentsHistoryList(agentsList.length, 200).then((res) => {
-          setAgentsList([...agentsList, ...res]);
-        });
-        return;
-      }
-      if (value !== openAgent) {
-        resumeAgent(value).then(() => {
+      if (value !== openAgentRef.current) {
+        resumeAgentRef.current(value).then(() => {
           setOpenAgent(value);
         });
       }
     },
-    [openAgent, setOpenAgent, resumeAgent, getAgentsHistoryList, agentsList],
+    [setOpenAgent],
   );
 
   // Build menu items for the options dropdown
@@ -397,34 +442,11 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             </Tooltip>
           )}
           {showChatListButton && (
-            <SearchableSelect
-              items={chatSelectItems}
-              value={openAgent}
-              onValueChange={(value) =>
-                handleAgentSelect(value as string | null)
-              }
-              side="bottom"
-              sideOffset={8}
-              size="xs"
-              popupClassName="min-w-56"
-              listClassName="scrollbar-hover-only"
-              customTrigger={(triggerProps) => (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Button
-                      {...triggerProps}
-                      variant="ghost"
-                      size="icon-xs"
-                      className="app-no-drag shrink-0"
-                    >
-                      <IconHistoryFill18 className="size-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <span>Show recent chats</span>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+            <MemoizedChatList
+              chatSelectItems={chatSelectItems}
+              openAgent={openAgent}
+              handleAgentSelect={handleAgentSelect}
+              onEndReached={loadMoreHistory}
             />
           )}
           <Select
@@ -459,6 +481,49 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     </div>
   );
 }
+
+const MemoizedChatList = memo(function MemoizedChatList({
+  chatSelectItems,
+  openAgent,
+  handleAgentSelect,
+  onEndReached,
+}: {
+  chatSelectItems: SearchableSelectItem[];
+  openAgent: string | null;
+  handleAgentSelect: (value: string | null) => void;
+  onEndReached?: () => void;
+}) {
+  return (
+    <SearchableSelect
+      items={chatSelectItems}
+      value={openAgent}
+      onValueChange={(value) => handleAgentSelect(value as string | null)}
+      side="bottom"
+      sideOffset={8}
+      size="xs"
+      popupClassName="min-w-56"
+      listClassName="scrollbar-hover-only"
+      onEndReached={onEndReached}
+      customTrigger={(triggerProps) => (
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              {...triggerProps}
+              variant="ghost"
+              size="icon-xs"
+              className="app-no-drag shrink-0"
+            >
+              <IconHistoryFill18 className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <span>Show recent chats</span>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    />
+  );
+});
 
 type TimeAgoLabel = string;
 
