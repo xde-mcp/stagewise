@@ -288,6 +288,15 @@ export class HighlightCache {
     this.hydrateFromStorage();
     return this.cache.size;
   }
+
+  /**
+   * Proactively hydrates the cache from localStorage.
+   * Call this during idle time to avoid the ~26ms synchronous JSON.parse
+   * blocking the first code block render.
+   */
+  warmup(): void {
+    this.hydrateFromStorage();
+  }
 }
 
 // Store on window to survive Hot Module Replacement (HMR) during development
@@ -300,10 +309,20 @@ declare global {
 /**
  * Returns the global HighlightCache singleton instance.
  * The instance survives HMR during development via window global.
+ *
+ * On first creation, schedules an idle-time warmup to hydrate the cache
  */
 export function getHighlightCache(): HighlightCache {
-  if (!window.__stagewise_highlight_cache)
+  if (!window.__stagewise_highlight_cache) {
     window.__stagewise_highlight_cache = new HighlightCache();
+
+    // FIX 6: Proactively hydrate cache during idle time instead of
+    // lazily on first code block render (which blocks for ~26ms).
+    const cache = window.__stagewise_highlight_cache;
+    if (typeof requestIdleCallback === 'function')
+      requestIdleCallback(() => cache.warmup());
+    else setTimeout(() => cache.warmup(), 200);
+  }
 
   return window.__stagewise_highlight_cache;
 }
