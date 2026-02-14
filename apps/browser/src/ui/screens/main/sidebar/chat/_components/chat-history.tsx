@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useLayoutEffect,
 } from 'react';
-import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
+import { Virtuoso } from 'react-virtuoso';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { MessageUser } from './message-user';
 import { MessageAssistant } from './message-assistant';
@@ -51,7 +51,6 @@ function getMessageTextContent(message: AgentMessage): string {
 }
 
 export const ChatHistory = () => {
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [containerHeight, setContainerHeight] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const scrollbarWidth = useScrollbarWidth();
@@ -375,11 +374,6 @@ export const ChatHistory = () => {
     });
   }, [filteredMessages, containerWidth, containerHeight, isWorking]);
 
-  // Clean up cache when agent changes
-  useEffect(() => {
-    heightCacheRef.current.clear();
-  }, [openAgent]);
-
   // Calculate average estimated height for defaultItemHeight
 
   // Track when user sends a message - we'll enable auto-scroll once the message is in DOM
@@ -666,7 +660,6 @@ export const ChatHistory = () => {
         style={{ scrollbarGutter: 'stable' }}
         key={openAgent ?? 'no-chat'}
         data={filteredMessages}
-        ref={virtuosoRef}
         className="scrollbar-hover-only virtuoso-contain -mr-[2px]"
         scrollerRef={scrollerRef}
         increaseViewportBy={{ top: 400, bottom: 400 }} // Render items above and below viewport
