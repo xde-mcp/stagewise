@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import type { FileUIPart } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
 import { generateId } from '@/utils';
@@ -45,6 +46,10 @@ export function fileUIPartToFileAttachment(
       '[fileUIPartToFileAttachment] Failed to convert file part to file attachment:',
       e,
     );
+    posthog.captureException(e instanceof Error ? e : new Error(String(e)), {
+      source: 'renderer',
+      operation: 'fileUIPartToFileAttachment',
+    });
     return null;
   }
 }
@@ -71,6 +76,10 @@ export async function fileAttachmentToFileUIPart(
       '[fileAttachmentToFileUIPart] Failed to convert file attachment to file part:',
       e,
     );
+    posthog.captureException(e instanceof Error ? e : new Error(String(e)), {
+      source: 'renderer',
+      operation: 'fileAttachmentToFileUIPart',
+    });
     return null;
   }
 }

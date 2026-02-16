@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import { StatusCard } from './footer-status-card';
 import type { SelectedElement } from '@shared/selected-elements';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
@@ -347,6 +348,10 @@ export function ChatPanelFooter() {
         }),
       );
       console.error('Failed to send message:', error);
+      posthog.captureException(
+        error instanceof Error ? error : new Error(String(error)),
+        { source: 'renderer', operation: 'sendChatMessage' },
+      );
     }
   }, [
     localInputState,

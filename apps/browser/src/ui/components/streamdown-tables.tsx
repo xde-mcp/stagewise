@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import {
   memo,
   useState,
@@ -78,6 +79,10 @@ const TableComponent = ({ className, children, ...props }: TableProps) => {
       );
     } catch (err) {
       console.error('Failed to copy table:', err);
+      posthog.captureException(
+        err instanceof Error ? err : new Error(String(err)),
+        { source: 'renderer', operation: 'copyTableCSV' },
+      );
     }
   }, [getTableData, toCSV]);
 

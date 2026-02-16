@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import type { MermaidConfig } from 'mermaid';
 import { useEffect, useState } from 'react';
 import { cn } from '@/utils';
@@ -57,6 +58,10 @@ export const Mermaid = ({ chart, className, config }: MermaidProps) => {
       } catch (err) {
         // Silently fail and keep the last valid SVG
         // Don't update svgContent here - just keep what we have
+        posthog.captureException(
+          err instanceof Error ? err : new Error(String(err)),
+          { source: 'renderer', operation: 'mermaidRender' },
+        );
 
         // Only set error if we don't have any valid SVG
         if (!(lastValidSvg || svgContent)) {

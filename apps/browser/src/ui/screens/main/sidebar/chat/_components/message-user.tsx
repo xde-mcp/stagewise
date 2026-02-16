@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import {
   fileAttachmentToFileUIPart,
   selectedElementToAttachmentAttributes,
@@ -294,6 +295,10 @@ export const MessageUser = memo(
         // The atomic operation completes before state updates trigger re-render
       } catch (error) {
         console.warn('Failed to edit message:', error);
+        posthog.captureException(
+          error instanceof Error ? error : new Error(String(error)),
+          { source: 'renderer', operation: 'editChatMessage' },
+        );
         // Remove the optimistic message on failure
         window.dispatchEvent(
           new CustomEvent('chat-message-failed', {

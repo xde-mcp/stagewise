@@ -60,6 +60,7 @@ export default defineConfig({
   },
   build: {
     outDir: path.resolve(__dirname, '.vite/renderer/pages'),
+    sourcemap: 'hidden',
     rollupOptions: {
       external: ['serialport', 'sqlite3'],
     },

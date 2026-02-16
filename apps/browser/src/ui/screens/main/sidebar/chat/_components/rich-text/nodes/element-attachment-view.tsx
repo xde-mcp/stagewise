@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import { ChevronLeft, SquareDashedMousePointer } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { getTruncatedFileUrl } from '@ui/utils';
@@ -164,6 +165,10 @@ function ElementPreviewContent({
       }, 100);
     } catch (error) {
       console.error('Failed to scroll to element:', error);
+      posthog.captureException(
+        error instanceof Error ? error : new Error(String(error)),
+        { source: 'renderer', operation: 'scrollToElement' },
+      );
     }
   }, [
     isElementLocationValid,

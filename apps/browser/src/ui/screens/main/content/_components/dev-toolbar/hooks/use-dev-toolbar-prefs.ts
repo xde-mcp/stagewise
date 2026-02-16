@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
@@ -123,6 +124,10 @@ export function useOriginSettings(tabUrl: string | undefined) {
           '[useOriginSettings] Failed to get/create settings:',
           err,
         );
+        posthog.captureException(
+          err instanceof Error ? err : new Error(String(err)),
+          { source: 'renderer', operation: 'loadToolbarPrefs' },
+        );
       });
     }
   }, [origin, originSettings, getOrCreateOriginSettings]);
@@ -132,6 +137,10 @@ export function useOriginSettings(tabUrl: string | undefined) {
       if (!origin) return;
       updateOriginSettings(origin, settings).catch((err) => {
         console.error('[useOriginSettings] Failed to update settings:', err);
+        posthog.captureException(
+          err instanceof Error ? err : new Error(String(err)),
+          { source: 'renderer', operation: 'saveToolbarPrefs' },
+        );
       });
     },
     [origin, updateOriginSettings],

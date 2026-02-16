@@ -1,5 +1,6 @@
 'use client';
 
+import posthog from 'posthog-js';
 import { type HTMLAttributes, useEffect, useRef, useState, memo } from 'react';
 import {
   type BundledLanguage,
@@ -381,6 +382,10 @@ export const CodeBlock = memo(
         })
         .catch((error) => {
           console.warn('CodeBlock: Highlighting failed', error);
+          posthog.captureException(
+            error instanceof Error ? error : new Error(String(error)),
+            { source: 'renderer', operation: 'shikiHighlight' },
+          );
         });
 
       return () => {

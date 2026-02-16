@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import type { JSONContent } from '@tiptap/core';
 import { MarkdownManager } from '@tiptap/markdown';
 import { Document } from '@tiptap/extension-document';
@@ -45,6 +46,10 @@ export function markdownToTipTapContent(markdown: string): JSONContent {
     return manager.parse(markdown);
   } catch (error) {
     console.warn('[markdownToTipTapContent] Parse error:', error);
+    posthog.captureException(
+      error instanceof Error ? error : new Error(String(error)),
+      { source: 'renderer', operation: 'markdownToTipTap' },
+    );
     // Fallback to simple text content on parse error
     return {
       type: 'doc',

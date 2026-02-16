@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import { defaultRehypePlugins, Streamdown as StreamdownBase } from 'streamdown';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { CodeBlock } from '../ui/code-block';
@@ -612,6 +613,10 @@ const ImgComponent = ({
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download image:', err);
+      posthog.captureException(
+        err instanceof Error ? err : new Error(String(err)),
+        { source: 'renderer', operation: 'downloadImage' },
+      );
     }
   }, [src]);
 

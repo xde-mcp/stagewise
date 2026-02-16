@@ -27,9 +27,33 @@
  */
 import { createElement, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import posthog from 'posthog-js';
 import '@/app.css';
 import { App } from '@/app';
 import { initThemeColorSync } from '@/utils/theme-color-sync';
+
+// Global safety net: capture unhandled errors and rejections to PostHog
+window.addEventListener('error', (event) => {
+  posthog.captureException(event.error ?? event, {
+    source: 'renderer',
+    handler: 'globalOnError',
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+  });
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const error =
+    event.reason instanceof Error
+      ? event.reason
+      : new Error(String(event.reason));
+  posthog.captureException(error, {
+    source: 'renderer',
+    handler: 'unhandledRejection',
+  });
+});
 
 // Initialize theme color sync for dev mode HMR
 initThemeColorSync();
@@ -41,4 +65,8 @@ try {
   );
 } catch (error) {
   console.error(error);
+  posthog.captureException(
+    error instanceof Error ? error : new Error(String(error)),
+    { source: 'renderer', handler: 'reactRootRender' },
+  );
 }

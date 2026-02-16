@@ -109,7 +109,7 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
                     : 'primary'
                   : 'secondary'
               }
-              size="md"
+              size="sm"
               onClick={action.onClick}
             >
               {action.label}
@@ -125,7 +125,7 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
                       ? 'destructive'
                       : 'primary'
                     : 'secondary',
-                size: 'md',
+                size: 'sm',
               })}
             >
               {action.label}

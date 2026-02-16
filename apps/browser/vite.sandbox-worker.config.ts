@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   build: {
     target: 'esnext',
+    sourcemap: 'hidden',
     lib: {
       formats: ['cjs'],
       entry: 'src/backend/services/sandbox/sandbox-worker.ts',

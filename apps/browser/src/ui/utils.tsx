@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import type { UserMessageMetadata } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
 import { extractTextClipsFromTiptapContent } from '@ui/screens/main/sidebar/chat/_components/rich-text';
@@ -94,6 +95,10 @@ export const getDataUriForData = (data: string) => {
     return URL.createObjectURL(blob);
   } catch (error) {
     console.error('Failed to create blob URL from base64 data:', error);
+    posthog.captureException(
+      error instanceof Error ? error : new Error(String(error)),
+      { source: 'renderer', operation: 'getDataUriForData' },
+    );
     return '';
   }
 };
@@ -225,6 +230,10 @@ export const openFileUrl = async (url: string, filename?: string) => {
     }
   } catch (error) {
     console.error('Failed to open file URL:', error);
+    posthog.captureException(
+      error instanceof Error ? error : new Error(String(error)),
+      { source: 'renderer', operation: 'openFileUrl' },
+    );
     // Fallback to regular window.open with security flags
     window.open(url, '_blank', 'noopener,noreferrer');
   }
@@ -463,6 +472,10 @@ export async function imageUrlToFile(imageUrl: string): Promise<File | null> {
     }
   } catch (err) {
     console.warn('Failed to convert image URL to file:', err);
+    posthog.captureException(
+      err instanceof Error ? err : new Error(String(err)),
+      { source: 'renderer', operation: 'imageUrlToFile' },
+    );
     return null;
   }
 }

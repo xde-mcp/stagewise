@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import { WorkspaceInfoBadge } from './_components/workspace-info';
 import { cn } from '@/utils';
 import {
@@ -291,7 +292,13 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             icon: <IconTrash2Outline24 className="size-3" />,
             onClick: (value, e) => {
               e.stopPropagation();
-              void deleteAgentRef.current(value).catch((e) => console.error(e));
+              void deleteAgentRef.current(value).catch((e) => {
+                console.error(e);
+                posthog.captureException(
+                  e instanceof Error ? e : new Error(String(e)),
+                  { source: 'renderer', operation: 'deleteAgent' },
+                );
+              });
               setAgentsListRef.current(
                 agentsListRef.current.filter((agent) => agent.id !== value),
               );
