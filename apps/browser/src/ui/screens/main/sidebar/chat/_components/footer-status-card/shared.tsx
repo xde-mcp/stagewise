@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/utils';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
+import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 
 /** Extract text content from a AgentMessage's parts */
@@ -65,6 +67,17 @@ export function StatusCardSectionComponent({
   showDivider: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(item.defaultOpen ?? true);
+  const [viewport, setViewport] = useState<HTMLElement | null>(null);
+
+  const viewportRef = useMemo(
+    () => ({ current: viewport }),
+    [viewport],
+  ) as React.RefObject<HTMLElement>;
+
+  const { maskStyle } = useScrollFadeMask(viewportRef, {
+    axis: 'vertical',
+    fadeDistance: 16,
+  });
 
   return (
     <div className="w-full">
@@ -77,9 +90,18 @@ export function StatusCardSectionComponent({
         </CollapsibleTrigger>
         {item.content && (
           <CollapsibleContent
-            className={cn('w-full overflow-hidden', item.contentClassName)}
+            className={cn('w-full duration-0!', item.contentClassName)}
           >
-            {item.content}
+            <OverlayScrollbar
+              className="mask-alpha max-h-48"
+              style={maskStyle}
+              options={{
+                overflow: { x: 'hidden', y: 'scroll' },
+              }}
+              onViewportRef={setViewport}
+            >
+              {item.content}
+            </OverlayScrollbar>
           </CollapsibleContent>
         )}
       </Collapsible>
