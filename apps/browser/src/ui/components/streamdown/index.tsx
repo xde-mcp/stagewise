@@ -32,7 +32,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { usePostHog } from 'posthog-js/react';
 import {
   MemoTable,
   MemoThead,
@@ -438,7 +437,6 @@ type MarkdownNode = {
 const CodeBlockCopyButton = ({ code }: { code: string }) => {
   const [hasCopied, setHasCopied] = useState(false);
   const logoResetTimeoutRef = useRef<number | null>(null);
-  const posthog = usePostHog();
   const copyToClipboard = () => {
     navigator.clipboard.writeText(code);
     setHasCopied(true);
@@ -449,7 +447,6 @@ const CodeBlockCopyButton = ({ code }: { code: string }) => {
       () => setHasCopied(false),
       2000,
     ) as unknown as number;
-    posthog?.capture('agent_copied_code_to_clipboard');
   };
 
   return (

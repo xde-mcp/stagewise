@@ -27,7 +27,6 @@ import {
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
 import { HotkeyComboText } from '@/components/hotkey-combo-text';
-import { usePostHog } from 'posthog-js/react';
 import {
   configureAttachmentExtensions,
   ALL_ATTACHMENT_NODE_NAMES,
@@ -514,8 +513,6 @@ export function ChatInputActions({
   onSubmit,
   isActive = true,
 }: ChatInputActionsProps) {
-  const posthog = usePostHog();
-
   // Derive button visibility from agent state and input text
   // Show stop button when: agent is working AND no text input
   // Show send button when: agent is not working OR has text input
@@ -586,10 +583,6 @@ export function ChatInputActions({
                       (e.target as HTMLInputElement).files ?? [],
                     ).forEach((file) => {
                       onAddFileAttachment(file);
-                      posthog.capture('agent_file_uploaded', {
-                        file_type: file.type,
-                        method: 'chat_file_attachment_menu',
-                      });
                     });
                   };
                 }}

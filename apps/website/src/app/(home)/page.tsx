@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { IconGithub } from 'nucleo-social-media';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
-import { usePostHog } from 'posthog-js/react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import agentIdeIntegrationDark from './_components/feature-images/agent-ide-integration-dark.png';
@@ -249,7 +248,6 @@ function NewsSection() {
 }
 
 export default function Home() {
-  const posthog = usePostHog();
   const [starCount, setStarCount] = useState<number | null>(null);
 
   // Fetch GitHub star count
@@ -315,7 +313,6 @@ export default function Home() {
                   </form>
                   <a
                     href="https://github.com/stagewise-io/stagewise"
-                    onClick={() => posthog?.capture('hero_github_star_click')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={buttonVariants({ variant: 'ghost', size: 'lg' })}

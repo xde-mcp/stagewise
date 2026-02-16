@@ -2,7 +2,6 @@ import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
 import { DiffPreview } from './shared/diff-preview';
 import { FileIcon } from './shared/file-icon';
-import { usePostHog } from 'posthog-js/react';
 import {
   Loader2Icon,
   XIcon,
@@ -15,7 +14,6 @@ import { diffLines } from 'diff';
 import { useMemo, useState } from 'react';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { useKartonState } from '@/hooks/use-karton';
-import { IDE_SELECTION_ITEMS } from '@ui/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -50,8 +48,6 @@ export const MultiEditToolPart = ({
         : null,
     [outputWithDiff?._diff],
   );
-
-  const posthog = usePostHog();
 
   const newLineCount = useMemo(
     () =>
@@ -177,13 +173,6 @@ export const MultiEditToolPart = ({
                   variant="ghost"
                   size="xs"
                   onClick={() => {
-                    posthog.capture(
-                      'agent_code_diff_expanded_via_multi_edit_tool',
-                      {
-                        file_path: part.input?.relative_path ?? '',
-                        ide: IDE_SELECTION_ITEMS[openInIdeSelection],
-                      },
-                    );
                     setCollapsedDiffView(!collapsedDiffView);
                   }}
                 >
@@ -203,15 +192,6 @@ export const MultiEditToolPart = ({
                 part.input?.relative_path ?? '',
                 firstLineNumberEdited,
               )}
-              onClick={() => {
-                posthog.capture(
-                  'agent_file_opened_in_ide_via_multi_edit_tool',
-                  {
-                    file_path: part.input?.relative_path ?? '',
-                    ide: IDE_SELECTION_ITEMS[openInIdeSelection],
-                  },
-                );
-              }}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(

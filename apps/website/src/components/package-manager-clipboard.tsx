@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { CopyIcon, CheckIcon, ChevronDownIcon } from 'lucide-react';
-import { usePostHog } from 'posthog-js/react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import {
   Menu,
@@ -28,16 +27,12 @@ const packageManagerLabels: Record<PackageManager, string> = {
 export function PackageManagerClipboard() {
   const [copied, setCopied] = useState(false);
   const [selectedPM, setSelectedPM] = useState<PackageManager>('npm');
-  const posthog = usePostHog();
 
   const handleCopy = async () => {
     try {
       const command = packageManagerCommands[selectedPM];
       await navigator.clipboard.writeText(command);
       setCopied(true);
-      posthog?.capture('quickstart_toolbar_copy_click', {
-        package_manager: selectedPM,
-      });
       setTimeout(() => setCopied(false), 1500);
     } catch (_e) {
       // Optionally handle error
@@ -46,7 +41,6 @@ export function PackageManagerClipboard() {
 
   const handlePackageManagerSelect = (pm: PackageManager) => {
     setSelectedPM(pm);
-    posthog?.capture('package_manager_selected', { package_manager: pm });
   };
 
   return (

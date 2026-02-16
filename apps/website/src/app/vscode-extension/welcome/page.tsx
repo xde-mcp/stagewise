@@ -1,21 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CopyIcon, CheckIcon } from 'lucide-react';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
-import { usePostHog } from 'posthog-js/react';
 import { Logo } from '@/components/landing/logo';
 import { AnimatedGradientBackground } from '@/components/landing/animated-gradient-background';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@/lib/utils';
 
 export default function MigrateToCLI() {
-  const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    posthog?.capture('migration_page_viewed');
-  }, [posthog]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-black dark:text-white">
@@ -32,7 +26,7 @@ export default function MigrateToCLI() {
                 />
               </div>
               <h1 className="mb-6 font-bold text-2xl tracking-tight md:text-4xl">
-                <span className="bg-gradient-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
+                <span className="bg-linear-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
                   Welcome to stagewise!
                 </span>
               </h1>
@@ -97,9 +91,6 @@ export default function MigrateToCLI() {
                               { command: 'openTerminal' },
                               '*',
                             );
-                            posthog?.capture(
-                              'open_terminal_in_getting_started',
-                            );
                             setCopied(true);
                             setTimeout(() => setCopied(false), 4000);
                           }}
@@ -152,7 +143,6 @@ export default function MigrateToCLI() {
                     },
                     '*',
                   );
-                  posthog?.capture('discord_link_clicked');
                 }}
                 className="gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >

@@ -584,14 +584,13 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   })
     .then((result) => {
       if (!result.success) {
-        telemetryService.capture('cli-ripgrep-installation-failed', {
-          error: result.error ?? 'Unknown error',
-        });
+        telemetryService.captureException(
+          new Error(result.error ?? 'Unknown error'),
+        );
         logger.warn(
           `Ripgrep installation failed: ${result.error}. Grep/glob operations will use slower Node.js implementations.`,
         );
       } else {
-        telemetryService.capture('cli-ripgrep-installation-succeeded');
         if (verbose)
           logger.debug('Ripgrep is available for grep/glob operations');
       }
@@ -600,6 +599,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       logger.warn(
         `Ripgrep installation failed: ${error}. Grep/glob operations will use slower Node.js implementations.`,
       );
+      telemetryService.captureException(error as Error);
     });
 
   logger.debug('[Main] Global services bootstrapped');

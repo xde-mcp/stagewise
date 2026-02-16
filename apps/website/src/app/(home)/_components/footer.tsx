@@ -3,10 +3,8 @@
 import Link from 'next/link';
 
 import { ExternalLink } from 'lucide-react';
-import { usePostHog } from 'posthog-js/react';
 
 export function Footer() {
-  const posthog = usePostHog();
   return (
     <footer className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12">
       <div className="flex flex-col items-center justify-between md:flex-row">
@@ -20,9 +18,6 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center text-sm text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300"
-            onClick={() =>
-              posthog?.capture('footer_link_click', { destination: 'yc' })
-            }
           >
             Backed by{' '}
             <span className="mr-1 ml-2 inline-flex size-4 items-center justify-center bg-[#f26622] font-normal text-white text-xs">
@@ -37,9 +32,6 @@ export function Footer() {
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() =>
-              posthog?.capture('footer_link_click', { destination: 'github' })
-            }
           >
             GitHub
             <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />
@@ -49,11 +41,6 @@ export function Footer() {
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() =>
-              posthog?.capture('footer_link_click', {
-                destination: 'discord',
-              })
-            }
           >
             Discord
             <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />
@@ -63,11 +50,6 @@ export function Footer() {
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() =>
-              posthog?.capture('footer_link_click', {
-                destination: 'x',
-              })
-            }
           >
             X
             <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />
@@ -77,11 +59,6 @@ export function Footer() {
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() =>
-              posthog?.capture('footer_link_click', {
-                destination: 'linkedin',
-              })
-            }
           >
             LinkedIn
             <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />
@@ -91,11 +68,6 @@ export function Footer() {
             className="group flex items-center text-zinc-900 transition-colors dark:text-white"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() =>
-              posthog?.capture('footer_link_click', {
-                destination: 'contact',
-              })
-            }
           >
             Contact
             <ExternalLink className="ml-1 h-3 w-3 opacity-100 transition-opacity" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   CopyIcon,
   CheckIcon,
@@ -9,19 +9,13 @@ import {
 } from 'lucide-react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
-import { usePostHog } from 'posthog-js/react';
 import { Logo } from '@/components/landing/logo';
 import { AnimatedGradientBackground } from '@/components/landing/animated-gradient-background';
 
 export default function MigrateToCLI() {
-  const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
   const [terminalStarted, setTerminalStarted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-
-  useEffect(() => {
-    posthog?.capture('migration_page_viewed');
-  }, [posthog]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-black dark:text-white">
@@ -38,7 +32,7 @@ export default function MigrateToCLI() {
                 />
               </div>
               <h1 className="mb-6 font-bold text-2xl tracking-tight md:text-4xl">
-                <span className="bg-gradient-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
+                <span className="bg-linear-to-tr from-zinc-900 via-zinc-700 to-black bg-clip-text text-transparent dark:from-zinc-100 dark:via-zinc-300 dark:to-white">
                   Your stagewise setup
                   <br />
                   needs an upgrade
@@ -122,7 +116,6 @@ export default function MigrateToCLI() {
                               { command: 'copyUninstallCommand' },
                               '*',
                             );
-                            posthog?.capture('copy_uninstall_command');
                             setCopied(true);
                             setTimeout(() => setCopied(false), 1500);
                           }}
@@ -209,7 +202,6 @@ export default function MigrateToCLI() {
                     },
                     '*',
                   );
-                  posthog?.capture('discord_link_clicked');
                 }}
                 className="inline-flex cursor-pointer items-center gap-2 border-none bg-transparent font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >

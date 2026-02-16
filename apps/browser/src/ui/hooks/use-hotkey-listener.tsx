@@ -7,13 +7,11 @@ import {
   type HotkeyActions,
 } from '@shared/hotkeys';
 import { shouldNativeInputConsumeEvent } from '@shared/native-input-events';
-import { usePostHog } from 'posthog-js/react';
 
 export function useHotKeyListener(
   action: () => void,
   hotKeyAction: HotkeyActions,
 ) {
-  const posthog = usePostHog();
   const platform = useMemo(() => getCurrentPlatform(), []);
   const definition = hotkeyDefinitions[hotKeyAction];
 
@@ -26,16 +24,12 @@ export function useHotKeyListener(
 
       // The first matching hotkey action will be executed and abort further processing of other hotkey actions.
       if (isEventMatch(ev, definition, platform)) {
-        posthog.capture('agent_select_elements_hotkey_pressed', {
-          hotkey_action: hotKeyAction,
-        });
-
         action();
         ev.stopPropagation();
         ev.preventDefault();
       }
     },
-    [action, platform, definition, hotKeyAction, posthog],
+    [action, platform, definition, hotKeyAction],
   );
 
   // Use capture phase for dominant hotkeys to ensure they work even when

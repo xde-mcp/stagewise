@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { CopyIcon, CheckIcon } from 'lucide-react';
-import { usePostHog } from 'posthog-js/react';
 import { cn } from '@/lib/utils';
 
 export function CopyMarkdownButton({
@@ -13,13 +12,11 @@ export function CopyMarkdownButton({
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const posthog = usePostHog();
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(content);
       setCopied(true);
-      posthog?.capture('docs_copy_markdown_click');
       setTimeout(() => setCopied(false), 2000);
     } catch (_e) {
       // Optionally handle error

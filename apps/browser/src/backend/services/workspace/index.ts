@@ -276,22 +276,6 @@ export class WorkspaceService extends DisposableService {
       });
       return null;
     });
-
-    this.telemetryService.capture('workspace-opened', {
-      codebase_line_count:
-        Object.values(
-          this.staticAnalysisService?.linesOfCodeCounts ?? {},
-        ).reduce((acc, curr) => acc + curr, 0) ?? 0,
-      dependency_count: Object.keys(
-        this.staticAnalysisService?.nodeDependencies,
-      ).length,
-      loading_method: loadedOnStart
-        ? pathGivenInStartingArg
-          ? 'on_start_with_arg'
-          : 'on_start'
-        : 'at_runtime_by_user_action',
-      initial_setup: false, // TODO: Check if PROJECT.md present in .stagewise directory
-    });
   }
 
   private async checkAndGenerateProjectMd(_clientRuntime: ClientRuntimeNode) {

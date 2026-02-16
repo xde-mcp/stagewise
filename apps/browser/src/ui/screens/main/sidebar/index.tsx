@@ -6,13 +6,11 @@ import {
 import { SidebarTopSection } from './top';
 import { useRef, useCallback, useState } from 'react';
 import { useEventListener } from '@/hooks/use-event-listener';
-import { usePostHog } from 'posthog-js/react';
 import { ChatDraftProvider } from '@/hooks/use-chat-draft';
 import { OpenAgentProvider } from '@/hooks/use-open-chat';
 
 export function Sidebar() {
   const panelRef = useRef<ImperativePanelHandle>(null);
-  const posthog = usePostHog();
   const previousSizeRef = useRef<number | null>(null);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -46,7 +44,6 @@ export function Sidebar() {
 
   useEventListener('sidebar-chat-panel-closed', () => {
     setIsCollapsed(true);
-    posthog?.capture('sidebar_collapsed');
   });
 
   return (
@@ -62,12 +59,10 @@ export function Sidebar() {
       onCollapse={() => {
         setIsCollapsed(true);
         handleCollapseChange(true);
-        posthog?.capture('sidebar_collapsed');
       }}
       onExpand={() => {
         setIsCollapsed(false);
         handleCollapseChange(false);
-        posthog?.capture('sidebar_expanded');
         // Restore previous size when expanding
         if (panelRef.current && previousSizeRef.current !== null) {
           // Use requestAnimationFrame to ensure the panel is expanded before resizing

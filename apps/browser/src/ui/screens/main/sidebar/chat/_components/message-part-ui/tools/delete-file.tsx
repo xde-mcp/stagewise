@@ -18,7 +18,6 @@ import {
 import { diffLines } from 'diff';
 import { cn } from '@/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
-import { usePostHog } from 'posthog-js/react';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 export const DeleteFileToolPart = ({
@@ -28,7 +27,6 @@ export const DeleteFileToolPart = ({
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [collapsedDiffView, setCollapsedDiffView] = useState(true);
-  const posthog = usePostHog();
 
   const outputWithDiff = part.output as
     | WithDiff<typeof part.output>
@@ -112,12 +110,6 @@ export const DeleteFileToolPart = ({
                 variant="ghost"
                 size="xs"
                 onClick={() => {
-                  posthog.capture(
-                    'agent_code_diff_expanded_via_delete_file_tool',
-                    {
-                      file_path: part.input?.relative_path ?? '',
-                    },
-                  );
                   setCollapsedDiffView(!collapsedDiffView);
                 }}
               >
@@ -135,7 +127,7 @@ export const DeleteFileToolPart = ({
         </div>
       );
     else return undefined;
-  }, [state, diff, collapsedDiffView, part.input?.relative_path, posthog]);
+  }, [state, diff, collapsedDiffView, part.input?.relative_path]);
 
   return (
     <ToolPartUI

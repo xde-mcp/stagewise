@@ -21,9 +21,7 @@ import { ToolPartUI } from './shared/tool-part-ui';
 import { diffLines } from 'diff';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 
-import { IDE_SELECTION_ITEMS } from '@ui/utils';
 import { useKartonState } from '@/hooks/use-karton';
-import { usePostHog } from 'posthog-js/react';
 import { IdeLogo } from '@/components/ide-logo';
 import {
   StreamingCodeBlock,
@@ -38,7 +36,6 @@ export const OverwriteFileToolPart = ({
   const [codeDiffCollapsed, setCodeDiffCollapsed] = useState(true);
   const [expanded, setExpanded] = useState(true);
   const { getFileIDEHref } = useFileIDEHref();
-  const posthog = usePostHog();
   const outputWithDiff = part.output as
     | WithDiff<typeof part.output>
     | undefined;
@@ -143,13 +140,6 @@ export const OverwriteFileToolPart = ({
                 variant="ghost"
                 size="xs"
                 onClick={() => {
-                  posthog.capture(
-                    'agent_code_diff_expanded_via_overwrite_file_tool',
-                    {
-                      file_path: part.input?.relative_path ?? '',
-                      ide: IDE_SELECTION_ITEMS[openInIdeSelection],
-                    },
-                  );
                   setCodeDiffCollapsed(!codeDiffCollapsed);
                 }}
               >
@@ -166,15 +156,6 @@ export const OverwriteFileToolPart = ({
           </Tooltip>
           <a
             href={getFileIDEHref(part.input?.relative_path ?? '')}
-            onClick={() => {
-              posthog.capture(
-                'agent_file_opened_in_ide_via_overwrite_file_tool',
-                {
-                  file_path: part.input?.relative_path ?? '',
-                  ide: IDE_SELECTION_ITEMS[openInIdeSelection],
-                },
-              );
-            }}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(

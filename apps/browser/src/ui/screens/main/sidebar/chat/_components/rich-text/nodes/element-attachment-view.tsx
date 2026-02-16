@@ -1,6 +1,5 @@
 import { ChevronLeft, SquareDashedMousePointer } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { usePostHog } from 'posthog-js/react';
 import { getTruncatedFileUrl } from '@ui/utils';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
@@ -61,7 +60,6 @@ function ElementPreviewContent({
 }: {
   element: SelectedElement | undefined;
 }) {
-  const posthog = usePostHog();
   const openInIdeSelection = useKartonState(
     (s) => s.globalConfig.openFilesInIde,
   );
@@ -320,16 +318,6 @@ function ElementPreviewContent({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex shrink basis-4/5 gap-1 break-all text-foreground text-sm hover:text-primary"
-                          onClick={() => {
-                            posthog.capture(
-                              'agent_file_opened_in_ide_via_element_context',
-                              {
-                                file_path: metadata.relativePath,
-                                ide: openInIdeSelection,
-                                line_number: metadata.startLine,
-                              },
-                            );
-                          }}
                         >
                           <IdeLogo
                             ide={openInIdeSelection}

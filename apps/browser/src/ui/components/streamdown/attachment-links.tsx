@@ -259,7 +259,7 @@ export const WorkspaceFileLink = ({
   lineNumber,
   incomplete,
 }: WorkspaceFileLinkProps) => {
-  const posthog = usePostHog();
+  const _posthog = usePostHog();
   const [openAgent] = useOpenAgent();
   const openInIdeChoice = useKartonState((s) => s.globalConfig.openFilesInIde);
   const ideName = IDE_SELECTION_ITEMS[openInIdeChoice];
@@ -285,12 +285,13 @@ export const WorkspaceFileLink = ({
       <TooltipTrigger>
         <a
           href={processedHref}
-          onClick={() =>
-            posthog?.capture('agent_file_opened_in_ide_via_chat_link', {
-              file_path: filePath,
-              ide: openInIdeChoice,
-            })
-          }
+          // onClick={() =>
+          // TODO: Implement all posthog analytics events we've decided to track
+          // posthog?.capture('agent_file_opened_in_ide_via_chat_link', {
+          //   file_path: filePath,
+          //   ide: openInIdeChoice,
+          // })
+          // }
           className={cn(
             'inline-flex items-center gap-0.5',
             'font-medium text-primary-foreground text-sm',
