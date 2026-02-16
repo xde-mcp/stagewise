@@ -56,6 +56,8 @@ export function ChatPanelFooter() {
   const isWorking = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.isWorking || false : false,
   );
+  const isWorkingRef = useRef(isWorking);
+  isWorkingRef.current = isWorking;
 
   const history = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.history : [],
@@ -325,10 +327,12 @@ export function ChatPanelFooter() {
     if (openAgent) void setChatInputState(openAgent, JSON.stringify(emptyDoc));
 
     // Dispatch event with message data for optimistic rendering
-    // ChatHistory will render this message IMMEDIATELY before server confirms
-    window.dispatchEvent(
-      new CustomEvent('chat-message-sent', { detail: { message } }),
-    );
+    // Only dispatch when agent is NOT working - if working, the backend
+    // will queue the message instead of adding to history immediately
+    if (!isWorkingRef.current)
+      window.dispatchEvent(
+        new CustomEvent('chat-message-sent', { detail: { message } }),
+      );
 
     try {
       // Send the message to server (optimistic message is already visible)
