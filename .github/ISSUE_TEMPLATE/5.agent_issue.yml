@@ -20,7 +20,7 @@ body:
     id: chat-history
     attributes:
       label: Chat History
-      description: If possible, provide a cut-out of the relevant part of the chat history that shows the behavior issue. Simple copy-paste or screenshot upload is fine.
+      description: If possible, provide a cut-out of the relevant part of the chat history that shows the behavior issue. Simple copy-paste or screenshot upload is fine. Please note that the provided information is public.
       placeholder: I would like to see more in-depth API documentation for how to use batch-links.
     validations:
       required: false

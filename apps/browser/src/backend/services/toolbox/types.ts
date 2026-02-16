@@ -49,4 +49,5 @@ export type ToolboxContextProvider = Pick<
   | 'getAgentsMd'
   | 'getProjectMd'
   | 'getLspDiagnosticsForAgent'
+  | 'getSkillsList'
 >;

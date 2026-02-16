@@ -1,7 +1,7 @@
 import { BaseAgent, type BaseAgentConfig } from '../shared/base-agent';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
-import { buildChatSystemPrompt } from './context-builder/context-builder';
+import { buildChatSystemPrompt } from './system-prompt-builder/system-prompt-builder';
 import z from 'zod';
 export class ChatAgent extends BaseAgent<never, undefined> {
   public static readonly agentType = AgentTypes.CHAT;

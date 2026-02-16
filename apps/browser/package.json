@@ -106,6 +106,7 @@
     "electron-context-menu": "^4.1.1",
     "electron-devtools-installer": "^4.0.0",
     "ignore": "^6.0.2",
+    "javascript-time-ago": "^2.6.2",
     "lucide-react": "^0.554.0",
     "mermaid": "^11.12.1",
     "nucleo-core-fill-24": "^1.1.3",

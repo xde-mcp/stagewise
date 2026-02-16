@@ -67,6 +67,10 @@ import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info
 import { getWorkspaceInfo as getWorkspaceInfoUtil } from '@/agents/shared/prompts/utils/workspace-info';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
 import { readProjectMd } from '@/agents/shared/prompts/utils/read-project-md';
+import {
+  getSkills,
+  type Skill,
+} from '@/agents/shared/prompts/utils/get-skills';
 
 type AgentInstanceId = string;
 
@@ -450,6 +454,11 @@ export class ToolboxService extends DisposableService {
       tabs: allTabs,
       totalTabCount: Object.keys(browser.tabs).length,
     };
+  }
+
+  public async getSkillsList(): Promise<Skill[]> {
+    if (!this.clientRuntime) return [];
+    return await getSkills(this.clientRuntime);
   }
 
   public async getAgentsMd(): Promise<string | null> {
