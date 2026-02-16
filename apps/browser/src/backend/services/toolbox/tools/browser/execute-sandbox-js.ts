@@ -137,6 +137,30 @@ return cookies;
 6. **Export data** — extract data from pages and save it as JSON, CSV, or other formats to the workspace.
 7. **Save user attachments** — retrieve images or files the user attached to messages via \`API.getAttachment()\` and write them to the workspace.
 
+## Dynamic imports (external libraries)
+You can use \`await import('https://...')\` to import ESM modules from CDNs like **esm.sh** at runtime. This lets you use any npm package without prior installation.
+
+- Only \`https://\` URLs are allowed.
+- Use the \`?bundle\` query parameter on esm.sh to bundle all transitive dependencies into a single request (faster, avoids nested fetches).
+- Imported modules are cached for the duration of the agent session — subsequent imports of the same URL are instant.
+
+**Examples:**
+\`\`\`
+// Use lodash from esm.sh (bundled)
+const _ = (await import('https://esm.sh/lodash-es?bundle')).default;
+return _.chunk([1, 2, 3, 4, 5, 6], 2);
+
+// Use date-fns
+const { format } = await import('https://esm.sh/date-fns?bundle');
+return format(new Date(), 'yyyy-MM-dd');
+
+// Use papaparse to generate CSV
+const Papa = (await import('https://esm.sh/papaparse?bundle')).default;
+const csv = Papa.unparse([{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }]);
+await API.writeFile('output/data.csv', csv);
+return 'CSV written';
+\`\`\`
+
 ## Tips
 - Always use \`return\` to send data back — the return value is shown to the user as the tool result.
 - For structured data, return objects/arrays directly (they are JSON-serialized automatically).
@@ -148,7 +172,7 @@ return cookies;
 ## Available globals
 The sandbox provides these Node.js/Web APIs in addition to V8 built-ins (Promise, Map, Set, Array, Object, JSON, Math, RegExp, Date, Error, typed arrays, etc.):
 
-- **Timers:** \`setTimeout\`, \`clearTimeout\`, \`setInterval\`, \`clearInterval\`
+- **Timers:** \`setTimeout\`, \`clearTimeout\`, \`setInterval\`, \`clearInterval\`, \`setImmediate\`, \`clearImmediate\`
 - **Networking:** \`fetch\`, \`Headers\`, \`Request\`, \`Response\`, \`AbortController\`, \`AbortSignal\`
 - **Console:** \`console\`
 - **URLs:** \`URL\`, \`URLSearchParams\`
@@ -156,6 +180,33 @@ The sandbox provides these Node.js/Web APIs in addition to V8 built-ins (Promise
 - **Binary data:** \`Buffer\`, \`Blob\`
 - **Forms:** \`FormData\`
 - **Utilities:** \`structuredClone\`, \`queueMicrotask\`, \`crypto.randomUUID()\`
+- **Compatibility:** \`self\`, \`global\`, \`process\` (minimal shim with \`process.env.NODE_ENV\`, \`process.nextTick\`)
+
+## Node.js built-in modules
+You can import safe Node.js built-in modules via \`await import('node:...')\`:
+
+**Available:** \`node:buffer\`, \`node:crypto\`, \`node:events\`, \`node:path\`, \`node:querystring\`, \`node:stream\`, \`node:string_decoder\`, \`node:url\`, \`node:util\`, \`node:zlib\`, \`node:assert\`
+
+**Blocked (security):** \`node:fs\`, \`node:net\`, \`node:http\`, \`node:https\`, \`node:child_process\`, \`node:worker_threads\`, \`node:vm\`, and other I/O modules — these throw a clear error.
+
+**Examples:**
+\`\`\`
+// Compress data with zlib
+const zlib = await import('node:zlib');
+const compressed = zlib.deflateSync(Buffer.from('hello world'));
+return compressed.toString('base64');
+
+// Hash data with crypto
+const crypto = await import('node:crypto');
+return crypto.createHash('sha256').update('hello').digest('hex');
+
+// Use util.promisify
+const util = await import('node:util');
+const zlib = await import('node:zlib');
+const gzip = util.promisify(zlib.gzip);
+const result = await gzip(Buffer.from('data'));
+return result.toString('base64');
+\`\`\`
 
 ## Pre-enabled CDP domains
 The following CDP domains are already enabled for each tab — do NOT call \`.enable()\` on them:

@@ -2,6 +2,8 @@ import vm from 'node:vm';
 import { createWorkerIPC } from './ipc';
 
 const contexts = new Map<string, vm.Context>();
+/** Per-agent cache of fetched ESM modules for dynamic import() resolution. */
+const moduleCaches = new Map<string, Map<string, vm.Module>>();
 const pendingCdp = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
@@ -26,6 +28,46 @@ const pendingAttachmentOps = new Map<
   }
 >();
 const ipc = createWorkerIPC();
+
+/** Node.js built-in modules safe to expose (computational, no I/O). */
+const ALLOWED_NODE_MODULES = new Set([
+  'buffer',
+  'crypto',
+  'events',
+  'path',
+  'querystring',
+  'stream',
+  'string_decoder',
+  'url',
+  'util',
+  'zlib',
+  'assert',
+]);
+
+/** Node.js built-in modules that must be blocked for sandbox security. */
+const BLOCKED_NODE_MODULES = new Set([
+  'fs',
+  'fs/promises',
+  'net',
+  'http',
+  'https',
+  'http2',
+  'child_process',
+  'cluster',
+  'dgram',
+  'tls',
+  'dns',
+  'worker_threads',
+  'vm',
+  'process',
+  'os',
+  'v8',
+  'inspector',
+  'readline',
+  'repl',
+  'tty',
+]);
+
 let cdpReqId = 0;
 let fileReqId = 0;
 let attachmentReqId = 0;
@@ -85,12 +127,15 @@ function getSandboxAPI(agentId: string) {
  * Date, Error, typed arrays, etc.) are already available automatically.
  */
 function getContextGlobals() {
-  return {
+  const globals: Record<string, unknown> = {
     // Timers
     setTimeout,
     clearTimeout,
     setInterval,
     clearInterval,
+    setImmediate: (fn: (...args: unknown[]) => void, ...args: unknown[]) =>
+      setTimeout(fn, 0, ...args),
+    clearImmediate: clearTimeout,
     // Networking
     fetch,
     Headers,
@@ -117,7 +162,131 @@ function getContextGlobals() {
     crypto: {
       randomUUID: () => crypto.randomUUID(),
     },
+    // Compatibility shims for CDN packages that expect browser/Node globals
+    process: {
+      env: { NODE_ENV: 'production' },
+      browser: true,
+      version: '',
+      nextTick: (fn: (...args: unknown[]) => void, ...args: unknown[]) =>
+        queueMicrotask(() => fn(...args)),
+    },
   };
+
+  // self and global are circular references back to globalThis.
+  // They must be set after context creation via vm.createContext(),
+  // so we return them as part of the globals object and the context
+  // itself becomes their value once assigned.
+  globals.self = globals;
+  globals.global = globals;
+
+  return globals;
+}
+
+/**
+ * Resolve a `node:` built-in module and wrap it as a vm.SyntheticModule
+ * so it can be returned from the `importModuleDynamically` callback.
+ *
+ * Allowed modules are imported from the host process (the utility worker
+ * has full Node.js available) and their exports are re-exposed into the
+ * sandboxed VM context. Blocked modules throw a clear error.
+ */
+async function resolveNodeModule(
+  specifier: string,
+  ctx: vm.Context,
+  cache: Map<string, vm.Module>,
+): Promise<vm.Module> {
+  const cached = cache.get(specifier);
+  if (cached) return cached;
+
+  const name = specifier.replace(/^node:/, '');
+
+  if (BLOCKED_NODE_MODULES.has(name))
+    throw new Error(
+      `"${specifier}" is not available in the sandbox for security reasons.`,
+    );
+
+  if (!ALLOWED_NODE_MODULES.has(name))
+    throw new Error(
+      `"${specifier}" is not a recognised allowed Node.js module. ` +
+        `Allowed: ${[...ALLOWED_NODE_MODULES].map((m) => `node:${m}`).join(', ')}`,
+    );
+
+  const hostModule = await import(specifier);
+  const exportNames = Object.keys(hostModule);
+
+  const synth = new vm.SyntheticModule(
+    exportNames,
+    function () {
+      for (const key of exportNames) this.setExport(key, hostModule[key]);
+    },
+    {
+      context: ctx,
+      identifier: specifier,
+    },
+  );
+
+  await synth.link(() => {
+    throw new Error('node: built-in modules should not have dependencies');
+  });
+  await synth.evaluate();
+
+  cache.set(specifier, synth);
+  return synth;
+}
+
+/**
+ * Resolve, link, and evaluate an ESM module fetched from a URL.
+ * Used as the `importModuleDynamically` handler for vm.Script,
+ * enabling `await import('https://esm.sh/...')` inside sandbox scripts.
+ *
+ * Modules are cached per-agent so repeated imports are instant.
+ */
+async function resolveModule(
+  specifier: string,
+  referencingIdentifier: string | undefined,
+  ctx: vm.Context,
+  cache: Map<string, vm.Module>,
+): Promise<vm.Module> {
+  // Handle node: built-in imports before URL resolution
+  if (specifier.startsWith('node:')) {
+    return resolveNodeModule(specifier, ctx, cache);
+  }
+
+  const resolved = referencingIdentifier
+    ? new URL(specifier, referencingIdentifier).href
+    : specifier;
+
+  if (!resolved.startsWith('https://')) {
+    throw new Error(
+      `Dynamic import only supports node: built-ins and https:// URLs. Got: ${resolved}`,
+    );
+  }
+
+  const cached = cache.get(resolved);
+  if (cached) return cached;
+
+  const response = await fetch(resolved);
+  if (!response.ok)
+    throw new Error(
+      `Failed to fetch module: ${resolved} (HTTP ${response.status})`,
+    );
+
+  const source = await response.text();
+
+  const mod = new vm.SourceTextModule(source, {
+    context: ctx,
+    identifier: resolved,
+    importModuleDynamically: (spec: string) =>
+      resolveModule(spec, resolved, ctx, cache),
+  });
+
+  await mod.link((importSpec: string) =>
+    resolveModule(importSpec, resolved, ctx, cache),
+  );
+  await mod.evaluate();
+
+  cache.set(resolved, mod);
+  return mod;
 }
 
 ipc.onMessage(async (msg) => {
@@ -128,10 +297,12 @@ ipc.onMessage(async (msg) => {
         ...getContextGlobals(),
       });
       contexts.set(msg.agentId, ctx);
+      moduleCaches.set(msg.agentId, new Map());
       break;
     }
     case 'destroy-context': {
       contexts.delete(msg.agentId);
+      moduleCaches.delete(msg.agentId);
       break;
     }
     case 'execute': {
@@ -142,9 +313,13 @@ ipc.onMessage(async (msg) => {
       }
       try {
         const wrapped = `(async () => { ${msg.code} })()`;
-        // Sync timeout (5s) catches infinite synchronous loops (e.g. while(true){}).
-        // The async IIFE itself returns a Promise nearly instantly, so 5s is generous.
-        const promise = vm.runInContext(wrapped, ctx, { timeout: 5_000 });
+        const cache = moduleCaches.get(msg.agentId) ?? new Map();
+        const script = new vm.Script(wrapped, {
+          importModuleDynamically: (specifier: string) =>
+            resolveModule(specifier, undefined, ctx, cache),
+        });
+        // Sync timeout (30s) catches infinite synchronous loops (e.g. while(true){}).
+        const promise = script.runInContext(ctx, { timeout: 30_000 });
 
         // Async timeout (30s) catches long-running async work (awaits, fetches, etc.)
         const ASYNC_TIMEOUT_MS = 30_000;

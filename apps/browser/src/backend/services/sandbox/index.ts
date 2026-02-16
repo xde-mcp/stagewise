@@ -122,8 +122,17 @@ export class SandboxService extends DisposableService {
   }
 
   private spawnWorker(): WorkerInfo {
+    // --max-old-space-size is a V8 flag handled by execArgv.
+    // --experimental-vm-modules is a Node.js flag that must be passed via
+    // NODE_OPTIONS because Electron utility processes don't forward Node
+    // flags from execArgv to the embedded Node.js runtime.
+    const nodeOptions = [process.env.NODE_OPTIONS, '--experimental-vm-modules']
+      .filter(Boolean)
+      .join(' ');
+
     const child = utilityProcess.fork(SANDBOX_WORKER_PATH, [], {
       execArgv: ['--max-old-space-size=256'],
+      env: { ...process.env, NODE_OPTIONS: nodeOptions },
       serviceName: 'stagewise-sandbox',
     });
 
