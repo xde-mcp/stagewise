@@ -25,6 +25,18 @@ export class ModelProviderService {
     this.authService = authService;
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'model-provider',
+      operation,
+      ...extra,
+    });
+  }
+
   // TODO: Add configurable base url and api key for each provider based on the user's configuration in preferences
 
   /**
@@ -39,6 +51,28 @@ export class ModelProviderService {
    * @returns
    */
   public getModelWithOptions(
+    modelId: ModelId,
+    traceId: string,
+    otherPostHogProperties?: Record<string, unknown>,
+  ): {
+    model: LanguageModelV3;
+    providerOptions: Parameters<typeof streamText>[0]['providerOptions'];
+    headers: Record<string, string>;
+    contextWindowSize: number;
+  } {
+    try {
+      return this.createModelWithOptions(
+        modelId,
+        traceId,
+        otherPostHogProperties,
+      );
+    } catch (error) {
+      this.report(error as Error, 'getModelWithOptions', { modelId });
+      throw error;
+    }
+  }
+
+  private createModelWithOptions(
     modelId: ModelId,
     traceId: string,
     otherPostHogProperties?: Record<string, unknown>,

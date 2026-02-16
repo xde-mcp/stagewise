@@ -41,6 +41,7 @@ import type {
   ExternalFileContentResult,
 } from '@shared/karton-contracts/pages-api/types';
 import { DisposableService } from './disposable';
+import type { TelemetryService } from './telemetry';
 
 declare const PAGES_VITE_DEV_SERVER_URL: string;
 declare const PAGES_VITE_NAME: string;
@@ -102,12 +103,15 @@ export class PagesService extends DisposableService {
     oid: string,
   ) => Promise<ExternalFileContentResult | null>;
 
+  private readonly telemetryService: TelemetryService;
+
   private constructor(
     logger: Logger,
     historyService: HistoryService,
     faviconService: FaviconService,
-    downloadsService?: DownloadsService,
-    webDataService?: WebDataService,
+    downloadsService: DownloadsService | undefined,
+    webDataService: WebDataService | undefined,
+    telemetryService: TelemetryService,
   ) {
     super();
     this.logger = logger;
@@ -115,6 +119,7 @@ export class PagesService extends DisposableService {
     this.faviconService = faviconService;
     this.downloadsService = downloadsService;
     this.webDataService = webDataService;
+    this.telemetryService = telemetryService;
 
     this.transport = new ElectronServerTransport();
 
@@ -145,12 +150,25 @@ export class PagesService extends DisposableService {
     );
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'pages',
+      operation,
+      ...extra,
+    });
+  }
+
   public static async create(
     logger: Logger,
     historyService: HistoryService,
     faviconService: FaviconService,
-    downloadsService?: DownloadsService,
-    webDataService?: WebDataService,
+    downloadsService: DownloadsService | undefined,
+    webDataService: WebDataService | undefined,
+    telemetryService: TelemetryService,
   ): Promise<PagesService> {
     const instance = new PagesService(
       logger,
@@ -158,6 +176,7 @@ export class PagesService extends DisposableService {
       faviconService,
       downloadsService,
       webDataService,
+      telemetryService,
     );
     await instance.initialize();
     logger.debug('[PagesService] Created service');
@@ -428,6 +447,7 @@ export class PagesService extends DisposableService {
           return { success: false, error: 'Download not found' };
         } catch (error) {
           this.logger.error('[PagesService] Failed to delete download', error);
+          this.report(error as Error, 'deleteDownload');
           return {
             success: false,
             error:
@@ -466,6 +486,7 @@ export class PagesService extends DisposableService {
           return { success: true };
         } catch (error) {
           this.logger.error('[PagesService] Error opening file', error);
+          this.report(error as Error, 'openDownloadFile');
           return {
             success: false,
             error:
@@ -502,6 +523,7 @@ export class PagesService extends DisposableService {
             '[PagesService] Error showing file in folder',
             error,
           );
+          this.report(error as Error, 'showDownloadInFolder');
           return {
             success: false,
             error:
@@ -775,6 +797,7 @@ export class PagesService extends DisposableService {
           return result;
         } catch (error) {
           this.logger.error('[PagesService] Clear browsing data failed', error);
+          this.report(error as Error, 'clearBrowsingData');
           return {
             success: false,
             error:
@@ -924,6 +947,7 @@ export class PagesService extends DisposableService {
             '[PagesService] Failed to add search engine',
             error,
           );
+          this.report(error as Error, 'addSearchEngine');
           return {
             success: false as const,
             error:
@@ -962,6 +986,7 @@ export class PagesService extends DisposableService {
             '[PagesService] Failed to remove search engine',
             error,
           );
+          this.report(error as Error, 'removeSearchEngine');
           return {
             success: false,
             error:

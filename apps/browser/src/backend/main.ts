@@ -59,6 +59,36 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   const globalDataPathService = await GlobalDataPathService.create(logger);
 
+  // Create PreferencesService, IdentifierService, and TelemetryService first
+  // so telemetryService can be passed to all downstream services
+  const preferencesService = await PreferencesService.create(logger);
+  const identifierService = await IdentifierService.create(
+    globalDataPathService,
+    logger,
+  );
+  const telemetryService = new TelemetryService(
+    identifierService,
+    preferencesService,
+    logger,
+  );
+
+  // Global safety net: capture any unhandled errors/rejections to telemetry
+  process.on('uncaughtException', (error) => {
+    logger.error(`[Process] Uncaught exception: ${error.message}`);
+    telemetryService.captureException(error, {
+      service: 'process',
+      operation: 'uncaughtException',
+    });
+  });
+  process.on('unhandledRejection', (reason) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    logger.error(`[Process] Unhandled rejection: ${error.message}`);
+    telemetryService.captureException(error, {
+      service: 'process',
+      operation: 'unhandledRejection',
+    });
+  });
+
   // Create database services early so they can be passed to other services
   // WebDataService must be created first as HistoryService depends on it
   // for search term extraction (keyword IDs reference the keywords table)
@@ -70,6 +100,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
     globalDataPathService,
     webDataService,
+    telemetryService,
   );
   const faviconService = await FaviconService.create(
     logger,
@@ -80,11 +111,8 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   const downloadsService = await DownloadsService.create(
     logger,
     historyService,
+    telemetryService,
   );
-
-  // Create PreferencesService early so it can be passed to WindowLayoutService
-  // This loads preferences from disk; Karton sync is connected later
-  const preferencesService = await PreferencesService.create(logger);
 
   // Create PagesService early so it can be passed to WindowLayoutService
   const pagesService = await PagesService.create(
@@ -93,6 +121,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     faviconService,
     downloadsService,
     webDataService,
+    telemetryService,
   );
 
   // Initialize search engines state
@@ -233,6 +262,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         finishedDownloadsDirty = false;
       } catch (err) {
         logger.warn('[Main] Failed to fetch recent finished downloads', err);
+        telemetryService.captureException(err as Error, {
+          service: 'main',
+          operation: 'fetchFinishedDownloads',
+        });
       }
     }
 
@@ -292,6 +325,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
           '[Main] Failed to update downloads state after marking seen',
           err,
         );
+        telemetryService.captureException(err as Error, {
+          service: 'main',
+          operation: 'updateDownloadsAfterMarkSeen',
+        });
       },
     );
   };
@@ -377,6 +414,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         }
         return { success: true };
       } catch (error) {
+        telemetryService.captureException(
+          error instanceof Error ? error : new Error(String(error)),
+          { service: 'main', operation: 'openDownloadFile' },
+        );
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -406,6 +447,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         shell.showItemInFolder(filePath);
         return { success: true };
       } catch (error) {
+        telemetryService.captureException(
+          error instanceof Error ? error : new Error(String(error)),
+          { service: 'main', operation: 'showDownloadInFolder' },
+        );
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -457,6 +502,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         }
         return { success: false, error: 'Download not found' };
       } catch (error) {
+        telemetryService.captureException(
+          error instanceof Error ? error : new Error(String(error)),
+          { service: 'main', operation: 'deleteDownload' },
+        );
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -545,14 +594,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   const _autoUpdateService = await AutoUpdateService.create(
     logger,
     notificationService,
+    telemetryService,
   );
 
-  // Ensure ripgrep is installed for improved grep/glob performance
-  // If installation fails, the app will continue with Node.js fallback implementations
-  const identifierService = await IdentifierService.create(
-    globalDataPathService,
-    logger,
-  );
   const globalConfigService = await GlobalConfigService.create(
     globalDataPathService,
     logger,
@@ -572,12 +616,8 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     pagesService.syncGlobalConfigState(newConfig);
   });
 
-  const telemetryService = new TelemetryService(
-    identifierService,
-    preferencesService,
-    logger,
-  );
-
+  // Ensure ripgrep is installed for improved grep/glob performance
+  // If installation fails, the app will continue with Node.js fallback implementations
   ensureRipgrepInstalled({
     rgBinaryBasePath: globalDataPathService.globalDataPath,
     onLog: logger.debug,
@@ -586,6 +626,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       if (!result.success) {
         telemetryService.captureException(
           new Error(result.error ?? 'Unknown error'),
+          { service: 'main', operation: 'ensureRipgrep' },
         );
         logger.warn(
           `Ripgrep installation failed: ${result.error}. Grep/glob operations will use slower Node.js implementations.`,
@@ -599,7 +640,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       logger.warn(
         `Ripgrep installation failed: ${error}. Grep/glob operations will use slower Node.js implementations.`,
       );
-      telemetryService.captureException(error as Error);
+      telemetryService.captureException(error as Error, {
+        service: 'main',
+        operation: 'ensureRipgrep',
+      });
     });
 
   logger.debug('[Main] Global services bootstrapped');
@@ -685,6 +729,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
     uiKarton,
     globalDataPathService,
+    telemetryService,
   );
 
   // Wire up home page services - bidirectional connection between services
@@ -699,6 +744,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       await workspaceService.loadWorkspace(path);
     } catch (error) {
       logger.error(`[Main] Failed to open workspace: ${error}`);
+      telemetryService.captureException(
+        error instanceof Error ? error : new Error(String(error)),
+        { service: 'main', operation: 'openWorkspace' },
+      );
     }
   });
 

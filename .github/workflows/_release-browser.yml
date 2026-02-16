@@ -29,6 +29,11 @@ on:
         required: false
       MACOS_CERT_P12_PASSWORD:
         required: false
+      # PostHog CLI secrets (source map upload)
+      POSTHOG_CLI_API_KEY:
+        required: false
+      POSTHOG_CLI_PROJECT_ID:
+        required: false
       # Azure Trusted Signing secrets (Windows code signing)
       AZURE_TENANT_ID:
         required: false
@@ -126,6 +131,10 @@ jobs:
       VITE_STAGEWISE_CONSOLE_URL: ${{ vars.VITE_STAGEWISE_CONSOLE_URL }}
       LLM_PROXY_URL: ${{ vars.LLM_PROXY_URL }}
       VITE_DISABLE_TELEMETRY: ${{ vars.VITE_DISABLE_TELEMETRY }}
+      # PostHog CLI (source map upload during packaging)
+      POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+      POSTHOG_CLI_PROJECT_ID: ${{ secrets.POSTHOG_CLI_PROJECT_ID }}
+      POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}
 
     steps:
       - uses: actions/checkout@v4

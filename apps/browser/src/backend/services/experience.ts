@@ -26,11 +26,13 @@ import {
 import { API_URL } from './auth/server-interop';
 import { DisposableService } from './disposable';
 import { readPersistedData, writePersistedData } from '../utils/persisted-data';
+import type { TelemetryService } from './telemetry';
 
 export class UserExperienceService extends DisposableService {
   private readonly logger: Logger;
   private readonly uiKarton: KartonService;
   private readonly globalDataPathService: GlobalDataPathService;
+  private readonly telemetryService: TelemetryService;
   private pagesService?: PagesService;
   private inspirationSeed = crypto.randomUUID();
   private cachedInspirationWebsites: InspirationWebsite = {
@@ -65,27 +67,43 @@ export class UserExperienceService extends DisposableService {
     logger: Logger,
     uiKarton: KartonService,
     globalDataPathService: GlobalDataPathService,
+    telemetryService: TelemetryService,
   ) {
     super();
     this.logger = logger;
     this.uiKarton = uiKarton;
     this.globalDataPathService = globalDataPathService;
+    this.telemetryService = telemetryService;
 
     // Bind once and store reference for later unregistration
     this.boundHandleServiceStateChange =
       this.handleServiceStateChange.bind(this);
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'experience',
+      operation,
+      ...extra,
+    });
+  }
+
   public static async create(
     logger: Logger,
     uiKarton: KartonService,
     globalDataPathService: GlobalDataPathService,
+    telemetryService: TelemetryService,
   ) {
     logger.debug('[UserExperienceService] Creating service');
     const instance = new UserExperienceService(
       logger,
       uiKarton,
       globalDataPathService,
+      telemetryService,
     );
     await instance.initialize();
     logger.debug('[UserExperienceService] Created service');
@@ -287,6 +305,7 @@ export class UserExperienceService extends DisposableService {
       this.logger.error(
         `[UserExperienceService] Failed to fetch inspiration websites: ${error}`,
       );
+      this.report(error as Error, 'fetchInspirationWebsites');
       // Return current cache even on error
       return this.cachedInspirationWebsites;
     }
@@ -407,6 +426,7 @@ export class UserExperienceService extends DisposableService {
       this.logger.error(
         `[UserExperienceService] Failed to save recently opened workspace. Error: ${error}`,
       );
+      this.report(error as Error, 'saveRecentWorkspace');
     }
   }
 
@@ -445,6 +465,7 @@ export class UserExperienceService extends DisposableService {
       this.logger.error(
         `[UserExperienceService] Failed to save hasSeenOnboardingFlow. Error: ${error}`,
       );
+      this.report(error as Error, 'saveOnboardingState');
     }
   }
 
@@ -480,6 +501,7 @@ export class UserExperienceService extends DisposableService {
       this.logger.error(
         `[UserExperienceService] Failed to mark chat as viewed. Error: ${error}`,
       );
+      this.report(error as Error, 'markChatAsViewed');
     }
   }
 
@@ -572,6 +594,7 @@ export class UserExperienceService extends DisposableService {
       this.logger.error(
         `[UserExperienceService] Failed to write pruned workspaces data. Error: ${error}`,
       );
+      this.report(error as Error, 'pruneRecentWorkspaces');
     }
   }
 }

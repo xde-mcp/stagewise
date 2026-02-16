@@ -16,6 +16,10 @@ export interface UserProperties {
   user_email?: string;
 }
 
+export type ExceptionProperties = {
+  service?: string;
+} & Record<string, unknown>;
+
 export class TelemetryService extends DisposableService {
   private readonly identifierService: IdentifierService;
   private readonly preferencesService: PreferencesService;
@@ -171,7 +175,7 @@ export class TelemetryService extends DisposableService {
 
   public captureException(
     error: Error,
-    properties?: Record<string, any>,
+    properties?: ExceptionProperties,
   ): void {
     const telemetryLevel = this.getTelemetryLevel();
     if (telemetryLevel === 'off') return;
@@ -186,6 +190,12 @@ export class TelemetryService extends DisposableService {
         app_platform: __APP_PLATFORM__,
         app_arch: __APP_ARCH__,
       },
+    });
+  }
+
+  protected report(error: Error): void {
+    this.captureException(error, {
+      service: this.constructor.name,
     });
   }
 

@@ -61,15 +61,32 @@ export class AgentManagerService extends DisposableService {
     this.dbReadyPromise = AgentPersistenceDB.create(
       globalDataPathService,
       logger,
-    ).then((db) => {
-      this.agentPersistenceDB = db;
-      return db;
-    });
+    )
+      .then((db) => {
+        this.agentPersistenceDB = db;
+        return db;
+      })
+      .catch((error) => {
+        this.report(error as Error, 'dbInit');
+        return null;
+      });
 
     // Create an empty default agent only after the DB is ready
     // This ensures that when there's an active agent, the DB is guaranteed to be initialized
     this.dbReadyPromise.then(() => {
       this.createAgent(AgentTypes.CHAT, undefined);
+    });
+  }
+
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'agent-manager',
+      operation,
+      ...extra,
     });
   }
 

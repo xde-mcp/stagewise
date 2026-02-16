@@ -14,6 +14,7 @@ import { autoUpdater } from 'electron';
 import { DisposableService } from './disposable';
 import type { Logger } from './logger';
 import type { NotificationService } from './notification';
+import type { TelemetryService } from './telemetry';
 
 declare const __APP_RELEASE_CHANNEL__: 'dev' | 'prerelease' | 'release';
 declare const __APP_VERSION__: string;
@@ -23,6 +24,7 @@ declare const __APP_ARCH__: string;
 export class AutoUpdateService extends DisposableService {
   private readonly logger: Logger;
   private readonly notificationService: NotificationService;
+  private readonly telemetryService: TelemetryService;
   private updateDownloaded = false;
   private updateInfo: {
     releaseName?: string;
@@ -38,17 +40,36 @@ export class AutoUpdateService extends DisposableService {
   private constructor(
     logger: Logger,
     notificationService: NotificationService,
+    telemetryService: TelemetryService,
   ) {
     super();
     this.logger = logger;
     this.notificationService = notificationService;
+    this.telemetryService = telemetryService;
+  }
+
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'auto-update',
+      operation,
+      ...extra,
+    });
   }
 
   public static async create(
     logger: Logger,
     notificationService: NotificationService,
+    telemetryService: TelemetryService,
   ): Promise<AutoUpdateService> {
-    const instance = new AutoUpdateService(logger, notificationService);
+    const instance = new AutoUpdateService(
+      logger,
+      notificationService,
+      telemetryService,
+    );
     await instance.initialize();
     return instance;
   }
@@ -111,6 +132,7 @@ export class AutoUpdateService extends DisposableService {
         '[AutoUpdateService] Failed to initialize auto-updater',
         error,
       );
+      this.report(error as Error, 'initialize');
     }
   }
 
@@ -168,6 +190,7 @@ export class AutoUpdateService extends DisposableService {
       this.logger.error('[AutoUpdateService] Update error:', error);
       this.logger.debug(`[AutoUpdateService] Error message: ${error.message}`);
       this.logger.debug(`[AutoUpdateService] Error stack: ${error.stack}`);
+      this.report(error, 'autoUpdaterError');
     });
 
     autoUpdater.on('checking-for-update', () => {
@@ -265,6 +288,7 @@ export class AutoUpdateService extends DisposableService {
         '[AutoUpdateService] Error checking for updates:',
         error,
       );
+      this.report(error as Error, 'checkForUpdates');
     }
   }
 

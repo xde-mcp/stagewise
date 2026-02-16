@@ -2,6 +2,7 @@ import { app, session, type DownloadItem } from 'electron';
 import { existsSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import type { Logger } from '../logger';
+import type { TelemetryService } from '../telemetry';
 import type { HistoryService } from '../history';
 import {
   DownloadState,
@@ -120,10 +121,17 @@ export class DownloadsService extends DisposableService {
   // Cached value for downloads lastSeenAt (for "unseen" badge)
   private downloadsLastSeenAt: Date | null = null;
 
-  private constructor(logger: Logger, historyService: HistoryService) {
+  private readonly telemetryService: TelemetryService;
+
+  private constructor(
+    logger: Logger,
+    historyService: HistoryService,
+    telemetryService: TelemetryService,
+  ) {
     super();
     this.logger = logger;
     this.historyService = historyService;
+    this.telemetryService = telemetryService;
     // Use seconds since 2024-01-01 as base to keep IDs smaller but unique
     this.sessionBase = Math.floor((Date.now() - 1704067200000) / 1000) * 1000;
     // Initialize throttled state change notification
@@ -210,11 +218,28 @@ export class DownloadsService extends DisposableService {
     }
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'downloads',
+      operation,
+      ...extra,
+    });
+  }
+
   public static async create(
     logger: Logger,
     historyService: HistoryService,
+    telemetryService: TelemetryService,
   ): Promise<DownloadsService> {
-    const instance = new DownloadsService(logger, historyService);
+    const instance = new DownloadsService(
+      logger,
+      historyService,
+      telemetryService,
+    );
     await instance.initialize();
     logger.debug('[DownloadsService] Created service');
     return instance;
@@ -338,6 +363,7 @@ export class DownloadsService extends DisposableService {
             '[DownloadsService] Failed to record download',
             err,
           );
+          this.report(err as Error, 'recordDownload');
         });
     };
 
@@ -524,6 +550,7 @@ export class DownloadsService extends DisposableService {
             '[DownloadsService] Failed to update download state',
             err,
           );
+          this.report(err as Error, 'updateDownloadState');
         });
 
       // Remove from active downloads after a delay (allow status to be queried)
@@ -671,6 +698,7 @@ export class DownloadsService extends DisposableService {
         '[DownloadsService] Failed to update cancelled download',
         err,
       );
+      this.report(err as Error, 'updateCancelledDownload');
     }
 
     // Remove from active downloads after DB update

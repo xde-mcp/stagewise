@@ -124,6 +124,19 @@ export class WorkspaceService extends DisposableService {
     return instance;
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'workspace',
+      operation,
+      workspacePath: this.currentWorkspacePath ?? undefined,
+      ...extra,
+    });
+  }
+
   public async loadWorkspace(
     workspacePath?: string,
     loadedOnStart = false,
@@ -181,6 +194,7 @@ export class WorkspaceService extends DisposableService {
       this.logger.error(
         `[WorkspaceService] Failed to initialize workspace. Reason: ${error}`,
       );
+      this.report(error as Error, 'loadWorkspace');
       this.notificationService.showNotification({
         title: 'Failed to load workspace',
         message: `Failed to load workspace at path: "${selectedPath}". Reason: ${error}`,
@@ -270,7 +284,7 @@ export class WorkspaceService extends DisposableService {
       this.uiKarton,
       clientRuntime,
     ).catch((error) => {
-      this.telemetryService.captureException(error as Error);
+      this.report(error as Error, 'createRagService');
       this.logger.error('[WorkspaceService] Failed to create rag service', {
         cause: error,
       });
@@ -364,6 +378,7 @@ export class WorkspaceService extends DisposableService {
             '[WorkspaceService] Failed to spawn PROJECT.md agent after 2 retries',
             { error },
           );
+          this.report(error as Error, 'generateProjectMd');
         }
       }
     };

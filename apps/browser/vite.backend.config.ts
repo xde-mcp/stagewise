@@ -6,6 +6,7 @@ import * as buildConstants from './build-constants';
 export default defineConfig({
   build: {
     target: 'esnext',
+    sourcemap: 'hidden',
     lib: {
       formats: ['es'],
       entry: 'src/backend/index.ts',

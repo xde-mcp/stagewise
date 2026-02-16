@@ -12,6 +12,7 @@ import { SquirrelInstallerNameFixPlugin } from './etc/forge-plugins/squirrel-ins
 import { getWindowsSignConfig } from './etc/windows/windowsSign';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 import * as buildConstants from './build-constants';
 
 // Get Windows signing configuration (returns undefined if not configured)
@@ -63,6 +64,74 @@ const copyNativeDependencies = (
   callback();
 };
 
+/**
+ * After the app source is copied to the packaging directory, inject PostHog
+ * source map metadata, upload maps to PostHog for stack trace resolution,
+ * then delete .map files so they don't ship to users.
+ *
+ * Only runs in CI when POSTHOG_CLI_API_KEY is set. The PostHog CLI reads
+ * POSTHOG_CLI_API_KEY, POSTHOG_CLI_PROJECT_ID, and POSTHOG_CLI_HOST from
+ * the environment automatically.
+ */
+const uploadSourceMapsAndCleanup = (
+  buildPath: string,
+  _electronVersion: string,
+  _platform: string,
+  _arch: string,
+  callback: (error?: Error) => void,
+) => {
+  if (!process.env.CI || !process.env.POSTHOG_CLI_API_KEY) {
+    console.log(
+      '[forge.config] Skipping source map upload (not in CI or missing POSTHOG_CLI_API_KEY)',
+    );
+    callback();
+    return;
+  }
+
+  const viteDir = path.join(buildPath, '.vite');
+  if (!fs.existsSync(viteDir)) {
+    console.log(
+      '[forge.config] No .vite directory found, skipping source map upload',
+    );
+    callback();
+    return;
+  }
+
+  const version = buildConstants.__APP_VERSION__;
+
+  try {
+    console.log(`[forge.config] Injecting source map metadata in ${viteDir}`);
+    execSync(`posthog-cli sourcemap inject --directory "${viteDir}"`, {
+      stdio: 'inherit',
+    });
+
+    console.log(`[forge.config] Uploading source maps for version ${version}`);
+    execSync(
+      `posthog-cli sourcemap upload --directory "${viteDir}" --release-name stagewise --release-version "${version}"`,
+      { stdio: 'inherit' },
+    );
+
+    // Delete all .map files so they don't ship with the app
+    const deleteMapFiles = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) deleteMapFiles(fullPath);
+        else if (entry.name.endsWith('.map')) fs.unlinkSync(fullPath);
+      }
+    };
+    deleteMapFiles(viteDir);
+
+    console.log(
+      `[forge.config] Source maps uploaded and cleaned up for v${version}`,
+    );
+    callback();
+  } catch (error) {
+    console.error('[forge.config] Source map upload failed:', error);
+    // Don't fail the build if source map upload fails
+    callback();
+  }
+};
+
 const config: ForgeConfig = {
   buildIdentifier: buildConstants.__APP_RELEASE_CHANNEL__,
   packagerConfig: {
@@ -72,7 +141,7 @@ const config: ForgeConfig = {
       `./assets/icons/${buildConstants.__APP_RELEASE_CHANNEL__}/icon.png`,
     ],
     prune: true,
-    afterCopy: [copyNativeDependencies],
+    afterCopy: [copyNativeDependencies, uploadSourceMapsAndCleanup],
     icon: `./assets/icons/${buildConstants.__APP_RELEASE_CHANNEL__}/icon`,
     appCopyright: `Copyright © ${new Date().getFullYear()} stagewise Inc.`,
     win32metadata: {

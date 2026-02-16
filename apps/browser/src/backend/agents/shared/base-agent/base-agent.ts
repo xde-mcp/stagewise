@@ -792,6 +792,7 @@ export abstract class BaseAgent<
       this.logger.error(
         `[BaseAgent:${this.instanceId}] Failed to generate title. Error: ${error.message}, Stack: ${error.stack}`,
       );
+      this.report(error, 'generateTitle');
       return this.state.get().title;
     }
   }
@@ -1158,6 +1159,7 @@ export abstract class BaseAgent<
         this.logger.error(
           `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
         );
+        this.report(error, 'streamText');
         this.state.set((draft) => {
           draft.isWorking = false;
           draft.error = {
@@ -1177,7 +1179,7 @@ export abstract class BaseAgent<
         // Haiku often returns the tool input as string instead of object - we try to parse it as object
         // If the parsing fails, we simply return an invalid tool call
         this.logger.debug('[AgentService] Repairing tool call', r.error);
-        this.telemetryService.captureException(r.error);
+        this.report(r.error, 'repairToolCall');
         if (NoSuchToolError.isInstance(r.error)) return r.toolCall;
 
         const foundTool =
@@ -1224,6 +1226,7 @@ export abstract class BaseAgent<
       this.logger.error(
         `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
       );
+      this.report(error, 'runStep');
       this.state.set((draft) => {
         draft.isWorking = false;
         draft.error = {
@@ -1634,6 +1637,21 @@ export abstract class BaseAgent<
       if (lastMsg.parts.length === 0) {
         draft.history.pop();
       }
+    });
+  }
+
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'base-agent',
+      operation,
+      modelId: this.state.get().activeModelId,
+      agentType: this.agentType,
+      instanceId: this.instanceId,
+      ...extra,
     });
   }
 

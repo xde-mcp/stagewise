@@ -60,6 +60,7 @@
       "@libsql/linux-x64-musl",
       "@libsql/win32-x64-msvc",
       "@parcel/watcher",
+      "@posthog/cli",
       "@swc/core",
       "bufferutil",
       "core-js",

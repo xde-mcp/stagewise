@@ -150,6 +150,18 @@ export class ToolboxService extends DisposableService {
     return instance;
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'toolbox',
+      operation,
+      ...extra,
+    });
+  }
+
   /**
    * Set the client runtime for workspace operations.
    * Call this when a workspace is opened/changed.
@@ -177,7 +189,7 @@ export class ToolboxService extends DisposableService {
           this.logger.error('[ToolboxService] Failed to create LspService', {
             error,
           });
-          this.telemetryService.captureException(error as Error);
+          this.report(error as Error, 'createLspService');
           return null;
         });
     } else this.lspReady = Promise.resolve(null);
@@ -254,7 +266,10 @@ export class ToolboxService extends DisposableService {
             path: absolutePath,
             toolCallId,
           });
-          this.telemetryService.captureException(error as Error);
+          this.report(error as Error, 'registerAgentEdit', {
+            path: absolutePath,
+            toolCallId,
+          });
           // Don't fail the tool execution if diff-history registration fails
         }
 
@@ -478,6 +493,7 @@ export class ToolboxService extends DisposableService {
           '[ToolboxService] Failed to create authenticated client',
           { error },
         );
+        this.report(error as Error, 'createApiClient');
         return null;
       }
     }
@@ -506,6 +522,7 @@ export class ToolboxService extends DisposableService {
         error: err,
         path: filePath,
       });
+      this.report(err as Error, 'syncFileWithLsp', { path: filePath });
     }
   }
 
@@ -524,6 +541,9 @@ export class ToolboxService extends DisposableService {
     } catch (err) {
       this.logger.debug('[ToolboxService] Failed to close file in LSP', {
         error: err,
+        path: filePath,
+      });
+      this.report(err as Error, 'syncFileCloseWithLsp', {
         path: filePath,
       });
     }
@@ -619,7 +639,10 @@ export class ToolboxService extends DisposableService {
             toolCallId,
           },
         );
-        this.telemetryService.captureException(error as Error);
+        this.report(error as Error, 'registerSandboxWrite', {
+          path: absolutePath,
+          toolCallId,
+        });
         // Don't fail the file write if diff-history registration fails
       }
 

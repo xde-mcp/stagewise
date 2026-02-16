@@ -1,4 +1,5 @@
 import type { Logger } from '../logger';
+import type { TelemetryService } from '../telemetry';
 import {
   eq,
   ne,
@@ -66,14 +67,17 @@ export class HistoryService {
   private dbDriver;
   private db;
   private webDataService: WebDataService | null;
+  private readonly telemetryService: TelemetryService;
 
   private constructor(
     logger: Logger,
     paths: GlobalDataPathService,
     webDataService: WebDataService | null,
+    telemetryService: TelemetryService,
   ) {
     this.logger = logger;
     this.webDataService = webDataService;
+    this.telemetryService = telemetryService;
     const dbPath = path.join(paths.globalDataPath, 'History');
     this.dbDriver = createClient({
       url: `file:${dbPath}`,
@@ -84,15 +88,29 @@ export class HistoryService {
     });
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'history',
+      operation,
+      ...extra,
+    });
+  }
+
   public static async create(
     logger: Logger,
     globalDataPathService: GlobalDataPathService,
-    webDataService: WebDataService | null = null,
+    webDataService: WebDataService | null,
+    telemetryService: TelemetryService,
   ): Promise<HistoryService> {
     const instance = new HistoryService(
       logger,
       globalDataPathService,
       webDataService,
+      telemetryService,
     );
     await instance.initialize();
     logger.debug('[HistoryService] Created service');
@@ -112,6 +130,7 @@ export class HistoryService {
       this.logger.debug('[HistoryService] Initialized');
     } catch (e) {
       this.logger.error('[HistoryService] Failed to initialize', { error: e });
+      this.report(e as Error, 'migration');
     }
   }
 
@@ -259,10 +278,10 @@ export class HistoryService {
           extracted.term,
         );
       } catch (error) {
-        // Log but don't fail the visit recording if search term insert fails
         this.logger.warn(
           `[HistoryService] Failed to record search term: ${error}`,
         );
+        this.report(error as Error, 'addSearchTerm');
       }
     }
 

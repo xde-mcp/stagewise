@@ -25,6 +25,18 @@ export class RagService extends DisposableService {
     this.clientRuntime = clientRuntime;
   }
 
+  private report(
+    error: Error,
+    operation: string,
+    extra?: Record<string, unknown>,
+  ) {
+    this.telemetryService.captureException(error, {
+      service: 'rag',
+      operation,
+      ...extra,
+    });
+  }
+
   public async initialize() {
     this.logger.debug('[RagService] Initializing...');
     this.registerProcedureHandlers();
