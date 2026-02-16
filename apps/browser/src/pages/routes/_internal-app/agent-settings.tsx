@@ -15,7 +15,7 @@ import {
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { IdeLogo } from '@ui/components/ide-logo';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { ContextFilesResult } from '@shared/karton-contracts/pages-api/types';
 import { CodeBlock } from '@ui/components/ui/code-block';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
@@ -57,8 +57,13 @@ function ScrollFadeCodeBlock({
   description: string;
   filePath: string | null;
 }) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { maskStyle } = useScrollFadeMask(scrollContainerRef, {
+  const [viewport, setViewport] = useState<HTMLElement | null>(null);
+  const viewportRef = useMemo(
+    () => ({ current: viewport }),
+    [viewport],
+  ) as React.RefObject<HTMLElement>;
+
+  const { maskStyle } = useScrollFadeMask(viewportRef, {
     axis: 'vertical',
     fadeDistance: 24,
   });
@@ -74,14 +79,23 @@ function ScrollFadeCodeBlock({
       <p className="text-muted-foreground text-xs">{description}</p>
       {/* Outer container for border - not affected by mask */}
       <div className="relative overflow-hidden rounded-lg border border-derived bg-background">
-        {/* Inner container for scroll + fade mask */}
-        <div
-          ref={scrollContainerRef}
-          className="mask-alpha scrollbar-hover-only max-h-96 overflow-auto"
-          style={maskStyle}
+        {/* Scrollable content with OverlayScrollbar + fade mask */}
+        <OverlayScrollbar
+          className="mask-alpha max-h-96"
+          style={
+            {
+              ...maskStyle,
+              '--os-scrollbar-inset-top': '8px',
+              '--os-scrollbar-inset-bottom': ideHref ? '24px' : '0px',
+            } as React.CSSProperties
+          }
+          options={{
+            overflow: { x: 'hidden', y: 'scroll' },
+          }}
+          onViewportRef={setViewport}
         >
           <CodeBlock code={code} language="markdown" className="px-2 py-2" />
-        </div>
+        </OverlayScrollbar>
         {/* Edit in IDE badge - bottom right overlay */}
         {ideHref && (
           <a

@@ -29,7 +29,15 @@ function RouteComponent() {
     <div className="flex h-screen w-screen items-center justify-center bg-app-background p-3">
       <div className="flex h-full w-full flex-row items-start justify-start gap-6">
         <Sidebar />
-        <OverlayScrollbar className="h-full flex-1 rounded-lg bg-background ring-1 ring-derived-strong">
+        <OverlayScrollbar
+          className="h-full flex-1 rounded-lg bg-background ring-1 ring-derived-strong"
+          style={
+            {
+              '--os-scrollbar-inset-top': '8px',
+              '--os-scrollbar-inset-bottom': '8px',
+            } as React.CSSProperties
+          }
+        >
           <Outlet />
         </OverlayScrollbar>
       </div>

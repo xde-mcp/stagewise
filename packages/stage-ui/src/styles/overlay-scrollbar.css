@@ -37,6 +37,19 @@
   --os-handle-perpendicular-size-active: 100%;
 }
 
+/* Apply asymmetric inset overrides to vertical scrollbar track position.
+ * Set --os-scrollbar-inset-top / --os-scrollbar-inset-bottom on the
+ * OverlayScrollbar host element (via style or className) to push the
+ * track away from container edges. Useful for rounded corners or
+ * overlapping badges. Falls back to 0px when not set.
+ *
+ * !important is needed because the base library sets top/bottom
+ * directly on .os-scrollbar-vertical. */
+.os-theme-stagewise.os-scrollbar-vertical {
+  top: var(--os-scrollbar-inset-top, 0px) !important;
+  bottom: var(--os-scrollbar-inset-bottom, 0px) !important;
+}
+
 /* Ensure scrollbar overlays content and doesn't affect layout */
 .os-theme-stagewise.os-scrollbar {
   transition: opacity 0.15s ease, visibility 0.15s ease;
