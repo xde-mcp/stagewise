@@ -122,6 +122,7 @@ export function MessageQueueSection(
         </Button>
       </div>
     ),
+    scrollable: true,
     contentClassName: 'px-0',
     content: (
       <AttachmentMetadataProvider messages={props.queuedMessages}>

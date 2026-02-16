@@ -57,16 +57,11 @@ export interface StatusCardSection {
   content: React.ReactNode;
   key: string;
   defaultOpen?: boolean;
+  /** When true, content is wrapped in an OverlayScrollbar with max-h and fade mask. */
+  scrollable?: boolean;
 }
 
-export function StatusCardSectionComponent({
-  item,
-  showDivider,
-}: {
-  item: StatusCardSection;
-  showDivider: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(item.defaultOpen ?? true);
+function ScrollableContent({ children }: { children: React.ReactNode }) {
   const [viewport, setViewport] = useState<HTMLElement | null>(null);
 
   const viewportRef = useMemo(
@@ -78,6 +73,29 @@ export function StatusCardSectionComponent({
     axis: 'vertical',
     fadeDistance: 16,
   });
+
+  return (
+    <OverlayScrollbar
+      className="mask-alpha max-h-48"
+      style={maskStyle}
+      options={{
+        overflow: { x: 'hidden', y: 'scroll' },
+      }}
+      onViewportRef={setViewport}
+    >
+      {children}
+    </OverlayScrollbar>
+  );
+}
+
+export function StatusCardSectionComponent({
+  item,
+  showDivider,
+}: {
+  item: StatusCardSection;
+  showDivider: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(item.defaultOpen ?? true);
 
   return (
     <div className="w-full">
@@ -92,16 +110,11 @@ export function StatusCardSectionComponent({
           <CollapsibleContent
             className={cn('w-full duration-0!', item.contentClassName)}
           >
-            <OverlayScrollbar
-              className="mask-alpha max-h-48"
-              style={maskStyle}
-              options={{
-                overflow: { x: 'hidden', y: 'scroll' },
-              }}
-              onViewportRef={setViewport}
-            >
-              {item.content}
-            </OverlayScrollbar>
+            {item.scrollable ? (
+              <ScrollableContent>{item.content}</ScrollableContent>
+            ) : (
+              item.content
+            )}
           </CollapsibleContent>
         )}
       </Collapsible>

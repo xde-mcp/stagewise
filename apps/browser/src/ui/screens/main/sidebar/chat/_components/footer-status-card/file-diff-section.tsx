@@ -155,6 +155,7 @@ export function FileDiffSection(
         )}
       </div>
     ),
+    scrollable: true,
     contentClassName: 'px-0',
     content: (
       <div className="pt-1">
