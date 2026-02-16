@@ -46,6 +46,7 @@ import {
   AttachmentLinkRouter,
   ColorBadge,
 } from './attachment-links';
+import { resolveLinkAlias } from './link-aliases';
 
 type AttachmentData =
   | {
@@ -476,6 +477,15 @@ const AnchorComponent = ({
   // Parse href for attachment links (element:, image:, file:, text-clip:, wsfile:, color:)
   const attachmentLink = useMemo(() => parseAttachmentLink(href), [href]);
 
+  // Resolve link aliases (report-agent-issue, socials-discord, etc.)
+  const resolvedAlias = useMemo(() => {
+    if (!href || !openAgent) return null;
+    return resolveLinkAlias(href, {
+      agentInstanceId: openAgent,
+      appVersion: __APP_VERSION__,
+    });
+  }, [href, openAgent]);
+
   // Process regular links (replace conversation ID placeholder)
   // Must be called before conditional return to satisfy React hooks rules
   const processedHref = useMemo(() => {
@@ -489,6 +499,29 @@ const AnchorComponent = ({
 
   // If it's an attachment link, render the appropriate component
   if (attachmentLink) return <AttachmentLinkRouter linkData={attachmentLink} />;
+
+  // If it's a link alias, render as external link with resolved URL
+  if (resolvedAlias) {
+    return (
+      <Tooltip>
+        <TooltipTrigger>
+          <a
+            href={resolvedAlias}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              'inline-flex items-baseline justify-start gap-0.5 break-all font-medium text-primary-foreground hover:text-hover-derived',
+              className,
+            )}
+            {...props}
+          >
+            {children}
+          </a>
+        </TooltipTrigger>
+        <TooltipContent>{decodeURI(resolvedAlias)}</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   // Regular external link rendering
   return (
