@@ -58,6 +58,12 @@ export const ExecuteSandboxJsToolPart = ({
     isLastPart,
   });
 
+  // Extract first 5 lines of the error for the collapsed preview
+  const _errorPreview = useMemo(() => {
+    if (!part.errorText) return null;
+    return part.errorText.split('\n').slice(0, 5).join('\n');
+  }, [part.errorText]);
+
   // Format the result as pretty-printed JSON if possible
   const formattedResult = useMemo(() => {
     const result = part.output?.result?.result;
@@ -80,9 +86,11 @@ export const ExecuteSandboxJsToolPart = ({
         trigger={
           <>
             <XIcon className="size-3 shrink-0" />
-            <span className="truncate text-start font-medium text-xs">
-              Error while running a script
-            </span>
+            <div className="flex min-w-0 flex-col items-start">
+              <span className="truncate text-start font-medium text-xs">
+                Error while running a script
+              </span>
+            </div>
           </>
         }
         content={

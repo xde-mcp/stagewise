@@ -28,8 +28,8 @@ import {
 import { globTool } from './tools/file-modification/glob';
 import { readFileTool } from './tools/file-modification/read-file';
 import { getLintingDiagnosticsTool } from './tools/file-modification/get-linting-diagnostics';
-import { resolveContext7LibraryTool } from './tools/research/resolve-context7-library';
-import { getContext7LibraryDocsTool } from './tools/research/get-context7-library-docs';
+import { listLibraryDocsTool } from './tools/research/list-library-docs';
+import { searchInLibraryDocsTool } from './tools/research/search-in-library-docs';
 import {
   overwriteFileToolExecute,
   DESCRIPTION as OVERWRITE_FILE_DESCRIPTION,
@@ -357,12 +357,12 @@ export class ToolboxService extends DisposableService {
       case 'readFileTool':
         if (!this.clientRuntime) return null;
         return readFileTool(this.clientRuntime);
-      case 'resolveContext7LibraryTool':
+      case 'listLibraryDocsTool':
         if (!this.apiClient) return null;
-        return resolveContext7LibraryTool(this.apiClient);
-      case 'getContext7LibraryDocsTool':
+        return listLibraryDocsTool(this.apiClient);
+      case 'searchInLibraryDocsTool':
         if (!this.apiClient) return null;
-        return getContext7LibraryDocsTool(this.apiClient);
+        return searchInLibraryDocsTool(this.apiClient);
       case 'getLintingDiagnosticsTool':
         if (!this.lspService) return null;
         if (!this.clientRuntime) return null;

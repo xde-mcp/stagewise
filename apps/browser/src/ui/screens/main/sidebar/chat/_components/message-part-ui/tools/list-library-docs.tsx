@@ -1,35 +1,33 @@
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
-import { FolderCode } from 'lucide-react';
+import { FileSearchIcon } from 'lucide-react';
 
-export const GetContext7LibraryDocsToolPart = ({
+export const ListLibraryDocsToolPart = ({
   part,
   disableShimmer = false,
   minimal = false,
 }: {
-  part: Extract<AgentToolUIPart, { type: 'tool-getContext7LibraryDocsTool' }>;
+  part: Extract<AgentToolUIPart, { type: 'tool-listLibraryDocsTool' }>;
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {
-  const streamingText = part.input?.libraryId
-    ? `Reading latest docs for ${part.input.libraryId}...`
-    : 'Reading latest docs...';
+  const streamingText = part.input?.name
+    ? `Searching latest docs for ${part.input.name}...`
+    : 'Searching latest docs...';
 
   const finishedText =
     part.state === 'output-available' ? (
       <span className="flex min-w-0 gap-1">
-        <span className="shrink-0 truncate font-medium">Read latest docs</span>
-        {part.input?.libraryId && (
-          <span className="truncate font-normal opacity-75">
-            for {part.input.libraryId}
-          </span>
-        )}
+        <span className="shrink-0 truncate font-semibold">Found</span>
+        <span className="truncate font-normal">
+          {part.output?.results.length ?? 0} docs for {part.input?.name}
+        </span>
       </span>
     ) : undefined;
 
   return (
     <ToolPartUINotCollapsible
-      icon={<FolderCode className="size-3 shrink-0" />}
+      icon={<FileSearchIcon className="size-3 shrink-0" />}
       part={part}
       minimal={minimal}
       disableShimmer={disableShimmer}

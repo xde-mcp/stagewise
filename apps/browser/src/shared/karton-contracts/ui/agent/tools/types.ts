@@ -465,43 +465,39 @@ export const readConsoleLogsToolSchema = {
   outputSchema: readConsoleLogsToolOutputSchema,
 } as const;
 
-export const getContext7LibraryDocsToolInputSchema = z.object({
-  libraryId: z
-    .string()
-    .describe('Context7 library id to get the documentation for.'),
-  topic: z.string().describe('Topic to get the documentation for.'),
+export const searchInLibraryDocsToolInputSchema = z.object({
+  libraryId: z.string().describe('ID for which docs should be searched'),
+  topic: z.string().describe('Topic to search for in the docs'),
   mode: z
     .enum(['code', 'info'])
-    .describe('Mode to get the documentation for.')
+    .describe('Whether to search for code examples or information text')
     .default('code'),
-  page: z.number().describe('Page to get the documentation for.').default(1),
+  page: z.number().describe('Pagination cursor for results.').default(1),
 });
 
-export const getContext7LibraryDocsToolOutputSchema = z.object({
+export const searchInLibraryDocsToolOutputSchema = z.object({
   message: z.string(),
   content: z.string(),
   truncated: z.boolean(),
 });
 
-export type GetContext7LibraryDocsToolInput = z.infer<
-  typeof getContext7LibraryDocsToolInputSchema
+export type SearchInLibraryDocsToolInput = z.infer<
+  typeof searchInLibraryDocsToolInputSchema
 >;
-export type GetContext7LibraryDocsToolOutput = z.infer<
-  typeof getContext7LibraryDocsToolOutputSchema
+export type SearchInLibraryDocsToolOutput = z.infer<
+  typeof searchInLibraryDocsToolOutputSchema
 >;
 
-export const getContext7LibraryDocsToolSchema = {
-  inputSchema: getContext7LibraryDocsToolInputSchema,
-  outputSchema: getContext7LibraryDocsToolOutputSchema,
+export const searchInLibraryDocsToolSchema = {
+  inputSchema: searchInLibraryDocsToolInputSchema,
+  outputSchema: searchInLibraryDocsToolOutputSchema,
 } as const;
 
-export const resolveContext7LibraryToolInputSchema = z.object({
-  library: z
-    .string()
-    .describe('Library name to resolve the context7 library id for.'),
+export const listLibraryDocsToolInputSchema = z.object({
+  name: z.string().describe('Library name for which to search for matches.'),
 });
 
-export const resolveContext7LibraryToolOutputSchema = z.object({
+export const listLibraryDocsToolOutputSchema = z.object({
   message: z.string(),
   library: z.string(),
   results: z.array(
@@ -517,16 +513,16 @@ export const resolveContext7LibraryToolOutputSchema = z.object({
   itemsRemoved: z.number().optional(),
 });
 
-export type ResolveContext7LibraryToolInput = z.infer<
-  typeof resolveContext7LibraryToolInputSchema
+export type ListLibraryDocsToolInput = z.infer<
+  typeof listLibraryDocsToolInputSchema
 >;
-export type ResolveContext7LibraryToolOutput = z.infer<
-  typeof resolveContext7LibraryToolOutputSchema
+export type ListLibraryDocsToolOutput = z.infer<
+  typeof listLibraryDocsToolOutputSchema
 >;
 
-export const resolveContext7LibraryToolSchema = {
-  inputSchema: resolveContext7LibraryToolInputSchema,
-  outputSchema: resolveContext7LibraryToolOutputSchema,
+export const listLibraryDocsToolSchema = {
+  inputSchema: listLibraryDocsToolInputSchema,
+  outputSchema: listLibraryDocsToolOutputSchema,
 } as const;
 
 /**
@@ -546,8 +542,8 @@ export const allToolSchemas = {
   writeProjectMdTool: writeProjectMdToolSchema,
   executeSandboxJsTool: executeSandboxJsToolSchema,
   readConsoleLogsTool: readConsoleLogsToolSchema,
-  getContext7LibraryDocsTool: getContext7LibraryDocsToolSchema,
-  resolveContext7LibraryTool: resolveContext7LibraryToolSchema,
+  listLibraryDocsTool: listLibraryDocsToolSchema,
+  searchInLibraryDocsTool: searchInLibraryDocsToolSchema,
 } as const;
 /**
  * Inferred UI types for all tools.

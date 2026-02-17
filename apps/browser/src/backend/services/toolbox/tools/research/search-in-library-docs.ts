@@ -1,6 +1,6 @@
 import {
-  type GetContext7LibraryDocsToolInput,
-  getContext7LibraryDocsToolInputSchema,
+  type SearchInLibraryDocsToolInput,
+  searchInLibraryDocsToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import { tool } from 'ai';
@@ -9,16 +9,16 @@ import { rethrowCappedToolOutputError, capToolOutput } from '../../utils';
 /* Due to an issue in zod schema conversion in the ai sdk,
    the schema descriptions are not properly used for the prompts -
    thus, we include them in the descriptions as well. */
-export const DESCRIPTION = `Get up to date documentation for a given context7 library id and topic. 
+export const DESCRIPTION = `Get up to date documentation for a given library id and topic. 
 
 Parameters:
-- libraryId (string, REQUIRED): Context7 library id to get the documentation for.
-- topic (string, REQUIRED): Topic to get the documentation for.
+- packageId (string, REQUIRED): Package ID for which docs should be searched
+- topic (string, REQUIRED): Topic to search for in the docs
 - mode (enum, OPTIONAL): Mode to get the documentation for. Defaults to 'code'.
 - page (number, OPTIONAL): Page to get the documentation for. Defaults to 1.`;
 
-export async function getContext7LibraryDocsToolExecute(
-  params: GetContext7LibraryDocsToolInput,
+export async function searchInLibraryDocsToolExecute(
+  params: SearchInLibraryDocsToolInput,
   apiClient: TRPCClient<AppRouter>,
 ) {
   const { libraryId, topic, mode, page } = params;
@@ -47,11 +47,11 @@ export async function getContext7LibraryDocsToolExecute(
   }
 }
 
-export const getContext7LibraryDocsTool = (apiClient: TRPCClient<AppRouter>) =>
+export const searchInLibraryDocsTool = (apiClient: TRPCClient<AppRouter>) =>
   tool({
     description: DESCRIPTION,
-    inputSchema: getContext7LibraryDocsToolInputSchema,
+    inputSchema: searchInLibraryDocsToolInputSchema,
     execute: async (args) => {
-      return getContext7LibraryDocsToolExecute(args, apiClient);
+      return searchInLibraryDocsToolExecute(args, apiClient);
     },
   });

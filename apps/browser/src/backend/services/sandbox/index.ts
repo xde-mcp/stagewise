@@ -173,7 +173,7 @@ export class SandboxService extends DisposableService {
   async execute(
     agentId: string,
     code: string,
-    timeoutMs = 30_000,
+    timeoutMs = 120_000, // 2 minutes
   ): Promise<any> {
     // Lazily create agent context on first execution
     if (!this.agentToWorker.has(agentId)) this.createAgent(agentId);
@@ -226,9 +226,14 @@ export class SandboxService extends DisposableService {
         if (!pending) return;
         clearTimeout(pending.timeout);
         this.pendingRequests.delete(msg.id);
-        msg.error
-          ? pending.reject(new Error(msg.error))
-          : pending.resolve(msg.value);
+        if (msg.error) {
+          const errorMessage = msg.errorStack
+            ? `${msg.error}\n\n${msg.errorStack}`
+            : msg.error;
+          pending.reject(new Error(errorMessage));
+        } else {
+          pending.resolve(msg.value);
+        }
         break;
       }
       case 'write-file': {

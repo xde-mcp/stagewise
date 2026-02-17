@@ -40,7 +40,13 @@ export type WorkerToMainMessage =
       method: string;
       params?: Record<string, unknown>;
     }
-  | { type: 'result'; id: string; value?: unknown; error?: string }
+  | {
+      type: 'result';
+      id: string;
+      value?: unknown;
+      error?: string;
+      errorStack?: string;
+    }
   | {
       type: 'write-file';
       id: string;

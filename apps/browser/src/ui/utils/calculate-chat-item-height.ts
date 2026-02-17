@@ -71,8 +71,8 @@ function isReadOnlyToolPart(part: MessagePart): boolean {
     part.type === 'tool-grepSearchTool' ||
     part.type === 'tool-listFilesTool' ||
     part.type === 'tool-readFileTool' ||
-    part.type === 'tool-getContext7LibraryDocsTool' ||
-    part.type === 'tool-resolveContext7LibraryTool' ||
+    part.type === 'tool-searchInLibraryDocsTool' ||
+    part.type === 'tool-listLibraryDocsTool' ||
     part.type === 'tool-executeSandboxJsTool' ||
     part.type === 'tool-readConsoleLogsTool' ||
     part.type === 'tool-getLintingDiagnosticsTool' ||

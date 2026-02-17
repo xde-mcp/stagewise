@@ -343,6 +343,7 @@ ipc.onMessage(async (msg) => {
           type: 'result',
           id: msg.id,
           error: err instanceof Error ? err.message : String(err),
+          errorStack: err instanceof Error ? err.stack : undefined,
         });
       }
       break;

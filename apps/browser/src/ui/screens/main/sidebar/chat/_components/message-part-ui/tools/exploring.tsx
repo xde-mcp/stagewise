@@ -16,8 +16,8 @@ import { GrepSearchToolPart } from './grep-search';
 import { ListFilesToolPart } from './list-files';
 import { ReadFileToolPart } from './read-file';
 import { UpdateProjectMdToolPart } from './update-project-md';
-import { GetContext7LibraryDocsToolPart } from './get-context7-library-docs';
-import { ResolveContext7LibraryToolPart } from './resolve-context7-library';
+import { SearchInLibraryDocsToolPart } from './search-in-library-docs';
+import { ListLibraryDocsToolPart } from './list-library-docs';
 import { cn } from '@/utils';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { ThinkingPart } from '../thinking';
@@ -48,8 +48,8 @@ export type ReadOnlyToolPart =
           | 'tool-grepSearchTool'
           | 'tool-listFilesTool'
           | 'tool-readFileTool'
-          | 'tool-getContext7LibraryDocsTool'
-          | 'tool-resolveContext7LibraryTool'
+          | 'tool-searchInLibraryDocsTool'
+          | 'tool-listLibraryDocsTool'
           | 'tool-executeSandboxJsTool'
           | 'tool-readConsoleLogsTool'
           | 'tool-getLintingDiagnosticsTool'
@@ -67,8 +67,8 @@ export function isReadOnlyToolPart(
     part.type === 'tool-grepSearchTool' ||
     part.type === 'tool-listFilesTool' ||
     part.type === 'tool-readFileTool' ||
-    part.type === 'tool-getContext7LibraryDocsTool' ||
-    part.type === 'tool-resolveContext7LibraryTool' ||
+    part.type === 'tool-searchInLibraryDocsTool' ||
+    part.type === 'tool-listLibraryDocsTool' ||
     part.type === 'tool-executeSandboxJsTool' ||
     part.type === 'tool-readConsoleLogsTool' ||
     part.type === 'tool-getLintingDiagnosticsTool' ||
@@ -138,18 +138,18 @@ const PartContent = ({
           disableShimmer={disableShimmer}
         />
       );
-    case 'tool-getContext7LibraryDocsTool':
+    case 'tool-searchInLibraryDocsTool':
       return (
-        <GetContext7LibraryDocsToolPart
+        <SearchInLibraryDocsToolPart
           key={part.toolCallId}
           minimal={minimal}
           part={part}
           disableShimmer={disableShimmer}
         />
       );
-    case 'tool-resolveContext7LibraryTool':
+    case 'tool-listLibraryDocsTool':
       return (
-        <ResolveContext7LibraryToolPart
+        <ListLibraryDocsToolPart
           key={part.toolCallId}
           minimal={minimal}
           part={part}
@@ -304,7 +304,7 @@ export const ExploringToolParts = ({
           filesFound += part.output?.result?.totalFiles ?? 0;
           hasUsedFileTools = true;
           break;
-        case 'tool-getContext7LibraryDocsTool':
+        case 'tool-searchInLibraryDocsTool':
           docsRead += 1;
           hasUsedContext7Tools = true;
           break;
@@ -422,21 +422,21 @@ export const ExploringToolParts = ({
       case 'tool-grepSearchTool':
       case 'tool-listFilesTool':
         return 'Exploring files...';
-      case 'tool-getContext7LibraryDocsTool': {
+      case 'tool-searchInLibraryDocsTool': {
         const p = lastNonReasoningPart as Extract<
           AgentToolUIPart,
-          { type: 'tool-getContext7LibraryDocsTool' }
+          { type: 'tool-searchInLibraryDocsTool' }
         >;
         if (!p.input?.libraryId) return 'Exploring documentation...';
         return `Reading docs for ${p.input.libraryId}...`;
       }
-      case 'tool-resolveContext7LibraryTool': {
+      case 'tool-listLibraryDocsTool': {
         const p = lastNonReasoningPart as Extract<
           AgentToolUIPart,
-          { type: 'tool-resolveContext7LibraryTool' }
+          { type: 'tool-listLibraryDocsTool' }
         >;
-        if (!p.input?.library) return 'Exploring documentation...';
-        return `Searching docs for ${p.input.library}...`;
+        if (!p.input?.name) return 'Exploring documentation...';
+        return `Searching docs for ${p.input.name}...`;
       }
       case 'tool-executeSandboxJsTool': {
         const p = lastNonReasoningPart as Extract<

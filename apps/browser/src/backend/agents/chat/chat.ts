@@ -51,14 +51,8 @@ export class ChatAgent extends BaseAgent<never, undefined> {
     const box = this.toolbox;
     const tools = {
       executeSandboxJsTool: await box.getTool('executeSandboxJsTool', id),
-      resolveContext7LibraryTool: await box.getTool(
-        'resolveContext7LibraryTool',
-        id,
-      ),
-      getContext7LibraryDocsTool: await box.getTool(
-        'getContext7LibraryDocsTool',
-        id,
-      ),
+      listLibraryDocsTool: await box.getTool('listLibraryDocsTool', id),
+      searchInLibraryDocsTool: await box.getTool('searchInLibraryDocsTool', id),
       getLintingDiagnosticsTool: await box.getTool(
         'getLintingDiagnosticsTool',
         id,
