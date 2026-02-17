@@ -2,11 +2,6 @@ import { ChevronDownIcon, Loader2Icon, XIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { IconWindowPointerOutline18 } from 'nucleo-ui-outline-18';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@stagewise/stage-ui/components/tooltip';
-import {
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent,
@@ -78,13 +73,103 @@ export const ExecuteSandboxJsToolPart = ({
 
   if (state === 'error') {
     return (
-      <div className={cn('group/exploring-part block min-w-32 rounded-xl')}>
-        <div className="flex h-6 cursor-default items-center gap-1 rounded-lg text-muted-foreground">
-          <div className="flex w-full flex-row items-center justify-start gap-1">
-            <ErrorHeader errorText={part.errorText ?? undefined} />
+      <ToolPartUI
+        showBorder={showBorder}
+        expanded={expanded}
+        setExpanded={handleUserSetExpanded}
+        trigger={
+          <>
+            <XIcon className="size-3 shrink-0" />
+            <span className="truncate text-start font-medium text-xs">
+              Error while running a script
+            </span>
+          </>
+        }
+        content={
+          <div className="flex flex-col">
+            {part.input?.script && (
+              <Collapsible
+                open={scriptExpanded}
+                onOpenChange={setScriptExpanded}
+              >
+                <CollapsibleTrigger size="condensed" className="">
+                  <button
+                    type="button"
+                    onClick={() => setScriptExpanded(!scriptExpanded)}
+                    className="mb-1 flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-wider"
+                  >
+                    <ChevronDownIcon
+                      className={cn(
+                        'size-3 transition-transform duration-150',
+                        !scriptExpanded && '-rotate-90',
+                      )}
+                    />
+                    Script
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="duration-0!">
+                  {capMaxHeight ? (
+                    <OverlayScrollbar
+                      className="max-h-28"
+                      options={{ overflow: { x: 'hidden', y: 'scroll' } }}
+                    >
+                      <CodeBlock
+                        code={part.input.script}
+                        language="javascript"
+                        hideActionButtons
+                      />
+                    </OverlayScrollbar>
+                  ) : (
+                    <div className="overflow-y-hidden">
+                      <CodeBlock
+                        code={part.input.script}
+                        language="javascript"
+                        hideActionButtons
+                      />
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+            {part.errorText && (
+              <Collapsible
+                open={resultExpanded}
+                onOpenChange={setResultExpanded}
+              >
+                <CollapsibleTrigger size="condensed" className="">
+                  <button
+                    type="button"
+                    onClick={() => setResultExpanded(!resultExpanded)}
+                    className="mb-1 flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-wider"
+                  >
+                    <ChevronDownIcon
+                      className={cn(
+                        'size-3 transition-transform duration-150',
+                        !resultExpanded && '-rotate-90',
+                      )}
+                    />
+                    Error
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="duration-0!">
+                  <OverlayScrollbar
+                    className={cn('max-h-24')}
+                    options={{ overflow: { x: 'hidden', y: 'scroll' } }}
+                  >
+                    <CodeBlock
+                      code={part.errorText}
+                      language="javascript"
+                      hideActionButtons
+                    />
+                  </OverlayScrollbar>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </div>
-        </div>
-      </div>
+        }
+        contentClassName={capMaxHeight ? 'max-h-80!' : undefined}
+        contentFooterClassName="px-0"
+      />
     );
   }
 
@@ -213,36 +298,6 @@ export const ExecuteSandboxJsToolPart = ({
       }
       contentFooterClassName="px-0"
     />
-  );
-};
-
-const ErrorHeader = ({
-  relativePath,
-  errorText,
-}: {
-  relativePath?: string;
-  errorText?: string;
-}) => {
-  const errorTextContent = errorText
-    ? errorText
-    : relativePath
-      ? `Error editing ${relativePath}`
-      : 'Error editing file';
-
-  return (
-    <div className="flex flex-row items-center justify-start gap-1">
-      <XIcon className="size-3 shrink-0" />
-      <Tooltip>
-        <TooltipTrigger>
-          <span className="min-w-0 flex-1 truncate text-xs">
-            {errorTextContent}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{errorTextContent}</p>
-        </TooltipContent>
-      </Tooltip>
-    </div>
   );
 };
 
