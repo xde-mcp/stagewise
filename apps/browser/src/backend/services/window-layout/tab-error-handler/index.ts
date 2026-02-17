@@ -1,6 +1,5 @@
 import { webFrameMain, type WebContents } from 'electron';
 import type { Logger } from '../../logger';
-import { isSafetyRelevantError } from '@shared/chromium-errors/error-classification';
 
 /**
  * Error state tracked by the TabErrorHandler
@@ -53,7 +52,7 @@ export interface TabErrorHandlerCallbacks {
 }
 
 const MAX_SUBFRAME_ERRORS = 50;
-const ERROR_PAGE_PATH = '/error/page-load-failed';
+export const ERROR_PAGE_PATH = '/error/page-load-failed';
 
 /**
  * TabErrorHandler manages error states for a browser tab.
@@ -273,7 +272,6 @@ export class TabErrorHandler {
     errorCode: number,
     errorDescription: string,
     failedUrl: string,
-    subresourceUrl?: string,
   ): void {
     // Track original URL only on first error (preserve across cascading errors)
     if (!this.errorState.originalFailedUrl) {
@@ -291,16 +289,12 @@ export class TabErrorHandler {
     this.callbacks.onDisplayUrlUpdate(this.errorState.originalFailedUrl);
 
     // Navigate to error page
-    this.navigateToErrorPage(
-      errorCode,
-      errorDescription,
-      failedUrl,
-      subresourceUrl,
-    );
+    this.navigateToErrorPage(errorCode, errorDescription, failedUrl);
   }
 
   /**
-   * Handle subframe error - depends on safety relevance
+   * Handle subframe error - navigate only the failed frame, never the top-level page.
+   * Matches Chrome behavior: subframe failures should not affect the parent page.
    */
   private handleSubframeError(
     errorCode: number,
@@ -309,20 +303,7 @@ export class TabErrorHandler {
     frameProcessId: number,
     frameRoutingId: number,
   ): void {
-    const isSafety = isSafetyRelevantError(errorCode, failedUrl);
-
-    if (isSafety) {
-      // Safety-relevant subframe errors navigate full page with subresource URL
-      this.handleMainFrameError(
-        errorCode,
-        errorDescription,
-        this.webContents.getURL(), // Current page URL as the "failed" URL
-        failedUrl, // Actual failed resource as subresource
-      );
-      return;
-    }
-
-    // Non-safety subframe errors: navigate just the frame
+    // Navigate just the failed frame to an error page
     this.navigateFrameToError(
       frameProcessId,
       frameRoutingId,
@@ -358,13 +339,11 @@ export class TabErrorHandler {
     errorCode: number,
     errorMessage: string,
     errorUrl: string,
-    subresourceUrl?: string,
   ): Promise<void> {
     const errorPageUrl = this.buildErrorPageUrl(
       errorCode,
       errorMessage,
       errorUrl,
-      subresourceUrl,
     );
 
     this.isNavigatingToErrorPage = true;
@@ -423,7 +402,6 @@ export class TabErrorHandler {
       errorCode,
       errorMessage,
       errorUrl,
-      undefined,
       true, // isSubframe
     );
 
@@ -452,7 +430,6 @@ export class TabErrorHandler {
     errorCode: number,
     errorMessage: string,
     errorUrl: string,
-    subresourceUrl?: string,
     isSubframe = false,
   ): string {
     const params = new URLSearchParams();
@@ -460,10 +437,6 @@ export class TabErrorHandler {
     params.set('errorCode', errorCode.toString());
     params.set('errorMessage', errorMessage);
     params.set('tabId', this.tabId);
-
-    if (subresourceUrl) {
-      params.set('subresourceUrl', subresourceUrl);
-    }
 
     if (isSubframe) {
       params.set('isSubframe', 'true');
@@ -626,6 +599,20 @@ export class TabErrorHandler {
    */
   public isCertificateOriginTrusted(origin: string): boolean {
     return this.trustedCertificateOrigins.has(origin);
+  }
+
+  /**
+   * Extract the original failed URL from an error page URL.
+   * Returns null if the URL is not an error page or has no errorUrl param.
+   */
+  public static extractFailedUrlFromErrorPage(url: string): string | null {
+    if (!url.includes(ERROR_PAGE_PATH)) return null;
+    try {
+      const parsed = new URL(url);
+      return parsed.searchParams.get('errorUrl');
+    } catch {
+      return null;
+    }
   }
 
   /**

@@ -557,7 +557,15 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
 
   public reload() {
     // If on error page, reload the original failed URL instead
-    const reloadUrl = this.errorHandler?.getReloadUrl();
+    let reloadUrl = this.errorHandler?.getReloadUrl() ?? null;
+
+    // Fallback: error state may have been cleared (e.g. after back navigation),
+    // but the current URL is still an error page — extract the original URL from it.
+    if (!reloadUrl) {
+      const currentUrl = this.webContentsView.webContents.getURL();
+      reloadUrl = TabErrorHandler.extractFailedUrlFromErrorPage(currentUrl);
+    }
+
     if (reloadUrl) {
       const navHistory = this.webContentsView.webContents.navigationHistory;
       const errorPageIndex = navHistory.getActiveIndex();
@@ -696,6 +704,20 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       };
       navHistory.goToOffset(offset);
       return;
+    }
+
+    // If the next history entry is an error page, retry the original URL instead
+    const nextIndex = navHistory.getActiveIndex() + 1;
+    if (nextIndex < navHistory.length()) {
+      const nextEntry = navHistory.getEntryAtIndex(nextIndex);
+      const failedUrl = TabErrorHandler.extractFailedUrlFromErrorPage(
+        nextEntry.url,
+      );
+      if (failedUrl) {
+        navHistory.removeEntryAtIndex(nextIndex);
+        this.loadURL(failedUrl, PageTransition.RELOAD);
+        return;
+      }
     }
 
     // Standard forward navigation

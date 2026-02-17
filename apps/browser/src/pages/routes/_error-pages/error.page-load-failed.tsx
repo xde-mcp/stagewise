@@ -121,7 +121,6 @@ const getErrorGraphic = (
 
 type PageLoadErrorSearch = {
   errorUrl: string;
-  subresourceUrl?: string;
   errorCode: number;
   errorMessage?: string;
   isSubframe?: string;
@@ -151,7 +150,6 @@ export const Route = createFileRoute('/_error-pages/error/page-load-failed')({
       (search.errorUrl as string).trim().length > 0
         ? search.errorUrl
         : '(empty)') as string,
-      subresourceUrl: search.subresourceUrl as string | undefined,
       errorCode: Number(search.errorCode),
       errorMessage: search.errorMessage as string | undefined,
       isSubframe: search.isSubframe as string | undefined,
@@ -161,10 +159,9 @@ export const Route = createFileRoute('/_error-pages/error/page-load-failed')({
 });
 
 function RouteComponent() {
-  const { errorUrl, errorCode, errorMessage, subresourceUrl, tabId } =
-    useSearch({
-      from: '/_error-pages/error/page-load-failed',
-    });
+  const { errorUrl, errorCode, errorMessage, tabId } = useSearch({
+    from: '/_error-pages/error/page-load-failed',
+  });
 
   const trustCertificateAndReload = useKartonProcedure(
     (p) => p.trustCertificateAndReload,
@@ -175,9 +172,7 @@ function RouteComponent() {
 
   // Build title and message from classification
   const title = classification.userFriendlyTitle;
-  const message = subresourceUrl
-    ? `${classification.userFriendlyMessage}\n\nFailed resource: ${subresourceUrl}`
-    : classification.userFriendlyMessage;
+  const message = classification.userFriendlyMessage;
 
   // Extract origin from error URL for certificate bypass
   const getOriginFromUrl = (url: string): string | null => {
@@ -232,7 +227,7 @@ function RouteComponent() {
  * - For other errors: "Try Again" then "Go Back"
  */
 const getErrorButtonActions = (
-  _errorUrl: string,
+  errorUrl: string,
   category: ErrorCategory,
   onTrustCertificate?: () => void,
 ): Required<ErrorDisplayProps['buttonActions']> => {
@@ -257,8 +252,9 @@ const getErrorButtonActions = (
     {
       label: 'Try Again',
       onClick: () => {
-        // Trigger reload - TabController will intercept and reload the original URL
-        window.location.reload();
+        // Navigate directly to the failed URL to retry loading it.
+        // Using replace() so the error page entry is removed from history.
+        window.location.replace(errorUrl);
       },
     },
     {
