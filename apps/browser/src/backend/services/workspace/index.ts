@@ -9,8 +9,6 @@ import type { Logger } from '../logger';
 import type { TelemetryService } from '../telemetry';
 import type { FilePickerService } from '../file-picker';
 import type { NotificationService } from '../notification';
-import { RagService } from './services/rag';
-import { StaticAnalysisService } from './services/static-analysis';
 import { WorkspacePathsService } from './services/paths';
 import type { GlobalDataPathService } from '@/services/global-data-path';
 import { DisposableService } from '../disposable';
@@ -45,8 +43,6 @@ export class WorkspaceService extends DisposableService {
 
   // Workspace child services (null when no workspace is loaded)
   private workspacePathsService: WorkspacePathsService | null = null;
-  private ragService: RagService | null = null;
-  private staticAnalysisService: StaticAnalysisService | null = null;
 
   // AgentManagerService - set via setter after creation (due to circular dependency)
   private agentManagerService: AgentManagerService | null = null;
@@ -245,11 +241,6 @@ export class WorkspaceService extends DisposableService {
           temp: '',
         },
         agent: null,
-        rag: {
-          lastIndexedAt: null,
-          indexedFiles: 0,
-          statusInfo: { isIndexing: false },
-        },
         loadedOnStart: loadedOnStart,
       };
       draft.workspaceStatus = 'open';
@@ -262,11 +253,6 @@ export class WorkspaceService extends DisposableService {
 
     void this.checkAndGenerateProjectMd(clientRuntime);
 
-    this.staticAnalysisService = await StaticAnalysisService.create(
-      this.logger,
-      workspacePath,
-    );
-
     this.uiKarton.setState((draft) => {
       draft.workspace!.path = workspacePath;
       draft.workspace!.paths.data =
@@ -276,19 +262,6 @@ export class WorkspaceService extends DisposableService {
       draft.workspace!.agent = {
         accessPath: workspacePath,
       };
-    });
-
-    this.ragService = await RagService.create(
-      this.logger,
-      this.telemetryService,
-      this.uiKarton,
-      clientRuntime,
-    ).catch((error) => {
-      this.report(error as Error, 'createRagService');
-      this.logger.error('[WorkspaceService] Failed to create rag service', {
-        cause: error,
-      });
-      return null;
     });
   }
 
@@ -401,14 +374,10 @@ export class WorkspaceService extends DisposableService {
       draft.workspaceStatus = 'closing';
     });
 
-    // Teardown child services in LIFO order (reverse of creation)
-    await this.ragService?.teardown();
-    await this.staticAnalysisService?.teardown();
+    // Teardown child services
     await this.workspacePathsService?.teardown();
 
     // Null out references after teardown
-    this.ragService = null;
-    this.staticAnalysisService = null;
     this.workspacePathsService = null;
     this.currentWorkspacePath = null;
 

@@ -53,11 +53,6 @@ export const MockKartonProvider: React.FC<MockKartonProviderProps> = ({
       agent: {
         accessPath: '/mock/workspace/path',
       },
-      rag: {
-        lastIndexedAt: null,
-        indexedFiles: 0,
-        statusInfo: { isIndexing: false },
-      },
       loadedOnStart: true,
     };
 

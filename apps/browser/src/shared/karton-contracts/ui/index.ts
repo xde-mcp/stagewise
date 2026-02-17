@@ -486,18 +486,6 @@ export type AppState = {
     agent: {
       accessPath: string;
     } | null;
-    rag: {
-      lastIndexedAt: Date | null;
-      indexedFiles: number;
-      statusInfo:
-        | {
-            isIndexing: true;
-            indexProgress: number;
-            indexTotal: number;
-          }
-        | { isIndexing: false }
-        | { isIndexing: false; hasError: true; error: string };
-    };
     loadedOnStart: boolean;
   } | null;
   workspaceStatus: WorkspaceStatus;

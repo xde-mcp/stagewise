@@ -43,11 +43,6 @@ const baseState: Partial<AppState> = {
       data: '/Users/user/projects/my-app/data',
       temp: '/Users/user/projects/my-app/temp',
     },
-    rag: {
-      lastIndexedAt: null,
-      indexedFiles: 0,
-      statusInfo: { isIndexing: false },
-    },
     loadedOnStart: true,
     agent: {
       accessPath: '/Users/user/projects/my-app',

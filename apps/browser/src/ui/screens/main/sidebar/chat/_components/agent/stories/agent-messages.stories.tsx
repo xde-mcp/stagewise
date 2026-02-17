@@ -36,11 +36,6 @@ const createStoryState = (
           data: '/Users/user/projects/my-app/data',
           temp: '/Users/user/projects/my-app/temp',
         },
-        rag: {
-          lastIndexedAt: null,
-          indexedFiles: 0,
-          statusInfo: { isIndexing: false },
-        },
         loadedOnStart: true,
       },
       userExperience: {
