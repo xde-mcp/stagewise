@@ -7,7 +7,7 @@ export const inputVariants = cva(
   [
     'w-full max-w-lg rounded-md',
     'bg-surface-1 text-foreground',
-    'placeholder:text-muted-foreground',
+    'placeholder:text-subtle-foreground',
     'disabled:text-muted-foreground disabled:opacity-50',
     'border border-surface-2 focus:border-surface-3 focus:outline-none',
   ],
