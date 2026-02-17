@@ -15,11 +15,13 @@ import {
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { IdeLogo } from '@ui/components/ide-logo';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { ContextFilesResult } from '@shared/karton-contracts/pages-api/types';
+import type { Patch } from '@shared/karton-contracts/ui/shared-types';
 import { CodeBlock } from '@ui/components/ui/code-block';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { getIDEFileUrl, IDE_SELECTION_ITEMS } from '@ui/utils';
+import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
 
 export const Route = createFileRoute('/_internal-app/agent-settings')({
   component: Page,
@@ -113,8 +115,15 @@ function ScrollFadeCodeBlock({
   );
 }
 
-function ContextFilesSetting() {
+// =============================================================================
+// Workspace Settings Section
+// =============================================================================
+
+function WorkspaceSettingsSection() {
   const getContextFiles = useKartonProcedure((s) => s.getContextFiles);
+  const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
+  const preferences = useKartonState((s) => s.preferences);
+
   const [contextFiles, setContextFiles] = useState<ContextFilesResult | null>(
     null,
   );
@@ -133,10 +142,50 @@ function ContextFilesSetting() {
       });
   }, [getContextFiles]);
 
+  const workspacePath = contextFiles?.workspacePath ?? null;
+
+  const respectAgentsMd = workspacePath
+    ? (preferences?.agent?.workspaceSettings?.[workspacePath]
+        ?.respectAgentsMd ?? false)
+    : false;
+
+  const handleToggleAgentsMd = useCallback(
+    async (checked: boolean) => {
+      if (!workspacePath) return;
+
+      const currentSettings =
+        preferences?.agent?.workspaceSettings?.[workspacePath];
+
+      const patches: Patch[] = currentSettings
+        ? [
+            {
+              op: 'replace' as const,
+              path: [
+                'agent',
+                'workspaceSettings',
+                workspacePath,
+                'respectAgentsMd',
+              ],
+              value: checked,
+            },
+          ]
+        : [
+            {
+              op: 'add' as const,
+              path: ['agent', 'workspaceSettings', workspacePath],
+              value: { respectAgentsMd: checked },
+            },
+          ];
+
+      await updatePreferences(patches);
+    },
+    [workspacePath, preferences, updatePreferences],
+  );
+
   if (isLoading) {
     return (
       <div className="text-muted-foreground text-sm">
-        Loading context files...
+        Loading workspace settings...
       </div>
     );
   }
@@ -145,80 +194,102 @@ function ContextFilesSetting() {
     return (
       <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
         <p className="text-muted-foreground text-sm">
-          No workspace is currently open. Open a workspace to view context
-          files.
+          No workspace is currently open. Open a workspace to configure
+          workspace-specific settings.
         </p>
       </div>
     );
   }
 
-  const hasAnyContextFile =
-    contextFiles.projectMd.exists || contextFiles.agentsMd.exists;
-
-  if (!hasAnyContextFile) {
-    return (
-      <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
-        <p className="text-muted-foreground text-sm">
-          No context files found in the current workspace.
-        </p>
-      </div>
-    );
-  }
+  const showAgentsMd = respectAgentsMd && contextFiles.agentsMd.exists;
+  const hasAnyContextFile = contextFiles.projectMd.exists || showAgentsMd;
 
   // Determine default tab - prefer .stagewise/PROJECT.md if it exists
   const defaultTab = contextFiles.projectMd.exists ? 'project' : 'agents';
 
   return (
-    <Tabs defaultValue={defaultTab} className="w-full">
-      <TabsList className="max-w-96">
-        {contextFiles.projectMd.exists && (
-          <Tooltip>
-            <TooltipTrigger>
-              <TabsTrigger value="project">PROJECT.md</TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent>
-              <span className="block max-w-80 break-all">
-                {contextFiles.projectMd.path}
-              </span>
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {contextFiles.agentsMd.exists && (
-          <Tooltip>
-            <TooltipTrigger>
-              <TabsTrigger value="agents">AGENTS.md</TabsTrigger>
-            </TooltipTrigger>
-            <TooltipContent>
-              <span className="block max-w-80 break-all">
-                {contextFiles.agentsMd.path}
-              </span>
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </TabsList>
+    <div className="space-y-6">
+      {/* AGENTS.md toggle */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <h3 className="font-medium text-base text-foreground">
+            Include AGENTS.md in prompt
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            Not recommended — stagewise already manages optimized, up-to-date
+            project information and offers dedicated files to control agent
+            behavior.
+          </p>
+        </div>
 
-      {contextFiles.projectMd.exists && (
-        <TabsContent value="project" className="w-full">
-          <ScrollFadeCodeBlock
-            code={contextFiles.projectMd.content ?? ''}
-            description="Auto-generated project analysis stored in your project's .stagewise folder."
-            filePath={contextFiles.projectMd.path}
-          />
-        </TabsContent>
-      )}
+        <Checkbox
+          checked={respectAgentsMd}
+          onCheckedChange={handleToggleAgentsMd}
+          size="sm"
+          className="mt-1"
+        />
+      </div>
 
-      {contextFiles.agentsMd.exists && (
-        <TabsContent value="agents" className="w-full">
-          <ScrollFadeCodeBlock
-            code={contextFiles.agentsMd.content ?? ''}
-            description="User-created coding guidelines from your workspace root."
-            filePath={contextFiles.agentsMd.path}
-          />
-        </TabsContent>
+      {/* Context files viewer */}
+      {hasAnyContextFile && (
+        <div className="space-y-2">
+          <h3 className="font-medium text-base text-foreground">
+            Context files
+          </h3>
+          <Tabs defaultValue={defaultTab} className="w-full">
+            <TabsList className="max-w-96">
+              {contextFiles.projectMd.exists && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <TabsTrigger value="project">PROJECT.md</TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span className="block max-w-80 break-all">
+                      {contextFiles.projectMd.path}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {showAgentsMd && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <TabsTrigger value="agents">AGENTS.md</TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span className="block max-w-80 break-all">
+                      {contextFiles.agentsMd.path}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </TabsList>
+
+            {contextFiles.projectMd.exists && (
+              <TabsContent value="project" className="w-full">
+                <ScrollFadeCodeBlock
+                  code={contextFiles.projectMd.content ?? ''}
+                  description="Auto-generated project analysis stored in your project's .stagewise folder."
+                  filePath={contextFiles.projectMd.path}
+                />
+              </TabsContent>
+            )}
+
+            {showAgentsMd && (
+              <TabsContent value="agents" className="w-full">
+                <ScrollFadeCodeBlock
+                  code={contextFiles.agentsMd.content ?? ''}
+                  description="User-created coding guidelines from your workspace root."
+                  filePath={contextFiles.agentsMd.path}
+                />
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
       )}
-    </Tabs>
+    </div>
   );
 }
+
 function IdeSelectionSetting() {
   const globalConfig = useKartonState((s) => s.globalConfig);
   const setGlobalConfig = useKartonProcedure((s) => s.setGlobalConfig);
@@ -298,15 +369,21 @@ function Page() {
 
             <IdeSelectionSetting />
           </section>
-          <section id="context-files" className="mt-6 space-y-2">
+
+          <hr className="border-border/20" />
+
+          {/* Workspace Settings Section */}
+          <section className="space-y-6">
             <div>
-              <h2 className="font-medium text-foreground text-lg">Context</h2>
+              <h2 className="font-medium text-foreground text-lg">
+                Workspace Settings
+              </h2>
               <p className="text-muted-foreground text-sm">
-                Files that provide project-specific context to the AI agent.
+                Per-workspace configuration and context files for the AI agent.
               </p>
             </div>
 
-            <ContextFilesSetting />
+            <WorkspaceSettingsSection />
           </section>
         </div>
       </OverlayScrollbar>

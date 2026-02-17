@@ -123,6 +123,16 @@ export const pageSettingSchema = z.object({
 
 export type PageSetting = z.infer<typeof pageSettingSchema>;
 
+/** Per-workspace agent settings (keyed by workspace absolute path) */
+export const workspaceAgentSettingsSchema = z.object({
+  /** Whether the AGENTS.md file is included in the agent's system prompt */
+  respectAgentsMd: z.boolean().default(false),
+});
+
+export type WorkspaceAgentSettings = z.infer<
+  typeof workspaceAgentSettingsSchema
+>;
+
 export const userPreferencesSchema = z.object({
   privacy: z
     .object({
@@ -168,6 +178,14 @@ export const userPreferencesSchema = z.object({
       originSettings: {},
       lastUsedOrigin: null,
     }),
+  /** Per-workspace agent settings (keyed by workspace absolute path) */
+  agent: z
+    .object({
+      workspaceSettings: z
+        .record(z.string(), workspaceAgentSettingsSchema)
+        .default({}),
+    })
+    .default({ workspaceSettings: {} }),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;
@@ -241,6 +259,7 @@ export const defaultUserPreferences: UserPreferences = {
   },
   permissions: defaultPermissionsForUserPrefs,
   devToolbar: defaultDevToolbarForUserPrefs,
+  agent: { workspaceSettings: {} },
 };
 
 /**

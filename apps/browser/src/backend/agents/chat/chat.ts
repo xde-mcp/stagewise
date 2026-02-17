@@ -39,7 +39,11 @@ export class ChatAgent extends BaseAgent<never, undefined> {
   } satisfies BaseAgentConfig<never>;
 
   protected getSystemPrompt = async (): Promise<string> => {
-    return buildChatSystemPrompt(this.toolbox, this.instanceId);
+    return buildChatSystemPrompt(
+      this.toolbox,
+      this.instanceId,
+      this.toolbox.getWorkspaceAgentSettings(),
+    );
   };
 
   protected getTools = async () => {

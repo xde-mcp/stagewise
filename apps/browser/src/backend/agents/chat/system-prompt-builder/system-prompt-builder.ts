@@ -1,7 +1,8 @@
 import type { ToolboxContextProvider } from '@/services/toolbox/types';
+import type { WorkspaceAgentSettings } from '@shared/karton-contracts/ui/shared-types';
 
 // Import basic system prompt parts
-import ApplicationInfo from '../../shared/prompts/system/application-info.md?raw';
+import { getApplicationInfo } from '../../shared/prompts/system/application-info';
 import Identity from '../../shared/prompts/system/identity.md?raw';
 import MessageStructure from '../../shared/prompts/system/message-structure.md?raw';
 import SecurityAuthorityModel from '../../shared/prompts/system/security-authority-model.md?raw';
@@ -11,7 +12,7 @@ import { getSkillsInformation } from '../../shared/prompts/system/skills';
 /** Chat agent system prompt structure:
  *
  * 1. Identity
- * 2. Application environment info (browser, staqgewise files, etc.)
+ * 2. Application environment info (browser, stagewise files, etc.)
  * 3. Message structure explanation (custom formatting etc.)
  * 4. Security authority model (prevent prompt injection etc.)
  * 5. Skills information (what skills are available and how to use them)
@@ -22,14 +23,19 @@ import { getSkillsInformation } from '../../shared/prompts/system/skills';
 export async function buildChatSystemPrompt(
   toolbox: ToolboxContextProvider,
   agentInstanceId: string,
+  workspaceAgentSettings: WorkspaceAgentSettings,
 ): Promise<string> {
-  const agentsMdContent = await toolbox.getAgentsMd();
+  const { respectAgentsMd } = workspaceAgentSettings;
+
+  const agentsMdContent = respectAgentsMd ? await toolbox.getAgentsMd() : null;
 
   const projectMdContent = await toolbox.getProjectMd();
 
+  const applicationInfo = getApplicationInfo({ respectAgentsMd });
+
   const prompt = [
     `<identity>${Identity}</identity>`,
-    `<application-environment-info>${ApplicationInfo}</application-environment-info>`,
+    `<application-environment-info>${applicationInfo}</application-environment-info>`,
     `<message-structure>${MessageStructure}</message-structure>`,
     `<security-authority-model>${SecurityAuthorityModel}</security-authority-model>`,
     `<skills>${await getSkillsInformation(toolbox)}</skills>`,

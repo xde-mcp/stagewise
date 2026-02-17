@@ -7,6 +7,7 @@ import {
 import {
   MAX_IMAGE_SIZE,
   MAX_DOCUMENT_SIZE,
+  type WorkspaceAgentSettings,
 } from '@shared/karton-contracts/ui/shared-types';
 import type { KartonService } from '@/services/karton';
 import type { GlobalConfigService } from '@/services/global-config';
@@ -459,6 +460,16 @@ export class ToolboxService extends DisposableService {
   public async getSkillsList(): Promise<Skill[]> {
     if (!this.clientRuntime) return [];
     return await getSkills(this.clientRuntime);
+  }
+
+  public getWorkspaceAgentSettings(): WorkspaceAgentSettings {
+    const workspacePath = this.uiKarton.state.workspace?.path ?? null;
+    if (!workspacePath) return { respectAgentsMd: false };
+    return (
+      this.uiKarton.state.preferences?.agent?.workspaceSettings?.[
+        workspacePath
+      ] ?? { respectAgentsMd: false }
+    );
   }
 
   public async getAgentsMd(): Promise<string | null> {
