@@ -112,7 +112,7 @@ Safe, computational Node.js modules can be imported via \`await import('node:*')
 
 ### Dynamic imports
 
-You may dynamically import ESM modules from CDNs via \`await import('https://...'/)\`. Use \`esm.sh?bundle\` to bundle dependencies. Only \`https://\` allowed. Modules cached per session.
+You may dynamically import ESM modules from CDNs via \`await import('https://...'/)\`. Use \`esm.sh?bundle\` to bundle dependencies with the esm.sh CDN. Only \`https://\` allowed. Modules cached per session. Avoid explicitly stating versions (only as specific as needed - i.e. major only).
 
 ### Examples
 
