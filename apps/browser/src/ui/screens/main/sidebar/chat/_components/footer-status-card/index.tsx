@@ -13,9 +13,9 @@ import {
 import { FileDiffSection, formatFileDiff } from './file-diff-section';
 import { MessageQueueSection } from './message-queue-section';
 import {
-  ProjectMdStatusSection,
-  type ProjectMdStatus,
-} from './project-md-section';
+  WorkspaceMdStatusSection,
+  type WorkspaceMdStatus,
+} from './workspace-md-section';
 
 // Stable empty arrays to avoid infinite loop with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];
@@ -51,12 +51,12 @@ export function StatusCard() {
   );
 
   // Find the project-md agent ID when it's running
-  const projectMdAgentId = useKartonState((s) => {
+  const workspaceMdAgentId = useKartonState((s) => {
     const instances = s.agents.instances;
     for (const agentId in instances) {
       const agent = instances[agentId];
       if (
-        agent.type === AgentTypes.PROJECT_MD &&
+        agent.type === AgentTypes.WORKSPACE_MD &&
         agent.state.isWorking === true
       )
         return agentId;
@@ -64,13 +64,13 @@ export function StatusCard() {
     return null;
   });
 
-  // Check if there's a running ProjectMdAgent
-  const isProjectMdRunning = projectMdAgentId !== null;
+  // Check if there's a running WorkspaceMdAgent
+  const isWorkspaceMdRunning = workspaceMdAgentId !== null;
 
   // Get agent history for status updates
-  const projectMdHistory = useKartonState((s): AgentMessage[] =>
-    projectMdAgentId
-      ? (s.agents.instances[projectMdAgentId]?.state.history ?? EMPTY_HISTORY)
+  const workspaceMdHistory = useKartonState((s): AgentMessage[] =>
+    workspaceMdAgentId
+      ? (s.agents.instances[workspaceMdAgentId]?.state.history ?? EMPTY_HISTORY)
       : EMPTY_HISTORY,
   );
 
@@ -79,29 +79,29 @@ export function StatusCard() {
     (s) => s.workspace?.agent?.accessPath ?? null,
   );
 
-  // Track ProjectMd status with completion state
-  const [projectMdStatus, setProjectMdStatus] =
-    useState<ProjectMdStatus>('hidden');
+  // Track WorkspaceMd status with completion state
+  const [workspaceMdStatus, setWorkspaceMdStatus] =
+    useState<WorkspaceMdStatus>('hidden');
   const prevRunningRef = useRef(false);
 
   useEffect(() => {
     // Started running
-    if (isProjectMdRunning && !prevRunningRef.current)
-      setProjectMdStatus('running');
+    if (isWorkspaceMdRunning && !prevRunningRef.current)
+      setWorkspaceMdStatus('running');
     // Just finished - show completed state (user dismisses via "Done" button)
-    else if (!isProjectMdRunning && prevRunningRef.current)
-      setProjectMdStatus('completed');
+    else if (!isWorkspaceMdRunning && prevRunningRef.current)
+      setWorkspaceMdStatus('completed');
 
-    prevRunningRef.current = isProjectMdRunning;
-  }, [isProjectMdRunning]);
+    prevRunningRef.current = isWorkspaceMdRunning;
+  }, [isWorkspaceMdRunning]);
 
   // Dismiss callback for project-md completion
-  const handleProjectMdDismiss = useCallback(() => {
-    setProjectMdStatus('hidden');
+  const handleWorkspaceMdDismiss = useCallback(() => {
+    setWorkspaceMdStatus('hidden');
   }, []);
 
   // Show file callback - navigates to agent settings context files section
-  const handleProjectMdShowFile = useCallback(() => {
+  const handleWorkspaceMdShowFile = useCallback(() => {
     void createTab('stagewise://internal/agent-settings#context-files', true);
   }, [createTab]);
 
@@ -143,15 +143,15 @@ export function StatusCard() {
   const items = useMemo(() => {
     const result: StatusCardSection[] = [];
 
-    // Add ProjectMd status indicator if running or just completed
-    const projectMdSection = ProjectMdStatusSection({
-      status: projectMdStatus,
-      history: projectMdHistory,
+    // Add WorkspaceMd status indicator if running or just completed
+    const workspaceMdSection = WorkspaceMdStatusSection({
+      status: workspaceMdStatus,
+      history: workspaceMdHistory,
       workspacePath,
-      onDismiss: handleProjectMdDismiss,
-      onShowFile: handleProjectMdShowFile,
+      onDismiss: handleWorkspaceMdDismiss,
+      onShowFile: handleWorkspaceMdShowFile,
     });
-    if (projectMdSection) result.push(projectMdSection);
+    if (workspaceMdSection) result.push(workspaceMdSection);
 
     const messageQueueSection = MessageQueueSection({
       queuedMessages: messageQueue ?? [],
@@ -177,11 +177,11 @@ export function StatusCard() {
 
     return result;
   }, [
-    projectMdStatus,
-    projectMdHistory,
+    workspaceMdStatus,
+    workspaceMdHistory,
     workspacePath,
-    handleProjectMdDismiss,
-    handleProjectMdShowFile,
+    handleWorkspaceMdDismiss,
+    handleWorkspaceMdShowFile,
     messageQueue,
     openAgentId,
     deleteQueuedMessage,

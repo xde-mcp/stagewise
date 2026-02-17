@@ -17,7 +17,7 @@ import { getSkillsInformation } from '../../shared/prompts/system/skills';
  * 4. Security authority model (prevent prompt injection etc.)
  * 5. Skills information (what skills are available and how to use them)
  * 6. Long-term app state (open workspace, etc.)
- * 7. Pre-read files (AGENTS.md and PROJECT.md)
+ * 7. Pre-read files (AGENTS.md and )
  */
 
 export async function buildChatSystemPrompt(
@@ -29,7 +29,7 @@ export async function buildChatSystemPrompt(
 
   const agentsMdContent = respectAgentsMd ? await toolbox.getAgentsMd() : null;
 
-  const projectMdContent = await toolbox.getProjectMd();
+  const workspaceMdContent = await toolbox.getWorkspaceMd();
 
   const applicationInfo = getApplicationInfo({ respectAgentsMd });
 
@@ -43,8 +43,8 @@ export async function buildChatSystemPrompt(
     agentsMdContent
       ? `<file path="/AGENTS.md">${agentsMdContent}</file>`
       : undefined,
-    projectMdContent
-      ? `<file path=".stagewise/project.md">${projectMdContent}</file>`
+    workspaceMdContent
+      ? `<file path=".stagewise/WORKSPACE.md">${workspaceMdContent}</file>`
       : undefined,
   ]
     .filter(Boolean)

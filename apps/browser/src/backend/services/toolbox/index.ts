@@ -42,7 +42,7 @@ import {
 import { grepSearchTool } from './tools/file-modification/grep-search';
 import { executeSandboxJsTool } from './tools/browser/execute-sandbox-js';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
-import { writeProjectMdTool } from './tools/stagewise-data/write-project-md';
+import { writeWorkspaceMdTool } from './tools/stagewise-data/write-workspace-md';
 import { type Tool, tool } from 'ai';
 import {
   buildAgentFileEditContent,
@@ -67,7 +67,7 @@ import type {
 import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info';
 import { getWorkspaceInfo as getWorkspaceInfoUtil } from '@/agents/shared/prompts/utils/workspace-info';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
-import { readProjectMd } from '@/agents/shared/prompts/utils/read-project-md';
+import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
 import {
   getSkills,
   type Skill,
@@ -377,10 +377,10 @@ export class ToolboxService extends DisposableService {
       case 'readConsoleLogsTool':
         if (!this.windowLayoutService) return null;
         return readConsoleLogsTool(this.windowLayoutService);
-      case 'writeProjectMdTool': {
+      case 'writeWorkspaceMdTool': {
         const workspacePath = this.uiKarton.state.workspace?.path;
         if (!workspacePath) return null;
-        return writeProjectMdTool(workspacePath);
+        return writeWorkspaceMdTool(workspacePath);
       }
       default:
         this.logger.error('[ToolboxService] Tool not found', { tool });
@@ -410,7 +410,7 @@ export class ToolboxService extends DisposableService {
       isConnected: this.clientRuntime !== null,
       workspacePath: workspace?.path ?? null,
       cwd: this.clientRuntime?.fileSystem.getCurrentWorkingDirectory() ?? null,
-      projectMdPath: workspace?.path ?? null,
+      workspaceMdPath: workspace?.path ?? null,
     };
   }
 
@@ -477,10 +477,10 @@ export class ToolboxService extends DisposableService {
     return readAgentsMd(this.clientRuntime);
   }
 
-  public async getProjectMd(): Promise<string | null> {
+  public async getWorkspaceMd(): Promise<string | null> {
     const workspacePath = this.uiKarton.state.workspace?.path ?? null;
     if (!workspacePath) return null;
-    return readProjectMd(workspacePath);
+    return readWorkspaceMd(workspacePath);
   }
 
   public async getLspDiagnosticsForAgent(

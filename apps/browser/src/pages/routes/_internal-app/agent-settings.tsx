@@ -202,10 +202,10 @@ function WorkspaceSettingsSection() {
   }
 
   const showAgentsMd = respectAgentsMd && contextFiles.agentsMd.exists;
-  const hasAnyContextFile = contextFiles.projectMd.exists || showAgentsMd;
+  const hasAnyContextFile = contextFiles.workspaceMd.exists || showAgentsMd;
 
-  // Determine default tab - prefer .stagewise/PROJECT.md if it exists
-  const defaultTab = contextFiles.projectMd.exists ? 'project' : 'agents';
+  // Determine default tab - prefer .stagewise/ if it exists
+  const defaultTab = contextFiles.workspaceMd.exists ? 'project' : 'agents';
 
   return (
     <div className="space-y-6">
@@ -238,14 +238,14 @@ function WorkspaceSettingsSection() {
           </h3>
           <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="max-w-96">
-              {contextFiles.projectMd.exists && (
+              {contextFiles.workspaceMd.exists && (
                 <Tooltip>
                   <TooltipTrigger>
-                    <TabsTrigger value="project">PROJECT.md</TabsTrigger>
+                    <TabsTrigger value="project" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <span className="block max-w-80 break-all">
-                      {contextFiles.projectMd.path}
+                      {contextFiles.workspaceMd.path}
                     </span>
                   </TooltipContent>
                 </Tooltip>
@@ -264,12 +264,12 @@ function WorkspaceSettingsSection() {
               )}
             </TabsList>
 
-            {contextFiles.projectMd.exists && (
+            {contextFiles.workspaceMd.exists && (
               <TabsContent value="project" className="w-full">
                 <ScrollFadeCodeBlock
-                  code={contextFiles.projectMd.content ?? ''}
+                  code={contextFiles.workspaceMd.content ?? ''}
                   description="Auto-generated project analysis stored in your project's .stagewise folder."
-                  filePath={contextFiles.projectMd.path}
+                  filePath={contextFiles.workspaceMd.path}
                 />
               </TabsContent>
             )}

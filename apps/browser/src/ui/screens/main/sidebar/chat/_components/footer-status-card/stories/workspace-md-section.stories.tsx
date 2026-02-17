@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import {
-  ProjectMdStatusSection,
-  type ProjectMdStatus,
-} from '../project-md-section';
+  WorkspaceMdStatusSection,
+  type WorkspaceMdStatus,
+} from '../workspace-md-section';
 import { StatusCardSectionComponent } from '../shared';
 
 // Helper to create mock assistant messages with tool parts
@@ -25,18 +25,18 @@ function createMockToolMessage(
 }
 
 // Wrapper component to render the section
-interface ProjectMdSectionStoryProps {
-  status: ProjectMdStatus;
+interface WorkspaceMdSectionStoryProps {
+  status: WorkspaceMdStatus;
   history: AgentMessage[];
   workspacePath?: string | null;
 }
 
-function ProjectMdSectionStory({
+function WorkspaceMdSectionStory({
   status,
   history,
   workspacePath,
-}: ProjectMdSectionStoryProps) {
-  const section = ProjectMdStatusSection({
+}: WorkspaceMdSectionStoryProps) {
+  const section = WorkspaceMdStatusSection({
     status,
     history,
     workspacePath,
@@ -62,9 +62,9 @@ function ProjectMdSectionStory({
   );
 }
 
-const meta: Meta<typeof ProjectMdSectionStory> = {
+const meta: Meta<typeof WorkspaceMdSectionStory> = {
   title: 'Chat/Footer Status Card/Project MD Section',
-  component: ProjectMdSectionStory,
+  component: WorkspaceMdSectionStory,
   tags: ['autodocs'],
   decorators: [
     (Story) => (
@@ -83,7 +83,7 @@ const meta: Meta<typeof ProjectMdSectionStory> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof ProjectMdSectionStory>;
+type Story = StoryObj<typeof WorkspaceMdSectionStory>;
 
 /**
  * Hidden State
@@ -102,7 +102,7 @@ export const Hidden: Story = {
  * Running - Initial State
  *
  * When generation first starts with no tool calls yet.
- * Shows "Initializing PROJECT.md..."
+ * Shows "Initializing ..."
  */
 export const RunningInitial: Story = {
   name: 'Running / Initial',
@@ -185,16 +185,16 @@ export const RunningGrepSearch: Story = {
 };
 
 /**
- * Running - Writing PROJECT.md
+ * Running - Writing
  *
- * When the agent is writing the final PROJECT.md file.
- * Shows "Writing PROJECT.md..."
+ * When the agent is writing the final  file.
+ * Shows "Writing ..."
  */
 export const RunningWritingFile: Story = {
-  name: 'Running / Writing PROJECT.md',
+  name: 'Running / Writing ',
   args: {
     status: 'running',
-    history: [createMockToolMessage('tool-writeProjectMdTool', {})],
+    history: [createMockToolMessage('tool-writeWorkspaceMdTool', {})],
   },
 };
 
@@ -261,7 +261,7 @@ export const RunningAbsolutePathWithWorkspace: Story = {
  * Completed State
  *
  * When generation is complete, shows the file with action buttons.
- * - File icon and "PROJECT.md generated" text
+ * - File icon and " generated" text
  * - "Done" button to dismiss
  * - "Show file" button to navigate to agent settings
  */

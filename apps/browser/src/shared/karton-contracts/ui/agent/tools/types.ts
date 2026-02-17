@@ -331,49 +331,49 @@ export const getLintingDiagnosticsToolSchema = {
 } as const;
 
 // IMPORTANT: This definition is tied to a child agent - so the types are not strictly coupled. Change this type when you change the input schema of the @project-md.ts agent.
-export const updateProjectMdToolInputSchema = z.object({
+export const updateWorkspaceMdToolInputSchema = z.object({
   updateReason: z
     .string()
     .min(5)
-    .describe('Brief reason for triggering the PROJECT.md update.'),
+    .describe('Brief reason for triggering the  update.'),
 });
 
-export const updateProjectMdToolOutputSchema = z.object({
+export const updateWorkspaceMdToolOutputSchema = z.object({
   message: z.string(),
 });
 
-export type UpdateProjectMdToolInput = z.infer<
-  typeof updateProjectMdToolInputSchema
+export type UpdateWorkspaceMdToolInput = z.infer<
+  typeof updateWorkspaceMdToolInputSchema
 >;
-export type UpdateProjectMdToolOutput = z.infer<
-  typeof updateProjectMdToolOutputSchema
+export type UpdateWorkspaceMdToolOutput = z.infer<
+  typeof updateWorkspaceMdToolOutputSchema
 >;
 
-export const updateProjectMdToolSchema = {
-  inputSchema: updateProjectMdToolInputSchema,
-  outputSchema: updateProjectMdToolOutputSchema,
+export const updateWorkspaceMdToolSchema = {
+  inputSchema: updateWorkspaceMdToolInputSchema,
+  outputSchema: updateWorkspaceMdToolOutputSchema,
 } as const;
 
-export const writeProjectMdToolInputSchema = z.object({
-  content: z.string().describe('The complete PROJECT.md content to write'),
+export const writeWorkspaceMdToolInputSchema = z.object({
+  content: z.string().describe('The complete  content to write'),
 });
 
-export const writeProjectMdToolOutputSchema = z.object({
+export const writeWorkspaceMdToolOutputSchema = z.object({
   success: z.boolean(),
   message: z.string(),
   path: z.string(),
 });
 
-export type WriteProjectMdToolInput = z.infer<
-  typeof writeProjectMdToolInputSchema
+export type WriteWorkspaceMdToolInput = z.infer<
+  typeof writeWorkspaceMdToolInputSchema
 >;
-export type WriteProjectMdToolOutput = z.infer<
-  typeof writeProjectMdToolOutputSchema
+export type WriteWorkspaceMdToolOutput = z.infer<
+  typeof writeWorkspaceMdToolOutputSchema
 >;
 
-export const writeProjectMdToolSchema = {
-  inputSchema: writeProjectMdToolInputSchema,
-  outputSchema: writeProjectMdToolOutputSchema,
+export const writeWorkspaceMdToolSchema = {
+  inputSchema: writeWorkspaceMdToolInputSchema,
+  outputSchema: writeWorkspaceMdToolOutputSchema,
 } as const;
 
 export const executeSandboxJsToolInputSchema = z.object({
@@ -538,8 +538,8 @@ export const allToolSchemas = {
   multiEditTool: multiEditToolSchema,
   deleteFileTool: deleteFileToolSchema,
   getLintingDiagnosticsTool: getLintingDiagnosticsToolSchema,
-  updateProjectMdTool: updateProjectMdToolSchema,
-  writeProjectMdTool: writeProjectMdToolSchema,
+  updateWorkspaceMdTool: updateWorkspaceMdToolSchema,
+  writeWorkspaceMdTool: writeWorkspaceMdToolSchema,
   executeSandboxJsTool: executeSandboxJsToolSchema,
   readConsoleLogsTool: readConsoleLogsToolSchema,
   listLibraryDocsTool: listLibraryDocsToolSchema,

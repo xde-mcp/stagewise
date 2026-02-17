@@ -1082,7 +1082,7 @@ export class PagesService extends DisposableService {
           return {
             workspaceLoaded: false,
             workspacePath: null,
-            projectMd: { exists: false, path: null, content: null },
+            workspaceMd: { exists: false, path: null, content: null },
             agentsMd: { exists: false, path: null, content: null },
           };
         }
@@ -1274,7 +1274,7 @@ export class PagesService extends DisposableService {
   }
 
   /**
-   * Set the handler for getting context files (.stagewise/PROJECT.md, AGENTS.md).
+   * Set the handler for getting context files (.stagewise/, AGENTS.md).
    * This should be called by main.ts to wire up workspace context retrieval.
    */
   public setGetContextFilesHandler(

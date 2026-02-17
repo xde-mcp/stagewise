@@ -24,7 +24,7 @@ When connected to a workspace, you may create, read, modify, and delete all file
 ### Special Folders and Files
 
 - \`.stagewise\`: stagewise specific files for agent behavior and project information. Important to follow and respect.
-- \`.stagewise/PROJECT.md\`: High-level project information. If not existing, it's being generated.
+- \`.stagewise/\`: High-level project information. If not existing, it's being generated.
 ${agentsMdSection}
 
 ## Javascript sandbox

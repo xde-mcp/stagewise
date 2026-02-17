@@ -11,10 +11,10 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
-export type ProjectMdStatus = 'hidden' | 'running' | 'completed';
+export type WorkspaceMdStatus = 'hidden' | 'running' | 'completed';
 
-export interface ProjectMdStatusSectionProps {
-  status: ProjectMdStatus;
+export interface WorkspaceMdStatusSectionProps {
+  status: WorkspaceMdStatus;
   history: AgentMessage[];
   workspacePath?: string | null;
   onDismiss: () => void;
@@ -55,7 +55,7 @@ function getStatusText(
   history: AgentMessage[],
   workspacePath: string | null | undefined,
 ): string {
-  const INITIALIZING_TEXT = 'Initializing .stagewise/PROJECT.md...';
+  const INITIALIZING_TEXT = 'Initializing .stagewise/WORKSPACE.md...';
   const ANALYZING_TEXT = 'Analyzing workspace...';
 
   // Get all assistant messages
@@ -102,20 +102,20 @@ function getStatusText(
       const query = lastToolPart.input?.query;
       return query ? `Searching code for ${query}...` : 'Searching code...';
     }
-    case 'tool-writeProjectMdTool': {
-      return 'Writing .stagewise/PROJECT.md...';
+    case 'tool-writeWorkspaceMdTool': {
+      return 'Writing .stagewise/WORKSPACE.md...';
     }
     default: {
       if (!lastMessage) return INITIALIZING_TEXT;
 
-      // Check across all assistant messages for writeProjectMdTool
-      const hadWritingProjectMd = assistantMessages?.some((m) =>
-        m.parts.some((p) => p.type === 'tool-writeProjectMdTool'),
+      // Check across all assistant messages for writeWorkspaceMdTool
+      const hadWritingWorkspaceMd = assistantMessages?.some((m) =>
+        m.parts.some((p) => p.type === 'tool-writeWorkspaceMdTool'),
       );
       const lastType = lastMessage.parts.at(-1)?.type;
       if (
         (lastType === 'reasoning' || lastType === 'text') &&
-        hadWritingProjectMd
+        hadWritingWorkspaceMd
       )
         return 'Finishing up...';
 
@@ -136,19 +136,20 @@ function TooltipWrapper({
     <Tooltip>
       <TooltipTrigger>{children}</TooltipTrigger>
       <TooltipContent>
-        Initializing .stagewise/PROJECT.md for frontend-aware project context.
+        Initializing .stagewise/WORKSPACE.md for frontend-aware workspace
+        context.
       </TooltipContent>
     </Tooltip>
   );
 }
 
-export function ProjectMdStatusSection({
+export function WorkspaceMdStatusSection({
   status,
   history,
   workspacePath,
   onDismiss,
   onShowFile,
-}: ProjectMdStatusSectionProps): StatusCardSection | null {
+}: WorkspaceMdStatusSectionProps): StatusCardSection | null {
   if (status === 'hidden') return null;
 
   const isRunning = status === 'running';
@@ -165,23 +166,23 @@ export function ProjectMdStatusSection({
                 <Loader2Icon className="size-3 animate-spin text-primary-foreground" />
               </div>
               <span className="shimmer-text-primary truncate font-normal">
-                Generating project context
+                Generating workspace context
               </span>
             </div>
           ) : (
             <>
               <div className="flex flex-row items-center gap-1 truncate">
                 <FileIcon
-                  filePath=".stagewise/PROJECT.md"
+                  filePath=".stagewise/WORKSPACE.md"
                   className="size-5 shrink-0"
                 />
                 <Tooltip>
                   <TooltipTrigger>
                     <span className="text-foreground text-xs leading-none">
-                      PROJECT.md
+                      WORKSPACE.md
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>.stagewise/PROJECT.md</TooltipContent>
+                  <TooltipContent>.stagewise/WORKSPACE.md</TooltipContent>
                 </Tooltip>
                 <span className="font-normal text-muted-foreground">
                   generated

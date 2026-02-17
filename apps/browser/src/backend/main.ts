@@ -38,10 +38,10 @@ import { shell } from 'electron';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { ToolboxService } from './services/toolbox';
 import {
-  readProjectMd,
-  PROJECT_MD_FILENAME,
-  PROJECT_MD_DIR,
-} from './agents/shared/prompts/utils/read-project-md';
+  readWorkspaceMd,
+  WORKSPACE_MD_FILENAME,
+  WORKSPACE_MD_DIR,
+} from './agents/shared/prompts/utils/read-workspace-md';
 import { readAgentsMd } from './agents/shared/prompts/utils/read-agents-md';
 import { resolve } from 'node:path';
 import { ModelProviderService } from './agents/model-provider';
@@ -764,29 +764,29 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       return {
         workspaceLoaded: false,
         workspacePath: null,
-        projectMd: { exists: false, path: null, content: null },
+        workspaceMd: { exists: false, path: null, content: null },
         agentsMd: { exists: false, path: null, content: null },
       };
     }
 
     const workspacePath = workspaceService.path;
 
-    // Read PROJECT.md from .stagewise directory in workspace
-    let projectMdInfo: {
+    // Read WORKSPACE.md from .stagewise directory in workspace
+    let workspaceMdInfo: {
       exists: boolean;
       path: string | null;
       content: string | null;
     } = { exists: false, path: null, content: null };
-    const projectMdFullPath = resolve(
+    const workspaceMdFullPath = resolve(
       workspacePath,
-      PROJECT_MD_DIR,
-      PROJECT_MD_FILENAME,
+      WORKSPACE_MD_DIR,
+      WORKSPACE_MD_FILENAME,
     );
-    const projectMdContent = await readProjectMd(workspacePath);
-    projectMdInfo = {
-      exists: projectMdContent !== null,
-      path: projectMdFullPath,
-      content: projectMdContent,
+    const workspaceMdContent = await readWorkspaceMd(workspacePath);
+    workspaceMdInfo = {
+      exists: workspaceMdContent !== null,
+      path: workspaceMdFullPath,
+      content: workspaceMdContent,
     };
 
     // Read AGENTS.md from workspace root
@@ -810,7 +810,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     return {
       workspaceLoaded: true,
       workspacePath,
-      projectMd: projectMdInfo,
+      workspaceMd: workspaceMdInfo,
       agentsMd: agentsMdInfo,
     };
   });
@@ -829,7 +829,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     modelProviderService,
   );
 
-  // Wire AgentManagerService into WorkspaceService for PROJECT.md generation
+  // Wire AgentManagerService into WorkspaceService for  generation
   workspaceService.setAgentManagerService(_agentManagerService);
 
   // No need to unregister this callback, as it will be destroyed when the main app shuts down

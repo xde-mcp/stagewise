@@ -132,7 +132,7 @@ export type PagesApiContract = {
     /** Set the global config (e.g., preferred IDE for opening files) */
     setGlobalConfig: (config: GlobalConfig) => Promise<void>;
     /**
-     * Get context files info (PROJECT.md, AGENTS.md) for the current workspace.
+     * Get context files info (, AGENTS.md) for the current workspace.
      * Returns null if no workspace is loaded.
      */
     getContextFiles: () => Promise<ContextFilesResult>;

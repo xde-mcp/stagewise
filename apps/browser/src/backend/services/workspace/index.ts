@@ -15,9 +15,9 @@ import { DisposableService } from '../disposable';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import {
-  PROJECT_MD_FILENAME,
-  PROJECT_MD_DIR,
-} from '@/agents/shared/prompts/utils/read-project-md';
+  WORKSPACE_MD_FILENAME,
+  WORKSPACE_MD_DIR,
+} from '@/agents/shared/prompts/utils/read-workspace-md';
 import type { AuthService } from '../auth';
 import type { AgentManagerService } from '../agent-manager';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
@@ -251,7 +251,7 @@ export class WorkspaceService extends DisposableService {
       rgBinaryBasePath: this.globalDataPathService.globalDataPath,
     });
 
-    void this.checkAndGenerateProjectMd(clientRuntime);
+    void this.checkAndGenerateWorkspaceMd(clientRuntime);
 
     this.uiKarton.setState((draft) => {
       draft.workspace!.path = workspacePath;
@@ -265,15 +265,15 @@ export class WorkspaceService extends DisposableService {
     });
   }
 
-  private async checkAndGenerateProjectMd(_clientRuntime: ClientRuntimeNode) {
-    const projectMdPath = path.join(
+  private async checkAndGenerateWorkspaceMd(_clientRuntime: ClientRuntimeNode) {
+    const workspaceMdPath = path.join(
       this.currentWorkspacePath!,
-      PROJECT_MD_DIR,
-      PROJECT_MD_FILENAME,
+      WORKSPACE_MD_DIR,
+      WORKSPACE_MD_FILENAME,
     );
-    if (existsSync(projectMdPath)) {
+    if (existsSync(workspaceMdPath)) {
       this.logger.debug(
-        `[WorkspaceService] PROJECT.md already exists, skipping generation...`,
+        `[WorkspaceService]  already exists, skipping generation...`,
       );
       return;
     }
@@ -282,7 +282,7 @@ export class WorkspaceService extends DisposableService {
     await this.authService.refreshAuthState();
     if (this.authService.authState.status !== 'authenticated') {
       this.logger.debug(
-        '[WorkspaceService] User not authenticated, skipping PROJECT.md generation',
+        '[WorkspaceService] User not authenticated, skipping  generation',
       );
       return;
     }
@@ -292,36 +292,36 @@ export class WorkspaceService extends DisposableService {
     // Check if AgentManagerService is available
     if (!this.agentManagerService) {
       this.logger.warn(
-        '[WorkspaceService] AgentManagerService not available, skipping PROJECT.md generation',
+        '[WorkspaceService] AgentManagerService not available, skipping  generation',
       );
       return;
     }
 
     this.logger.info(
-      '[WorkspaceService] Starting PROJECT.md generation for workspace...',
+      '[WorkspaceService] Starting  generation for workspace...',
     );
 
     const spawnAgent = async (retryCount = 0): Promise<void> => {
       try {
         const agent = await this.agentManagerService!.createAgent(
-          AgentTypes.PROJECT_MD,
+          AgentTypes.WORKSPACE_MD,
           undefined,
           {
             parentInstanceId: '',
             onFinish: (output: { message: string }) => {
               this.logger.info(
-                `[WorkspaceService] PROJECT.md generated: ${output.message}`,
+                `[WorkspaceService]  generated: ${output.message}`,
               );
             },
             onError: async (error: Error) => {
               if (retryCount < 2) {
                 this.logger.warn(
-                  `[WorkspaceService] PROJECT.md generation failed, retrying (${retryCount + 1}/2): ${error.message}`,
+                  `[WorkspaceService]  generation failed, retrying (${retryCount + 1}/2): ${error.message}`,
                 );
                 await spawnAgent(retryCount + 1);
               } else {
                 this.logger.error(
-                  '[WorkspaceService] PROJECT.md generation failed after 2 retries',
+                  '[WorkspaceService]  generation failed after 2 retries',
                   { error },
                 );
               }
@@ -336,22 +336,22 @@ export class WorkspaceService extends DisposableService {
           parts: [
             {
               type: 'text',
-              text: 'Analyze the project and generate a comprehensive PROJECT.md file.',
+              text: 'Analyze the project and generate a comprehensive  file.',
             },
           ],
         });
       } catch (error) {
         if (retryCount < 2) {
           this.logger.warn(
-            `[WorkspaceService] Failed to spawn PROJECT.md agent, retrying (${retryCount + 1}/2)`,
+            `[WorkspaceService] Failed to spawn  agent, retrying (${retryCount + 1}/2)`,
           );
           await spawnAgent(retryCount + 1);
         } else {
           this.logger.error(
-            '[WorkspaceService] Failed to spawn PROJECT.md agent after 2 retries',
+            '[WorkspaceService] Failed to spawn  agent after 2 retries',
             { error },
           );
-          this.report(error as Error, 'generateProjectMd');
+          this.report(error as Error, 'generateWorkspaceMd');
         }
       }
     };

@@ -5,7 +5,7 @@ import type { UIAgentTools } from './tools/types';
 
 export enum AgentTypes {
   CHAT = 'chat',
-  PROJECT_MD = 'project-md',
+  WORKSPACE_MD = 'project-md',
 }
 
 export type AgentMessage = UIMessage<

@@ -316,8 +316,8 @@ export interface ContextFilesResult {
   workspaceLoaded: boolean;
   /** Workspace root path (null if no workspace loaded) */
   workspacePath: string | null;
-  /** PROJECT.md file info (auto-generated project analysis at .stagewise/PROJECT.md) */
-  projectMd: ContextFileInfo;
+  /**  file info (auto-generated project analysis at .stagewise/) */
+  workspaceMd: ContextFileInfo;
   /** AGENTS.md file info (user-created coding guidelines) */
   agentsMd: ContextFileInfo;
 }

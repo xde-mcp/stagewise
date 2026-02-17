@@ -2,18 +2,17 @@ import { BaseAgent, type BaseAgentConfig } from '../shared/base-agent';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
 import { z } from 'zod';
-import { buildProjectMdSystemPrompt } from './context-builder';
-import { randomUUID } from 'node:crypto';
+import systemPrompt from './system-prompt.md?raw';
 
 const finishToolOutputSchema = z.object({
   message: z.string(),
 });
 
-export class ProjectMdAgent extends BaseAgent<
+export class WorkspaceMdAgent extends BaseAgent<
   typeof finishToolOutputSchema,
   { updateReason: string } | undefined
 > {
-  public static readonly agentType = AgentTypes.PROJECT_MD;
+  public static readonly agentType = AgentTypes.WORKSPACE_MD;
   public static readonly config = {
     persistent: false, // Background task, no persistence needed
     defaultModelId: 'claude-haiku-4-5' as const,
@@ -46,26 +45,24 @@ export class ProjectMdAgent extends BaseAgent<
   } satisfies BaseAgentConfig<typeof finishToolOutputSchema>;
 
   protected getSystemPrompt = async (): Promise<string> => {
-    const reason = this.instanceConfig?.updateReason;
-    return await buildProjectMdSystemPrompt(this.toolbox, reason);
+    return systemPrompt;
   };
 
   protected async onCreated(): Promise<void> {
     const reason = this.instanceConfig?.updateReason;
-    if (!reason) return;
 
-    const projectMd = await this.toolbox.getProjectMd();
-    const message = projectMd
-      ? `The PROJECT.md file has already been generated. Update it with the following reason after analyzing the project again: ${reason}. \n\n The current content of the PROJECT.md file is: ${projectMd}`
-      : `Generate a new PROJECT.md file after analyzing the project with the following reason: ${reason}`;
+    const workspaceMd = await this.toolbox.getWorkspaceMd();
 
     await this.sendUserMessage({
-      id: randomUUID(),
+      id: '',
       role: 'user',
       parts: [
         {
           type: 'text',
-          text: message,
+          text: `
+${reason ? `Update the  file. You need to update because of the following reason: ${reason}` : 'Generate a new  file after analyzing the project.'}
+
+${workspaceMd ? `<file path=".stagewise/">${workspaceMd}</file>` : ''}`.trim(),
         },
       ],
     });
@@ -79,7 +76,7 @@ export class ProjectMdAgent extends BaseAgent<
       listFilesTool: await box.getTool('listFilesTool', id),
       globTool: await box.getTool('globTool', id),
       grepSearchTool: await box.getTool('grepSearchTool', id),
-      writeProjectMdTool: await box.getTool('writeProjectMdTool', id),
+      writeWorkspaceMdTool: await box.getTool('writeWorkspaceMdTool', id),
     };
     // Filter out null tools that miss dependencies in the toolbox
     return Object.fromEntries(
