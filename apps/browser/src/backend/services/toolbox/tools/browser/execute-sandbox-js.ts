@@ -11,11 +11,7 @@ import type { SandboxService } from '@/services/sandbox';
    the schema descriptions are not properly used for the prompts -
    thus, we include them in the descriptions as well. */
 
-export const DESCRIPTION = `Execute JavaScript in a persistent, sandboxed Node.js VM context. The sandbox does NOT have browser globals (\`document\`, \`window\`, DOM) — use \`API.sendCDP()\` to interact with browser tabs.
-
-The script runs inside an async IIFE, supports \`await\`, and the return value becomes the tool result. Timeout: 30 seconds. Context persists across calls via \`globalThis\` (\`const\`/\`let\`/\`var\` are IIFE-scoped and do not persist).
-
-Refer to the "Javascript sandbox" section in the system prompt for the full API reference, available globals, CDP domain details, dynamic imports, and examples.
+export const DESCRIPTION = `Execute JavaScript in your persistent, sandboxed Node.js VM context.
 
 Parameters:
 - script (string, REQUIRED): JavaScript code to execute in the sandbox.
