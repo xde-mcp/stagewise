@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
 import { IconChevronDown } from 'nucleo-micro-bold';
+import { IconArrowLeftFill18, IconArrowRightFill18 } from 'nucleo-ui-fill-18';
 import { IconDocFolder, IconCircleQuestion } from 'nucleo-glass';
 import { IconPlusFill18 } from 'nucleo-ui-fill-18';
 import TimeAgo from 'react-timeago';
@@ -98,6 +99,8 @@ function StartPageWithConnectedWorkspace() {
     fadeDistance: 32,
   });
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
   // Local state for inspiration websites (fetched on demand)
   const [inspirationWebsites, setInspirationWebsites] =
@@ -141,6 +144,15 @@ function StartPageWithConnectedWorkspace() {
     isLoadingMore,
   ]);
 
+  // Update scroll button visibility
+  const updateScrollButtons = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setCanScrollLeft(scrollLeft > 0);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
+  }, []);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -154,16 +166,34 @@ function StartPageWithConnectedWorkspace() {
       if (isNearEnd && !isLoadingMore && hasMoreWebsites) {
         loadMoreWebsites();
       }
+
+      // Update scroll button visibility
+      updateScrollButtons();
     };
 
     container.addEventListener('scroll', handleScroll);
+    // Initial check
+    updateScrollButtons();
     return () => container.removeEventListener('scroll', handleScroll);
   }, [
     inspirationWebsites.websites.length,
     inspirationWebsites.total,
     isLoadingMore,
     loadMoreWebsites,
+    updateScrollButtons,
   ]);
+
+  // Scroll by 2 items (card width 256px + gap 16px = 272px per item)
+  const scrollByItems = useCallback((direction: 'left' | 'right') => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const itemWidth = 272; // w-64 (256px) + gap-4 (16px)
+    const scrollAmount = itemWidth * 2;
+    container.scrollBy({
+      left: direction === 'right' ? scrollAmount : -scrollAmount,
+      behavior: 'smooth',
+    });
+  }, []);
 
   const inspirationWebsitesWithScreenshot = useMemo(() => {
     return {
@@ -206,7 +236,7 @@ function StartPageWithConnectedWorkspace() {
       {workspaceStatus !== 'open' && <ConnectWorkspaceBanner />}
       {inspirationWebsitesWithScreenshot.websites.length > 0 && (
         <div className="group/design-inspiration mt-2 flex w-full flex-col items-center justify-start gap-4">
-          <div className="flex w-full items-center justify-between">
+          <div className="relative z-10 flex w-full items-center justify-between">
             <h1 className="font-medium text-xl">
               <TextSlideshow
                 className="text-foreground"
@@ -220,6 +250,30 @@ function StartPageWithConnectedWorkspace() {
                 ]}
               />
             </h1>
+            <div className="flex items-center gap-1">
+              {canScrollLeft && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="size-7 p-0"
+                  onClick={() => scrollByItems('left')}
+                  aria-label="Scroll left"
+                >
+                  <IconArrowLeftFill18 className="size-4" />
+                </Button>
+              )}
+              {canScrollRight && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="size-7 p-0"
+                  onClick={() => scrollByItems('right')}
+                  aria-label="Scroll right"
+                >
+                  <IconArrowRightFill18 className="size-4" />
+                </Button>
+              )}
+            </div>
           </div>
           <div
             ref={scrollContainerRef}
