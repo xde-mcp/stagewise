@@ -56,7 +56,7 @@ export function Toast({ notification, onDismiss }: ToastProps) {
       <div
         className={cn(
           'flex flex-row items-center gap-2',
-          notification.type === 'info' && 'text-info-foreground',
+          notification.type === 'info' && 'text-foreground',
           notification.type === 'warning' && 'text-warning-foreground',
           notification.type === 'error' && 'text-error-foreground',
         )}
