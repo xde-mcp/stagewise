@@ -643,10 +643,10 @@ export type KartonContract = {
       rejectHunks: (hunkIds: string[]) => Promise<void>;
     };
     userAccount: {
+      sendOtp: (email: string) => Promise<{ error?: string }>;
+      verifyOtp: (email: string, code: string) => Promise<{ error?: string }>;
       refreshStatus: () => Promise<void>;
-      refreshSubscription: () => Promise<void>;
       logout: () => Promise<void>;
-      startLogin: () => Promise<void>;
     };
     workspace: {
       open: (path?: string) => Promise<void>;

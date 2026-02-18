@@ -22,7 +22,6 @@ import { Route as InternalAppAboutRouteImport } from './routes/_internal-app/abo
 import { Route as InternalAppBrowsingSettingsIndexRouteImport } from './routes/_internal-app/browsing-settings.index'
 import { Route as InternalAppBrowsingSettingsWebsitePermissionsRouteImport } from './routes/_internal-app/browsing-settings.website-permissions'
 import { Route as ErrorPagesErrorPageLoadFailedRouteImport } from './routes/_error-pages/error.page-load-failed'
-import { Route as CallbacksAuthCallbackRouteImport } from './routes/_callbacks/auth.callback'
 
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
@@ -94,11 +93,6 @@ const ErrorPagesErrorPageLoadFailedRoute =
     path: '/error/page-load-failed',
     getParentRoute: () => rootRouteImport,
   } as any)
-const CallbacksAuthCallbackRoute = CallbacksAuthCallbackRouteImport.update({
-  id: '/_callbacks/auth/callback',
-  path: '/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/home': typeof HomeRoute
@@ -110,7 +104,6 @@ export interface FileRoutesByFullPath {
   '/downloads': typeof InternalAppDownloadsRoute
   '/history': typeof InternalAppHistoryRoute
   '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
-  '/auth/callback': typeof CallbacksAuthCallbackRoute
   '/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
   '/browsing-settings/': typeof InternalAppBrowsingSettingsIndexRoute
@@ -124,7 +117,6 @@ export interface FileRoutesByTo {
   '/downloads': typeof InternalAppDownloadsRoute
   '/history': typeof InternalAppHistoryRoute
   '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
-  '/auth/callback': typeof CallbacksAuthCallbackRoute
   '/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
   '/browsing-settings': typeof InternalAppBrowsingSettingsIndexRoute
@@ -141,7 +133,6 @@ export interface FileRoutesById {
   '/_internal-app/downloads': typeof InternalAppDownloadsRoute
   '/_internal-app/history': typeof InternalAppHistoryRoute
   '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
-  '/_callbacks/auth/callback': typeof CallbacksAuthCallbackRoute
   '/_error-pages/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/_internal-app/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
   '/_internal-app/browsing-settings/': typeof InternalAppBrowsingSettingsIndexRoute
@@ -158,7 +149,6 @@ export interface FileRouteTypes {
     | '/downloads'
     | '/history'
     | '/diff-review/$agentInstanceId'
-    | '/auth/callback'
     | '/error/page-load-failed'
     | '/browsing-settings/website-permissions'
     | '/browsing-settings/'
@@ -172,7 +162,6 @@ export interface FileRouteTypes {
     | '/downloads'
     | '/history'
     | '/diff-review/$agentInstanceId'
-    | '/auth/callback'
     | '/error/page-load-failed'
     | '/browsing-settings/website-permissions'
     | '/browsing-settings'
@@ -188,7 +177,6 @@ export interface FileRouteTypes {
     | '/_internal-app/downloads'
     | '/_internal-app/history'
     | '/diff-review/$agentInstanceId'
-    | '/_callbacks/auth/callback'
     | '/_error-pages/error/page-load-failed'
     | '/_internal-app/browsing-settings/website-permissions'
     | '/_internal-app/browsing-settings/'
@@ -198,7 +186,6 @@ export interface RootRouteChildren {
   InternalAppRouteRoute: typeof InternalAppRouteRouteWithChildren
   HomeRoute: typeof HomeRoute
   DiffReviewAgentInstanceIdRoute: typeof DiffReviewAgentInstanceIdRoute
-  CallbacksAuthCallbackRoute: typeof CallbacksAuthCallbackRoute
   ErrorPagesErrorPageLoadFailedRoute: typeof ErrorPagesErrorPageLoadFailedRoute
 }
 
@@ -295,13 +282,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ErrorPagesErrorPageLoadFailedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_callbacks/auth/callback': {
-      id: '/_callbacks/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof CallbacksAuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -351,7 +331,6 @@ const rootRouteChildren: RootRouteChildren = {
   InternalAppRouteRoute: InternalAppRouteRouteWithChildren,
   HomeRoute: HomeRoute,
   DiffReviewAgentInstanceIdRoute: DiffReviewAgentInstanceIdRoute,
-  CallbacksAuthCallbackRoute: CallbacksAuthCallbackRoute,
   ErrorPagesErrorPageLoadFailedRoute: ErrorPagesErrorPageLoadFailedRoute,
 }
 export const routeTree = rootRouteImport

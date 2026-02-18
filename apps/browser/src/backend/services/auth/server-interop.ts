@@ -1,152 +1,58 @@
 import { createNodeApiClient } from '@stagewise/api-client';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Logger } from '../logger';
-import { z } from 'zod';
-
-export const consoleUrl =
-  process.env.STAGEWISE_CONSOLE_URL || 'https://console.stagewise.io';
 
 export const API_URL = process.env.API_URL || 'https://v1.api.stagewise.io';
 
-const SessionResponseSchema = z.looseObject({
-  valid: z.boolean(),
-  userId: z.string(),
-  userEmail: z.email(),
-  extensionId: z.string(),
-  createdAt: z.iso.datetime(),
-  isExpiringSoon: z.boolean(),
-});
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 
-const tokenDataResponseSchema = z.looseObject({
-  accessToken: z.string(),
-  expiresAt: z.iso.datetime(),
-  refreshToken: z.string(),
-  refreshExpiresAt: z.iso.datetime(),
-});
+/**
+ * Creates a Supabase client for the Electron main process.
+ *
+ * Uses a custom storage adapter that persists the session as an in-memory
+ * map. The actual encrypted-disk persistence is handled by AuthService
+ * via onAuthStateChange, which writes session data through persisted-data.
+ */
+export function createSupabaseClient(logger: Logger): SupabaseClient {
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    logger.error(
+      '[AuthServerInterop] Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY environment variables.',
+    );
+  }
 
-type SessionResponse = z.infer<typeof SessionResponseSchema>;
-type TokenDataResponse = z.infer<typeof tokenDataResponseSchema>;
+  // In-memory storage adapter for the Supabase client.
+  // The Electron main process has no localStorage, so we use a simple Map.
+  // Actual persistence is handled externally by AuthService.
+  const memoryStorage = new Map<string, string>();
 
+  return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      storage: {
+        getItem: (key: string) => memoryStorage.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          memoryStorage.set(key, value);
+        },
+        removeItem: (key: string) => {
+          memoryStorage.delete(key);
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Interop layer for backend API calls that require authentication.
+ * After the migration to direct Supabase auth, this only handles
+ * subscription queries via the tRPC API.
+ */
 export class AuthServerInterop {
   private logger: Logger;
 
   public constructor(logger: Logger) {
     this.logger = logger;
-  }
-
-  public async getSession(
-    accessToken: string,
-  ): Promise<SessionResponse | null> {
-    const sessionUrl = `${consoleUrl}/auth/extension/session`;
-
-    const response = await fetch(sessionUrl, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      signal: AbortSignal.timeout(30000), // Wait for 30 seconds maximum to get the session
-    });
-
-    if (!response.ok) {
-      this.logger.error(
-        `[AuthServerInterop] Failed to get session: ${response.statusText}`,
-      );
-      throw new Error(`Failed to get session: ${response.statusText}`);
-    }
-    try {
-      const sessionResponse = SessionResponseSchema.parse(
-        await response.json(),
-      );
-      return sessionResponse;
-    } catch (err) {
-      this.logger.error(
-        `[AuthServerInterop] Failed to parse session response: ${err}`,
-      );
-      throw new Error(`Failed to parse session response: ${err}`);
-    }
-  }
-
-  public async refreshToken(refreshToken: string): Promise<TokenDataResponse> {
-    const refreshTokenFetchUrl = `${consoleUrl}/auth/extension/refresh`;
-    const result = await fetch(refreshTokenFetchUrl, {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(30000), // Wait for 30 seconds maximum to refresh the token
-    }).catch((err) => {
-      this.logger.error(`[AuthServerInterop] Failed to refresh token: ${err}`);
-      throw err;
-    });
-
-    if (!result || !result.ok) {
-      this.logger.error(
-        `[AuthServerInterop] Failed to refresh token: ${result?.statusText}`,
-      );
-      throw new Error(`Failed to refresh token: ${result?.statusText}`);
-    }
-    try {
-      const jsonData = await result.json();
-      this.logger.debug(
-        `[AuthServerInterop] Refresh token response: ${JSON.stringify(jsonData)}`,
-      );
-      const tokenData = tokenDataResponseSchema.parse(jsonData);
-      return tokenData;
-    } catch (err) {
-      this.logger.error(
-        `[AuthServerInterop] Failed to parse refresh token response: ${err}`,
-      );
-      throw err;
-    }
-  }
-
-  public async revokeToken(token: string): Promise<void> {
-    const revokeTokenFetchUrl = `${consoleUrl}/auth/extension/revoke`;
-    const response = await fetch(revokeTokenFetchUrl, {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(30000), // Wait for 30 seconds maximum to revoke the token
-    });
-    if (!response.ok) {
-      this.logger.error(
-        `[AuthServerInterop] Failed to revoke token: ${response.statusText}`,
-      );
-      throw new Error(`Failed to revoke token: ${response.statusText}`);
-    }
-  }
-
-  public async exchangeToken(authCode: string): Promise<TokenDataResponse> {
-    const exchangeTokenFetchUrl = `${consoleUrl}/auth/extension/exchange`;
-    const result = await fetch(exchangeTokenFetchUrl, {
-      method: 'POST',
-      body: JSON.stringify({ authCode }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(30000), // Wait for 30 seconds maximum to exchange the token
-    });
-
-    if (!result || !result.ok) {
-      this.logger.error(
-        `[AuthServerInterop] Failed to exchange token: ${result?.statusText}`,
-      );
-      throw new Error(`Failed to exchange token: ${result?.statusText}`);
-    }
-    try {
-      const jsonData = await result.json();
-      this.logger.debug(
-        `[AuthServerInterop] Exchange token response: ${JSON.stringify(jsonData)}`,
-      );
-      const tokenData = tokenDataResponseSchema.parse(jsonData);
-      return tokenData;
-    } catch (err) {
-      this.logger.error(
-        `[AuthServerInterop] Failed to parse exchange token response: ${err}`,
-      );
-      throw err;
-    }
   }
 
   public async getSubscription(accessToken: string) {

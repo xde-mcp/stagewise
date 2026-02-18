@@ -57,35 +57,35 @@ export type InputOtpProps = Omit<
   className?: string;
 };
 
-export function InputOtp({
-  className,
-  length = 6,
-  size = 'md',
-  ...props
-}: InputOtpProps) {
-  return (
-    <OTPInput
-      maxLength={length}
-      pattern={REGEXP_ONLY_DIGITS}
-      containerClassName={cn(inputOtpVariants({ size }), className)}
-      {...props}
-      render={({ slots }) => (
-        <>
-          {slots.map((slot, idx) => (
-            <Slot
-              key={`otp-slot-${
-                // biome-ignore lint/suspicious/noArrayIndexKey: slots are fixed-length positional
-                idx
-              }`}
-              slot={slot}
-              size={size}
-            />
-          ))}
-        </>
-      )}
-    />
-  );
-}
+export const InputOtp = React.forwardRef<HTMLInputElement, InputOtpProps>(
+  ({ className, length = 6, size = 'md', ...props }, ref) => {
+    return (
+      <OTPInput
+        ref={ref}
+        maxLength={length}
+        pattern={REGEXP_ONLY_DIGITS}
+        containerClassName={cn(inputOtpVariants({ size }), className)}
+        {...props}
+        render={({ slots }) => (
+          <>
+            {slots.map((slot, idx) => (
+              <Slot
+                key={`otp-slot-${
+                  // biome-ignore lint/suspicious/noArrayIndexKey: slots are fixed-length positional
+                  idx
+                }`}
+                slot={slot}
+                size={size}
+              />
+            ))}
+          </>
+        )}
+      />
+    );
+  },
+);
+
+InputOtp.displayName = 'InputOtp';
 
 function Slot({ slot, size }: { slot: SlotProps; size: OtpSize }) {
   return (
@@ -108,7 +108,7 @@ function Slot({ slot, size }: { slot: SlotProps; size: OtpSize }) {
 function FakeCaret() {
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <div className="h-4 w-px animate-pulse bg-foreground" />
+      <div className="h-4 w-px animate-caret-blink bg-foreground" />
     </div>
   );
 }

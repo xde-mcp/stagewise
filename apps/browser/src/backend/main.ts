@@ -663,18 +663,11 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   await URIHandlerService.create(logger);
 
   const authService = await AuthService.create(
-    globalDataPathService,
     identifierService,
     uiKarton,
     notificationService,
-    windowLayoutService,
     logger,
   );
-
-  // Wire up auth callback handler from PagesService to AuthService
-  pagesService.setAuthCallbackHandler(async (authCode, error) => {
-    await authService.handleAuthCodeExchange(authCode, error);
-  });
 
   const toolboxService = await ToolboxService.create(
     logger,

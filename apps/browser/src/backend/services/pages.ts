@@ -86,10 +86,6 @@ export class PagesService extends DisposableService {
   private getPreferencesHandler?: () => UserPreferences;
   private updatePreferencesHandler?: (patches: Patch[]) => Promise<void>;
   private clearPermissionExceptionsHandler?: () => Promise<void>;
-  private authCallbackHandler?: (
-    authCode: string | undefined,
-    error: string | undefined,
-  ) => Promise<void>;
   // Home page service dependencies
   private userExperienceService?: UserExperienceService;
   private openWorkspaceHandler?: (path?: string) => Promise<void>;
@@ -1207,35 +1203,6 @@ export class PagesService extends DisposableService {
   }
 
   /**
-   * Set the handler for auth callbacks from the internal auth page.
-   * This should be called by main.ts to wire up to AuthService.
-   */
-  public setAuthCallbackHandler(
-    handler: (
-      authCode: string | undefined,
-      error: string | undefined,
-    ) => Promise<void>,
-  ): void {
-    this.authCallbackHandler = handler;
-
-    this.kartonServer.registerServerProcedureHandler(
-      'handleAuthCallback',
-      async (
-        _callingClientId: string,
-        authCode: string | undefined,
-        error: string | undefined,
-      ) => {
-        if (!this.authCallbackHandler) {
-          throw new Error('Auth callback handler not registered');
-        }
-        await this.authCallbackHandler(authCode, error);
-      },
-    );
-
-    this.logger.debug('[PagesService] Auth callback handler registered');
-  }
-
-  /**
    * Set the UserExperienceService for home page functionality.
    * This should be called by main.ts after UserExperienceService is created.
    */
@@ -1422,7 +1389,6 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('getSearchEngines');
     this.kartonServer.removeServerProcedureHandler('addSearchEngine');
     this.kartonServer.removeServerProcedureHandler('removeSearchEngine');
-    this.kartonServer.removeServerProcedureHandler('handleAuthCallback');
     this.kartonServer.removeServerProcedureHandler('getInspirationWebsites');
     this.kartonServer.removeServerProcedureHandler('setHasSeenOnboardingFlow');
     this.kartonServer.removeServerProcedureHandler('openWorkspace');
@@ -1441,7 +1407,6 @@ export class PagesService extends DisposableService {
     this.portCloseListeners.clear();
     this.currentPort = undefined;
     this.openTabHandler = undefined;
-    this.authCallbackHandler = undefined;
     this.userExperienceService = undefined;
     this.openWorkspaceHandler = undefined;
     this.trustCertificateAndReloadHandler = undefined;

@@ -1,84 +1,193 @@
 import type { KartonContract } from '@shared/karton-contracts/ui';
-import type { GlobalDataPathService } from '../global-data-path';
 import type { KartonService } from '../karton';
 import type { Logger } from '../logger';
-import { AuthServerInterop, consoleUrl } from './server-interop';
-import { AuthTokenStore } from './token-store';
+import { AuthServerInterop, createSupabaseClient } from './server-interop';
 import type { NotificationService } from '../notification';
 import type { IdentifierService } from '../identifier';
-import type { WindowLayoutService } from '../window-layout';
 import { DisposableService } from '../disposable';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import {
+  readPersistedData,
+  writePersistedData,
+} from '../../utils/persisted-data';
+
+const CREDENTIALS_KEY = 'credentials';
+
+const sessionSchema = z
+  .object({
+    access_token: z.string(),
+    refresh_token: z.string(),
+    expires_at: z.number().optional(),
+    user: z
+      .object({
+        id: z.string(),
+        email: z.string().optional(),
+      })
+      .optional(),
+  })
+  .nullable();
 
 export type AuthState = KartonContract['state']['userAccount'];
 
-const ACCESS_TOKEN_EXPIRATION_BUFFER_TIME = 10 * 60 * 1000; // We refresh the token 10 minutes before it expires to avoid any issues
-
 export class AuthService extends DisposableService {
-  // Borrowed dependencies (passed via constructor)
-  private readonly globalDataPathService: GlobalDataPathService;
   private readonly identifierService: IdentifierService;
   private readonly uiKarton: KartonService;
   private readonly notificationService: NotificationService;
-  private readonly windowLayoutService: WindowLayoutService;
   private readonly logger: Logger;
 
-  // Owned child services (created in initialize)
-  private tokenStore!: AuthTokenStore;
+  private _sessionJson: string | null = null;
   private serverInterop: AuthServerInterop;
+  private supabase!: SupabaseClient;
 
   private _authStateCheckInterval: NodeJS.Timeout | null = null;
   private authChangeCallbacks: ((newAuthState: AuthState) => void)[] = [];
-  private _authTabId: string | null = null;
 
   private constructor(
-    globalDataPathService: GlobalDataPathService,
     identifierService: IdentifierService,
     uiKarton: KartonService,
     notificationService: NotificationService,
-    windowLayoutService: WindowLayoutService,
     logger: Logger,
   ) {
     super();
-    this.globalDataPathService = globalDataPathService;
     this.identifierService = identifierService;
     this.uiKarton = uiKarton;
     this.notificationService = notificationService;
-    this.windowLayoutService = windowLayoutService;
     this.logger = logger;
     this.serverInterop = new AuthServerInterop(logger);
   }
 
+  private persistSession(value: string | null): void {
+    this._sessionJson = value;
+    const parsed = value ? JSON.parse(value) : null;
+    void writePersistedData(CREDENTIALS_KEY, sessionSchema, parsed, {
+      encrypt: true,
+    });
+  }
+
   private async initialize(): Promise<void> {
-    this.tokenStore = await AuthTokenStore.create(
-      this.globalDataPathService,
-      this.logger,
+    const persisted = await readPersistedData(
+      CREDENTIALS_KEY,
+      sessionSchema,
+      null,
+      { encrypt: true },
     );
+    if (persisted) {
+      this._sessionJson = JSON.stringify(persisted);
+    }
+
+    // Create the Supabase client
+    this.supabase = createSupabaseClient(this.logger);
+
+    // Restore persisted session into the Supabase client's in-memory storage
+    const storedSession = this._sessionJson;
+    if (storedSession) {
+      // The Supabase client reads from its storage adapter on getSession(),
+      // so we need to seed the in-memory storage before calling it.
+      // We do this by setting the session directly.
+      try {
+        const parsed = JSON.parse(storedSession);
+        if (parsed?.access_token && parsed?.refresh_token) {
+          await this.supabase.auth.setSession({
+            access_token: parsed.access_token,
+            refresh_token: parsed.refresh_token,
+          });
+          this.logger.debug(
+            '[AuthService] Restored persisted Supabase session',
+          );
+        }
+      } catch (err) {
+        this.logger.warn(
+          `[AuthService] Failed to restore persisted session: ${err}`,
+        );
+      }
+    }
 
     this.uiKarton.setState((draft) => {
       draft.userAccount.status = 'server_unreachable';
     });
 
-    // We do the initial auth state asynchronously.
+    // Listen for Supabase auth state changes (handles auto-refresh)
+    this.supabase.auth.onAuthStateChange((event, session) => {
+      this.logger.debug(`[AuthService] Supabase auth state change: ${event}`);
+
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'INITIAL_SESSION'
+      ) {
+        if (session) {
+          // Persist the session to disk
+          this.persistSession(
+            JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_at: session.expires_at,
+              user: session.user
+                ? { id: session.user.id, email: session.user.email }
+                : undefined,
+            }),
+          );
+
+          // Update Karton state
+          this.updateAuthState((draft) => {
+            draft.userAccount = {
+              ...draft.userAccount,
+              status: 'authenticated',
+              machineId: this.identifierService.getMachineId(),
+              user: session.user
+                ? {
+                    id: session.user.id,
+                    email: session.user.email ?? '',
+                  }
+                : undefined,
+            };
+          });
+
+          // Fetch subscription in the background
+          if (event !== 'TOKEN_REFRESHED') {
+            void this.fetchSubscription(session.access_token);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        this.persistSession(null);
+        this.updateAuthState((draft) => {
+          draft.userAccount = {
+            status: 'unauthenticated',
+            machineId: this.identifierService.getMachineId(),
+          };
+        });
+      }
+    });
+
+    // Initial auth state check
     void this.checkAuthState();
     this._authStateCheckInterval = setInterval(
       () => {
         void this.checkAuthState();
       },
       10 * 60 * 1000,
-    ); // 10 minutes
+    );
 
-    // Register all procedure handlers for the user account
+    // Register procedure handlers
     this.uiKarton.registerServerProcedureHandler(
-      'userAccount.logout',
-      async (_callingClientId: string) => {
-        await this.logout();
+      'userAccount.sendOtp',
+      async (_callingClientId: string, email: string) => {
+        return this.sendOtp(email);
       },
     );
 
     this.uiKarton.registerServerProcedureHandler(
-      'userAccount.startLogin',
+      'userAccount.verifyOtp',
+      async (_callingClientId: string, email: string, code: string) => {
+        return this.verifyOtp(email, code);
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'userAccount.logout',
       async (_callingClientId: string) => {
-        await this.startLogin();
+        await this.logout();
       },
     );
 
@@ -89,24 +198,19 @@ export class AuthService extends DisposableService {
       },
     );
 
-    // Check if we have any tokens stored in
     this.logger.debug('[AuthService] Initialized');
   }
 
   public static async create(
-    globalDataPathService: GlobalDataPathService,
     identifierService: IdentifierService,
     uiKarton: KartonService,
     notificationService: NotificationService,
-    windowLayoutService: WindowLayoutService,
     logger: Logger,
   ): Promise<AuthService> {
     const authService = new AuthService(
-      globalDataPathService,
       identifierService,
       uiKarton,
       notificationService,
-      windowLayoutService,
       logger,
     );
     await authService.initialize();
@@ -116,161 +220,136 @@ export class AuthService extends DisposableService {
   protected onTeardown(): void {
     clearInterval(this._authStateCheckInterval!);
 
+    this.uiKarton.removeServerProcedureHandler('userAccount.sendOtp');
+    this.uiKarton.removeServerProcedureHandler('userAccount.verifyOtp');
     this.uiKarton.removeServerProcedureHandler('userAccount.logout');
-    this.uiKarton.removeServerProcedureHandler('userAccount.startLogin');
     this.uiKarton.removeServerProcedureHandler('userAccount.refreshStatus');
     this.authChangeCallbacks = [];
 
     this.logger.debug('[AuthService] Teardown complete');
   }
 
-  // Regularly callable function that checks, if auth if configured and valid.
-  // Will be called every 10 minutes by default, but this function can also be call as soon as we think there may be some issue with auth.
-  // It updates the karton state with latest information on auth.
+  /**
+   * Send an OTP code to the given email address.
+   */
+  public async sendOtp(email: string): Promise<{ error?: string }> {
+    try {
+      const { error } = await this.supabase.auth.signInWithOtp({ email });
+      if (error) {
+        this.logger.error(`[AuthService] Failed to send OTP: ${error.message}`);
+        return { error: error.message };
+      }
+      this.logger.debug(`[AuthService] OTP sent to ${email}`);
+      return {};
+    } catch (err) {
+      this.logger.error(`[AuthService] Unexpected error sending OTP: ${err}`);
+      return { error: 'An unexpected error occurred.' };
+    }
+  }
+
+  /**
+   * Verify an OTP code for the given email address.
+   * On success, the Supabase client will fire onAuthStateChange with SIGNED_IN.
+   */
+  public async verifyOtp(
+    email: string,
+    code: string,
+  ): Promise<{ error?: string }> {
+    try {
+      const { data, error } = await this.supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'email',
+      });
+
+      if (error) {
+        this.logger.error(
+          `[AuthService] Failed to verify OTP: ${error.message}`,
+        );
+        return { error: error.message };
+      }
+
+      if (data.session) {
+        this.logger.debug('[AuthService] OTP verified, session established');
+        return {};
+      }
+
+      return { error: 'Verification completed but no session was created.' };
+    } catch (err) {
+      this.logger.error(`[AuthService] Unexpected error verifying OTP: ${err}`);
+      return { error: 'An unexpected error occurred.' };
+    }
+  }
+
+  /**
+   * Check the current auth state by querying the Supabase session.
+   */
   private async checkAuthState(): Promise<void> {
-    // Check if we have token data stored
-    if (!this.tokenStore.tokenData?.accessToken) {
-      // early exit, since there's no token stored anyway
+    try {
+      const {
+        data: { session },
+      } = await this.supabase.auth.getSession();
+
+      if (!session) {
+        this.updateAuthState((draft) => {
+          draft.userAccount = {
+            status: 'unauthenticated',
+            machineId: this.identifierService.getMachineId(),
+          };
+        });
+        return;
+      }
+
       this.updateAuthState((draft) => {
         draft.userAccount = {
-          status: 'unauthenticated',
+          ...draft.userAccount,
+          status: 'authenticated',
           machineId: this.identifierService.getMachineId(),
+          user: session.user
+            ? {
+                id: session.user.id,
+                email: session.user.email ?? '',
+              }
+            : undefined,
         };
       });
-      return;
-    }
 
-    // If yes, we check if the token needs to be refreshed. (look at expiration date)
-    if (
-      this.tokenStore.tokenData.expiresAt &&
-      this.tokenStore.tokenData.expiresAt <
-        new Date(Date.now() + ACCESS_TOKEN_EXPIRATION_BUFFER_TIME)
-    ) {
-      // We check if the refresh token is still valid. If no, we simply logout.
-      if (
-        this.tokenStore.tokenData.refreshExpiresAt &&
-        this.tokenStore.tokenData.refreshExpiresAt < new Date()
-      ) {
-        await this.logout();
-        return;
-      }
-
-      const refreshSuccessful = await this.serverInterop
-        .refreshToken(this.tokenStore.tokenData.refreshToken)
-        .then((tokenData) => {
-          this.tokenStore.tokenData = {
-            accessToken: tokenData.accessToken,
-            refreshToken: tokenData.refreshToken,
-            expiresAt: new Date(tokenData.expiresAt),
-            refreshExpiresAt: new Date(tokenData.refreshExpiresAt),
-          };
-          return true;
-        })
-        .catch((err) => {
-          this.notificationService.showNotification({
-            title: 'Failed to refresh authentication token',
-            message: 'Please sign in again.',
-            type: 'error',
-            duration: 5000,
-            actions: [],
-          });
-          this.logger.error(
-            `[AuthService] Failed to refresh token. Error: ${err}`,
-          );
-          // We log out, if the error is anything else other than an internal server error or the server is unreachable.
-          if (
-            !err.message.toLowerCase().includes('internal server error') &&
-            !err.message.toLowerCase().includes('unreachable') &&
-            err.code !== 'ECONNREFUSED' &&
-            err.code !== 'ECONNRESET' &&
-            !err.message.toLowerCase().includes('fetch failed')
-          ) {
-            void this.logout();
-          }
-          return true;
-        });
-
-      if (!refreshSuccessful) {
-        // we can make an early exit here
-        return;
-      }
-    }
-
-    // We fetch the user session data from the server and update the user state if we get valid data.
-    await this.serverInterop
-      .getSession(this.tokenStore.tokenData.accessToken)
-      .then(async (sessionData) => {
-        if (!sessionData) {
-          this.logger.error(
-            `[AuthService] Returned session is empty. Logging out.`,
-          );
-          void this.logout();
-          return;
-        }
-
-        if (!sessionData.valid) {
-          this.logger.error(
-            `[AuthService] Returned session is not valid. Logging out.`,
-          );
-          void this.logout();
-          return;
-        }
-
-        this.updateAuthState((draft) => {
-          draft.userAccount = {
-            ...draft.userAccount,
-            status: 'authenticated',
-            machineId: this.identifierService.getMachineId(),
-          };
-        });
-
-        // We also fetch user subscription information from the server.
-        const subscriptionData = await this.serverInterop.getSubscription(
-          this.tokenStore.tokenData!.accessToken,
-        );
-
-        this.updateAuthState((draft) => {
-          draft.userAccount = {
-            ...draft.userAccount,
-            status: 'authenticated',
-            machineId: this.identifierService.getMachineId(),
-            user: {
-              id: sessionData.userId,
-              email: sessionData.userEmail,
-            },
-            subscription: {
-              active: subscriptionData?.hasSubscription || false,
-              plan: subscriptionData?.subscription?.priceId || undefined,
-              expiresAt:
-                subscriptionData?.subscription?.currentPeriodEnd?.toISOString() ||
-                undefined,
-            },
-          };
-        });
-      })
-      .catch((err) => {
-        this.updateAuthState((draft) => {
-          draft.userAccount.status = 'server_unreachable';
-        });
-
-        this.logger.error(`[AuthService] Failed to get session: ${err}`);
+      // Fetch subscription data
+      await this.fetchSubscription(session.access_token);
+    } catch (err) {
+      this.updateAuthState((draft) => {
+        draft.userAccount.status = 'server_unreachable';
       });
+      this.logger.error(`[AuthService] Failed to check auth state: ${err}`);
+    }
+  }
+
+  /**
+   * Fetch subscription info and update Karton state.
+   */
+  private async fetchSubscription(accessToken: string): Promise<void> {
+    const subscriptionData =
+      await this.serverInterop.getSubscription(accessToken);
+
+    if (subscriptionData) {
+      this.updateAuthState((draft) => {
+        draft.userAccount = {
+          ...draft.userAccount,
+          subscription: {
+            active: subscriptionData.hasSubscription || false,
+            plan: subscriptionData.subscription?.priceId || undefined,
+            expiresAt:
+              subscriptionData.subscription?.currentPeriodEnd?.toISOString() ||
+              undefined,
+          },
+        };
+      });
+    }
   }
 
   public async logout(): Promise<void> {
-    if (!this.tokenStore.tokenData?.accessToken) {
-      // early exit, since there's no token stored anyway
-      return;
-    }
-    // Clear the stored token data
-    await this.serverInterop
-      .revokeToken(this.tokenStore.tokenData?.accessToken)
-      .catch((err) => {
-        this.logger.error(
-          `[AuthService] Failed to revoke token on server side. Logging out anyway. Error: ${err}`,
-        );
-      });
-    this.tokenStore.tokenData = null;
+    await this.supabase.auth.signOut();
+    this.persistSession(null);
 
     this.notificationService.showNotification({
       title: 'Logged out',
@@ -280,112 +359,28 @@ export class AuthService extends DisposableService {
       actions: [],
     });
 
-    void this.checkAuthState();
     this.logger.debug('[AuthService] Logged out');
-  }
-
-  public async startLogin(): Promise<void> {
-    // If the user is already authenticated, we just early exit
-    if (this.authState.status !== 'unauthenticated') {
-      return;
-    }
-
-    const authUrl = this.getAuthUrl();
-    this._authTabId = await this.windowLayoutService.openUrlInNewTab(authUrl);
-
-    this.updateAuthState((draft) => {
-      draft.userAccount = {
-        ...draft.userAccount,
-        machineId: this.identifierService.getMachineId(),
-      };
-    });
-  }
-
-  // This function is called when the auth callback URL is received with an auth code.
-  // It immediately exchanges the code for tokens without requiring user confirmation.
-  // The auth tab is closed as soon as the token exchange succeeds, and the full
-  // auth state check (session + subscription) runs in the background to avoid
-  // blocking the UI if the API is slow or unreachable.
-  public async handleAuthCodeExchange(
-    authCode: string | undefined,
-    error: string | undefined,
-  ): Promise<void> {
-    if (error) {
-      this.logger.error(`[AuthService] Failed to exchange token: ${error}`);
-      this.closeAuthTab();
-      return;
-    }
-    if (!authCode) {
-      this.logger.error(`[AuthService] No auth code provided`);
-      this.closeAuthTab();
-      return;
-    }
-
-    try {
-      const tokenData = await this.serverInterop.exchangeToken(authCode);
-      this.tokenStore.tokenData = {
-        accessToken: tokenData.accessToken,
-        refreshToken: tokenData.refreshToken,
-        expiresAt: new Date(tokenData.expiresAt),
-        refreshExpiresAt: new Date(tokenData.refreshExpiresAt),
-      };
-
-      // Close the auth tab immediately after a successful token exchange
-      // so the user isn't blocked by slow downstream API calls.
-      this.closeAuthTab();
-
-      this.notificationService.showNotification({
-        title: 'Signed in',
-        message: 'You have successfully signed in to stagewise.',
-        type: 'info',
-        duration: 3000,
-        actions: [],
-      });
-
-      // Run full auth state check (session validation + subscription fetch)
-      // in the background. This may involve slow tRPC streaming calls that
-      // should not block the auth callback response.
-      void this.checkAuthState();
-    } catch (err) {
-      this.logger.error(`[AuthService] Failed to exchange token: ${err}`);
-      this.notificationService.showNotification({
-        title: 'Sign in failed',
-        message: 'Failed to complete authentication. Please try again.',
-        type: 'error',
-        duration: 5000,
-        actions: [],
-      });
-      this.closeAuthTab();
-    }
-  }
-
-  private closeAuthTab(): void {
-    if (this._authTabId) {
-      this.windowLayoutService.closeTab(this._authTabId);
-      this._authTabId = null;
-    }
   }
 
   public get authState(): AuthState {
     this.assertNotDisposed();
-    // We store everything in karton and just report it here. Makes it easier and reduces redundancy...
     return this.uiKarton.state.userAccount;
   }
 
   public get accessToken(): string | undefined {
     this.assertNotDisposed();
-    return this.tokenStore.tokenData?.accessToken;
+    if (!this._sessionJson) return undefined;
+    try {
+      const parsed = JSON.parse(this._sessionJson);
+      return parsed?.access_token;
+    } catch {
+      return undefined;
+    }
   }
 
   public async refreshAuthState(): Promise<AuthState> {
     await this.checkAuthState();
     return this.authState;
-  }
-
-  private getAuthUrl(): string {
-    const callbackUrl = `stagewise://internal/auth/callback`;
-
-    return `${consoleUrl}/authenticate-ide?ide=cli&redirect_uri=${encodeURIComponent(callbackUrl)}&no-cookie-banner=true`;
   }
 
   private updateAuthState(
@@ -395,13 +390,13 @@ export class AuthService extends DisposableService {
     this.uiKarton.setState(draft);
     const newState = this.uiKarton.state.userAccount;
     if (JSON.stringify(oldState) !== JSON.stringify(newState)) {
-      this.authChangeCallbacks.forEach((callback) => {
+      for (const callback of this.authChangeCallbacks) {
         try {
           callback(newState);
         } catch {
           // NO-OP
         }
-      });
+      }
     }
   }
 

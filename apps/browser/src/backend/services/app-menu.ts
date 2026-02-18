@@ -110,15 +110,7 @@ export class AppMenuService extends DisposableService {
               ];
             case 'unauthenticated':
             case 'authentication_invalid':
-              return [
-                {
-                  id: 'user_menu_login',
-                  label: 'Login',
-                  click: () => {
-                    void this.authService.startLogin();
-                  },
-                },
-              ];
+              return [];
             default:
               return [
                 {
