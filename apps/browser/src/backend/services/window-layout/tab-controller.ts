@@ -1347,7 +1347,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       }
     });
 
-    wc.on('did-navigate', (_event, url) => {
+    wc.on('did-navigate', (_event, url, _httpResponseCode, _httpStatusText) => {
       // Reset so the next did-stop-loading runs full setup (CDP enable, screenshot, etc.)
       this.initialLoadCompleted = false;
 
@@ -1381,7 +1381,8 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       }
     });
 
-    wc.on('did-navigate-in-page', async (_event, url) => {
+    wc.on('did-navigate-in-page', async (_event, url, isMainFrame) => {
+      if (!isMainFrame) return;
       this.stopSearch(); // Clear search on in-page navigation
 
       // Don't update URL in UI if on an error page - keep showing the failed URL
