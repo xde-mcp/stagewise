@@ -314,11 +314,18 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   // Helper to create a new chat and focus the input
   const createAgentAndFocus = useCallback(async () => {
     const currentInputState = getDraft();
-    const newAgent = await createAgent(currentInputState || undefined);
+    // Pass the currently open agent's model to the new agent
+    const currentModelId = openAgent
+      ? activeAgents[openAgent]?.state.activeModelId
+      : undefined;
+    const newAgent = await createAgent(
+      currentInputState || undefined,
+      currentModelId,
+    );
     setOpenAgent(newAgent);
     void getAgentsHistoryList(0, PAGE_SIZE).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [createAgent, getDraft, getAgentsHistoryList]);
+  }, [createAgent, getDraft, getAgentsHistoryList, openAgent, activeAgents]);
 
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {

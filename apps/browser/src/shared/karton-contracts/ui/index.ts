@@ -609,7 +609,10 @@ export type KartonContract = {
   state: AppState;
   serverProcedures: {
     agents: {
-      create: (initialInputState?: string) => Promise<string>;
+      create: (
+        initialInputState?: string,
+        modelId?: ModelId,
+      ) => Promise<string>;
       resume: (agentId: string) => Promise<void>;
       delete: (agentId: string) => Promise<void>;
       getAgentsHistoryList: (

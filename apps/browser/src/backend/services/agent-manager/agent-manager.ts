@@ -107,13 +107,17 @@ export class AgentManagerService extends DisposableService {
   private registerKartonHandlers(): void {
     this.karton.registerServerProcedureHandler(
       'agents.create',
-      async (_callingClientId: string, initialInputState?: string) => {
+      async (
+        _callingClientId: string,
+        initialInputState?: string,
+        modelId?: ModelId,
+      ) => {
         return (
           await this.createAgent(
             AgentTypes.CHAT,
             undefined,
             undefined,
-            undefined,
+            modelId ? { activeModelId: modelId } : undefined,
             undefined,
             initialInputState,
           )
@@ -278,7 +282,7 @@ export class AgentManagerService extends DisposableService {
       ) => void | Promise<void>;
       onError: (error: Error) => void | Promise<void>;
     },
-    initialState?: AgentState,
+    initialState?: Partial<AgentState>,
     instanceId?: string,
     initialInputState?: string,
   ): Promise<
