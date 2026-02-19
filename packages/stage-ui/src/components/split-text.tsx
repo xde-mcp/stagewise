@@ -111,7 +111,7 @@ export const SplitText: React.FC<SplitTextProps> = ({
         reduceWhiteSpace: false,
         onSplit: (self: GSAPSplitText) => {
           assignTargets(self);
-          return gsap.fromTo(
+          const tween = gsap.fromTo(
             targets,
             { ...from },
             {
@@ -134,6 +134,8 @@ export const SplitText: React.FC<SplitTextProps> = ({
               force3D: true,
             },
           );
+          el.style.visibility = 'visible';
+          return tween;
         },
       });
 
@@ -175,6 +177,7 @@ export const SplitText: React.FC<SplitTextProps> = ({
     whiteSpace: 'normal',
     wordWrap: 'break-word',
     willChange: 'transform, opacity',
+    visibility: 'hidden',
   };
   const classes = `split-parent ${className}`;
   const Tag = (tag || 'p') as React.ElementType;
