@@ -12,6 +12,7 @@ import type {
   KartonClientConfig,
   KartonState,
   KartonServerProcedures,
+  WithFireAndForget,
 } from '../../shared/types.js';
 import { shallow } from '../comparators.js';
 
@@ -22,7 +23,7 @@ interface KartonContextValue<T> {
 
 export interface SelectorData<T> {
   state: Readonly<KartonState<T>>;
-  serverProcedures: KartonServerProcedures<T>;
+  serverProcedures: WithFireAndForget<KartonServerProcedures<T>>;
   isConnected: boolean;
 }
 
@@ -35,7 +36,7 @@ export type EqualityFn<T> = (a: T, b: T) => boolean;
 
 export type StateSelector<T, R> = (state: Readonly<KartonState<T>>) => R;
 export type ProcedureSelector<T, R> = (
-  procedures: KartonServerProcedures<T>,
+  procedures: WithFireAndForget<KartonServerProcedures<T>>,
 ) => R;
 
 const fullStateSelector = <T,>(state: T): T => state;
@@ -118,7 +119,7 @@ export function createKartonReactClient<T>(
     return selectedValue;
   }
 
-  const useKartonProcedure = <R = KartonServerProcedures<T>>(
+  const useKartonProcedure = <R = WithFireAndForget<KartonServerProcedures<T>>>(
     selector: ProcedureSelector<T, R> = fullProcedureSelector as any,
   ): R => {
     const context = useContext(KartonContext);

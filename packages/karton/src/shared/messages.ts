@@ -12,6 +12,7 @@ export function createRPCCallMessage(
   rpcCallId: string,
   procedurePath: string,
   parameters: any[],
+  fireAndForget?: boolean,
 ): Message {
   return {
     type: 'rpc_call',
@@ -19,6 +20,7 @@ export function createRPCCallMessage(
       rpcCallId,
       procedurePath,
       parameters,
+      ...(fireAndForget && { fireAndForget: true }),
     } as RPCCallData,
   };
 }

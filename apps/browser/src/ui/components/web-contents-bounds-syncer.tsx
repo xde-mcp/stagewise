@@ -1,159 +1,200 @@
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect } from 'react';
+
+type Bounds = { x: number; y: number; width: number; height: number };
 
 export const WebContentsBoundsSyncer = () => {
   const activeTabId = useKartonState((s) => s.browser.activeTabId);
-  const updateBounds = useKartonProcedure((p) => p.browser.layout.update);
+  const updateLayout = useKartonProcedure((p) => p.browser.layout.update);
   const movePanelToForeground = useKartonProcedure(
     (p) => p.browser.layout.movePanelToForeground,
   );
 
-  // State refs
-  const lastBoundsRef = useRef<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
-  const lastInteractiveRef = useRef<boolean | null>(null);
-  const requestRef = useRef<number | null>(null);
-  const lastMousePosRef = useRef<{ x: number; y: number } | null>(null);
-
   useLayoutEffect(() => {
-    // Just track mouse position - the RAF loop will handle hover detection
-    const handleMouseMove = (e: MouseEvent) => {
-      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    if (!activeTabId) return;
+
+    const containerId = `dev-app-preview-container-${activeTabId}`;
+
+    let lastBounds: Bounds | null = null;
+    let lastInteractive: boolean | null = null;
+    let containerElement: HTMLElement | null = null;
+    let containerVisible = false;
+    let lastMousePos: { x: number; y: number } | null = null;
+
+    // --- Bounds update logic ---
+    // Uses Karton RPC fire-and-forget (.fire) to send bounds without
+    // waiting for a response — no Promise, no timeout tracking.
+
+    const sendBoundsUpdate = () => {
+      if (!containerElement || !containerVisible) {
+        if (lastBounds !== null) {
+          updateLayout.fire(null);
+          void movePanelToForeground('stagewise-ui');
+          lastBounds = null;
+          lastInteractive = null;
+        }
+        return;
+      }
+
+      const rect = containerElement.getBoundingClientRect();
+
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const newBounds: Bounds = {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      };
+
+      const boundsChanged =
+        !lastBounds ||
+        lastBounds.x !== newBounds.x ||
+        lastBounds.y !== newBounds.y ||
+        lastBounds.width !== newBounds.width ||
+        lastBounds.height !== newBounds.height;
+
+      if (boundsChanged) {
+        updateLayout.fire(newBounds);
+        lastBounds = newBounds;
+      }
     };
 
+    // --- Hover detection logic (driven by mousemove, not polling) ---
+
+    const checkHoverState = () => {
+      if (!lastMousePos || !containerElement || !containerVisible) {
+        if (lastInteractive !== null && lastInteractive !== false) {
+          void movePanelToForeground('stagewise-ui');
+          lastInteractive = false;
+        }
+        return;
+      }
+
+      const { x, y } = lastMousePos;
+      const elementAtPoint = document.elementFromPoint(x, y);
+
+      let isHovering = false;
+      if (elementAtPoint) {
+        const isElementSelectorOverlay =
+          elementAtPoint.hasAttribute('data-element-selector-overlay') ||
+          elementAtPoint.closest('[data-element-selector-overlay]') !== null;
+
+        const isOmniboxModalActive =
+          document.querySelector('[data-omnibox-modal-active]') !== null;
+
+        if (!isElementSelectorOverlay && !isOmniboxModalActive) {
+          const hoverContainer = elementAtPoint.closest(
+            '[id^="dev-app-preview-container-"]',
+          );
+          isHovering = hoverContainer !== null;
+        }
+      }
+
+      if (lastInteractive !== isHovering) {
+        void movePanelToForeground(isHovering ? 'tab-content' : 'stagewise-ui');
+        lastInteractive = isHovering;
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      lastMousePos = { x: e.clientX, y: e.clientY };
+      checkHoverState();
+    };
+
+    // --- Opacity check (only on element discovery and transitionend) ---
+
+    const checkOpacity = (): boolean => {
+      if (!containerElement) return false;
+      const opacity = getEffectiveOpacity(containerElement);
+      return opacity >= 0.5;
+    };
+
+    const handleTransitionEnd = (e: TransitionEvent) => {
+      if (e.propertyName === 'opacity') {
+        const wasVisible = containerVisible;
+        containerVisible = checkOpacity();
+        if (wasVisible !== containerVisible) {
+          sendBoundsUpdate();
+        }
+      }
+    };
+
+    // --- Container element tracking ---
+
+    const resizeObserver = new ResizeObserver(sendBoundsUpdate);
+
+    const attachContainer = (el: HTMLElement | null) => {
+      if (el === containerElement) return;
+
+      if (containerElement) {
+        resizeObserver.unobserve(containerElement);
+        containerElement.removeEventListener(
+          'transitionend',
+          handleTransitionEnd,
+        );
+      }
+
+      containerElement = el;
+
+      if (containerElement) {
+        resizeObserver.observe(containerElement);
+        containerElement.addEventListener('transitionend', handleTransitionEnd);
+        containerVisible = checkOpacity();
+      } else {
+        containerVisible = false;
+      }
+
+      sendBoundsUpdate();
+    };
+
+    // Initial lookup
+    attachContainer(document.getElementById(containerId));
+
+    // --- MutationObserver: detect container appearing/disappearing (tab switch) ---
+    const mutationObserver = new MutationObserver(() => {
+      const newEl = document.getElementById(containerId);
+      attachContainer(newEl);
+    });
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // --- Window resize: catches panel resizes and actual window resizes ---
+    window.addEventListener('resize', sendBoundsUpdate);
+
+    // --- Mouse tracking for hover detection ---
     document.addEventListener('mousemove', handleMouseMove);
 
     return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener('resize', sendBoundsUpdate);
       document.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, []);
-
-  const check = useCallback(() => {
-    const containerId = activeTabId
-      ? `dev-app-preview-container-${activeTabId}`
-      : null;
-    let container = containerId ? document.getElementById(containerId) : null;
-
-    if (container) {
-      const opacity = getEffectiveOpacity(container);
-      // If opacity is below 0.5, treat as non-existing
-      if (opacity < 0.5) container = null;
-    }
-
-    if (!container) {
-      // If container is gone but we previously had bounds, clear them
-      if (lastBoundsRef.current !== null) {
-        void updateBounds(null);
-        void movePanelToForeground('stagewise-ui');
-        lastBoundsRef.current = null;
-      }
-    } else {
-      const rect = container.getBoundingClientRect();
-
-      // Only process bounds if container has valid dimensions (properly laid out)
-      // This prevents sending zero-size bounds before layout completes
-      if (rect.width > 0 && rect.height > 0) {
-        const newBounds = {
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height,
-        };
-
-        // Deep compare bounds
-        const lastBounds = lastBoundsRef.current;
-        const boundsChanged =
-          !lastBounds ||
-          lastBounds.x !== newBounds.x ||
-          lastBounds.y !== newBounds.y ||
-          lastBounds.width !== newBounds.width ||
-          lastBounds.height !== newBounds.height;
-
-        if (boundsChanged) {
-          void updateBounds(newBounds);
-          lastBoundsRef.current = newBounds;
-        }
-
-        // Check hover state using elementFromPoint (respects z-order)
-        // This handles: tab switches, window focus, popups over content area
-        let isHovering = false;
-        if (lastMousePosRef.current) {
-          const { x, y } = lastMousePosRef.current;
-          const elementAtPoint = document.elementFromPoint(x, y);
-          if (elementAtPoint) {
-            // Check if hovering over element selector overlay - if so, keep UI on top
-            // so that DOMContextSelector can receive mouse events for element selection
-            const isElementSelectorOverlay =
-              elementAtPoint.hasAttribute('data-element-selector-overlay') ||
-              elementAtPoint.closest('[data-element-selector-overlay]') !==
-                null;
-
-            // Check if omnibox modal is active - if so, keep UI on top
-            // so that the omnibox popup remains visible and interactive
-            const isOmniboxModalActive =
-              document.querySelector('[data-omnibox-modal-active]') !== null;
-
-            if (!isElementSelectorOverlay && !isOmniboxModalActive) {
-              const hoverContainer = elementAtPoint.closest(
-                '[id^="dev-app-preview-container-"]',
-              );
-              isHovering = hoverContainer !== null;
-            }
-          }
-        }
-
-        if (lastInteractiveRef.current !== isHovering) {
-          void movePanelToForeground(
-            isHovering ? 'tab-content' : 'stagewise-ui',
-          );
-          lastInteractiveRef.current = isHovering;
-        }
-      }
-      // If dimensions are 0, we wait for the next frame check when layout is complete
-    }
-
-    requestRef.current = requestAnimationFrame(check);
-  }, [activeTabId, updateBounds, movePanelToForeground]);
-
-  useLayoutEffect(() => {
-    // Reset state when tab changes to force an update
-    // The RAF loop will re-evaluate hover state using lastMousePosRef
-    lastBoundsRef.current = null;
-    lastInteractiveRef.current = null;
-
-    requestRef.current = requestAnimationFrame(check);
-
-    return () => {
-      if (requestRef.current !== null) {
-        cancelAnimationFrame(requestRef.current);
+      if (containerElement) {
+        containerElement.removeEventListener(
+          'transitionend',
+          handleTransitionEnd,
+        );
       }
       // Clean up by hiding
-      void updateBounds(null);
+      updateLayout.fire(null);
     };
-  }, [check, activeTabId, updateBounds]);
+  }, [activeTabId]);
 
   return null;
 };
 
 function getEffectiveOpacity(element: Element | null) {
-  let opacity = 1; // Start at full visibility
+  let opacity = 1;
   let current = element;
 
   while (current) {
-    // Get the computed style of the current element
     const style = window.getComputedStyle(current);
-
-    // Multiply the running total by the current element's opacity
-    // If style.opacity is "", it defaults to 1
     if (style.opacity) {
       opacity *= Number.parseFloat(style.opacity);
     }
-
-    // Move up to the parent
     current = current.parentElement;
   }
 

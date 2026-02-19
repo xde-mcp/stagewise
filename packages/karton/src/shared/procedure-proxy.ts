@@ -5,7 +5,7 @@ type CallFunction = (
   procedurePath: string,
   parameters: any[],
   options?: RPCCallOptions,
-) => Promise<unknown>;
+) => Promise<unknown> | undefined;
 
 export function createProcedureProxy(
   call: CallFunction,
@@ -21,6 +21,14 @@ export function createProcedureProxy(
 
       if (typeof prop === 'symbol') {
         return undefined;
+      }
+
+      // .fire returns a proxy variant that uses fire-and-forget
+      if (prop === 'fire') {
+        return createProcedureProxy(call, path, {
+          ...options,
+          fireAndForget: true,
+        });
       }
 
       const newPath = path ? `${path}.${String(prop)}` : String(prop);

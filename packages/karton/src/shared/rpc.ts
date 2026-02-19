@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import type { Message } from './types.js';
 import {
   KartonRPCException,
@@ -17,6 +16,7 @@ import {
 export interface RPCCallOptions {
   timeout?: number;
   clientId?: string;
+  fireAndForget?: boolean;
 }
 
 interface PendingCall {
@@ -34,17 +34,34 @@ export class RPCManager {
   private procedures: Map<string, ProcedureHandler> = new Map();
   private sendMessage: (message: Message) => void;
   private defaultTimeout = 30000; // 30 seconds
+  private callCounter = 0;
 
   constructor(sendMessage: (message: Message) => void) {
     this.sendMessage = sendMessage;
   }
 
-  public async call(
+  private nextCallId(): string {
+    return `c${++this.callCounter}`;
+  }
+
+  public call(
     procedurePath: string,
     parameters: any[],
     options: RPCCallOptions = {},
-  ): Promise<unknown> {
-    const rpcCallId = uuidv4();
+  ): Promise<unknown> | undefined {
+    const rpcCallId = this.nextCallId();
+
+    if (options.fireAndForget) {
+      const message = createRPCCallMessage(
+        rpcCallId,
+        procedurePath,
+        parameters,
+        true,
+      );
+      this.sendMessage(message);
+      return undefined;
+    }
+
     const timeout = options.timeout ?? this.defaultTimeout;
 
     return new Promise((resolve, reject) => {
@@ -99,15 +116,27 @@ export class RPCManager {
   }
 
   private async handleRPCCall(message: Message & { data: any }): Promise<void> {
-    const { rpcCallId, procedurePath, parameters } = message.data;
+    const { rpcCallId, procedurePath, parameters, fireAndForget } =
+      message.data;
     const handler = this.procedures.get(procedurePath);
 
     if (!handler) {
+      if (fireAndForget) return;
       const error = new KartonProcedureError(
         `Server procedure '${procedurePath}' is not registered`,
       );
       const exceptionMessage = createRPCExceptionMessage(rpcCallId, error);
       this.sendMessage(exceptionMessage);
+      return;
+    }
+
+    if (fireAndForget) {
+      // Execute handler but skip sending any response
+      try {
+        await handler(...parameters);
+      } catch {
+        // Silently ignore — caller doesn't expect a response
+      }
       return;
     }
 

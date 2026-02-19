@@ -4,6 +4,7 @@ import type {
   KartonState,
   KartonServerProcedures,
   KartonClientProcedureImplementations,
+  WithFireAndForget,
 } from '../shared/types.js';
 import type { Transport } from '../shared/transport.js';
 import { WebSocketTransport } from '../transports/websocket/client.js';
@@ -21,7 +22,7 @@ class KartonClientImpl<T> implements KartonClient<T> {
   private stateManager: ClientStateManager<KartonState<T>>;
   private clientProcedures: KartonClientProcedureImplementations<T>;
   private config: KartonClientConfig<T>;
-  private _serverProcedures: KartonServerProcedures<T>;
+  private _serverProcedures: WithFireAndForget<KartonServerProcedures<T>>;
   private _isConnected = false;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private reconnectInterval = 500; // 500ms
@@ -37,17 +38,18 @@ class KartonClientImpl<T> implements KartonClient<T> {
 
     // Create server procedure proxy
     this._serverProcedures = createProcedureProxy(
-      async (procedurePath, parameters, options) => {
+      (procedurePath, parameters, options) => {
         if (!this.rpcManager || !this._isConnected) {
+          if (options?.fireAndForget) return undefined;
           throw new KartonRPCException(
             KartonRPCErrorReason.SERVER_UNAVAILABLE,
             procedurePath,
           );
         }
 
-        return await this.rpcManager.call(procedurePath, parameters, options);
+        return this.rpcManager.call(procedurePath, parameters, options);
       },
-    ) as KartonServerProcedures<T>;
+    ) as WithFireAndForget<KartonServerProcedures<T>>;
 
     // Start connection
     this.connect();
@@ -169,7 +171,7 @@ class KartonClientImpl<T> implements KartonClient<T> {
     return this.stateManager.getState();
   }
 
-  public get serverProcedures(): KartonServerProcedures<T> {
+  public get serverProcedures(): WithFireAndForget<KartonServerProcedures<T>> {
     return this._serverProcedures;
   }
 

@@ -184,6 +184,18 @@ export type KartonState<T> = T extends { state: infer S } ? S : never;
 
 export type AsyncFunction = (...args: any[]) => Promise<any>;
 
+/**
+ * Augments procedure types with a `.fire` accessor for fire-and-forget calls.
+ * `procedure.fire(args)` sends the RPC without waiting for a response.
+ */
+export type WithFireAndForget<T> = T extends (
+  ...args: infer A
+) => Promise<infer R>
+  ? ((...args: A) => Promise<R>) & { fire: (...args: A) => void }
+  : T extends object
+    ? { [K in keyof T]: WithFireAndForget<T[K]> }
+    : T;
+
 export type ProcedureTree = {
   [key: string]: AsyncFunction | ProcedureTree;
 };
@@ -304,6 +316,7 @@ export interface RPCCallData {
   rpcCallId: string;
   procedurePath: string;
   parameters: any[];
+  fireAndForget?: boolean;
 }
 
 export interface RPCReturnData {
@@ -387,7 +400,7 @@ export interface KartonClientConfig<T> {
 
 export interface KartonClient<T> {
   state: Readonly<KartonState<T>>;
-  serverProcedures: KartonServerProcedures<T>;
+  serverProcedures: WithFireAndForget<KartonServerProcedures<T>>;
   isConnected: boolean;
 }
 
