@@ -537,6 +537,76 @@ function dedupePortInfo(ports: PortInfo[]): PortInfo[] {
 }
 
 /**
+ * Get all system-wide listening TCP ports (no PID filter).
+ * Returns a sorted array of unique port numbers.
+ */
+export async function getAllListeningPorts(): Promise<number[]> {
+  try {
+    const platform = process.platform;
+
+    if (platform === 'win32') {
+      // Windows: Try PowerShell first
+      try {
+        const psCommand =
+          'Get-NetTCPConnection -State Listen | Select-Object -Property LocalAddress,LocalPort,State';
+        const { stdout } = await execFileAsync(
+          'powershell',
+          ['-NoProfile', '-Command', psCommand],
+          { windowsHide: true, maxBuffer: 10_000_000 },
+        );
+        const portInfos = parsePowerShellOutput(stdout);
+        const ports = portInfos
+          .filter((p) => p.listening || p.state === 'Listen')
+          .map((p) => p.localPort);
+        return [...new Set(ports)].sort((a, b) => a - b);
+      } catch {
+        // Fallback to netstat
+        try {
+          const { stdout } = await execFileAsync('netstat', ['-ano']);
+          const ports: number[] = [];
+          const lines = stdout.split(/\r?\n/);
+          for (const line of lines) {
+            if (!line.includes('LISTENING')) continue;
+            const parts = line.trim().split(/\s+/);
+            if (parts.length < 4) continue;
+            const localAddr = parts[1];
+            if (!localAddr) continue;
+            const lastColon = localAddr.lastIndexOf(':');
+            if (lastColon === -1) continue;
+            const port = Number.parseInt(
+              localAddr.substring(lastColon + 1),
+              10,
+            );
+            if (!Number.isNaN(port)) ports.push(port);
+          }
+          return [...new Set(ports)].sort((a, b) => a - b);
+        } catch {
+          return [];
+        }
+      }
+    } else {
+      // macOS/Linux: lsof without -a -p flags to get all listening ports
+      try {
+        const { stdout } = await execFileAsync(
+          'lsof',
+          ['-nP', '-iTCP', '-sTCP:LISTEN'],
+          { maxBuffer: 10_000_000 },
+        );
+        const portInfos = parseLsofOutput(stdout);
+        const ports = portInfos
+          .filter((p) => p.listening || p.state === 'LISTEN')
+          .map((p) => p.localPort);
+        return [...new Set(ports)].sort((a, b) => a - b);
+      } catch {
+        return [];
+      }
+    }
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Get all processes using a specific port
  * Returns array of PIDs
  */

@@ -26,6 +26,7 @@ import { WebDataService } from './services/webdata';
 import { DownloadsService } from './services/download-manager';
 import { DiffHistoryService } from './services/diff-history';
 import { AutoUpdateService } from './services/auto-update';
+import { LocalPortsScannerService } from './services/local-ports-scanner';
 import { DevToolAPIService } from './services/dev-tool-api';
 import {
   DownloadState,
@@ -126,6 +127,15 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   // Initialize search engines state
   await pagesService.syncSearchEnginesState();
+
+  // Create LocalPortsScannerService to discover local dev servers
+  const localPortsScannerService = await LocalPortsScannerService.create(
+    logger,
+    pagesService,
+  );
+
+  // Wire scan trigger so the UI can request a fresh port scan
+  pagesService.setScanLocalPortsHandler(() => localPortsScannerService.scan());
 
   // Create WindowLayoutService with all dependencies including PreferencesService
   // This also applies the startup page preference during initialization
@@ -942,6 +952,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   // Set up graceful shutdown to clean up database connections
   const shutdown = () => {
     logger.debug('[Main] Shutting down services...');
+    localPortsScannerService.teardown();
     webDataService.teardown();
     historyService.teardown();
     faviconService.teardown();

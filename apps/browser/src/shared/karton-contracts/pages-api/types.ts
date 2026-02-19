@@ -322,6 +322,11 @@ export interface ContextFilesResult {
   agentsMd: ContextFileInfo;
 }
 
+export interface LocalPortEntry {
+  port: number;
+  url: string;
+}
+
 /** Result of getExternalFileContent procedure */
 export interface ExternalFileContentResult {
   /** Base64-encoded file content */

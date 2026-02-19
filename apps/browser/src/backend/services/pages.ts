@@ -41,6 +41,7 @@ import type {
   InspirationWebsite,
   ContextFilesResult,
   ExternalFileContentResult,
+  LocalPortEntry,
 } from '@shared/karton-contracts/pages-api/types';
 import { DisposableService } from './disposable';
 import type { TelemetryService } from './telemetry';
@@ -107,6 +108,7 @@ export class PagesService extends DisposableService {
   private getExternalFileContentHandler?: (
     oid: string,
   ) => Promise<ExternalFileContentResult | null>;
+  private scanLocalPortsHandler?: () => Promise<void>;
 
   private readonly telemetryService: TelemetryService;
 
@@ -1094,6 +1096,19 @@ export class PagesService extends DisposableService {
         return await this.getContextFilesHandler();
       },
     );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'scanLocalPorts',
+      async (_callingClientId: string): Promise<void> => {
+        if (!this.scanLocalPortsHandler) {
+          this.logger.warn(
+            '[PagesService] scanLocalPorts called but no handler is set',
+          );
+          return;
+        }
+        await this.scanLocalPortsHandler();
+      },
+    );
   }
 
   /**
@@ -1450,6 +1465,49 @@ export class PagesService extends DisposableService {
   }
 
   /**
+   * Set the handler for triggering a local ports scan.
+   * This should be called by main.ts to wire up to LocalPortsScannerService.
+   */
+  public setScanLocalPortsHandler(handler: () => Promise<void>): void {
+    this.scanLocalPortsHandler = handler;
+  }
+
+  /**
+   * Sync local ports state to the Pages API Karton state.
+   * Sorts ports by history (most recently visited first), then by port number.
+   * Called by LocalPortsScannerService when discovered ports change.
+   */
+  public async syncLocalPortsState(
+    localPorts: LocalPortEntry[],
+  ): Promise<void> {
+    // Look up last visit time for each port origin
+    const portsWithVisitTime = await Promise.all(
+      localPorts.map(async (entry) => {
+        const lastVisit = await this.historyService.getLastVisitTimeForOrigin(
+          entry.url,
+        );
+        return { entry, lastVisit };
+      }),
+    );
+
+    // Sort: visited ports first (most recent on top), unvisited last (by port)
+    portsWithVisitTime.sort((a, b) => {
+      if (a.lastVisit && b.lastVisit) {
+        return b.lastVisit.getTime() - a.lastVisit.getTime();
+      }
+      if (a.lastVisit) return -1;
+      if (b.lastVisit) return 1;
+      return a.entry.port - b.entry.port;
+    });
+
+    const sorted = portsWithVisitTime.map((p) => p.entry);
+
+    this.kartonServer.setState((draft) => {
+      draft.homePage.localPorts = sorted;
+    });
+  }
+
+  /**
    * Accept a new MessagePort connection for the PagesApi contract.
    *
    * @param port - The MessagePortMain from the main process side
@@ -1524,6 +1582,7 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('sendOtp');
     this.kartonServer.removeServerProcedureHandler('verifyOtp');
     this.kartonServer.removeServerProcedureHandler('logout');
+    this.kartonServer.removeServerProcedureHandler('scanLocalPorts');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');
@@ -1541,6 +1600,7 @@ export class PagesService extends DisposableService {
     this.trustCertificateAndReloadHandler = undefined;
     this.getContextFilesHandler = undefined;
     this.getExternalFileContentHandler = undefined;
+    this.scanLocalPortsHandler = undefined;
     this.sendOtpHandler = undefined;
     this.verifyOtpHandler = undefined;
     this.logoutHandler = undefined;

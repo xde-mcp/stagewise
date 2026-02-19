@@ -18,6 +18,7 @@ import type {
   WorkspaceStatus,
   ContextFilesResult,
   ExternalFileContentResult,
+  LocalPortEntry,
 } from './types';
 import type {
   UserPreferences,
@@ -44,6 +45,7 @@ export type PagesApiState = {
   homePage: {
     storedExperienceData: StoredExperienceData;
     workspaceStatus: WorkspaceStatus;
+    localPorts: LocalPortEntry[];
   };
   /** User account status, synced from AuthService */
   userAccount: {
@@ -177,6 +179,8 @@ export type PagesApiContract = {
     verifyOtp: (email: string, code: string) => Promise<{ error?: string }>;
     /** Log the current user out */
     logout: () => Promise<void>;
+    /** Trigger a fresh scan of local ports */
+    scanLocalPorts: () => Promise<void>;
   };
 };
 
@@ -200,6 +204,7 @@ export const defaultState: PagesApiState = {
       lastViewedChats: {},
     },
     workspaceStatus: 'closed',
+    localPorts: [],
   },
   appInfo: {
     baseName: __APP_BASE_NAME__,

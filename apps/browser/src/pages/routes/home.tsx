@@ -7,6 +7,7 @@ import {
 } from '@/hooks/use-karton';
 import type {
   InspirationWebsite,
+  LocalPortEntry,
   RecentlyOpenedWorkspace,
 } from '@shared/karton-contracts/pages-api/types';
 import { Button } from '@stagewise/stage-ui/components/button';
@@ -16,10 +17,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { IconChevronDown } from 'nucleo-micro-bold';
-import { IconArrowLeftFill18, IconArrowRightFill18 } from 'nucleo-ui-fill-18';
-import { IconDocFolder, IconCircleQuestion } from 'nucleo-glass';
-import { IconPlusFill18 } from 'nucleo-ui-fill-18';
+import {
+  IconArrowLeftOutline18,
+  IconArrowRightOutline18,
+  IconChevronDownOutline18,
+  IconCircleQuestionOutline18,
+  IconFolder5OpenOutline18,
+  IconRefreshClockwiseOutline18,
+} from 'nucleo-ui-outline-18';
+import { IconFolderFillDuo18, IconEarthFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import TimeAgo from 'react-timeago';
 import { cn } from '@/utils';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
@@ -89,7 +95,6 @@ function HomePage() {
 
 function StartPageWithConnectedWorkspace() {
   const openTab = useKartonProcedure((p) => p.openTab);
-  const workspaceStatus = useKartonState((s) => s.homePage.workspaceStatus);
   const getInspirationWebsites = useKartonProcedure(
     (p) => p.getInspirationWebsites,
   );
@@ -233,7 +238,10 @@ function StartPageWithConnectedWorkspace() {
           </span>
         )}
       </div>
-      {workspaceStatus !== 'open' && <ConnectWorkspaceBanner />}
+      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
+        <ConnectWorkspaceBanner />
+        <LocalPortsSection />
+      </div>
       {inspirationWebsitesWithScreenshot.websites.length > 0 && (
         <div className="group/design-inspiration mt-2 flex w-full flex-col items-center justify-start gap-4">
           <div className="relative z-10 flex w-full items-center justify-between">
@@ -254,23 +262,21 @@ function StartPageWithConnectedWorkspace() {
               {canScrollLeft && (
                 <Button
                   variant="ghost"
-                  size="xs"
-                  className="size-7 p-0"
+                  size="icon-sm"
                   onClick={() => scrollByItems('left')}
                   aria-label="Scroll left"
                 >
-                  <IconArrowLeftFill18 className="size-4" />
+                  <IconArrowLeftOutline18 className="size-4" />
                 </Button>
               )}
               {canScrollRight && (
                 <Button
                   variant="ghost"
-                  size="xs"
-                  className="size-7 p-0"
+                  size="icon-sm"
                   onClick={() => scrollByItems('right')}
                   aria-label="Scroll right"
                 >
-                  <IconArrowRightFill18 className="size-4" />
+                  <IconArrowRightOutline18 className="size-4" />
                 </Button>
               )}
             </div>
@@ -339,7 +345,7 @@ function OnboardingStartPage() {
               your project.
             </div>
           </div>
-          <IconDocFolder className="size-18" />
+          <IconFolderFillDuo18 className="size-18" />
         </div>
         <div className="flex w-full items-center justify-end gap-4">
           <Button
@@ -359,7 +365,7 @@ function OnboardingStartPage() {
               await selectAndOpenWorkspace();
             }}
           >
-            <IconPlusFill18 className="size-4" />
+            <IconFolder5OpenOutline18 className="size-4" />
             Connect a workspace
           </Button>
         </div>
@@ -380,7 +386,7 @@ function RecentlyOpenedWorkspaceItem({
       className="flex w-full shrink-0 cursor-pointer items-center gap-4 rounded-lg bg-background p-2 pt-1 hover:bg-hover-derived dark:bg-surface-1"
       onClick={onClick}
     >
-      <IconDocFolder className="size-4 shrink-0 text-muted-foreground" />
+      <IconFolderFillDuo18 className="size-4 shrink-0 text-muted-foreground" />
       <div className="flex w-full flex-col items-start justify-start gap-0">
         <div className="flex w-full items-baseline justify-start gap-2 text-foreground text-sm">
           <span className="truncate font-normal">{workspace.name}</span>
@@ -511,12 +517,35 @@ function DesignInspirationCard({
 
 function ConnectWorkspaceBanner() {
   const openWorkspace = useKartonProcedure((p) => p.openWorkspace);
+  const getContextFiles = useKartonProcedure((p) => p.getContextFiles);
   const selectAndOpenWorkspace = useCallback(async () => {
     await openWorkspace(undefined);
   }, [openWorkspace]);
   const recentlyOpenedWorkspaces = useKartonState(
     (s) => s.homePage.storedExperienceData.recentlyOpenedWorkspaces,
   );
+  const workspaceStatus = useKartonState((s) => s.homePage.workspaceStatus);
+
+  const [currentWorkspacePath, setCurrentWorkspacePath] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    getContextFiles().then((result) => {
+      setCurrentWorkspacePath(result.workspacePath);
+    });
+  }, [getContextFiles, workspaceStatus]);
+
+  const workspaceName = useMemo(() => {
+    if (!currentWorkspacePath) return null;
+    return (
+      currentWorkspacePath
+        .replace(/\\/g, '/')
+        .split('/')
+        .filter(Boolean)
+        .pop() ?? currentWorkspacePath
+    );
+  }, [currentWorkspacePath]);
 
   const [showAllRecentlyOpenedWorkspaces, setShowAllRecentlyOpenedWorkspaces] =
     useState(false);
@@ -529,24 +558,116 @@ function ConnectWorkspaceBanner() {
     else return allSorted.slice(0, 3);
   }, [recentlyOpenedWorkspaces, showAllRecentlyOpenedWorkspaces]);
 
+  const otherRecentWorkspaces = useMemo(
+    () =>
+      [...recentlyOpenedWorkspaces]
+        .sort((a, b) => b.openedAt - a.openedAt)
+        .filter((w) => w.path !== currentWorkspacePath),
+    [recentlyOpenedWorkspaces, currentWorkspacePath],
+  );
+
+  if (workspaceStatus === 'open' && currentWorkspacePath) {
+    return (
+      <div className="flex w-full flex-col items-start gap-2">
+        <div className="flex w-full items-center justify-between">
+          <h1 className="flex items-center gap-2 font-medium text-foreground text-xl">
+            Workspace
+            <Tooltip>
+              <TooltipTrigger>
+                <IconCircleQuestionOutline18 className="size-4 shrink-0 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <span>
+                  Allows stagewise to read and modify files in your workspace.
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          </h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-xs"
+            onClick={selectAndOpenWorkspace}
+          >
+            <IconFolder5OpenOutline18 className="size-4" />
+            Change workspace
+          </Button>
+        </div>
+        <div className="flex w-full flex-1 flex-col items-start gap-0.5 rounded-lg border border-derived-strong bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] dark:bg-surface-1">
+          {/* Active workspace row */}
+          <div className="flex w-full shrink-0 items-center gap-4 rounded-md bg-hover-derived p-2 pt-1">
+            <IconFolderFillDuo18 className="size-4 shrink-0 text-muted-foreground" />
+            <div className="flex w-full min-w-0 flex-col items-start gap-0">
+              <div className="flex w-full items-baseline justify-between gap-2 text-foreground text-sm">
+                <span className="truncate font-medium">{workspaceName}</span>
+                <div className="flex shrink-0 items-center gap-1 text-success-foreground text-xs">
+                  <div className="size-1.5 rounded-full bg-success-solid" />
+                  Connected
+                </div>
+              </div>
+              <span
+                className="min-w-0 self-start truncate font-normal text-subtle-foreground text-xs"
+                dir="rtl"
+              >
+                <span dir="ltr">{currentWorkspacePath}</span>
+              </span>
+            </div>
+          </div>
+          {/* Recent workspaces list */}
+          {otherRecentWorkspaces.length > 0 ? (
+            <>
+              <div className="my-1 h-px w-full bg-derived" />
+              <OverlayScrollbar
+                className="w-full"
+                contentClassName="flex w-full flex-col items-start gap-0.5"
+              >
+                {otherRecentWorkspaces.map((workspace) => (
+                  <RecentlyOpenedWorkspaceItem
+                    key={workspace.path}
+                    workspace={workspace}
+                    onClick={() => openWorkspace(workspace.path)}
+                  />
+                ))}
+              </OverlayScrollbar>
+            </>
+          ) : (
+            <div className="flex w-full flex-1 items-center justify-center text-muted-foreground text-sm">
+              No other recent workspaces
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (sortedRecentlyOpenedWorkspaces.length > 0) {
     return (
-      <div className="flex w-full flex-col items-start justify-between gap-2">
-        <h1 className="flex items-center justify-center gap-2 font-medium text-foreground text-xl">
-          Connect a workspace
-          <Tooltip>
-            <TooltipTrigger>
-              <IconCircleQuestion className="size-4 shrink-0 self-start text-muted-foreground" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <span>
-                Connecting a workspace will give the stagewise agent access to
-                your project.
-              </span>
-            </TooltipContent>
-          </Tooltip>
-        </h1>
-        <div className="group/recent-workspaces flex w-full flex-col items-start justify-start gap-1 rounded-lg border border-derived-strong bg-background p-3 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] dark:bg-surface-1">
+      <div className="flex w-full flex-col items-start gap-2">
+        <div className="flex w-full items-center justify-between">
+          <h1 className="flex items-center justify-center gap-2 font-medium text-foreground text-xl">
+            Connect a workspace
+            <Tooltip>
+              <TooltipTrigger>
+                <IconCircleQuestionOutline18 className="size-4 shrink-0 self-start text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <span>
+                  Allows stagewise to read and modify files in your workspace.
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          </h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-xs"
+            onClick={selectAndOpenWorkspace}
+          >
+            <IconFolder5OpenOutline18 className="size-4 shrink-0" />
+            Open other
+          </Button>
+        </div>
+        <div className="group/recent-workspaces flex w-full flex-1 flex-col items-start justify-start gap-1 rounded-lg border border-derived-strong bg-background p-3 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] dark:bg-surface-1">
           <div className="flex w-full flex-row items-start justify-between gap-14">
             <div className="flex w-full flex-col items-start gap-2">
               <div className="flex w-full flex-row items-start justify-between gap-1">
@@ -565,9 +686,9 @@ function ConnectWorkspaceBanner() {
                     }
                   >
                     Show all ({recentlyOpenedWorkspaces.length})
-                    <IconChevronDown
+                    <IconChevronDownOutline18
                       className={cn(
-                        'size-3 shrink-0',
+                        'size-4 shrink-0',
                         showAllRecentlyOpenedWorkspaces
                           ? 'rotate-0'
                           : '-rotate-90',
@@ -590,15 +711,6 @@ function ConnectWorkspaceBanner() {
                   />
                 ))}
               </OverlayScrollbar>
-              <Button
-                variant={'ghost'}
-                size="sm"
-                className="shrink-0 self-end rounded-lg p-2 text-xs"
-                onClick={selectAndOpenWorkspace}
-              >
-                <IconPlusFill18 className="size-4 shrink-0" />
-                Connect a new workspace
-              </Button>
             </div>
           </div>
         </div>
@@ -609,7 +721,7 @@ function ConnectWorkspaceBanner() {
   return (
     <div className="flex w-full items-center justify-between gap-4 rounded-lg border border-derived bg-linear-to-tr from-surface-1/70 to-surface-1/50 p-4 dark:from-base-750 dark:to-surface-1">
       <div className="flex items-center gap-3">
-        <IconDocFolder className="size-6 shrink-0 text-muted-foreground" />
+        <IconFolderFillDuo18 className="size-4 shrink-0 text-muted-foreground" />
         <span className="font-medium text-foreground text-sm">
           Connect a workspace to give the agent access to your project.
         </span>
@@ -620,9 +732,109 @@ function ConnectWorkspaceBanner() {
         className="shrink-0 rounded-lg"
         onClick={selectAndOpenWorkspace}
       >
-        <IconPlusFill18 className="size-4" />
+        <IconFolder5OpenOutline18 className="size-4" />
         Connect workspace
       </Button>
+    </div>
+  );
+}
+
+function LocalPortsSection() {
+  const openTab = useKartonProcedure((p) => p.openTab);
+  const scanLocalPorts = useKartonProcedure((p) => p.scanLocalPorts);
+  const localPorts = useKartonState((s) => s.homePage.localPorts);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await scanLocalPorts();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [scanLocalPorts, isRefreshing]);
+
+  // Refresh when the tab becomes visible
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void scanLocalPorts();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [scanLocalPorts]);
+
+  const handlePortClick = useCallback(
+    (url: string, event?: React.MouseEvent) => {
+      const isModifierPressed = event?.metaKey || event?.ctrlKey;
+      if (!isModifierPressed) window.location.href = url;
+      else openTab(url, false);
+    },
+    [openTab],
+  );
+
+  return (
+    <div className="flex w-full flex-col items-start gap-2">
+      <div className="flex w-full items-center justify-between">
+        <h1 className="font-medium text-foreground text-xl">Local Pages</h1>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleRefresh}
+          aria-label="Refresh local ports"
+        >
+          <IconRefreshClockwiseOutline18
+            className={cn(
+              'size-4 text-muted-foreground',
+              isRefreshing && 'animate-spin',
+            )}
+          />
+        </Button>
+      </div>
+      <div className="flex w-full flex-1 flex-col items-start justify-start gap-0.5 rounded-lg border border-derived-strong bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] dark:bg-surface-1">
+        {localPorts.length === 0 ? (
+          <div className="flex w-full flex-1 items-center justify-center text-muted-foreground text-sm">
+            No local servers found
+          </div>
+        ) : (
+          <OverlayScrollbar
+            className="max-h-60 w-full"
+            contentClassName="flex w-full flex-col items-start gap-0.5"
+          >
+            {localPorts.map((entry) => (
+              <LocalPortItem
+                key={entry.port}
+                entry={entry}
+                onClick={(event) => handlePortClick(entry.url, event)}
+              />
+            ))}
+          </OverlayScrollbar>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LocalPortItem({
+  entry,
+  onClick,
+}: {
+  entry: LocalPortEntry;
+  onClick: (event: React.MouseEvent) => void;
+}) {
+  return (
+    <div
+      className="flex w-full shrink-0 cursor-pointer items-center gap-2.5 rounded-md px-2 py-2.5 hover:bg-hover-derived"
+      onClick={onClick}
+    >
+      <IconEarthFillDuo18 className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate font-normal text-foreground text-sm">
+        localhost:{entry.port}
+      </span>
     </div>
   );
 }
