@@ -3,7 +3,10 @@ import {
   fileAttachmentToFileUIPart,
   selectedElementToAttachmentAttributes,
 } from '@/utils/attachment-conversions';
-import { markdownToTipTapContent } from '@/utils/tiptap-content-utils';
+import {
+  enrichTipTapContent,
+  markdownToTipTapContent,
+} from '@/utils/tiptap-content-utils';
 import { cn, collectUserMessageMetadata } from '@/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { FileUIPart } from 'ai';
@@ -176,10 +179,13 @@ export const MessageUser = memo(
 
       setIsEditing(true);
 
-      // Convert markdown text to TipTap JSON
-      // Attachment data is looked up from context, not embedded in TipTap content
+      // Convert markdown text to TipTap JSON, then inject full attachment data
+      // from the message metadata so clip content is available in the editor nodes
       const tiptapContent = markdownToTipTapContent(markdownText);
-      setPendingTiptapContent(tiptapContent);
+      const enrichedContent = enrichTipTapContent(tiptapContent, {
+        textClipAttachments: msg.metadata?.textClipAttachments,
+      });
+      setPendingTiptapContent(enrichedContent);
 
       // Focus the editor (will be available after state update triggers re-render)
       setTimeout(() => chatInputRef.current?.focus(), 0);
@@ -187,6 +193,7 @@ export const MessageUser = memo(
       canEdit,
       editMessageId,
       msg.metadata?.fileAttachments,
+      msg.metadata?.textClipAttachments,
       clearSelectedElements,
       markdownText,
     ]);
@@ -240,15 +247,23 @@ export const MessageUser = memo(
           pendingTiptapContent,
         );
 
-        // Preserve original text clip data from message metadata
-        // The TipTap content only has IDs, so we need to look up the full content from the original
+        // Merge text clip attachments from two sources:
+        // 1. Preserved originals: clips from the original message metadata that
+        //    are still referenced in the edited content (have full content)
+        // 2. Newly pasted clips: freshly pasted during editing (have full content
+        //    from the paste plugin, content.length > 0)
+        // Re-parsed clips from markdown round-trip have content === '' and are excluded.
         const originalTextClips = msg.metadata?.textClipAttachments ?? [];
-        const textClipIdsInContent = new Set(
-          (metadata.textClipAttachments ?? []).map((tc) => tc.id),
-        );
+        const extractedClips = metadata.textClipAttachments ?? [];
+        const textClipIdsInContent = new Set(extractedClips.map((tc) => tc.id));
         const preservedTextClips = originalTextClips.filter((tc) =>
           textClipIdsInContent.has(tc.id),
         );
+        const preservedClipIds = new Set(preservedTextClips.map((tc) => tc.id));
+        const newlyPastedClips = extractedClips.filter(
+          (tc) => !preservedClipIds.has(tc.id) && tc.content.length > 0,
+        );
+        const mergedTextClips = [...preservedTextClips, ...newlyPastedClips];
 
         if (!chatInputRef.current) {
           return;
@@ -270,9 +285,8 @@ export const MessageUser = memo(
           metadata: {
             ...metadata,
             fileAttachments: editedFileAttachments,
-            // Use preserved text clips with full content from original message
             textClipAttachments:
-              preservedTextClips.length > 0 ? preservedTextClips : undefined,
+              mergedTextClips.length > 0 ? mergedTextClips : undefined,
           },
         };
 
