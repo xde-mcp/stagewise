@@ -260,7 +260,7 @@ function WorkspaceSettingsSection() {
               {contextFiles.workspaceMd.exists && (
                 <Tooltip>
                   <TooltipTrigger>
-                    <TabsTrigger value="project" />
+                    <TabsTrigger value="workspaceMd">WORKSPACE.md</TabsTrigger>
                   </TooltipTrigger>
                   <TooltipContent>
                     <span className="block max-w-80 break-all">
@@ -272,7 +272,7 @@ function WorkspaceSettingsSection() {
               {showAgentsMd && (
                 <Tooltip>
                   <TooltipTrigger>
-                    <TabsTrigger value="agents">AGENTS.md</TabsTrigger>
+                    <TabsTrigger value="agentsMd">AGENTS.md</TabsTrigger>
                   </TooltipTrigger>
                   <TooltipContent>
                     <span className="block max-w-80 break-all">
@@ -284,7 +284,7 @@ function WorkspaceSettingsSection() {
             </TabsList>
 
             {contextFiles.workspaceMd.exists && (
-              <TabsContent value="project" className="w-full">
+              <TabsContent value="workspaceMd" className="w-full">
                 <ScrollFadeCodeBlock
                   code={contextFiles.workspaceMd.content ?? ''}
                   description="Auto-generated project analysis stored in your project's .stagewise folder."
@@ -294,7 +294,7 @@ function WorkspaceSettingsSection() {
             )}
 
             {showAgentsMd && (
-              <TabsContent value="agents" className="w-full">
+              <TabsContent value="agentsMd" className="w-full">
                 <ScrollFadeCodeBlock
                   code={contextFiles.agentsMd.content ?? ''}
                   description="User-created coding guidelines from your workspace root."
