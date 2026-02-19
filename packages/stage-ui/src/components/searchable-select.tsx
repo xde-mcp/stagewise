@@ -414,7 +414,10 @@ export const SearchableSelect = memo(function SearchableSelect({
               {filteredItems.length > 0 && (
                 <div
                   ref={listRef}
-                  className={cn('max-h-48 overflow-y-auto', listClassName)}
+                  className={cn(
+                    'scrollbar-subtle max-h-48 overflow-y-auto',
+                    listClassName,
+                  )}
                 >
                   <SelectBase.List className="flex flex-col gap-0.5">
                     {groupedFilteredItems.map(
