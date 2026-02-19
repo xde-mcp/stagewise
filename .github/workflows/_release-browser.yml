@@ -15,6 +15,10 @@ on:
         required: false
       POSTHOG_API_KEY:
         required: false
+      SUPABASE_URL:
+        required: false
+      SUPABASE_PUBLISHABLE_KEY:
+        required: false
       VITE_POSTHOG_API_KEY:
         required: false
       APPLE_ID:
@@ -131,6 +135,8 @@ jobs:
       VITE_STAGEWISE_CONSOLE_URL: ${{ vars.VITE_STAGEWISE_CONSOLE_URL }}
       LLM_PROXY_URL: ${{ vars.LLM_PROXY_URL }}
       VITE_DISABLE_TELEMETRY: ${{ vars.VITE_DISABLE_TELEMETRY }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       # PostHog CLI (source map upload during packaging)
       POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
       POSTHOG_CLI_PROJECT_ID: ${{ secrets.POSTHOG_CLI_PROJECT_ID }}

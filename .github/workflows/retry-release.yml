@@ -113,6 +113,8 @@ jobs:
       # From GitHub environment secrets
       POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
       VITE_POSTHOG_API_KEY: ${{ secrets.VITE_POSTHOG_API_KEY }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       # From GitHub environment variables
       API_URL: ${{ vars.API_URL }}
       VITE_API_URL: ${{ vars.VITE_API_URL }}
@@ -277,6 +279,8 @@ jobs:
       # From GitHub environment secrets
       POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
       VITE_POSTHOG_API_KEY: ${{ secrets.VITE_POSTHOG_API_KEY }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       # From GitHub environment variables
       API_URL: ${{ vars.API_URL }}
       VITE_API_URL: ${{ vars.VITE_API_URL }}
