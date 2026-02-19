@@ -14,11 +14,44 @@ const googleHeaders = {};
 export const availableModels = [
   // Anthropic Models
   {
+    modelId: 'claude-opus-4-6',
+    providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
+    modelDisplayName: 'Opus 4.6',
+    modelDescription:
+      "Anthropic's most capable model, excels at complex reasoning and architectural decisions.",
+    modelContext: '200k context',
+    modelContextRaw: 200000,
+    capabilities: {
+      inputModalities: {
+        text: true,
+        audio: false,
+        image: false,
+        video: false,
+        file: false,
+      },
+
+      outputModalities: {
+        text: true,
+        audio: false,
+        image: false,
+        video: false,
+        file: false,
+      },
+      toolCalling: true,
+      intelligence: {
+        canPlan: true,
+        canCode: true,
+      },
+    },
+    headers: anthropicHeaders,
+    thinkingEnabled: true,
+  },
+  {
     modelId: 'claude-opus-4-5',
     providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Opus 4.5',
     modelDescription:
-      "Anthropic's most capable model, excels at complex reasoning and architectural decisions.",
+      "Anthropic's previous flagship model, excels at complex reasoning and architectural decisions.",
     modelContext: '200k context',
     modelContextRaw: 200000,
     capabilities: {
@@ -156,14 +189,14 @@ export const availableModels = [
     },
   },
   {
-    modelId: 'gpt-5.1-codex-max',
+    modelId: 'gpt-5.2-codex',
     providerOptions: {
       reasoningEffort: 'high',
       reasoningSummary: 'auto',
       parallelToolCalls: true,
       strictJsonSchema: true,
     },
-    modelDisplayName: 'GPT-5.1 Codex Max',
+    modelDisplayName: 'GPT-5.2 Codex',
     modelDescription:
       "OpenAI's most powerful coding model, designed for large-scale projects and complex refactoring.",
     modelContext: '128k context',
@@ -194,11 +227,82 @@ export const availableModels = [
     },
   },
   {
+    modelId: 'gpt-5.1-codex-max',
+    providerOptions: {
+      reasoningEffort: 'high',
+      reasoningSummary: 'auto',
+      parallelToolCalls: true,
+      strictJsonSchema: true,
+    },
+    modelDisplayName: 'GPT-5.1 Codex Max',
+    modelDescription:
+      "OpenAI's previous most powerful coding model, designed for large-scale projects and complex refactoring.",
+    modelContext: '128k context',
+    modelContextRaw: 128000,
+    headers: openaiHeaders,
+    thinkingEnabled: true,
+    capabilities: {
+      inputModalities: {
+        text: true,
+        audio: false,
+        image: false,
+        video: false,
+        file: false,
+      },
+
+      outputModalities: {
+        text: true,
+        audio: false,
+        image: false,
+        video: false,
+        file: false,
+      },
+      toolCalling: true,
+      intelligence: {
+        canPlan: true,
+        canCode: true,
+      },
+    },
+  },
+  {
+    modelId: 'claude-sonnet-4-6',
+    providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
+    modelDisplayName: 'Sonnet 4.6',
+    modelDescription:
+      "Anthropic's balanced model, great for daily coding tasks.",
+    modelContext: '200k context',
+    modelContextRaw: 200000,
+    headers: anthropicHeaders,
+    thinkingEnabled: true,
+    capabilities: {
+      inputModalities: {
+        text: true,
+        audio: false,
+        image: false,
+        video: false,
+        file: false,
+      },
+
+      outputModalities: {
+        text: true,
+        audio: false,
+        image: false,
+        video: false,
+        file: false,
+      },
+      toolCalling: true,
+      intelligence: {
+        canPlan: true,
+        canCode: true,
+      },
+    },
+  },
+  {
     modelId: 'claude-sonnet-4-5',
     providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Sonnet 4.5',
     modelDescription:
-      "Anthropic's balanced model, great for daily coding tasks.",
+      "Anthropic's deprecated balanced model, great for daily coding tasks.",
     modelContext: '200k context',
     modelContextRaw: 200000,
     headers: anthropicHeaders,

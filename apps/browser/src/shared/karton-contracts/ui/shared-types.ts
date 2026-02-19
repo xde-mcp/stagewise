@@ -24,12 +24,13 @@ type AnthropicModelIds =
       AllAnthropicModelIds,
       'claude-haiku-4-5' | 'claude-sonnet-4-5' | 'claude-opus-4-5'
     >
-  | 'claude-opus-4-5';
+  | 'claude-opus-4-5'
+  | 'claude-opus-4-6'
+  | 'claude-sonnet-4-6';
 
-type OpenAIModelIds = Extract<
-  AllOpenAIModelIds,
-  'gpt-5.2' | 'gpt-5.1-codex-max'
->;
+type OpenAIModelIds =
+  | Extract<AllOpenAIModelIds, 'gpt-5.2' | 'gpt-5.1-codex-max'>
+  | 'gpt-5.2-codex';
 
 type GoogleModelIds = Extract<AllGoogleModelIds, 'gemini-3-pro-preview'>;
 
