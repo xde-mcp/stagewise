@@ -20,6 +20,7 @@ import type {
   GlobalConfig,
   ModelProvider,
 } from '@shared/karton-contracts/ui/shared-types';
+import { validateApiKeys } from '../utils/validate-api-keys';
 import type { HistoryService } from './history';
 import type { FaviconService } from './favicon';
 import type { DownloadsService } from './download-manager';
@@ -1242,6 +1243,18 @@ export class PagesService extends DisposableService {
       },
     );
 
+    this.kartonServer.registerServerProcedureHandler(
+      'validateProviderApiKey',
+      async (
+        _callingClientId: string,
+        provider: ModelProvider,
+        apiKey: string,
+      ) => {
+        const results = await validateApiKeys({ [provider]: apiKey });
+        return results[provider];
+      },
+    );
+
     this.logger.debug('[PagesService] Preferences handlers registered');
   }
 
@@ -1442,6 +1455,7 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('clearProviderApiKey');
     this.kartonServer.removeServerProcedureHandler('setCustomEndpointApiKey');
     this.kartonServer.removeServerProcedureHandler('clearCustomEndpointApiKey');
+    this.kartonServer.removeServerProcedureHandler('validateProviderApiKey');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');

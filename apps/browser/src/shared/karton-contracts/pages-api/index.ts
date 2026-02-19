@@ -25,6 +25,7 @@ import type {
   GlobalConfig,
   ModelProvider,
 } from '../ui/shared-types';
+import type { ApiKeyValidationResult } from '../ui';
 import type { FileDiff } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
 
@@ -150,6 +151,11 @@ export type PagesApiContract = {
     ) => Promise<void>;
     /** Clear the API key for a custom endpoint */
     clearCustomEndpointApiKey: (endpointId: string) => Promise<void>;
+    /** Validate a provider API key by making a lightweight test request */
+    validateProviderApiKey: (
+      provider: ModelProvider,
+      apiKey: string,
+    ) => Promise<ApiKeyValidationResult>;
   };
 };
 

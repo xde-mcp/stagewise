@@ -368,6 +368,9 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
   const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
   const setProviderApiKey = useKartonProcedure((s) => s.setProviderApiKey);
   const clearProviderApiKey = useKartonProcedure((s) => s.clearProviderApiKey);
+  const validateProviderApiKey = useKartonProcedure(
+    (s) => s.validateProviderApiKey,
+  );
 
   const config = preferences.providerConfigs?.[provider] ?? {
     mode: 'stagewise' as const,
@@ -377,6 +380,10 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
 
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [isSavingKey, setIsSavingKey] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validated, setValidated] = useState<
+    null | { success: true } | { success: false; error: string }
+  >(null);
   const hasKey = !!config.encryptedApiKey;
 
   const handleModeChange = useCallback(
@@ -399,19 +406,49 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
     [preferences, provider, updatePreferences],
   );
 
-  const handleSaveApiKey = useCallback(async () => {
-    if (!apiKeyInput.trim()) return;
-    setIsSavingKey(true);
-    try {
-      await setProviderApiKey(provider, apiKeyInput.trim());
-      setApiKeyInput('');
-    } finally {
-      setIsSavingKey(false);
-    }
-  }, [apiKeyInput, provider, setProviderApiKey]);
+  const handleSaveAndValidate = useCallback(
+    async (key: string) => {
+      if (!key.trim()) return;
+      const trimmedKey = key.trim();
+
+      // Save first (always succeeds)
+      setIsSavingKey(true);
+      try {
+        await setProviderApiKey(provider, trimmedKey);
+        setApiKeyInput('');
+      } finally {
+        setIsSavingKey(false);
+      }
+
+      // Validate in the background (only for official mode — custom endpoints
+      // may use non-standard APIs that would fail the standard validation)
+      if (config.mode === 'official') {
+        setIsValidating(true);
+        setValidated(null);
+        try {
+          const result = await validateProviderApiKey(provider, trimmedKey);
+          if (result && !result.success) {
+            setValidated({ success: false, error: result.error });
+          } else {
+            setValidated({ success: true });
+          }
+        } catch {
+          // Validation request itself failed — don't show an error for that
+          setValidated({ success: true });
+        } finally {
+          setIsValidating(false);
+        }
+      } else {
+        // Custom mode — no validation, just mark as saved
+        setValidated({ success: true });
+      }
+    },
+    [provider, config.mode, setProviderApiKey, validateProviderApiKey],
+  );
 
   const handleClearApiKey = useCallback(async () => {
     await clearProviderApiKey(provider);
+    setValidated(null);
   }, [provider, clearProviderApiKey]);
 
   const showByokFields = config.mode === 'official' || config.mode === 'custom';
@@ -476,20 +513,33 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
           <div className="space-y-1">
             <p className="font-medium text-muted-foreground text-xs">
               API Key
+              {isValidating && (
+                <span className="ml-1.5 font-normal text-muted-foreground">
+                  validating...
+                </span>
+              )}
+              {!isValidating && validated?.success && (
+                <span className="ml-1.5 font-normal text-green-600 dark:text-green-400">
+                  valid
+                </span>
+              )}
             </p>
             <div className="flex gap-1.5">
               <Input
                 type="password"
                 value={apiKeyInput}
                 placeholder={
-                  hasKey
+                  hasKey || validated
                     ? '••••••••••••••••••••••••••••••••'
                     : 'Enter API key...'
                 }
-                onValueChange={setApiKeyInput}
+                onValueChange={(v) => {
+                  setApiKeyInput(v);
+                  setValidated(null);
+                }}
                 onBlur={() => {
                   if (apiKeyInput.trim()) {
-                    void handleSaveApiKey();
+                    void handleSaveAndValidate(apiKeyInput);
                   }
                 }}
                 size="sm"
@@ -500,7 +550,7 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={handleSaveApiKey}
+                  onClick={() => void handleSaveAndValidate(apiKeyInput)}
                   disabled={isSavingKey}
                 >
                   Save
@@ -511,6 +561,11 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
                 </Button>
               ) : null}
             </div>
+            {validated && !validated.success && (
+              <p className="text-red-500 text-xs dark:text-red-400">
+                {validated.error}
+              </p>
+            )}
           </div>
         </div>
       )}
