@@ -1,63 +1,133 @@
-import posthog from 'posthog-js';
 import type { JSONContent } from '@tiptap/core';
-import { MarkdownManager } from '@tiptap/markdown';
-import { Document } from '@tiptap/extension-document';
-import { Paragraph } from '@tiptap/extension-paragraph';
-import { Text } from '@tiptap/extension-text';
-import { AllAttachmentExtensions } from '@ui/screens/main/sidebar/chat/_components/rich-text';
 import type {
   FileAttachment,
   TextClipAttachment,
 } from '@shared/karton-contracts/ui/agent/metadata';
 import type { SelectedElement } from '@shared/selected-elements';
 
-/**
- * Singleton MarkdownManager instance for parsing markdown with attachment support.
- * Lazily initialized on first use.
- */
-let markdownManager: InstanceType<typeof MarkdownManager> | null = null;
+// Why a custom parser instead of TipTap's MarkdownManager?
+//
+// MarkdownManager uses `marked` internally, which parses standard markdown
+// (lists, headings, bold, etc.) into structured tokens. Since user messages
+// are plain text, this caused content loss — e.g. "1. item" became a list
+// token with no matching TipTap extension, so the text was silently dropped.
+//
+// We could configure marked to disable its built-in rules while keeping our
+// custom attachment tokenizers, but that means fighting the library: overriding
+// tokenizers for lists, headings, blockquotes, emphasis, etc. and hoping
+// future marked/@tiptap/markdown updates don't change the internals.
+//
+// This custom parser is ~30 lines that does exactly one thing: split text
+// into paragraphs/hard breaks and extract [](protocol:id) attachment links.
+// No third-party markdown library, no risk of standard rules leaking through.
+//
+// Trade-off: the attachment link regex is duplicated here and in each
+// extension's markdownTokenizer. The patterns are trivial, and PROTOCOL_TO_NODE
+// makes it obvious where to update if a new protocol is added.
 
-function getMarkdownManager(): InstanceType<typeof MarkdownManager> {
-  if (!markdownManager) {
-    markdownManager = new MarkdownManager({
-      extensions: [Document, Paragraph, Text, ...AllAttachmentExtensions],
-    });
+/**
+ * Regex matching attachment link syntax: [optional label](protocol:id)
+ * Protocols: image, file, element, text-clip
+ * The label in brackets is optional — empty brackets [] are fine.
+ */
+const ATTACHMENT_LINK_RE =
+  /\[([^\]]*)\]\((image|file|element|text-clip):([^)]+)\)/g;
+
+/** Maps attachment link protocol to TipTap node type */
+const PROTOCOL_TO_NODE: Record<string, string> = {
+  image: 'imageAttachment',
+  file: 'fileAttachment',
+  element: 'elementAttachment',
+  'text-clip': 'textClipAttachment',
+};
+
+/**
+ * Parses a single line of text into TipTap inline content nodes.
+ * Attachment links ([label](protocol:id)) become attachment nodes;
+ * everything else becomes plain text nodes.
+ */
+function parseLineToInlineContent(line: string): JSONContent[] {
+  const nodes: JSONContent[] = [];
+  let lastIndex = 0;
+
+  const re = new RegExp(ATTACHMENT_LINK_RE.source, 'g');
+  for (let match = re.exec(line); match !== null; match = re.exec(line)) {
+    // Text before the attachment link
+    if (match.index > lastIndex) {
+      nodes.push({
+        type: 'text',
+        text: line.slice(lastIndex, match.index),
+      });
+    }
+
+    // Attachment node — bracket text is accepted but ignored;
+    // the actual label is resolved later via enrichTipTapContent
+    const [, , protocol, id] = match;
+    const nodeType = PROTOCOL_TO_NODE[protocol!];
+    if (nodeType) {
+      nodes.push({ type: nodeType, attrs: { id, label: id } });
+    }
+
+    lastIndex = match.index + match[0].length;
   }
-  return markdownManager;
+
+  // Remaining text after the last attachment link
+  if (lastIndex < line.length) {
+    nodes.push({ type: 'text', text: line.slice(lastIndex) });
+  }
+
+  return nodes;
 }
 
 /**
- * Converts markdown text (with attachment links) to TipTap JSON content.
- * Uses TipTap's MarkdownManager with our custom attachment extensions for proper
- * markdown parsing with custom tokenizers for attachment protocols.
+ * Converts plain text (with attachment links) to TipTap JSON content.
  *
- * Attachment data (URLs, content) is NOT embedded in the TipTap content.
- * Instead, attachment view components look up this data from context using
- * the MessageAttachmentsProvider.
+ * Text is treated as plain text — no markdown formatting is applied.
+ * Only attachment link syntax ([](protocol:id)) is parsed into
+ * attachment nodes. This preserves characters like `1.`, `-`, `*`,
+ * `#`, etc. as literal text.
  *
- * @param markdown - The markdown text to convert
- * @returns TipTap JSON content with attachment nodes (IDs only, no inline data)
+ * Paragraph boundaries follow TipTap's getText() convention:
+ * - `\n\n` separates paragraphs
+ * - `\n` within a paragraph becomes a hard break
+ *
+ * @param text - The plain text with optional attachment links
+ * @returns TipTap JSON content with attachment nodes (IDs only)
  */
-export function markdownToTipTapContent(markdown: string): JSONContent {
-  // Use TipTap's MarkdownManager to parse markdown with our custom attachment extensions
-  const manager = getMarkdownManager();
-
-  try {
-    return manager.parse(markdown);
-  } catch (error) {
-    console.warn('[markdownToTipTapContent] Parse error:', error);
-    posthog.captureException(
-      error instanceof Error ? error : new Error(String(error)),
-      { source: 'renderer', operation: 'markdownToTipTap' },
-    );
-    // Fallback to simple text content on parse error
-    return {
-      type: 'doc',
-      content: [
-        { type: 'paragraph', content: [{ type: 'text', text: markdown }] },
-      ],
-    };
+export function markdownToTipTapContent(text: string): JSONContent {
+  if (!text) {
+    return { type: 'doc', content: [{ type: 'paragraph' }] };
   }
+
+  // Split by double newlines for paragraph boundaries
+  const paragraphs = text.split('\n\n');
+
+  const content: JSONContent[] = paragraphs.map((paragraph) => {
+    // Split by single newlines for hard breaks within a paragraph
+    const lines = paragraph.split('\n');
+    const inlineContent: JSONContent[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      // Parse attachment links within this line
+      const lineNodes = parseLineToInlineContent(lines[i]!);
+      inlineContent.push(...lineNodes);
+
+      // Add hard break between lines (not after the last line)
+      if (i < lines.length - 1) {
+        inlineContent.push({ type: 'hardBreak' });
+      }
+    }
+
+    return {
+      type: 'paragraph',
+      content: inlineContent.length > 0 ? inlineContent : undefined,
+    };
+  });
+
+  return {
+    type: 'doc',
+    content: content.length > 0 ? content : [{ type: 'paragraph' }],
+  };
 }
 
 /**
