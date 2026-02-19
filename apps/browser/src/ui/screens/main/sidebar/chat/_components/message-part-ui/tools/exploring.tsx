@@ -284,6 +284,7 @@ export const ExploringToolParts = ({
     let lintingErrors = 0;
     let lintingWarnings = 0;
     let hasCheckedLinting = false;
+    let attachmentsParsed = 0;
 
     const finishedParts = parts.filter(
       (part) => part.state === 'output-available',
@@ -308,10 +309,15 @@ export const ExploringToolParts = ({
           docsRead += 1;
           hasUsedContext7Tools = true;
           break;
-        case 'tool-executeSandboxJsTool':
+        case 'tool-executeSandboxJsTool': {
           consoleScriptsExecuted += 1;
           hasUsedBrowserTools = true;
+          const customAttachments = (part.output as any)
+            ?._customFileAttachments;
+          if (Array.isArray(customAttachments))
+            attachmentsParsed += customAttachments.length;
           break;
+        }
         case 'tool-readConsoleLogsTool':
           consoleLogsRead += 1;
           break;
@@ -335,6 +341,7 @@ export const ExploringToolParts = ({
       lintingErrors,
       lintingWarnings,
       hasCheckedLinting,
+      attachmentsParsed,
     };
   }, [parts]);
 
@@ -351,6 +358,7 @@ export const ExploringToolParts = ({
       lintingErrors,
       lintingWarnings,
       hasCheckedLinting,
+      attachmentsParsed,
     } = explorationMetadata;
 
     const textParts: string[] = [];
@@ -370,6 +378,11 @@ export const ExploringToolParts = ({
     if (consoleScriptsExecuted > 0)
       textParts.push(
         `${consoleScriptsExecuted} tab${consoleScriptsExecuted !== 1 ? 's' : ''}`,
+      );
+
+    if (attachmentsParsed > 0)
+      textParts.push(
+        `${attachmentsParsed} attachment${attachmentsParsed !== 1 ? 's' : ''}`,
       );
 
     const hasExploredFiles = filesFound > 0 || filesRead > 0;

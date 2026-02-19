@@ -23,6 +23,13 @@ export interface ParsedGetAttachmentCall {
 }
 
 /**
+ * Indicates an outputAttachment call was found in a sandbox script.
+ */
+export interface ParsedMultimodalAttachmentCall {
+  found: true;
+}
+
+/**
  * Human-readable labels for common CDP methods.
  * Each method maps to in-progress/completed labels and a preposition for the hostname.
  * - "from" for data retrieval (read, got, extracted)
@@ -215,6 +222,21 @@ export function parseGetAttachmentCalls(
 }
 
 /**
+ * Parses a sandbox script to extract outputAttachment calls.
+ * Matches patterns like: API.outputAttachment({...})
+ */
+export function parseOutputAttachmentCalls(
+  script: string,
+): ParsedMultimodalAttachmentCall[] {
+  const regex = /API\.outputAttachment\s*\(/g;
+  const calls: ParsedMultimodalAttachmentCall[] = [];
+
+  while (regex.exec(script) !== null) calls.push({ found: true });
+
+  return calls;
+}
+
+/**
  * Gets the filename from a path (last segment after /).
  */
 function getFileName(relativePath: string): string {
@@ -295,14 +317,31 @@ export function getSandboxLabel(
   const cdpCalls = parseCDPCalls(script);
   const writeFileCalls = parseWriteFileCalls(script);
   const getAttachmentCalls = parseGetAttachmentCalls(script);
+  const multimodalAttachmentCalls = parseOutputAttachmentCalls(script);
 
   // No API calls found
   if (
     cdpCalls.length === 0 &&
     writeFileCalls.length === 0 &&
-    getAttachmentCalls.length === 0
+    getAttachmentCalls.length === 0 &&
+    multimodalAttachmentCalls.length === 0
   )
     return isInProgress ? 'Running a script...' : 'Ran a script';
+
+  // Only multimodal attachment parsing, no other API calls
+  if (
+    cdpCalls.length === 0 &&
+    writeFileCalls.length === 0 &&
+    getAttachmentCalls.length === 0 &&
+    multimodalAttachmentCalls.length > 0
+  ) {
+    if (multimodalAttachmentCalls.length === 1)
+      return isInProgress ? 'Parsing attachment...' : 'Parsed attachment';
+
+    return isInProgress
+      ? `Parsing ${multimodalAttachmentCalls.length} attachments...`
+      : `Parsed ${multimodalAttachmentCalls.length} attachments`;
+  }
 
   // Only attachment reads, no CDP calls, no file writes
   if (

@@ -6,6 +6,8 @@ import { tool } from 'ai';
 import { rethrowCappedToolOutputError } from '../../utils';
 import { capToolOutput } from '../../utils';
 import type { SandboxService } from '@/services/sandbox';
+import { validateAttachmentDataUrl } from '@shared/karton-contracts/ui/shared-types';
+import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 
 /* Due to an issue in zod schema conversion in the ai sdk,
    the schema descriptions are not properly used for the prompts -
@@ -16,6 +18,22 @@ export const DESCRIPTION = `Execute JavaScript in your persistent, sandboxed Nod
 Parameters:
 - script (string, REQUIRED): JavaScript code to execute in the sandbox.
 `;
+
+function validateSandboxFileAttachment(attachment: {
+  id: string;
+  mediaType: string;
+  fileName?: string;
+  url: string;
+}): FileAttachment {
+  const result = validateAttachmentDataUrl(
+    attachment.mediaType,
+    attachment.url,
+  );
+  if (!result.valid) {
+    return { ...attachment, validationError: result.error };
+  }
+  return { ...attachment };
+}
 
 export const executeSandboxJsTool = (
   sandboxService: SandboxService,
@@ -48,15 +66,25 @@ async function executeSandboxJsToolExecute(
   sandboxService: SandboxService,
 ) {
   try {
-    const value = await sandboxService.execute(agentInstanceId, params.script);
+    const { value, outputs, customFileAttachments } =
+      await sandboxService.execute(agentInstanceId, params.script);
 
-    // Convert result to string (execute() returns the raw script return value)
-    const scriptResult =
-      typeof value === 'string' ? value : JSON.stringify(value);
+    // Build the final result: API.output() entries in order, then the return value last
+    const parts: string[] = [...outputs];
+    if (value !== undefined && value !== null) {
+      parts.push(typeof value === 'string' ? value : JSON.stringify(value));
+    }
+    const scriptResult = parts.join('\n');
+
+    const validatedAttachments =
+      customFileAttachments.length > 0
+        ? customFileAttachments.map(validateSandboxFileAttachment)
+        : undefined;
 
     return {
       message: 'Successfully executed sandbox JavaScript',
       result: capToolOutput(scriptResult),
+      _customFileAttachments: validatedAttachments,
     };
   } catch (error) {
     rethrowCappedToolOutputError(error);

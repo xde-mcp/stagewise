@@ -36,7 +36,7 @@ ${agentsMdSection}
 ### Script Execution
 
 - Script runs inside an async IIFE.
-- Use \`return\` to send results.
+- Use \`API.output(data)\` to emit results during execution. Use \`return\` to send a final result (appended last).
 - Timeout: **2 minutes** (applies to sync + async execution).
 - **NEVER** use \`await Promise.resolve()\` or unbounded \`while(true)\` loops — these permanently block the sandbox worker.
 - In loops, yield with \`await new Promise(r => setTimeout(r, 0))\` every iteration or every ~1000 sync iterations.
@@ -62,9 +62,29 @@ Send a CDP command to a specific tab debugger.
 #### \`API.writeFile(relativePath: string, content: Buffer | string)\`
 Write a file to the connected workspace. Use this instead of \`fs\`.
 
+#### \`API.output(data: any)\`
+Append data to the tool result. \`data\` is stringified (JSON if not already a string). Can be called multiple times; outputs appear in order. The script's \`return\` value is appended last.
+
 #### \`API.getAttachment(attachmentId: string)\`
 Retrieve a user-provided conversation attachment and store into var.
 Returns: \`{ id, fileName, mediaType, content: Buffer }\`
+
+#### \`API.outputAttachment(attachment)\`
+Register a file attachment so the LLM can **see** it as multimodal input on the next turn.
+The script's text output (\`API.output\` / \`return\`) is unaffected — the attachment is delivered separately.
+
+**Attachment schema:**
+\`\`\`
+{
+  id: string,          // unique identifier
+  mediaType: string,   // MIME type (see allowed types below)
+  fileName?: string,   // optional display name
+  url: string          // data URL, e.g. "data:image/png;base64,..."
+}
+\`\`\`
+
+**Allowed MIME types:** \`image/jpeg\`, \`image/png\`, \`image/gif\`, \`image/webp\`, \`application/pdf\`, \`text/plain\`
+**Size limits:** images ≤ 5 MB, documents ≤ 20 MB (decoded size). Oversized or unsupported files are rejected with a validation error.
 
 ### Available Runtime
 
@@ -133,5 +153,27 @@ const lib = (await import('https://esm.sh/some-lib?target=node')).default;
 const img = await API.getAttachment("abc123");
 const result = await API.writeFile(\`assets/\${img.fileName}\`, img.content);
 return { saved: img.fileName, mediaType: img.mediaType, bytes: result.bytesWritten };
+\`\`\`
+
+#### Take a screenshot and inspect it as multimodal input
+\`\`\`js
+const tabId = "<active-tab-id>";
+const { data } = await API.sendCDP(tabId, "Page.captureScreenshot", { format: "png" });
+API.outputAttachment({
+  id: crypto.randomUUID(),
+  mediaType: "image/png",
+  fileName: "screenshot.png",
+  url: \`data:image/png;base64,\${data}\`,
+});
+return "Screenshot captured — see attached image.";
+\`\`\`
+
+#### Multi-step output
+\`\`\`js
+API.output("Step 1: fetching data...");
+const resp = await fetch("https://api.example.com/data");
+const data = await resp.json();
+API.output(\`Step 2: got \${data.items.length} items\`);
+return "Done";
 \`\`\``;
 }

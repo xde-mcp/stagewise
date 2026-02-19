@@ -5,11 +5,13 @@ import {
   type UserModelMessage,
   type ToolSet,
   type DynamicToolUIPart,
+  type UserContent,
 } from 'ai';
 import type {
   AgentMessage,
   AgentToolUIPart,
 } from '@shared/karton-contracts/ui/agent';
+import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 import type { SelectedElement } from '@shared/selected-elements';
 import type { ModelProviderService } from '@/agents/model-provider';
 import {
@@ -31,6 +33,72 @@ function stripUnderscoreProperties(
   return Object.fromEntries(
     Object.entries(output).filter(([key]) => !key.startsWith('_')),
   );
+}
+
+/**
+ * Collect all `_customFileAttachments` from tool part outputs on an
+ * assistant message. These are multimodal attachments produced by the
+ * sandbox during script execution that need to be injected as a
+ * synthetic user message so the LLM can "see" them.
+ */
+function collectCustomFileAttachments(message: AgentMessage): FileAttachment[] {
+  const attachments: FileAttachment[] = [];
+  for (const part of message.parts) {
+    if (
+      (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
+      'output' in part &&
+      part.output &&
+      typeof part.output === 'object'
+    ) {
+      const output = part.output as Record<string, unknown>;
+      const custom = output._customFileAttachments;
+      if (Array.isArray(custom))
+        attachments.push(...(custom as FileAttachment[]));
+    }
+  }
+  return attachments;
+}
+
+/**
+ * Build a synthetic `UserModelMessage` carrying multimodal file/image
+ * parts for custom file attachments collected from sandbox tool outputs.
+ * Follows the same validation-aware logic as normal user fileAttachments.
+ */
+function buildSyntheticUserMessageForAttachments(
+  attachments: FileAttachment[],
+): UserModelMessage {
+  const content: UserContent = [];
+
+  for (const f of attachments) {
+    const hint = f.validationError
+      ? `This file could not be included: ${f.validationError}`
+      : 'This attachment was produced by the sandbox. See next attachment for its content.';
+
+    content.push({
+      type: 'text',
+      text: xml({
+        [specialTokens.userMsgAttachmentXmlTag]: {
+          _attr: {
+            type: f.validationError ? 'unsupported-file' : 'file',
+            filename: f.fileName,
+            id: f.id,
+            hint,
+          },
+        },
+      }),
+    });
+
+    if (!f.validationError) {
+      content.push({
+        type: 'file',
+        data: f.url,
+        mediaType: f.mediaType,
+        filename: f.fileName,
+      });
+    }
+  }
+
+  return { role: 'user', content };
 }
 
 /**
@@ -60,6 +128,9 @@ export const convertAgentMessagesToModelMessages = async (
     const message = messages[msgIndex];
 
     if (message.role !== 'user') {
+      // Extract _customFileAttachments BEFORE stripping underscore props
+      const customAttachments = collectCustomFileAttachments(message);
+
       // Strip underscore-prefixed properties (e.g. _diff) from tool outputs
       // before converting to model messages - these are UI-only metadata
       const cleanedMessage = {
@@ -81,6 +152,15 @@ export const convertAgentMessagesToModelMessages = async (
           return part;
         }),
       };
+
+      // If there are custom file attachments, push a synthetic user
+      // message BEFORE the assistant chunk (reverse order -- after
+      // .reverse() the final order will be: assistant -> synthetic user).
+      if (customAttachments.length > 0)
+        revertedModelMessageChunks.push([
+          buildSyntheticUserMessageForAttachments(customAttachments),
+        ]);
+
       revertedModelMessageChunks.push(
         await convertToModelMessages([cleanedMessage], {
           tools: tools,

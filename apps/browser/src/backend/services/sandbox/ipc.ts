@@ -46,6 +46,13 @@ export type WorkerToMainMessage =
       value?: unknown;
       error?: string;
       errorStack?: string;
+      outputs?: string[];
+      customFileAttachments?: Array<{
+        id: string;
+        mediaType: string;
+        fileName?: string;
+        url: string;
+      }>;
     }
   | {
       type: 'write-file';

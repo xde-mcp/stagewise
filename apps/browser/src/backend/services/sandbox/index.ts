@@ -174,7 +174,16 @@ export class SandboxService extends DisposableService {
     agentId: string,
     code: string,
     timeoutMs = 120_000, // 2 minutes
-  ): Promise<any> {
+  ): Promise<{
+    value: any;
+    outputs: string[];
+    customFileAttachments: Array<{
+      id: string;
+      mediaType: string;
+      fileName?: string;
+      url: string;
+    }>;
+  }> {
     // Lazily create agent context on first execution
     if (!this.agentToWorker.has(agentId)) this.createAgent(agentId);
 
@@ -232,7 +241,11 @@ export class SandboxService extends DisposableService {
             : msg.error;
           pending.reject(new Error(errorMessage));
         } else {
-          pending.resolve(msg.value);
+          pending.resolve({
+            value: msg.value,
+            outputs: msg.outputs ?? [],
+            customFileAttachments: msg.customFileAttachments ?? [],
+          });
         }
         break;
       }

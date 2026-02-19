@@ -617,3 +617,45 @@ export const MAX_DIFF_TEXT_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 // Attachment size limits (for multimodal LLM input and sandbox access)
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images (Claude API limit)
 export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20MB for documents
+
+export const SUPPORTED_ATTACHMENT_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'text/plain',
+]);
+
+export function isSupportedAttachmentMimeType(mimeType: string): boolean {
+  return SUPPORTED_ATTACHMENT_MIME_TYPES.has(mimeType.toLowerCase());
+}
+
+/**
+ * Validate a data-URL-based file attachment for multimodal LLM input.
+ * Checks MIME type support, data URL format, and decoded size limits.
+ */
+export function validateAttachmentDataUrl(
+  mediaType: string,
+  dataUrl: string,
+): { valid: true } | { valid: false; error: string } {
+  if (!isSupportedAttachmentMimeType(mediaType))
+    return { valid: false, error: 'Unsupported file type' };
+
+  const dataUrlMatch = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!dataUrlMatch) return { valid: false, error: 'Invalid data URL format' };
+
+  const rawBytes = Math.ceil((dataUrlMatch[2].length * 3) / 4);
+  const isImage = mediaType.startsWith('image/');
+  const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
+  const maxSizeLabel = isImage ? '5MB' : '20MB';
+
+  if (rawBytes > maxSize) {
+    return {
+      valid: false,
+      error: `${isImage ? 'Image' : 'Document'} exceeds ${maxSizeLabel} limit`,
+    };
+  }
+
+  return { valid: true };
+}

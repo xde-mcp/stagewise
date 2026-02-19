@@ -103,30 +103,13 @@ export const getDataUriForData = (data: string) => {
   }
 };
 
-export const isSupportedMimeType = (mimeType: string): boolean => {
-  const supportedTypes = [
-    // Images
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    // Documents
-    'application/pdf',
-    'text/plain',
-  ];
-
-  return supportedTypes.includes(mimeType.toLowerCase());
-};
-
-// Type-specific size limits (re-exported from shared-types for UI convenience)
 import {
-  MAX_IMAGE_SIZE as _MAX_IMAGE_SIZE,
-  MAX_DOCUMENT_SIZE as _MAX_DOCUMENT_SIZE,
+  MAX_IMAGE_SIZE,
+  MAX_DOCUMENT_SIZE,
+  isSupportedAttachmentMimeType,
 } from '@shared/karton-contracts/ui/shared-types';
 
-// Re-export for external consumers
-export const MAX_IMAGE_SIZE = _MAX_IMAGE_SIZE;
-export const MAX_DOCUMENT_SIZE = _MAX_DOCUMENT_SIZE;
+export { MAX_IMAGE_SIZE, MAX_DOCUMENT_SIZE, isSupportedAttachmentMimeType };
 
 /**
  * Validate a raw File object BEFORE converting to data URL.
@@ -138,15 +121,13 @@ export const MAX_DOCUMENT_SIZE = _MAX_DOCUMENT_SIZE;
 export const validateFileBeforeUpload = (
   file: File,
 ): { supported: boolean; reason?: string } => {
-  // Check file type first
-  if (!isSupportedMimeType(file.type)) {
+  if (!isSupportedAttachmentMimeType(file.type)) {
     return {
       supported: false,
       reason: 'Unsupported file type',
     };
   }
 
-  // Apply type-specific size limits
   const isImage = file.type.startsWith('image/');
   const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
   const maxSizeLabel = isImage ? '5MB' : '20MB';
@@ -169,8 +150,6 @@ export const validateFileBeforeUpload = (
 export const validateFileAttachmentBeforeUpload = (
   fileAttachment: FileAttachment,
 ): { supported: boolean; reason?: string } => {
-  // For FileAttachments, we can't get the real file size from a data URL easily,
-  // so we check if there's already a validationError set during upload
   if (fileAttachment.validationError) {
     return {
       supported: false,
@@ -178,8 +157,7 @@ export const validateFileAttachmentBeforeUpload = (
     };
   }
 
-  // Type check (size was already validated during upload)
-  if (!isSupportedMimeType(fileAttachment.mediaType)) {
+  if (!isSupportedAttachmentMimeType(fileAttachment.mediaType)) {
     return {
       supported: false,
       reason: 'Unsupported file type',

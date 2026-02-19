@@ -29,6 +29,27 @@ const pendingAttachmentOps = new Map<
 >();
 const ipc = createWorkerIPC();
 
+interface SandboxFileAttachment {
+  id: string;
+  mediaType: string;
+  fileName?: string;
+  url: string;
+}
+
+/**
+ * Per-agent collection of file attachments accumulated during the current
+ * script execution via `API.outputAttachment()`.
+ * Cleared before each execution and drained into the IPC result message.
+ */
+const pendingMultimodalAttachments = new Map<string, SandboxFileAttachment[]>();
+
+/**
+ * Per-agent collection of stringified outputs accumulated during the current
+ * script execution via `API.output()`.
+ * Cleared before each execution and drained into the IPC result message.
+ */
+const pendingOutputs = new Map<string, string[]>();
+
 /** Node.js built-in modules safe to expose (computational, no I/O). */
 const ALLOWED_NODE_MODULES = new Set([
   'buffer',
@@ -117,6 +138,37 @@ function getSandboxAPI(agentId: string) {
           attachmentId,
         });
       });
+    },
+    output(data: any): void {
+      const str = typeof data === 'string' ? data : JSON.stringify(data);
+      const outputs = pendingOutputs.get(agentId);
+      if (outputs) outputs.push(str);
+    },
+    outputAttachment(attachment: {
+      id: string;
+      mediaType: string;
+      fileName?: string;
+      url: string;
+    }): void {
+      if (
+        !attachment ||
+        typeof attachment.id !== 'string' ||
+        typeof attachment.mediaType !== 'string' ||
+        typeof attachment.url !== 'string'
+      ) {
+        throw new Error(
+          'outputAttachment requires { id: string, mediaType: string, url: string, fileName?: string }',
+        );
+      }
+      const collection = pendingMultimodalAttachments.get(agentId);
+      if (collection) {
+        collection.push({
+          id: attachment.id,
+          mediaType: attachment.mediaType,
+          fileName: attachment.fileName,
+          url: attachment.url,
+        });
+      }
     },
   };
 }
@@ -312,6 +364,10 @@ ipc.onMessage(async (msg) => {
         return;
       }
 
+      // Reset the per-agent collections for this execution
+      pendingMultimodalAttachments.set(msg.agentId, []);
+      pendingOutputs.set(msg.agentId, []);
+
       let timeoutId: NodeJS.Timeout | undefined;
       let scriptPromise: Promise<unknown> | undefined;
 
@@ -340,10 +396,27 @@ ipc.onMessage(async (msg) => {
         const value = await Promise.race([scriptPromise, timeoutPromise]);
         clearTimeout(timeoutId);
 
-        ipc.send({ type: 'result', id: msg.id, value });
+        const customFileAttachments =
+          pendingMultimodalAttachments.get(msg.agentId) ?? [];
+        pendingMultimodalAttachments.delete(msg.agentId);
+        const outputs = pendingOutputs.get(msg.agentId) ?? [];
+        pendingOutputs.delete(msg.agentId);
+
+        ipc.send({
+          type: 'result',
+          id: msg.id,
+          value,
+          outputs: outputs.length > 0 ? outputs : undefined,
+          customFileAttachments:
+            customFileAttachments.length > 0
+              ? customFileAttachments
+              : undefined,
+        });
       } catch (err) {
         if (timeoutId !== undefined) clearTimeout(timeoutId);
         if (scriptPromise) scriptPromise.catch(() => {});
+        pendingMultimodalAttachments.delete(msg.agentId);
+        pendingOutputs.delete(msg.agentId);
         ipc.send({
           type: 'result',
           id: msg.id,
