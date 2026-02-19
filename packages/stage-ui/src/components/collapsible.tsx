@@ -4,9 +4,8 @@ import { cn } from '../lib/utils';
 
 export const Collapsible = CollapsibleBase.Root;
 
-type CollapsibleTriggerProps = Omit<
-  React.ComponentProps<typeof CollapsibleBase.Trigger>,
-  'render'
+type CollapsibleTriggerProps = React.ComponentProps<
+  typeof CollapsibleBase.Trigger
 > & {
   children: React.ReactNode;
   size: 'default' | 'condensed';
@@ -15,6 +14,7 @@ type CollapsibleTriggerProps = Omit<
 export const CollapsibleTrigger = ({
   children,
   size,
+  render,
   ...props
 }: CollapsibleTriggerProps) => {
   const paddingClass = size === 'default' ? 'py-3 px-1' : 'px-1 py-1';
@@ -23,6 +23,7 @@ export const CollapsibleTrigger = ({
   return (
     <CollapsibleBase.Trigger
       {...props}
+      render={render}
       className={cn(
         'group flex w-full cursor-pointer flex-row items-center justify-between rounded-lg font-medium text-muted-foreground text-sm hover:text-foreground active:text-foreground',
         paddingClass,

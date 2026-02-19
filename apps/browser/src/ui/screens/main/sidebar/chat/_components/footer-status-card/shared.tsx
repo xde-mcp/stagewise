@@ -102,6 +102,7 @@ export function StatusCardSectionComponent({
       <Collapsible className="w-full" open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger
           size="condensed"
+          render={<div />}
           className="w-full cursor-pointer p-0 hover:bg-transparent active:bg-transparent"
         >
           {item.trigger(isOpen)}

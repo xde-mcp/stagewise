@@ -63,6 +63,7 @@ const FileDiffItem: FC<{
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
         <CollapsibleTrigger
           size="condensed"
+          render={<div />}
           className="group w-full cursor-pointer p-0 has-[button:hover]:text-muted-foreground"
         >
           {/* File header */}

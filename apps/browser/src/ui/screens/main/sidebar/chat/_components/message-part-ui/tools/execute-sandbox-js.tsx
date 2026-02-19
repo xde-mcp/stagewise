@@ -101,19 +101,15 @@ export const ExecuteSandboxJsToolPart = ({
                 onOpenChange={setScriptExpanded}
               >
                 <CollapsibleTrigger size="condensed" className="">
-                  <button
-                    type="button"
-                    onClick={() => setScriptExpanded(!scriptExpanded)}
-                    className="mb-1 flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-wider"
-                  >
-                    <ChevronDownIcon
-                      className={cn(
-                        'size-3 transition-transform duration-150',
-                        !scriptExpanded && '-rotate-90',
-                      )}
-                    />
+                  <ChevronDownIcon
+                    className={cn(
+                      'size-3 transition-transform duration-150',
+                      !scriptExpanded && '-rotate-90',
+                    )}
+                  />
+                  <span className="mb-1 text-[10px] uppercase tracking-wider">
                     Script
-                  </button>
+                  </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
                   {capMaxHeight ? (
@@ -145,19 +141,15 @@ export const ExecuteSandboxJsToolPart = ({
                 onOpenChange={setResultExpanded}
               >
                 <CollapsibleTrigger size="condensed" className="">
-                  <button
-                    type="button"
-                    onClick={() => setResultExpanded(!resultExpanded)}
-                    className="mb-1 flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-wider"
-                  >
-                    <ChevronDownIcon
-                      className={cn(
-                        'size-3 transition-transform duration-150',
-                        !resultExpanded && '-rotate-90',
-                      )}
-                    />
+                  <ChevronDownIcon
+                    className={cn(
+                      'size-3 transition-transform duration-150',
+                      !resultExpanded && '-rotate-90',
+                    )}
+                  />
+                  <span className="mb-1 text-[10px] uppercase tracking-wider">
                     Error
-                  </button>
+                  </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
                   <OverlayScrollbar
@@ -226,19 +218,15 @@ export const ExecuteSandboxJsToolPart = ({
                 onOpenChange={setScriptExpanded}
               >
                 <CollapsibleTrigger size="condensed" className="">
-                  <button
-                    type="button"
-                    onClick={() => setScriptExpanded(!scriptExpanded)}
-                    className="mb-1 flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-wider"
-                  >
-                    <ChevronDownIcon
-                      className={cn(
-                        'size-3 transition-transform duration-150',
-                        !scriptExpanded && '-rotate-90',
-                      )}
-                    />
+                  <ChevronDownIcon
+                    className={cn(
+                      'size-3 transition-transform duration-150',
+                      !scriptExpanded && '-rotate-90',
+                    )}
+                  />
+                  <span className="mb-1 text-[10px] uppercase tracking-wider">
                     Script
-                  </button>
+                  </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
                   {capMaxHeight ? (
@@ -269,19 +257,15 @@ export const ExecuteSandboxJsToolPart = ({
                   onOpenChange={setResultExpanded}
                 >
                   <CollapsibleTrigger size="condensed" className="">
-                    <button
-                      type="button"
-                      onClick={() => setResultExpanded(!resultExpanded)}
-                      className="mb-1 flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-wider"
-                    >
-                      <ChevronDownIcon
-                        className={cn(
-                          'size-3 transition-transform duration-150',
-                          !resultExpanded && '-rotate-90',
-                        )}
-                      />
+                    <ChevronDownIcon
+                      className={cn(
+                        'size-3 transition-transform duration-150',
+                        !resultExpanded && '-rotate-90',
+                      )}
+                    />
+                    <span className="mb-1 text-[10px] uppercase tracking-wider">
                       Result
-                    </button>
+                    </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="duration-0!">
                     <OverlayScrollbar
