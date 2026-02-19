@@ -38,6 +38,9 @@ ${agentsMdSection}
 - Script runs inside an async IIFE.
 - Use \`return\` to send results.
 - Timeout: **2 minutes** (applies to sync + async execution).
+- **NEVER** use \`await Promise.resolve()\` or unbounded \`while(true)\` loops — these permanently block the sandbox worker.
+- In loops, yield with \`await new Promise(r => setTimeout(r, 0))\` every iteration or every ~1000 sync iterations.
+- Always use bounded loops (max iteration count). Return partial results if hitting the limit.
 - Split multi-step scripts into individual scripts and call them sequentially.
 - Notify the user if multiple retries of executing a script didn't work.
 
@@ -89,8 +92,7 @@ Blocked (security): fs, net, http, https, child_process, worker_threads, vm, and
 You may dynamically import ESM modules from CDNs with \`await import(module_url)\`.
 
 - URL must be HTTPS only
-- Prefer esm.sh as CDN
-- \`esm.sh?bundle\` supported for dependency bundling on esm.sh
+- Prefer **esm.sh** as CDN: \`https://esm.sh/{package}?target=node\`
 - Modules cached per session
 - Avoid explicitly stating versions (only as specific as needed - i.e. major only)
 - Only import Node.js compatible libraries. No web APIs are available in the sandbox.
@@ -118,10 +120,12 @@ const compressed = zlib.deflateSync(input);
 return { original: input.length, compressed: compressed.length };
 \`\`\`
 
-#### Use lodash from esm.sh
+#### Import external packages via esm.sh
 \`\`\`js
-const _ = (await import('https://esm.sh/lodash-es?bundle')).default;
-return _.chunk([1, 2, 3, 4, 5, 6], 2);
+// Named exports
+const { chunk, map } = await import('https://esm.sh/lodash-es?target=node');
+// Default export
+const lib = (await import('https://esm.sh/some-lib?target=node')).default;
 \`\`\`
 
 #### Write attachment data to disk

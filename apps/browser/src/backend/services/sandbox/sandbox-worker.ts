@@ -311,6 +311,10 @@ ipc.onMessage(async (msg) => {
         ipc.send({ type: 'result', id: msg.id, error: 'No context' });
         return;
       }
+
+      let timeoutId: NodeJS.Timeout | undefined;
+      let scriptPromise: Promise<unknown> | undefined;
+
       try {
         const wrapped = `(async () => { ${msg.code} })()`;
         const cache = moduleCaches.get(msg.agentId) ?? new Map();
@@ -319,11 +323,10 @@ ipc.onMessage(async (msg) => {
             resolveModule(specifier, undefined, ctx, cache),
         });
         // Sync timeout (30s) catches infinite synchronous loops (e.g. while(true){}).
-        const promise = script.runInContext(ctx, { timeout: 30_000 });
+        scriptPromise = script.runInContext(ctx, { timeout: 30_000 });
 
         // Async timeout (30s) catches long-running async work (awaits, fetches, etc.)
         const ASYNC_TIMEOUT_MS = 30_000;
-        let timeoutId: NodeJS.Timeout;
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(
@@ -334,11 +337,13 @@ ipc.onMessage(async (msg) => {
           }, ASYNC_TIMEOUT_MS);
         });
 
-        const value = await Promise.race([promise, timeoutPromise]);
-        clearTimeout(timeoutId!);
+        const value = await Promise.race([scriptPromise, timeoutPromise]);
+        clearTimeout(timeoutId);
 
         ipc.send({ type: 'result', id: msg.id, value });
       } catch (err) {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        if (scriptPromise) scriptPromise.catch(() => {});
         ipc.send({
           type: 'result',
           id: msg.id,
