@@ -88,6 +88,13 @@ export class PagesService extends DisposableService {
   private getPreferencesHandler?: () => UserPreferences;
   private updatePreferencesHandler?: (patches: Patch[]) => Promise<void>;
   private clearPermissionExceptionsHandler?: () => Promise<void>;
+  // Auth handlers (delegated to AuthService via main.ts)
+  private sendOtpHandler?: (email: string) => Promise<{ error?: string }>;
+  private verifyOtpHandler?: (
+    email: string,
+    code: string,
+  ) => Promise<{ error?: string }>;
+  private logoutHandler?: () => Promise<void>;
   // Home page service dependencies
   private userExperienceService?: UserExperienceService;
   private openWorkspaceHandler?: (path?: string) => Promise<void>;
@@ -1255,6 +1262,37 @@ export class PagesService extends DisposableService {
       },
     );
 
+    // Auth procedure handlers
+    this.kartonServer.registerServerProcedureHandler(
+      'sendOtp',
+      async (_callingClientId: string, email: string) => {
+        if (!this.sendOtpHandler) {
+          return { error: 'Auth service not available' };
+        }
+        return this.sendOtpHandler(email);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'verifyOtp',
+      async (_callingClientId: string, email: string, code: string) => {
+        if (!this.verifyOtpHandler) {
+          return { error: 'Auth service not available' };
+        }
+        return this.verifyOtpHandler(email, code);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'logout',
+      async (_callingClientId: string) => {
+        if (!this.logoutHandler) {
+          return;
+        }
+        await this.logoutHandler();
+      },
+    );
+
     this.logger.debug('[PagesService] Preferences handlers registered');
   }
 
@@ -1264,6 +1302,32 @@ export class PagesService extends DisposableService {
    */
   public setUserExperienceService(service: UserExperienceService): void {
     this.userExperienceService = service;
+  }
+
+  /**
+   * Set auth handlers for account management.
+   * This should be called by main.ts to wire up to AuthService.
+   */
+  public setAuthHandlers(handlers: {
+    sendOtp: (email: string) => Promise<{ error?: string }>;
+    verifyOtp: (email: string, code: string) => Promise<{ error?: string }>;
+    logout: () => Promise<void>;
+  }): void {
+    this.sendOtpHandler = handlers.sendOtp;
+    this.verifyOtpHandler = handlers.verifyOtp;
+    this.logoutHandler = handlers.logout;
+  }
+
+  /**
+   * Sync user account state to the Pages API Karton state.
+   * Called by main.ts when auth state changes.
+   */
+  public syncUserAccountState(
+    state: PagesApiContract['state']['userAccount'],
+  ): void {
+    this.kartonServer.setState((draft) => {
+      draft.userAccount = state;
+    });
   }
 
   /**
@@ -1456,6 +1520,9 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('setCustomEndpointApiKey');
     this.kartonServer.removeServerProcedureHandler('clearCustomEndpointApiKey');
     this.kartonServer.removeServerProcedureHandler('validateProviderApiKey');
+    this.kartonServer.removeServerProcedureHandler('sendOtp');
+    this.kartonServer.removeServerProcedureHandler('verifyOtp');
+    this.kartonServer.removeServerProcedureHandler('logout');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');
@@ -1473,6 +1540,9 @@ export class PagesService extends DisposableService {
     this.trustCertificateAndReloadHandler = undefined;
     this.getContextFilesHandler = undefined;
     this.getExternalFileContentHandler = undefined;
+    this.sendOtpHandler = undefined;
+    this.verifyOtpHandler = undefined;
+    this.logoutHandler = undefined;
 
     await this.transport.close();
     this.logger.debug('[PagesService] Teardown complete');

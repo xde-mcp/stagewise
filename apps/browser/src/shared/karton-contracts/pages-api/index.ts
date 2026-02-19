@@ -25,7 +25,7 @@ import type {
   GlobalConfig,
   ModelProvider,
 } from '../ui/shared-types';
-import type { ApiKeyValidationResult } from '../ui';
+import type { ApiKeyValidationResult, AuthStatus } from '../ui';
 import type { FileDiff } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
 
@@ -44,6 +44,20 @@ export type PagesApiState = {
   homePage: {
     storedExperienceData: StoredExperienceData;
     workspaceStatus: WorkspaceStatus;
+  };
+  /** User account status, synced from AuthService */
+  userAccount: {
+    status: AuthStatus;
+    machineId?: string;
+    user?: {
+      id: string;
+      email: string;
+    };
+    subscription?: {
+      active: boolean;
+      plan?: string;
+      expiresAt?: string;
+    };
   };
   // Current stagewise app runtime information
   appInfo: {
@@ -156,6 +170,12 @@ export type PagesApiContract = {
       provider: ModelProvider,
       apiKey: string,
     ) => Promise<ApiKeyValidationResult>;
+    /** Send an OTP code to the given email for sign-in */
+    sendOtp: (email: string) => Promise<{ error?: string }>;
+    /** Verify an OTP code for the given email */
+    verifyOtp: (email: string, code: string) => Promise<{ error?: string }>;
+    /** Log the current user out */
+    logout: () => Promise<void>;
   };
 };
 
@@ -166,6 +186,9 @@ export const defaultState: PagesApiState = {
   globalConfig: {
     telemetryLevel: 'full',
     openFilesInIde: 'other',
+  },
+  userAccount: {
+    status: 'unauthenticated',
   },
   searchEngines: [],
   homePage: {

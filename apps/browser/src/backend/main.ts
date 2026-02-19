@@ -839,7 +839,20 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       telemetryService.identifyUser();
     } else
       logger.debug('[Main] No user data available, not identifying user...');
+
+    // Sync auth state to the pages API contract
+    pagesService.syncUserAccountState(newAuthState);
   });
+
+  // Wire auth handlers to pages service for account page
+  pagesService.setAuthHandlers({
+    sendOtp: (email) => authService.sendOtp(email),
+    verifyOtp: (email, code) => authService.verifyOtp(email, code),
+    logout: () => authService.logout(),
+  });
+
+  // Sync initial auth state to pages service
+  pagesService.syncUserAccountState(authService.authState);
 
   // Set up accept/reject pending edits handlers for pages-api contract
   // These call AgentService methods which handle the actual diff history logic
