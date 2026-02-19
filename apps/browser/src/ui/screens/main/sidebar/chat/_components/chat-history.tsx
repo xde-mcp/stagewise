@@ -149,7 +149,13 @@ export const ChatHistory = () => {
   const retryLastUserMessage = useKartonProcedure(
     (s) => s.agents.retryLastUserMessage,
   );
+  const clearPendingOnboardingSuggestion = useKartonProcedure(
+    (s) => s.userExperience.clearPendingOnboardingSuggestion,
+  );
   const [openAgent] = useOpenAgent();
+  const pendingSuggestion = useKartonState(
+    (s) => s.userExperience.pendingOnboardingSuggestion,
+  );
   const isWorking = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
   );
@@ -159,9 +165,28 @@ export const ChatHistory = () => {
   const error = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.error : undefined,
   );
-  const [removedSuggestionUrls, setRemovedSuggestionUrls] = useState<
-    Set<string>
-  >(new Set());
+  const [removedSuggestionIds, setRemovedSuggestionIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // Auto-start agent when a suggestion was selected during onboarding.
+  // Ref guard prevents StrictMode's double-invocation from sending twice.
+  const pendingSuggestionConsumedRef = useRef(false);
+  useEffect(() => {
+    if (!pendingSuggestion || !openAgent) return;
+    if (pendingSuggestionConsumedRef.current) return;
+    pendingSuggestionConsumedRef.current = true;
+    const { url, prompt } = pendingSuggestion;
+    void (async () => {
+      await createTab(url);
+      await sendUserMessage(openAgent, {
+        id: crypto.randomUUID(),
+        role: 'user',
+        parts: [{ type: 'text', text: prompt }],
+      });
+      await clearPendingOnboardingSuggestion();
+    })();
+  }, [pendingSuggestion, openAgent]);
 
   // Track container height to set the spacer
   useEffect(() => {
@@ -203,12 +228,12 @@ export const ChatHistory = () => {
 
   const visibleSuggestions = useMemo(() => {
     return shuffledSuggestions
-      .filter((s) => !removedSuggestionUrls.has(s.url))
+      .filter((s) => !removedSuggestionIds.has(s.id))
       .slice(0, 3);
-  }, [removedSuggestionUrls, shuffledSuggestions]);
+  }, [removedSuggestionIds, shuffledSuggestions]);
 
-  const handleRemoveSuggestion = (url: string) => {
-    setRemovedSuggestionUrls((prev) => new Set([...Array.from(prev), url]));
+  const handleRemoveSuggestion = (id: string) => {
+    setRemovedSuggestionIds((prev) => new Set([...Array.from(prev), id]));
   };
 
   // All messages after filtering and merging consecutive assistant messages
@@ -613,7 +638,7 @@ export const ChatHistory = () => {
       <div className="flex w-full flex-col items-center justify-center gap-1 px-4 pb-[calc(8px+var(--status-card-height,0px))] text-sm">
         {visibleSuggestions.map((suggestion) => (
           <ChatSuggestion
-            key={suggestion.url}
+            key={suggestion.id}
             {...suggestion}
             onClick={async () => {
               if (!openAgent) return;
@@ -629,7 +654,7 @@ export const ChatHistory = () => {
                 ],
               });
             }}
-            onRemove={() => handleRemoveSuggestion(suggestion.url)}
+            onRemove={() => handleRemoveSuggestion(suggestion.id)}
           />
         ))}
       </div>

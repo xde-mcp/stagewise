@@ -11,6 +11,10 @@ import {
   readPersistedData,
   writePersistedData,
 } from '../../utils/persisted-data';
+import {
+  validateApiKeys,
+  type ApiKeysInput,
+} from '../../utils/validate-api-keys';
 
 const CREDENTIALS_KEY = 'credentials';
 
@@ -198,6 +202,14 @@ export class AuthService extends DisposableService {
       },
     );
 
+    this.uiKarton.registerServerProcedureHandler(
+      'userAccount.validateApiKeys',
+      async (_callingClientId: string, keys: ApiKeysInput) => {
+        this.logger.debug('[AuthService] Validating API keys');
+        return validateApiKeys(keys);
+      },
+    );
+
     this.logger.debug('[AuthService] Initialized');
   }
 
@@ -224,6 +236,7 @@ export class AuthService extends DisposableService {
     this.uiKarton.removeServerProcedureHandler('userAccount.verifyOtp');
     this.uiKarton.removeServerProcedureHandler('userAccount.logout');
     this.uiKarton.removeServerProcedureHandler('userAccount.refreshStatus');
+    this.uiKarton.removeServerProcedureHandler('userAccount.validateApiKeys');
     this.authChangeCallbacks = [];
 
     this.logger.debug('[AuthService] Teardown complete');

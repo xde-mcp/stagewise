@@ -165,6 +165,24 @@ export class UserExperienceService extends DisposableService {
         await this.markChatAsViewed(agentId);
       },
     );
+    this.uiKarton.registerServerProcedureHandler(
+      'userExperience.setHasSeenOnboardingFlow',
+      async (
+        _callingClientId: string,
+        value: boolean,
+        suggestion?: { id: string; url: string; prompt: string },
+      ) => {
+        await this.setHasSeenOnboardingFlow(value, suggestion);
+      },
+    );
+    this.uiKarton.registerServerProcedureHandler(
+      'userExperience.clearPendingOnboardingSuggestion',
+      async (_callingClientId: string) => {
+        this.uiKarton.setState((draft) => {
+          draft.userExperience.pendingOnboardingSuggestion = null;
+        });
+      },
+    );
   }
 
   protected onTeardown(): void {
@@ -179,6 +197,12 @@ export class UserExperienceService extends DisposableService {
     );
     this.uiKarton.removeServerProcedureHandler(
       'userExperience.devAppPreview.toggleFullScreen',
+    );
+    this.uiKarton.removeServerProcedureHandler(
+      'userExperience.setHasSeenOnboardingFlow',
+    );
+    this.uiKarton.removeServerProcedureHandler(
+      'userExperience.clearPendingOnboardingSuggestion',
     );
     this.logger.debug('[UserExperienceService] Teardown complete');
   }
@@ -448,13 +472,17 @@ export class UserExperienceService extends DisposableService {
     };
   }
 
-  public async setHasSeenOnboardingFlow(value: boolean) {
+  public async setHasSeenOnboardingFlow(
+    value: boolean,
+    suggestion?: { id: string; url: string; prompt: string },
+  ) {
     try {
       await this.writeOnboardingState(value);
       // Update UI state with combined data
       const storedData = await this.getStoredExperienceData();
       this.uiKarton.setState((draft) => {
         draft.userExperience.storedExperienceData = storedData;
+        draft.userExperience.pendingOnboardingSuggestion = suggestion ?? null;
       });
       // Sync to pages API
       this.syncHomePageStateToPagesService();

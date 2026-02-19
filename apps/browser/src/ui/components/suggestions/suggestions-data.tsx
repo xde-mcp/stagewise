@@ -1,6 +1,7 @@
 import type React from 'react';
 
 export type SuggestionItem = {
+  id: string;
   prompt: string;
   suggestion: string | React.ReactNode;
   faviconUrl: string;
@@ -9,6 +10,7 @@ export type SuggestionItem = {
 
 export const suggestions: SuggestionItem[] = [
   {
+    id: 'how-do-airbnb-icons-work',
     prompt:
       'You are looking at airbnb.com. Please inspect the page to find out how their icons work, and provide a simple explanation. If possible, find and focus on a specific, interesting icon that you could clone and use in my own application.',
     suggestion: (
@@ -24,6 +26,7 @@ export const suggestions: SuggestionItem[] = [
     url: 'https://airbnb.com',
   },
   {
+    id: 'take-reflect-glow-effect',
     prompt:
       'You are looking at reflect.app. Please inspect the page to find out how their glow effect works, and extract all the necessary styles you need to replicate it 1:1 in my own application.',
     suggestion: (
@@ -38,6 +41,7 @@ export const suggestions: SuggestionItem[] = [
     url: 'https://reflect.app',
   },
   {
+    id: 'copy-react-email-glass-effect',
     prompt:
       'You are looking at react.email. Please inspect the page to find out how their frosted glass effect works, and extract all the necessary styles you need to replicate it 1:1 in my own application.',
     suggestion: (
@@ -52,6 +56,7 @@ export const suggestions: SuggestionItem[] = [
     url: 'https://react.email',
   },
   {
+    id: 'make-button-like-posthog',
     prompt:
       'You are looking at posthog.com. Please inspect the page to find out exactly what their button looks like, and extract all the necessary styles and animations you need to make the button in our application look and behave exactly like it.',
     suggestion: (
@@ -66,6 +71,7 @@ export const suggestions: SuggestionItem[] = [
     url: 'https://posthog.com',
   },
   {
+    id: 'whats-the-cursor-color-theme',
     prompt:
       'You are looking at cursor.com. Please inspect the page to find out what their color theme is, and provide a concise summary of the colors and their usage, so I can learn something from it for my own application.',
     suggestion: (

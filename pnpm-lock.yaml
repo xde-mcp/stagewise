@@ -696,6 +696,9 @@ importers:
       '@base-ui/react':
         specifier: 1.1.0
         version: 1.1.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@gsap/react':
+        specifier: ^2.1.2
+        version: 2.1.2(gsap@3.14.2)(react@19.2.3)
       '@hookform/resolvers':
         specifier: ^5.2.1
         version: 5.2.2(react-hook-form@7.70.0(react@19.2.3))
@@ -708,6 +711,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      gsap:
+        specifier: ^3.14.2
+        version: 3.14.2
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -2090,6 +2096,12 @@ packages:
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
+
+  '@gsap/react@2.1.2':
+    resolution: {integrity: sha512-JqliybO1837UcgH2hVOM4VO+38APk3ECNrsuSM4MuXp+rbf+/2IG2K1YJiqfTcXQHH7XlA0m3ykniFYstfq0Iw==}
+    peerDependencies:
+      gsap: ^3.12.5
+      react: '>=17'
 
   '@gwhitney/detect-indent@7.0.1':
     resolution: {integrity: sha512-7bQW+gkKa2kKZPeJf6+c6gFK9ARxQfn+FKy9ScTBppyKRWH2KzsmweXUoklqeEiHiNVWaeP5csIdsNq6w7QhzA==}
@@ -6511,6 +6523,9 @@ packages:
   gray-matter@4.0.3:
     resolution: {integrity: sha512-5v6yZd4JK3eMI3FqqCouswVqwugaA9r4dNZB1wwcmrD02QkV5H0y7XBQW8QwQqEaZY1pM9aqORSORhJRdNK44Q==}
     engines: {node: '>=6.0'}
+
+  gsap@3.14.2:
+    resolution: {integrity: sha512-P8/mMxVLU7o4+55+1TCnQrPmgjPKnwkzkXOK1asnR9Jg2lna4tEY5qBJjMmAaOBDDZWtlRjBXjLa0w53G/uBLA==}
 
   gtoken@8.0.0:
     resolution: {integrity: sha512-+CqsMbHPiSTdtSO14O51eMNlrp9N79gmeqmXeouJOhfucAedHw9noVe/n5uJk3tbKE6a+6ZCQg3RPhVhHByAIw==}
@@ -11816,6 +11831,11 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@gsap/react@2.1.2(gsap@3.14.2)(react@19.2.3)':
+    dependencies:
+      gsap: 3.14.2
+      react: 19.2.3
+
   '@gwhitney/detect-indent@7.0.1': {}
 
   '@headlessui/react@2.2.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
@@ -16966,6 +16986,8 @@ snapshots:
       kind-of: 6.0.3
       section-matter: 1.0.0
       strip-bom-string: 1.0.0
+
+  gsap@3.14.2: {}
 
   gtoken@8.0.0:
     dependencies:

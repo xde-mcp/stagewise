@@ -54,6 +54,7 @@ const baseState: Partial<AppState> = {
       hasSeenOnboardingFlow: false,
       lastViewedChats: {},
     },
+    pendingOnboardingSuggestion: null,
     devAppPreview: {
       isFullScreen: false,
       inShowCodeMode: false,

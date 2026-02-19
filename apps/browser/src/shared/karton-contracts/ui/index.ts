@@ -525,6 +525,11 @@ export type AppState = {
   // State of the current user experience (getting started etc.)
   userExperience: {
     storedExperienceData: StoredExperienceData;
+    pendingOnboardingSuggestion: {
+      id: string;
+      url: string;
+      prompt: string;
+    } | null;
     devAppPreview: {
       isFullScreen: boolean;
       inShowCodeMode: boolean;
@@ -595,6 +600,11 @@ export type AuthStatus =
   | 'authentication_invalid'
   | 'server_unreachable';
 
+export type ApiKeyValidationResult =
+  | null
+  | { success: true }
+  | { success: false; error: string };
+
 export type KartonContract = {
   state: AppState;
   serverProcedures: {
@@ -647,6 +657,15 @@ export type KartonContract = {
       verifyOtp: (email: string, code: string) => Promise<{ error?: string }>;
       refreshStatus: () => Promise<void>;
       logout: () => Promise<void>;
+      validateApiKeys: (keys: {
+        anthropic?: string;
+        openai?: string;
+        google?: string;
+      }) => Promise<{
+        anthropic: ApiKeyValidationResult;
+        openai: ApiKeyValidationResult;
+        google: ApiKeyValidationResult;
+      }>;
     };
     workspace: {
       open: (path?: string) => Promise<void>;
@@ -665,6 +684,11 @@ export type KartonContract = {
         ) => Promise<void>;
       };
       markChatAsViewed: (agentId: string) => Promise<void>;
+      setHasSeenOnboardingFlow: (
+        value: boolean,
+        suggestion?: { id: string; url: string; prompt: string },
+      ) => Promise<void>;
+      clearPendingOnboardingSuggestion: () => Promise<void>;
     };
     filePicker: {
       createRequest: (request: FilePickerRequest) => Promise<string[]>;
@@ -918,6 +942,7 @@ export const defaultState: KartonContract['state'] = {
       hasSeenOnboardingFlow: false,
       lastViewedChats: {},
     },
+    pendingOnboardingSuggestion: null,
     devAppPreview: {
       isFullScreen: false,
       inShowCodeMode: false,

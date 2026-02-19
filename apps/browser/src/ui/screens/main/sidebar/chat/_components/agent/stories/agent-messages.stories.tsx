@@ -44,6 +44,7 @@ const createStoryState = (
           hasSeenOnboardingFlow: false,
           lastViewedChats: {},
         },
+        pendingOnboardingSuggestion: null,
         devAppPreview: {
           isFullScreen: false,
           inShowCodeMode: false,
