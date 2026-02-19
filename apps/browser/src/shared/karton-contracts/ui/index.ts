@@ -96,6 +96,27 @@ export { PermissionSetting, configurablePermissionTypes };
 // Dev toolbar types
 export type { WidgetId, DevToolbarOriginSettings };
 
+// Provider configuration types
+export type {
+  ModelProvider,
+  ProviderEndpointMode,
+  ProviderConfig,
+  ProviderConfigs,
+} from './shared-types';
+export {
+  PROVIDER_OFFICIAL_URLS,
+  PROVIDER_DISPLAY_INFO,
+} from './shared-types';
+
+// Custom endpoint & model types
+export type {
+  ApiSpec,
+  CustomEndpoint,
+  CustomModel,
+  ModelCapabilities,
+} from './shared-types';
+export { apiSpecSchema } from './shared-types';
+
 /**
  * Lightweight chat metadata for the chat history list.
  * Does not include messages - those are loaded on demand.

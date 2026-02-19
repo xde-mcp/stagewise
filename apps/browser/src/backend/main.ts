@@ -811,6 +811,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   const modelProviderService = new ModelProviderService(
     telemetryService,
     authService,
+    preferencesService,
   );
 
   const _agentManagerService = new AgentManagerService(

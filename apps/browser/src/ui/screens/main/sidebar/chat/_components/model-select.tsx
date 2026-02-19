@@ -4,22 +4,7 @@ import { IconBrainOutline18 } from 'nucleo-ui-outline-18';
 import { availableModels } from '@shared/available-models';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useOpenAgent } from '@/hooks/use-open-chat';
-
-const modelOptions = availableModels.map((model) => ({
-  label: model.modelDisplayName,
-  value: model.modelId,
-  icon:
-    'thinkingEnabled' in model && model.thinkingEnabled ? (
-      <IconBrainOutline18 className="size-3 text-muted-foreground" />
-    ) : null,
-  tooltipContent: (
-    <ModelTooltipContent
-      model={model.modelDisplayName}
-      description={model.modelDescription}
-      context={model.modelContext}
-    />
-  ),
-}));
+import { useMemo } from 'react';
 
 function ModelTooltipContent({
   model,
@@ -49,6 +34,43 @@ export function ModelSelect({ onModelChange }: ModelSelectProps) {
     openAgent ? s.agents.instances[openAgent]?.state.activeModelId : null,
   );
   const setSelectedModel = useKartonProcedure((p) => p.agents.setActiveModelId);
+  const customModels = useKartonState((s) => s.preferences?.customModels ?? []);
+
+  const modelOptions = useMemo(() => {
+    const builtIn = availableModels.map((model) => ({
+      label: model.modelDisplayName,
+      value: model.modelId,
+      icon:
+        'thinkingEnabled' in model && model.thinkingEnabled ? (
+          <IconBrainOutline18 className="size-3 text-muted-foreground" />
+        ) : null,
+      tooltipContent: (
+        <ModelTooltipContent
+          model={model.modelDisplayName}
+          description={model.modelDescription}
+          context={model.modelContext}
+        />
+      ),
+    }));
+
+    const custom = customModels.map((model) => ({
+      label: model.displayName,
+      value: model.modelId,
+      group: 'Custom',
+      icon: model.thinkingEnabled ? (
+        <IconBrainOutline18 className="size-3 text-muted-foreground" />
+      ) : null,
+      tooltipContent: (
+        <ModelTooltipContent
+          model={model.displayName}
+          description={model.description}
+          context={`${Math.round(model.contextWindowSize / 1000)}k context`}
+        />
+      ),
+    }));
+
+    return [...builtIn, ...custom];
+  }, [customModels]);
 
   return (
     <SearchableSelect

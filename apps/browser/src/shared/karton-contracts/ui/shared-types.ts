@@ -34,7 +34,174 @@ type OpenAIModelIds =
 
 type GoogleModelIds = Extract<AllGoogleModelIds, 'gemini-3-pro-preview'>;
 
+// ============================================================================
+// Model Provider Configuration
+// ============================================================================
+
+/** Supported LLM provider identifiers */
+export const modelProviderSchema = z.enum(['anthropic', 'openai', 'google']);
+export type ModelProvider = z.infer<typeof modelProviderSchema>;
+
+/** Endpoint mode for a provider */
+export const providerEndpointModeSchema = z.enum([
+  'stagewise',
+  'official',
+  'custom',
+]);
+export type ProviderEndpointMode = z.infer<typeof providerEndpointModeSchema>;
+
+/** Configuration for a single provider endpoint */
+export const providerConfigSchema = z.object({
+  /** Which endpoint to route requests to */
+  mode: providerEndpointModeSchema.default('stagewise'),
+  /** Base64-encoded safeStorage-encrypted API key (encrypted on backend, opaque to UI) */
+  encryptedApiKey: z.string().optional(),
+  /** Custom base URL (only used when mode is 'custom') */
+  customBaseUrl: z.string().optional(),
+});
+export type ProviderConfig = z.infer<typeof providerConfigSchema>;
+
+/** Provider configurations for all supported providers */
+export const providerConfigsSchema = z.object({
+  anthropic: providerConfigSchema.default({ mode: 'stagewise' }),
+  openai: providerConfigSchema.default({ mode: 'stagewise' }),
+  google: providerConfigSchema.default({ mode: 'stagewise' }),
+});
+export type ProviderConfigs = z.infer<typeof providerConfigsSchema>;
+
+// ============================================================================
+// Custom Endpoints & Custom Models
+// ============================================================================
+
+/** API spec that a custom endpoint implements */
+const apiSpecValues = [
+  'anthropic',
+  'openai-chat-completions',
+  'openai-responses',
+  'google',
+] as const;
+export const apiSpecSchema = z
+  .string()
+  .transform((val) => {
+    // Migration: remap old 'openai' value to 'openai-chat-completions'
+    if (val === 'openai') return 'openai-chat-completions' as const;
+    return val as (typeof apiSpecValues)[number];
+  })
+  .pipe(z.enum(apiSpecValues));
+export type ApiSpec = z.infer<typeof apiSpecSchema>;
+
+/** A user-defined API endpoint */
+export const customEndpointSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  apiSpec: apiSpecSchema,
+  baseUrl: z.string(),
+  encryptedApiKey: z.string().optional(),
+});
+export type CustomEndpoint = z.infer<typeof customEndpointSchema>;
+
+/** Capabilities that describe what a model can do */
+export const modelCapabilitiesSchema = z.object({
+  inputModalities: z
+    .object({
+      text: z.boolean().default(true),
+      audio: z.boolean().default(false),
+      image: z.boolean().default(false),
+      video: z.boolean().default(false),
+      file: z.boolean().default(false),
+    })
+    .default({
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      file: false,
+    }),
+  outputModalities: z
+    .object({
+      text: z.boolean().default(true),
+      audio: z.boolean().default(false),
+      image: z.boolean().default(false),
+      video: z.boolean().default(false),
+      file: z.boolean().default(false),
+    })
+    .default({
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      file: false,
+    }),
+  toolCalling: z.boolean().default(true),
+  intelligence: z
+    .object({
+      canPlan: z.boolean().default(true),
+      canCode: z.boolean().default(true),
+    })
+    .default({ canPlan: true, canCode: true }),
+});
+export type ModelCapabilities = z.infer<typeof modelCapabilitiesSchema>;
+
+/** A user-defined model that routes to a built-in provider or custom endpoint */
+export const customModelSchema = z.object({
+  modelId: z.string().min(1),
+  displayName: z.string().min(1),
+  description: z.string().default(''),
+  contextWindowSize: z.number().int().positive().default(128000),
+  endpointId: z.string(),
+  thinkingEnabled: z.boolean().default(false),
+  capabilities: modelCapabilitiesSchema.default({
+    inputModalities: {
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      file: false,
+    },
+    outputModalities: {
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      file: false,
+    },
+    toolCalling: true,
+    intelligence: { canPlan: true, canCode: true },
+  }),
+  providerOptions: z.record(z.string(), z.unknown()).default({}),
+  headers: z.record(z.string(), z.string()).default({}),
+});
+export type CustomModel = z.infer<typeof customModelSchema>;
+
+/** Official API base URLs for each provider (for UI display) */
+export const PROVIDER_OFFICIAL_URLS: Record<ModelProvider, string> = {
+  anthropic: 'https://api.anthropic.com/v1',
+  openai: 'https://api.openai.com/v1',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
+};
+
+/** Display info for each provider (for UI) */
+export const PROVIDER_DISPLAY_INFO: Record<
+  ModelProvider,
+  { name: string; description: string }
+> = {
+  anthropic: {
+    name: 'Anthropic',
+    description: 'Claude models (Opus, Sonnet, Haiku)',
+  },
+  openai: {
+    name: 'OpenAI',
+    description: 'GPT and Codex models',
+  },
+  google: {
+    name: 'Google',
+    description: 'Gemini models',
+  },
+};
+
 type BaseSettings = {
+  /** Which provider this model belongs to */
+  provider: ModelProvider;
   modelDisplayName: string;
   modelDescription: string;
   modelContext: string;
@@ -78,8 +245,6 @@ type GoogleModelSettings = BaseSettings & {
   modelId: GoogleModelIds;
   providerOptions: GoogleGenerativeAIProviderOptions;
 };
-
-export type ModelCapabilities = BaseSettings['capabilities'];
 
 export type ModelSettings =
   | AnthropicModelSettings
@@ -187,6 +352,16 @@ export const userPreferencesSchema = z.object({
         .default({}),
     })
     .default({ workspaceSettings: {} }),
+  /** LLM provider endpoint configurations (API keys, custom URLs) */
+  providerConfigs: providerConfigsSchema.default({
+    anthropic: { mode: 'stagewise' },
+    openai: { mode: 'stagewise' },
+    google: { mode: 'stagewise' },
+  }),
+  /** User-defined API endpoints */
+  customEndpoints: z.array(customEndpointSchema).default([]),
+  /** User-defined models */
+  customModels: z.array(customModelSchema).default([]),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;
@@ -261,6 +436,13 @@ export const defaultUserPreferences: UserPreferences = {
   permissions: defaultPermissionsForUserPrefs,
   devToolbar: defaultDevToolbarForUserPrefs,
   agent: { workspaceSettings: {} },
+  providerConfigs: {
+    anthropic: { mode: 'stagewise' },
+    openai: { mode: 'stagewise' },
+    google: { mode: 'stagewise' },
+  },
+  customEndpoints: [],
+  customModels: [],
 };
 
 /**

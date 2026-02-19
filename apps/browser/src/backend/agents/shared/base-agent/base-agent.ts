@@ -18,7 +18,7 @@ import type {
   AgentState,
 } from '@shared/karton-contracts/ui/agent';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
-import type { ModelId } from '../../model-map';
+import type { ModelId } from '@shared/available-models';
 import type { z } from 'zod';
 import type { AgentTypeMap } from '../../agents-map';
 import type { ToolboxService } from '@/services/toolbox';
@@ -1098,15 +1098,35 @@ export abstract class BaseAgent<
       draft.queuedMessages = [];
     });
 
-    // Get the current model
-    const modelWithOptions = this.modelProviderService.getModelWithOptions(
-      this.state.get().activeModelId,
-      this.instanceId,
-      {
-        $ai_span_name: `${this.agentType}-history`,
-        $ai_parent_id: this.instanceId,
-      },
-    );
+    // Get the current model — wrapped in try-catch so a deleted custom model
+    // or endpoint doesn't wedge the agent with isWorking=true and no error.
+    let modelWithOptions: ReturnType<
+      typeof this.modelProviderService.getModelWithOptions
+    >;
+    try {
+      modelWithOptions = this.modelProviderService.getModelWithOptions(
+        this.state.get().activeModelId,
+        this.instanceId,
+        {
+          $ai_span_name: `${this.agentType}-history`,
+          $ai_parent_id: this.instanceId,
+        },
+      );
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(
+        `[BaseAgent:${this.instanceId}] Failed to resolve model "${this.state.get().activeModelId}": ${err.message}`,
+      );
+      this.report(err, 'resolveModel');
+      this.state.set((draft) => {
+        draft.isWorking = false;
+        draft.error = {
+          message: `Model error: ${err.message}`,
+          stack: err.stack,
+        };
+      });
+      return;
+    }
 
     const modelMessages = await this.generateContextForNewStep();
 
@@ -1404,16 +1424,20 @@ export abstract class BaseAgent<
     // Check the current token usage. If necessary, summarize the chat history.
     // We always check the token usage in relation to the currently selected model.
     const compactionThreshold = this.config.historyCompressionThreshold ?? 0.5;
-    if (
-      compactionThreshold >= 0 &&
-      this.state.get().usedTokens /
-        this.modelProviderService.getModelWithOptions(
-          this.state.get().activeModelId,
-          '',
-        ).contextWindowSize >
-        compactionThreshold
-    ) {
-      void this.compressHistoryInternal();
+    try {
+      if (
+        compactionThreshold >= 0 &&
+        this.state.get().usedTokens /
+          this.modelProviderService.getModelWithOptions(
+            this.state.get().activeModelId,
+            '',
+          ).contextWindowSize >
+          compactionThreshold
+      ) {
+        void this.compressHistoryInternal();
+      }
+    } catch {
+      // Model may have been deleted between step start and finish — skip compaction check
     }
 
     const userWantsToContinue = (await this.onStepFinished(result)) ?? true;

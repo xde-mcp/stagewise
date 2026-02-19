@@ -14,6 +14,7 @@ const googleHeaders = {};
 export const availableModels = [
   // Anthropic Models
   {
+    provider: 'anthropic',
     modelId: 'claude-opus-4-6',
     providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Opus 4.6',
@@ -47,6 +48,7 @@ export const availableModels = [
     thinkingEnabled: true,
   },
   {
+    provider: 'anthropic',
     modelId: 'claude-opus-4-5',
     providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Opus 4.5',
@@ -80,6 +82,7 @@ export const availableModels = [
     thinkingEnabled: true,
   },
   {
+    provider: 'openai',
     modelId: 'gpt-5.2',
     providerOptions: {
       reasoningEffort: 'high',
@@ -118,6 +121,7 @@ export const availableModels = [
     },
   },
   {
+    provider: 'google',
     modelId: 'gemini-3-pro-preview',
     providerOptions: {
       thinkingConfig: {
@@ -156,6 +160,7 @@ export const availableModels = [
     },
   },
   {
+    provider: 'anthropic',
     modelId: 'claude-haiku-4-5',
     providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Haiku 4.5',
@@ -189,6 +194,7 @@ export const availableModels = [
     },
   },
   {
+    provider: 'openai',
     modelId: 'gpt-5.2-codex',
     providerOptions: {
       reasoningEffort: 'high',
@@ -227,6 +233,7 @@ export const availableModels = [
     },
   },
   {
+    provider: 'openai',
     modelId: 'gpt-5.1-codex-max',
     providerOptions: {
       reasoningEffort: 'high',
@@ -265,6 +272,7 @@ export const availableModels = [
     },
   },
   {
+    provider: 'anthropic',
     modelId: 'claude-sonnet-4-6',
     providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Sonnet 4.6',
@@ -298,6 +306,7 @@ export const availableModels = [
     },
   },
   {
+    provider: 'anthropic',
     modelId: 'claude-sonnet-4-5',
     providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Sonnet 4.5',
@@ -332,4 +341,5 @@ export const availableModels = [
   },
 ] as const satisfies ModelSettings[];
 
-export type ModelId = (typeof availableModels)[number]['modelId'];
+export type BuiltInModelId = (typeof availableModels)[number]['modelId'];
+export type ModelId = BuiltInModelId | (string & {});

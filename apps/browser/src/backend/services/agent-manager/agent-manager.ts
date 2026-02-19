@@ -296,7 +296,10 @@ export class AgentManagerService extends DisposableService {
     const agentInstanceId = instanceId ?? randomUUID();
 
     // For new chat agents (not resumed), use the model from the last persisted chat
+    // Validate the model still exists (it may have been a deleted custom model)
     const lastChatModelId = await this.agentPersistenceDB?.getLastChatModelId();
+    const lastModelValid =
+      lastChatModelId && this.modelProviderService.modelExists(lastChatModelId);
 
     // Build state object outside setState to avoid "Type instantiation is excessively deep" error
     // caused by complex Draft<[]> inference from the 'ai' package's UIMessage type
@@ -361,7 +364,7 @@ export class AgentManagerService extends DisposableService {
       parent?.onError,
       initialState ?? {
         activeModelId:
-          lastChatModelId && type === AgentTypes.CHAT
+          lastModelValid && type === AgentTypes.CHAT
             ? lastChatModelId
             : undefined,
       },
@@ -428,6 +431,11 @@ export class AgentManagerService extends DisposableService {
       );
     }
 
+    // Validate that the persisted model still exists (it may have been a deleted custom model)
+    const resumedModelValid =
+      agent.activeModelId &&
+      this.modelProviderService.modelExists(agent.activeModelId);
+
     return await this.createAgent(
       agent.type,
       agent.instanceConfig as any,
@@ -436,7 +444,7 @@ export class AgentManagerService extends DisposableService {
         title: agent.title,
         history: agent.history,
         queuedMessages: agent.queuedMessages,
-        activeModelId: agent.activeModelId,
+        activeModelId: resumedModelValid ? agent.activeModelId : undefined,
         inputState: agent.inputState,
         usedTokens: agent.usedTokens,
         isWorking: false,
@@ -716,6 +724,11 @@ export class AgentManagerService extends DisposableService {
     const agent = this.activeAgents.get(instanceId);
     if (!agent) {
       throw new Error(`Agent with instance id ${instanceId} not found`);
+    }
+    if (!this.modelProviderService.modelExists(modelId)) {
+      throw new Error(
+        `Cannot set model: "${modelId}" does not exist (it may have been deleted)`,
+      );
     }
     await agent.updateActiveModelId(modelId);
   }

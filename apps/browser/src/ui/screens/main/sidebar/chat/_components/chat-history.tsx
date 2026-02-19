@@ -396,7 +396,7 @@ export const ChatHistory = () => {
 
       return height;
     });
-  }, [filteredMessages, containerWidth, containerHeight, isWorking]);
+  }, [filteredMessages, containerWidth, containerHeight, isWorking, error]);
 
   // Calculate average estimated height for defaultItemHeight
 
@@ -479,6 +479,14 @@ export const ChatHistory = () => {
     forceEnableAutoScroll,
     scrollToBottom,
   ]);
+
+  // Scroll to bottom when an error appears so it's always visible
+  useEffect(() => {
+    if (error) {
+      forceEnableAutoScroll();
+      scrollToBottom();
+    }
+  }, [error, forceEnableAutoScroll, scrollToBottom]);
 
   // Determine if we should show the "Working..." indicator
   const showWorkingIndicator = useMemo(() => {

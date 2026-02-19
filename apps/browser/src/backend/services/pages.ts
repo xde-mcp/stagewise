@@ -18,6 +18,7 @@ import type {
   UserPreferences,
   Patch,
   GlobalConfig,
+  ModelProvider,
 } from '@shared/karton-contracts/ui/shared-types';
 import type { HistoryService } from './history';
 import type { FaviconService } from './favicon';
@@ -1174,6 +1175,16 @@ export class PagesService extends DisposableService {
     getHandler: () => UserPreferences,
     updateHandler: (patches: Patch[]) => Promise<void>,
     clearPermissionExceptionsHandler: () => Promise<void>,
+    setProviderApiKeyHandler: (
+      provider: ModelProvider,
+      apiKey: string,
+    ) => Promise<void>,
+    clearProviderApiKeyHandler: (provider: ModelProvider) => Promise<void>,
+    setCustomEndpointApiKeyHandler: (
+      endpointId: string,
+      apiKey: string,
+    ) => Promise<void>,
+    clearCustomEndpointApiKeyHandler: (endpointId: string) => Promise<void>,
   ): void {
     this.getPreferencesHandler = getHandler;
     this.updatePreferencesHandler = updateHandler;
@@ -1196,6 +1207,38 @@ export class PagesService extends DisposableService {
           throw new Error('Preferences handler not registered');
         }
         await this.updatePreferencesHandler(patches);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'setProviderApiKey',
+      async (
+        _callingClientId: string,
+        provider: ModelProvider,
+        apiKey: string,
+      ) => {
+        await setProviderApiKeyHandler(provider, apiKey);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'clearProviderApiKey',
+      async (_callingClientId: string, provider: ModelProvider) => {
+        await clearProviderApiKeyHandler(provider);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'setCustomEndpointApiKey',
+      async (_callingClientId: string, endpointId: string, apiKey: string) => {
+        await setCustomEndpointApiKeyHandler(endpointId, apiKey);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'clearCustomEndpointApiKey',
+      async (_callingClientId: string, endpointId: string) => {
+        await clearCustomEndpointApiKeyHandler(endpointId);
       },
     );
 
@@ -1395,6 +1438,10 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('trustCertificateAndReload');
     this.kartonServer.removeServerProcedureHandler('setGlobalConfig');
     this.kartonServer.removeServerProcedureHandler('getContextFiles');
+    this.kartonServer.removeServerProcedureHandler('setProviderApiKey');
+    this.kartonServer.removeServerProcedureHandler('clearProviderApiKey');
+    this.kartonServer.removeServerProcedureHandler('setCustomEndpointApiKey');
+    this.kartonServer.removeServerProcedureHandler('clearCustomEndpointApiKey');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');

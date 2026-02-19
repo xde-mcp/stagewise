@@ -19,7 +19,12 @@ import type {
   ContextFilesResult,
   ExternalFileContentResult,
 } from './types';
-import type { UserPreferences, Patch, GlobalConfig } from '../ui/shared-types';
+import type {
+  UserPreferences,
+  Patch,
+  GlobalConfig,
+  ModelProvider,
+} from '../ui/shared-types';
 import type { FileDiff } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
 
@@ -131,6 +136,20 @@ export type PagesApiContract = {
      * Returns null if no workspace is loaded.
      */
     getContextFiles: () => Promise<ContextFilesResult>;
+    /** Set an encrypted API key for a provider (encrypted via safeStorage on backend) */
+    setProviderApiKey: (
+      provider: ModelProvider,
+      apiKey: string,
+    ) => Promise<void>;
+    /** Clear the API key for a provider */
+    clearProviderApiKey: (provider: ModelProvider) => Promise<void>;
+    /** Set an encrypted API key for a custom endpoint */
+    setCustomEndpointApiKey: (
+      endpointId: string,
+      apiKey: string,
+    ) => Promise<void>;
+    /** Clear the API key for a custom endpoint */
+    clearCustomEndpointApiKey: (endpointId: string) => Promise<void>;
   };
 };
 

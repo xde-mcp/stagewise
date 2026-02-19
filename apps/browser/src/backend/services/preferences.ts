@@ -7,15 +7,18 @@ import {
   type ConfigurablePermissionType,
   type WidgetId,
   type DevToolbarOriginSettings,
+  type ModelProvider,
   userPreferencesSchema,
   defaultUserPreferences,
   PermissionSetting,
   configurablePermissionTypes,
+  modelProviderSchema,
   DEFAULT_WIDGET_ORDER,
   DEV_TOOLBAR_MAX_ORIGINS,
 } from '@shared/karton-contracts/ui/shared-types';
 import { readPersistedData, writePersistedData } from '../utils/persisted-data';
 import { DisposableService } from './disposable';
+import { safeStorage } from 'electron';
 
 // Enable Immer patches support
 enablePatches();
@@ -238,6 +241,10 @@ export class PreferencesService extends DisposableService {
       () => this.get(),
       (patches) => this.update(patches),
       () => this.clearAllPermissionExceptionsForAllTypes(),
+      (provider, apiKey) => this.setProviderApiKey(provider, apiKey),
+      (provider) => this.clearProviderApiKey(provider),
+      (endpointId, apiKey) => this.setCustomEndpointApiKey(endpointId, apiKey),
+      (endpointId) => this.clearCustomEndpointApiKey(endpointId),
     );
   }
 
@@ -594,6 +601,139 @@ export class PreferencesService extends DisposableService {
     await this.update(patches);
 
     return newSettings;
+  }
+
+  // ===========================================================================
+  // Provider API Key Methods
+  // ===========================================================================
+
+  /**
+   * Set an API key for a provider, encrypted via Electron's safeStorage.
+   * The key is encrypted, base64-encoded, and stored in preferences.
+   */
+  public async setProviderApiKey(
+    provider: ModelProvider,
+    plaintextKey: string,
+  ): Promise<void> {
+    this.assertNotDisposed();
+
+    // Validate provider
+    modelProviderSchema.parse(provider);
+
+    const encrypted = safeStorage.encryptString(plaintextKey);
+    const encryptedBase64 = encrypted.toString('base64');
+
+    const patches: Patch[] = [
+      {
+        op: 'replace',
+        path: ['providerConfigs', provider, 'encryptedApiKey'],
+        value: encryptedBase64,
+      },
+    ];
+
+    await this.update(patches);
+    this.logger.debug(
+      `[PreferencesService] Set encrypted API key for provider: ${provider}`,
+    );
+  }
+
+  /**
+   * Clear the API key for a provider.
+   */
+  public async clearProviderApiKey(provider: ModelProvider): Promise<void> {
+    this.assertNotDisposed();
+
+    // Validate provider
+    modelProviderSchema.parse(provider);
+
+    const patches: Patch[] = [
+      {
+        op: 'replace',
+        path: ['providerConfigs', provider, 'encryptedApiKey'],
+        value: undefined,
+      },
+    ];
+
+    await this.update(patches);
+    this.logger.debug(
+      `[PreferencesService] Cleared API key for provider: ${provider}`,
+    );
+  }
+
+  // ===========================================================================
+  // Custom Endpoint API Key Methods
+  // ===========================================================================
+
+  /**
+   * Set an API key for a custom endpoint, encrypted via Electron's safeStorage.
+   */
+  public async setCustomEndpointApiKey(
+    endpointId: string,
+    plaintextKey: string,
+  ): Promise<void> {
+    this.assertNotDisposed();
+
+    const idx = this.preferences.customEndpoints.findIndex(
+      (ep) => ep.id === endpointId,
+    );
+    if (idx === -1) throw new Error(`Custom endpoint ${endpointId} not found`);
+
+    const encrypted = safeStorage.encryptString(plaintextKey);
+    const patches: Patch[] = [
+      {
+        op: 'replace',
+        path: ['customEndpoints', idx, 'encryptedApiKey'],
+        value: encrypted.toString('base64'),
+      },
+    ];
+
+    await this.update(patches);
+    this.logger.debug(
+      `[PreferencesService] Set encrypted API key for custom endpoint: ${endpointId}`,
+    );
+  }
+
+  /**
+   * Clear the API key for a custom endpoint.
+   */
+  public async clearCustomEndpointApiKey(endpointId: string): Promise<void> {
+    this.assertNotDisposed();
+
+    const idx = this.preferences.customEndpoints.findIndex(
+      (ep) => ep.id === endpointId,
+    );
+    if (idx === -1) throw new Error(`Custom endpoint ${endpointId} not found`);
+
+    const patches: Patch[] = [
+      {
+        op: 'replace',
+        path: ['customEndpoints', idx, 'encryptedApiKey'],
+        value: undefined,
+      },
+    ];
+
+    await this.update(patches);
+    this.logger.debug(
+      `[PreferencesService] Cleared API key for custom endpoint: ${endpointId}`,
+    );
+  }
+
+  /**
+   * Decrypt an API key stored in preferences.
+   * Returns empty string if no key is stored or decryption fails.
+   */
+  public decryptProviderApiKey(encryptedBase64?: string): string {
+    if (!encryptedBase64) return '';
+    try {
+      const buffer = Buffer.from(encryptedBase64, 'base64');
+      return safeStorage.decryptString(buffer);
+    } catch (error) {
+      this.logger.error(
+        '[PreferencesService] Failed to decrypt API key',
+        error,
+      );
+      return '';
+    }
   }
 
   private notifyListeners(
