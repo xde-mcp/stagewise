@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/utils';
 import { IconTriangleWarning } from 'nucleo-micro-bold';
 import { Button } from '@stagewise/stage-ui/components/button';
@@ -9,12 +9,37 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 import { ChevronDownIcon } from 'lucide-react';
+import { useKartonState } from '@/hooks/use-karton';
+import { useOpenAgent } from '@/hooks/use-open-chat';
+import { availableModels } from '@shared/available-models';
+import type { ModelProvider } from '@shared/karton-contracts/ui/shared-types';
 
 type RuntimeError = {
   code?: number;
   message: string;
   stack?: string;
 };
+
+/** Check if an error message indicates an API authorization failure */
+function isAuthorizationError(error: RuntimeError): boolean {
+  const msg = error.message.toLowerCase();
+  const code = error.code;
+  if (code === 401 || code === 403) return true;
+  return (
+    msg.includes('401') ||
+    msg.includes('403') ||
+    msg.includes('unauthorized') ||
+    msg.includes('authentication') ||
+    msg.includes('unauthenticated') ||
+    msg.includes('invalid api key') ||
+    msg.includes('invalid x-api-key') ||
+    msg.includes('no api key') ||
+    msg.includes('missing api key') ||
+    msg.includes('api key provided') ||
+    msg.includes('permission denied') ||
+    msg.includes('access denied')
+  );
+}
 
 export function MessageRuntimeError({
   agentInstanceId,
@@ -29,6 +54,27 @@ export function MessageRuntimeError({
 }) {
   const [helpExpanded, setHelpExpanded] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [openAgent] = useOpenAgent();
+
+  const activeModelId = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.activeModelId : undefined,
+  );
+
+  const providerConfigs = useKartonState((s) => s.preferences?.providerConfigs);
+
+  const showSignInLink = useMemo(() => {
+    if (!isAuthorizationError(error)) return false;
+    if (!activeModelId || !providerConfigs) return false;
+
+    // Find the built-in model to get its provider
+    const builtInModel = availableModels.find(
+      (m) => m.modelId === activeModelId,
+    );
+    if (!builtInModel) return false;
+
+    const provider = builtInModel.provider as ModelProvider;
+    return providerConfigs[provider]?.mode === 'stagewise';
+  }, [error, activeModelId, providerConfigs]);
 
   const copyError = () => {
     const errorText = `Error${error.code ? ` (Code: ${error.code})` : ''}: ${error.message}${error.stack ? `\n\nStack trace:\n${error.stack}` : ''}`;
@@ -66,6 +112,20 @@ export function MessageRuntimeError({
           </span>
         )}
       </div>
+
+      {/* Sign-in link for stagewise auth errors */}
+      {showSignInLink && (
+        <div className="text-muted-foreground text-xs">
+          Please{' '}
+          <a
+            href="stagewise://internal/account"
+            className="text-primary-foreground underline hover:text-primary-foreground/80"
+          >
+            sign in to stagewise
+          </a>{' '}
+          to continue.
+        </div>
+      )}
 
       {/* Help Section */}
       <Collapsible open={helpExpanded} onOpenChange={setHelpExpanded}>
