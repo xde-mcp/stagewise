@@ -156,6 +156,8 @@ export function ChatPanelFooter() {
     (p) => p.browser.contextSelection.removeElement,
   );
 
+  const agentAccessPath = useKartonState((s) => s.workspace?.agent?.accessPath);
+
   const isConnected = useKartonConnected();
   const reconnectState = useKartonReconnectState();
 
@@ -294,6 +296,7 @@ export function ChatPanelFooter() {
     const metadata = collectUserMessageMetadata(
       localSelectedElements,
       localInputState,
+      agentAccessPath,
     );
 
     const markdownText = chatInputRef.current!.getTextContent();
@@ -362,6 +365,7 @@ export function ChatPanelFooter() {
     canSendMessage,
     fileAttachments,
     localSelectedElements,
+    agentAccessPath,
     sendUserMessage,
     openAgent,
     setChatInputState,

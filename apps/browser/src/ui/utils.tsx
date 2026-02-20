@@ -54,6 +54,7 @@ export async function fileToDataUrl(file: File): Promise<string> {
 export const collectUserMessageMetadata = (
   selectedElements: SelectedElement[],
   tiptapContent?: Content,
+  agentAccessPath?: string | null,
 ): UserMessageMetadata => {
   // Extract text clip attachments from TipTap content
   // These are collapsed long texts that show as @{id} in plain text
@@ -61,6 +62,7 @@ export const collectUserMessageMetadata = (
 
   return {
     createdAt: new Date(),
+    agentAccessPath: agentAccessPath ?? null,
     partsMetadata: [],
     selectedPreviewElements: selectedElements,
     textClipAttachments:

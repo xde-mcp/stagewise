@@ -8,6 +8,7 @@ import {
   markdownToTipTapContent,
 } from '@/utils/tiptap-content-utils';
 import { cn, collectUserMessageMetadata } from '@/utils';
+import { MessageAccessPathProvider } from '@/hooks/use-message-access-path';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { FileUIPart } from 'ai';
 import {
@@ -100,6 +101,9 @@ export const MessageUser = memo(
     );
     const selectedElementsFromWebcontents = useKartonState(
       (s) => s.browser.selectedElements,
+    );
+    const agentAccessPath = useKartonState(
+      (s) => s.workspace?.agent?.accessPath,
     );
     const setElementSelectionActiveProc = useKartonProcedure(
       (p) => p.browser.contextSelection.setActive,
@@ -245,6 +249,7 @@ export const MessageUser = memo(
         const metadata = collectUserMessageMetadata(
           combinedSelectedElements,
           pendingTiptapContent,
+          agentAccessPath,
         );
 
         // Merge text clip attachments from two sources:
@@ -540,154 +545,160 @@ export const MessageUser = memo(
 
     // Conditional rendering: view-only mode uses lightweight renderer, edit mode uses full TipTap
     return (
-      <MessageAttachmentsProvider
-        elements={allAvailableElements}
-        fileAttachments={allFileAttachments}
-        textClipAttachments={allTextClipAttachments}
-      >
-        <div
-          className={cn('flex w-full flex-col gap-1')}
-          onDrop={isEditing ? editDragHandlers.onDropBubble : undefined} // Reset drag state, let event bubble to ChatPanel
-          onDragOver={isEditing ? editDragHandlers.onDragOver : undefined}
-          onDragEnter={isEditing ? editDragHandlers.onDragEnter : undefined}
-          onDragLeave={isEditing ? editDragHandlers.onDragLeave : undefined}
+      <MessageAccessPathProvider value={msg.metadata?.agentAccessPath ?? null}>
+        <MessageAttachmentsProvider
+          elements={allAvailableElements}
+          fileAttachments={allFileAttachments}
+          textClipAttachments={allTextClipAttachments}
         >
-          {msg.metadata?.compressedHistory && (
-            <div
-              key={`compact-${msg.id}`}
-              className="mt-2 flex w-full flex-row items-center gap-2 text-xs"
-            >
-              <IconMagicWandSparkle className="size-3 text-muted-foreground" />
-              <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
-                Compressed previous conversation
-              </span>
-            </div>
-          )}
-          <div ref={measureRef} className="w-full">
-            <div
-              className={cn(
-                'mt-2 flex w-full shrink-0 flex-row-reverse items-stretch justify-start gap-1',
-                isEmptyMessage ? 'hidden' : '',
-              )}
-            >
-              {/* Container with conditional styling for view/edit modes */}
+          <div
+            className={cn('flex w-full flex-col gap-1')}
+            onDrop={isEditing ? editDragHandlers.onDropBubble : undefined} // Reset drag state, let event bubble to ChatPanel
+            onDragOver={isEditing ? editDragHandlers.onDragOver : undefined}
+            onDragEnter={isEditing ? editDragHandlers.onDragEnter : undefined}
+            onDragLeave={isEditing ? editDragHandlers.onDragLeave : undefined}
+          >
+            {msg.metadata?.compressedHistory && (
+              <div
+                key={`compact-${msg.id}`}
+                className="mt-2 flex w-full flex-row items-center gap-2 text-xs"
+              >
+                <IconMagicWandSparkle className="size-3 text-muted-foreground" />
+                <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
+                  Compressed previous conversation
+                </span>
+              </div>
+            )}
+            <div ref={measureRef} className="w-full">
               <div
                 className={cn(
-                  'message-user-edit-container relative flex flex-row items-stretch gap-1 overflow-y-hidden',
-                  // Edit mode: full width input field style
-                  isEditing &&
-                    'w-full rounded-md bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] ring-1 ring-derived-strong before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',
-                  isEditing && isEditDragOver && 'bg-hover-derived!',
-                  !isEditing &&
-                    'group wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
-                  !isEditing &&
-                    canEdit &&
-                    'group/chat-message-user cursor-pointer hover:bg-hover-derived active:bg-active-derived',
+                  'mt-2 flex w-full shrink-0 flex-row-reverse items-stretch justify-start gap-1',
+                  isEmptyMessage ? 'hidden' : '',
                 )}
-                onClick={!isEditing && canEdit ? handleStartEditing : undefined}
-                role={!isEditing && canEdit ? 'button' : undefined}
-                tabIndex={!isEditing && canEdit ? 0 : undefined}
-                onKeyDown={
-                  !isEditing && canEdit
-                    ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleStartEditing();
-                        }
-                      }
-                    : undefined
-                }
               >
-                {/* View mode: lightweight static renderer */}
-                {!isEditing && (
-                  <ChatInputViewOnly
-                    tipTapContent={viewModeTipTapContent}
-                    className="w-full"
-                  />
-                )}
-                {/* Edit mode: full TipTap editor */}
-                {isEditing && (
-                  <>
-                    <ChatInput
-                      ref={chatInputRef as RefObject<ChatInputHandle>}
-                      defaultValue={pendingTiptapContent}
-                      onChange={setPendingTiptapContent}
-                      onSubmit={handleSubmitEdit}
-                      onEscape={handleCancelEditing}
-                      placeholder="Edit your message..."
-                      showModelSelect
-                      onModelChange={() => chatInputRef.current?.focus()}
-                      showContextUsageRing={false}
-                      attachmentCount={totalAttachments}
-                      onFocus={onEditInputFocus}
-                      onBlur={onEditInputBlur}
-                      onPasteFiles={handlePasteFiles}
-                      onAttachmentRemoved={handleRemoveAttachment}
+                {/* Container with conditional styling for view/edit modes */}
+                <div
+                  className={cn(
+                    'message-user-edit-container relative flex flex-row items-stretch gap-1 overflow-y-hidden',
+                    // Edit mode: full width input field style
+                    isEditing &&
+                      'w-full rounded-md bg-background p-2 shadow-[0_0_6px_0_rgba(0,0,0,0.05),0_-6px_48px_-24px_rgba(0,0,0,0.08)] ring-1 ring-derived-strong before:absolute before:inset-0 before:rounded-lg dark:bg-surface-1',
+                    isEditing && isEditDragOver && 'bg-hover-derived!',
+                    !isEditing &&
+                      'group wrap-break-word max-w-xl origin-bottom-right select-text rounded-lg rounded-br-sm border border-derived bg-surface-1 px-2.5 py-1.5 font-normal text-foreground text-sm last:mb-0.5 dark:bg-surface-tinted',
+                    !isEditing &&
+                      canEdit &&
+                      'group/chat-message-user cursor-pointer hover:bg-hover-derived active:bg-active-derived',
+                  )}
+                  onClick={
+                    !isEditing && canEdit ? handleStartEditing : undefined
+                  }
+                  role={!isEditing && canEdit ? 'button' : undefined}
+                  tabIndex={!isEditing && canEdit ? 0 : undefined}
+                  onKeyDown={
+                    !isEditing && canEdit
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleStartEditing();
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  {/* View mode: lightweight static renderer */}
+                  {!isEditing && (
+                    <ChatInputViewOnly
+                      tipTapContent={viewModeTipTapContent}
                       className="w-full"
                     />
-                    {/* Action buttons */}
-                    <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
-                      <ChatInputActions
-                        isAgentWorking={false}
-                        hasTextInput={
-                          (chatInputRef.current?.getTextContent()?.trim()
-                            ?.length ?? 0) > 0
-                        }
-                        showElementSelectorButton
-                        elementSelectionActive={elementSelectionActive}
-                        onToggleElementSelection={handleToggleElementSelection}
-                        elementSelectorDisabled={hasOpenedInternalPage}
-                        showImageUploadButton
-                        onAddFileAttachment={addFileAttachment}
-                        canSendMessage={
-                          (chatInputRef.current?.getTextContent()?.trim()
-                            ?.length ?? 0) > 2
-                        }
+                  )}
+                  {/* Edit mode: full TipTap editor */}
+                  {isEditing && (
+                    <>
+                      <ChatInput
+                        ref={chatInputRef as RefObject<ChatInputHandle>}
+                        defaultValue={pendingTiptapContent}
+                        onChange={setPendingTiptapContent}
                         onSubmit={handleSubmitEdit}
-                        isActive
+                        onEscape={handleCancelEditing}
+                        placeholder="Edit your message..."
+                        showModelSelect
+                        onModelChange={() => chatInputRef.current?.focus()}
+                        showContextUsageRing={false}
+                        attachmentCount={totalAttachments}
+                        onFocus={onEditInputFocus}
+                        onBlur={onEditInputBlur}
+                        onPasteFiles={handlePasteFiles}
+                        onAttachmentRemoved={handleRemoveAttachment}
+                        className="w-full"
                       />
-                      {/* Popover anchor positioned at the send button */}
-                      <Popover
-                        open={isConfirmOpen}
-                        onOpenChange={setIsConfirmOpen}
-                      >
-                        <PopoverTrigger>
-                          <span className="pointer-events-none absolute right-0 bottom-0 size-8" />
-                        </PopoverTrigger>
-                        <PopoverContent>
-                          <PopoverTitle>Resend message?</PopoverTitle>
-                          <PopoverDescription>
-                            This will clear the chat history and undo file
-                            changes after this point, then send your edited
-                            message.
-                          </PopoverDescription>
-                          <PopoverClose />
-                          <PopoverFooter>
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              onClick={() => setIsConfirmOpen(false)}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              variant="primary"
-                              size="xs"
-                              onClick={handleConfirmEdit}
-                            >
-                              Resend
-                            </Button>
-                          </PopoverFooter>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </>
-                )}
+                      {/* Action buttons */}
+                      <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
+                        <ChatInputActions
+                          isAgentWorking={false}
+                          hasTextInput={
+                            (chatInputRef.current?.getTextContent()?.trim()
+                              ?.length ?? 0) > 0
+                          }
+                          showElementSelectorButton
+                          elementSelectionActive={elementSelectionActive}
+                          onToggleElementSelection={
+                            handleToggleElementSelection
+                          }
+                          elementSelectorDisabled={hasOpenedInternalPage}
+                          showImageUploadButton
+                          onAddFileAttachment={addFileAttachment}
+                          canSendMessage={
+                            (chatInputRef.current?.getTextContent()?.trim()
+                              ?.length ?? 0) > 2
+                          }
+                          onSubmit={handleSubmitEdit}
+                          isActive
+                        />
+                        {/* Popover anchor positioned at the send button */}
+                        <Popover
+                          open={isConfirmOpen}
+                          onOpenChange={setIsConfirmOpen}
+                        >
+                          <PopoverTrigger>
+                            <span className="pointer-events-none absolute right-0 bottom-0 size-8" />
+                          </PopoverTrigger>
+                          <PopoverContent>
+                            <PopoverTitle>Resend message?</PopoverTitle>
+                            <PopoverDescription>
+                              This will clear the chat history and undo file
+                              changes after this point, then send your edited
+                              message.
+                            </PopoverDescription>
+                            <PopoverClose />
+                            <PopoverFooter>
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => setIsConfirmOpen(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="xs"
+                                onClick={handleConfirmEdit}
+                              >
+                                Resend
+                              </Button>
+                            </PopoverFooter>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </MessageAttachmentsProvider>
+        </MessageAttachmentsProvider>
+      </MessageAccessPathProvider>
     );
   },
   // Custom comparison to prevent re-renders when message object references change

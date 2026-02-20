@@ -1567,6 +1567,8 @@ export abstract class BaseAgent<
         // Add metadata for message creation
         existingMessage.metadata ??= {
           createdAt: new Date(),
+          agentAccessPath:
+            this.toolbox.getWorkspaceSnapshot().workspacePath ?? null,
           partsMetadata: [],
         };
 

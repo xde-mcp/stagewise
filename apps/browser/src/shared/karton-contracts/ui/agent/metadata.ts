@@ -38,6 +38,8 @@ export type TextClipAttachment = z.infer<typeof textClipAttachmentSchema>;
 
 const metadataSchema = z.object({
   createdAt: z.date(),
+  /** Workspace access path captured at message creation time for persistent file links. */
+  agentAccessPath: z.string().nullish(),
   partsMetadata: z.array(
     z
       .object({ startedAt: z.date().optional(), endedAt: z.date().optional() })
