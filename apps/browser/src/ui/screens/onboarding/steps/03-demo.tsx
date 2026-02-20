@@ -53,6 +53,7 @@ const FADE_DURATION = 200;
 
 export function StepDemo() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [slideKey, setSlideKey] = useState(0);
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,6 +71,7 @@ export function StepDemo() {
     fadeRef.current = setTimeout(() => {
       fadeRef.current = null;
       setActiveIndex((prev) => (prev + 1) % slides.length);
+      setSlideKey((k) => k + 1);
       setVisible(true);
       timerRef.current = setInterval(advance, SLIDE_INTERVAL);
     }, FADE_DURATION);
@@ -81,6 +83,7 @@ export function StepDemo() {
     fadeRef.current = setTimeout(() => {
       fadeRef.current = null;
       setActiveIndex((prev) => (prev - 1 + slides.length) % slides.length);
+      setSlideKey((k) => k + 1);
       setVisible(true);
       timerRef.current = setInterval(advance, SLIDE_INTERVAL);
     }, FADE_DURATION);
@@ -106,6 +109,12 @@ export function StepDemo() {
           {slide.heading}
         </h1>
         <p className="text-muted-foreground text-sm">{slide.subtitle}</p>
+        <SlideIndicators
+          itemsAmount={slides.length}
+          activeIndex={activeIndex}
+          slideKey={slideKey}
+          animationDuration={SLIDE_INTERVAL}
+        />
         <div className="relative flex w-1/2 items-center">
           {/* Left hover zone — extends over left half of image, icon sits outside */}
           <button
@@ -137,6 +146,58 @@ export function StepDemo() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SlideIndicators({
+  itemsAmount,
+  activeIndex,
+  slideKey,
+  animationDuration,
+}: {
+  itemsAmount: number;
+  activeIndex: number;
+  slideKey: number;
+  animationDuration: number;
+}) {
+  return (
+    <div className="flex flex-row items-center justify-center gap-2">
+      <style>
+        {`@keyframes indicator-fill {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }`}
+      </style>
+      {Array.from({ length: itemsAmount }).map((_, index) => {
+        const isPast = index < activeIndex;
+        const isCurrent = index === activeIndex;
+        return (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: Items won't change
+            key={`slide-indicator-${index}`}
+            className={cn(
+              'relative h-1 w-8 overflow-hidden rounded-full',
+              'bg-background/l-4_c-2 dark:bg-background/l12_cx0.9',
+            )}
+          >
+            {(isPast || isCurrent) && (
+              <div
+                key={isCurrent ? slideKey : undefined}
+                className="absolute inset-0 bg-background/l-12_c-2 will-change-transform dark:bg-background/l22_cx0.9"
+                style={
+                  isCurrent
+                    ? {
+                        transformOrigin: 'left',
+                        animation: `indicator-fill ${animationDuration}ms linear forwards`,
+                      }
+                    : undefined
+                }
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
