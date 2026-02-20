@@ -42,7 +42,7 @@ export function getLineStats(diff: FormattedFileDiff): {
 
 /** Check if diff represents a real change (not a noop) */
 export function hasRealChanges(diff: FormattedFileDiff): boolean {
-  if (diff.isExternal) return true; // External files are always real changes
+  if (diff.isExternal) return diff.baselineOid !== diff.currentOid;
   return diff.lineChanges.some((c) => c.added || c.removed);
 }
 
