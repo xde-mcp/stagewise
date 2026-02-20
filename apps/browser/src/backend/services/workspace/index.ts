@@ -47,6 +47,9 @@ export class WorkspaceService extends DisposableService {
   // AgentManagerService - set via setter after creation (due to circular dependency)
   private agentManagerService: AgentManagerService | null = null;
 
+  // Track the running workspace-md agent so we can stop it on workspace disconnect
+  private workspaceMdAgentInstanceId: string | null = null;
+
   // Change listeners
   private workspaceChangeListeners: ((event: WorkspaceChangedEvent) => void)[] =
     [];
@@ -309,6 +312,7 @@ export class WorkspaceService extends DisposableService {
           {
             parentInstanceId: '',
             onFinish: (output: { message: string }) => {
+              this.workspaceMdAgentInstanceId = null;
               this.logger.info(
                 `[WorkspaceService]  generated: ${output.message}`,
               );
@@ -320,6 +324,7 @@ export class WorkspaceService extends DisposableService {
                 );
                 await spawnAgent(retryCount + 1);
               } else {
+                this.workspaceMdAgentInstanceId = null;
                 this.logger.error(
                   '[WorkspaceService]  generation failed after 2 retries',
                   { error },
@@ -328,6 +333,8 @@ export class WorkspaceService extends DisposableService {
             },
           },
         );
+
+        this.workspaceMdAgentInstanceId = agent.instanceId;
 
         // Send initial message to trigger analysis
         await agent.sendUserMessage({
@@ -373,6 +380,18 @@ export class WorkspaceService extends DisposableService {
     this.uiKarton.setState((draft) => {
       draft.workspaceStatus = 'closing';
     });
+
+    // Stop the workspace-md agent if it's still running
+    if (this.workspaceMdAgentInstanceId && this.agentManagerService) {
+      try {
+        await this.agentManagerService.stopAgent(
+          this.workspaceMdAgentInstanceId,
+        );
+      } catch {
+        // Agent may have already finished
+      }
+      this.workspaceMdAgentInstanceId = null;
+    }
 
     // Teardown child services
     await this.workspacePathsService?.teardown();

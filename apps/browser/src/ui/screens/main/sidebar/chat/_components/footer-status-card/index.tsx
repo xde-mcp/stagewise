@@ -50,22 +50,29 @@ export function StatusCard() {
       : EMPTY_QUEUE,
   );
 
-  // Find the project-md agent ID when it's running
+  // Find the workspace-md agent instance, preferring a working one over a stale one
   const workspaceMdAgentId = useKartonState((s) => {
     const instances = s.agents.instances;
+    let fallbackId: string | null = null;
     for (const agentId in instances) {
-      const agent = instances[agentId];
-      if (
-        agent.type === AgentTypes.WORKSPACE_MD &&
-        agent.state.isWorking === true
-      )
-        return agentId;
+      if (instances[agentId].type !== AgentTypes.WORKSPACE_MD) continue;
+      if (instances[agentId].state.isWorking) return agentId;
+      fallbackId ??= agentId;
     }
-    return null;
+    return fallbackId;
   });
 
-  // Check if there's a running WorkspaceMdAgent
-  const isWorkspaceMdRunning = workspaceMdAgentId !== null;
+  const isWorkspaceMdRunning = useKartonState((s) =>
+    workspaceMdAgentId
+      ? s.agents.instances[workspaceMdAgentId]?.state.isWorking === true
+      : false,
+  );
+
+  const workspaceMdError = useKartonState((s) =>
+    workspaceMdAgentId
+      ? (s.agents.instances[workspaceMdAgentId]?.state.error ?? null)
+      : null,
+  );
 
   // Get agent history for status updates
   const workspaceMdHistory = useKartonState((s): AgentMessage[] =>
@@ -79,25 +86,53 @@ export function StatusCard() {
     (s) => s.workspace?.agent?.accessPath ?? null,
   );
 
-  // Track WorkspaceMd status with completion state
+  const workspaceConnected = useKartonState(
+    (s) => s.workspaceStatus === 'open',
+  );
+
+  // Track WorkspaceMd status with completion/error state
   const [workspaceMdStatus, setWorkspaceMdStatus] =
     useState<WorkspaceMdStatus>('hidden');
+  const [workspaceMdErrorMessage, setWorkspaceMdErrorMessage] = useState<
+    string | null
+  >(null);
   const prevRunningRef = useRef(false);
+  const runningAgentIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Started running
-    if (isWorkspaceMdRunning && !prevRunningRef.current)
+    if (isWorkspaceMdRunning && !prevRunningRef.current) {
       setWorkspaceMdStatus('running');
-    // Just finished - show completed state (user dismisses via "Done" button)
-    else if (!isWorkspaceMdRunning && prevRunningRef.current)
-      setWorkspaceMdStatus('completed');
-
+      setWorkspaceMdErrorMessage(null);
+      runningAgentIdRef.current = workspaceMdAgentId;
+    } else if (!isWorkspaceMdRunning && prevRunningRef.current) {
+      // Only trust the error if it belongs to the agent that was actually running,
+      // not a stale error from a previous agent instance.
+      const errorFromRunningAgent =
+        workspaceMdAgentId === runningAgentIdRef.current && workspaceMdError;
+      if (errorFromRunningAgent) {
+        setWorkspaceMdStatus('error');
+        setWorkspaceMdErrorMessage(workspaceMdError.message);
+      } else if (!workspaceConnected) {
+        setWorkspaceMdStatus('error');
+        setWorkspaceMdErrorMessage('Workspace disconnected during generation');
+      } else {
+        setWorkspaceMdStatus('completed');
+        setWorkspaceMdErrorMessage(null);
+      }
+      runningAgentIdRef.current = null;
+    }
     prevRunningRef.current = isWorkspaceMdRunning;
-  }, [isWorkspaceMdRunning]);
+  }, [
+    isWorkspaceMdRunning,
+    workspaceMdError,
+    workspaceConnected,
+    workspaceMdAgentId,
+  ]);
 
-  // Dismiss callback for project-md completion
+  // Dismiss callback for project-md completion/error
   const handleWorkspaceMdDismiss = useCallback(() => {
     setWorkspaceMdStatus('hidden');
+    setWorkspaceMdErrorMessage(null);
   }, []);
 
   // Show file callback - navigates to agent settings context files section
@@ -148,6 +183,7 @@ export function StatusCard() {
       status: workspaceMdStatus,
       history: workspaceMdHistory,
       workspacePath,
+      errorMessage: workspaceMdErrorMessage,
       onDismiss: handleWorkspaceMdDismiss,
       onShowFile: handleWorkspaceMdShowFile,
     });
@@ -180,6 +216,7 @@ export function StatusCard() {
     workspaceMdStatus,
     workspaceMdHistory,
     workspacePath,
+    workspaceMdErrorMessage,
     handleWorkspaceMdDismiss,
     handleWorkspaceMdShowFile,
     messageQueue,
