@@ -74,7 +74,7 @@ const IDE_OPTIONS: { value: OpenFilesInIde; label: string }[] = [
   { value: 'kiro', label: 'Kiro' },
   { value: 'windsurf', label: 'Windsurf' },
   { value: 'trae', label: 'Trae' },
-  { value: 'other', label: 'Other' },
+  { value: 'other', label: IDE_SELECTION_ITEMS.other },
 ];
 
 /** Wrapper component for code blocks with scroll fade effect and IDE edit link */
@@ -135,7 +135,7 @@ function ScrollFadeCodeBlock({
             className="absolute right-0 bottom-0 flex h-6 items-center gap-1 rounded-tl-lg rounded-br-lg border-derived border-t border-l px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground dark:bg-surface-1"
           >
             <IdeLogo ide={openInIdeSelection} className="size-3" />
-            <span>Edit in {ideName}</span>
+            <span>Open in {ideName}</span>
           </a>
         )}
       </div>
@@ -352,9 +352,9 @@ function IdeSelectionSetting() {
   return (
     <div className="flex items-center justify-between gap-4">
       <div>
-        <h3 className="font-medium text-base text-foreground">Preferred IDE</h3>
+        <h3 className="font-medium text-base text-foreground">Open files in</h3>
         <p className="text-muted-foreground text-sm">
-          Choose which IDE to use when opening files from the agent chat.
+          Choose which file manager to use when opening files in the agent chat.
         </p>
       </div>
 

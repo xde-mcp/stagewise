@@ -187,14 +187,45 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     });
 
     this.view.setBackgroundColor('#00000000');
+
+    // Intercept non-http navigations in the UI frame (e.g. stagewise://reveal-file/)
+    this.view.webContents.on('will-navigate', (event, url) => {
+      if (url.startsWith('stagewise://reveal-file/')) {
+        event.preventDefault();
+        const filePath = url
+          .replace('stagewise://reveal-file/', '')
+          .replace(/:\d+$/, '');
+        this.logger.debug(
+          `[UIController] Revealing file in folder: ${filePath}`,
+        );
+        shell.showItemInFolder(filePath);
+      }
+    });
+
     this.view.webContents.setWindowOpenHandler((details) => {
+      // Intercept stagewise://reveal-file/ to show file in native file manager
+      if (details.url.startsWith('stagewise://reveal-file/')) {
+        const filePath = details.url
+          .replace('stagewise://reveal-file/', '')
+          .replace(/:\d+$/, '');
+        this.logger.debug(
+          `[UIController] Revealing file in folder: ${filePath}`,
+        );
+        shell.showItemInFolder(filePath);
+        return { action: 'deny' };
+      }
+
       // Check if the browser can handle this URL's protocol
       if (!canBrowserHandleUrl(details.url)) {
         // Open in external application (mailto:, tel:, vscode:, etc.)
         this.logger.debug(
           `[UIController] Opening URL with external handler: ${details.url}`,
         );
-        shell.openExternal(details.url);
+        if (details.url.startsWith('file://')) {
+          const filePath = fileURLToPath(details.url).replace(/:\d+$/, '');
+          shell.showItemInFolder(filePath);
+        } else shell.openExternal(details.url);
+
         return { action: 'deny' };
       }
 

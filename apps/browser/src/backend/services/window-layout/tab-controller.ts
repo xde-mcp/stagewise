@@ -1336,14 +1336,29 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private setupEventListeners() {
     const wc = this.webContentsView.webContents;
 
-    // Intercept navigation to unsupported protocols and open externally
+    // Intercept stagewise://reveal-file/ to show file in native file manager
     wc.on('will-navigate', (event, url) => {
+      if (url.startsWith('stagewise://reveal-file/')) {
+        event.preventDefault();
+        const filePath = url
+          .replace('stagewise://reveal-file/', '')
+          .replace(/:\d+$/, '');
+        this.logger.debug(
+          `[TabController] Revealing file in folder: ${filePath}`,
+        );
+        shell.showItemInFolder(filePath);
+        return;
+      }
+
       if (!canBrowserHandleUrl(url)) {
         event.preventDefault();
         this.logger.debug(
           `[TabController] Intercepted navigation to external protocol: ${url}`,
         );
-        shell.openExternal(url);
+        if (url.startsWith('file://')) {
+          const filePath = fileURLToPath(url).replace(/:\d+$/, '');
+          shell.showItemInFolder(filePath);
+        } else shell.openExternal(url);
       }
     });
 
@@ -1559,13 +1574,29 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.setWindowOpenHandler((details) => {
+      // Intercept stagewise://reveal-file/ to show file in native file manager
+      if (details.url.startsWith('stagewise://reveal-file/')) {
+        const filePath = details.url
+          .replace('stagewise://reveal-file/', '')
+          .replace(/:\d+$/, '');
+        this.logger.debug(
+          `[TabController] Revealing file in folder: ${filePath}`,
+        );
+        shell.showItemInFolder(filePath);
+        return { action: 'deny' };
+      }
+
       // Check if the browser can handle this URL's protocol
       if (!canBrowserHandleUrl(details.url)) {
         // Open in external application (mailto:, tel:, vscode:, etc.)
         this.logger.debug(
           `[TabController] Opening URL with external handler: ${details.url}`,
         );
-        shell.openExternal(details.url);
+        if (details.url.startsWith('file://')) {
+          const filePath = fileURLToPath(details.url).replace(/:\d+$/, '');
+          shell.showItemInFolder(filePath);
+        } else shell.openExternal(details.url);
+
         return { action: 'deny' };
       }
 

@@ -1,7 +1,15 @@
 import { IDE_LOGOS } from '@ui/assets/ide-logos';
-import { IconCodeEditorFill18 } from 'nucleo-ui-fill-18';
+import { IconFolderContent2FillDuo18 } from 'nucleo-ui-fill-duo-18';
+import { IconFinderFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
+import { getCurrentPlatform } from '@shared/hotkeys';
+
+const isMac = getCurrentPlatform() === 'mac';
+
+const NativeFileManagerIcon = isMac
+  ? IconFinderFillDuo18
+  : IconFolderContent2FillDuo18;
 
 export const IdeLogo = ({
   ide,
@@ -11,14 +19,20 @@ export const IdeLogo = ({
   className?: string;
 }) => {
   return ide === 'other' ? (
-    <IconCodeEditorFill18
+    <NativeFileManagerIcon
       className={cn('size-3 shrink-0 text-muted-foreground', className)}
     />
   ) : (
     <img
       src={IDE_LOGOS[ide]}
       alt={ide}
-      className={cn('size-3 shrink-0', className)}
+      className={cn(
+        'size-3 shrink-0',
+        (ide === 'windsurf' || ide === 'zed') && 'dark:invert',
+        (ide === 'trae' || ide === 'kiro' || ide === 'vscode') &&
+          'grayscale dark:invert',
+        className,
+      )}
     />
   );
 };

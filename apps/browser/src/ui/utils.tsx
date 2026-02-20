@@ -8,6 +8,7 @@ import { extendTailwindMerge } from 'tailwind-merge';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
 import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 import type { Content } from '@tiptap/core';
+import { getCurrentPlatform } from '@shared/hotkeys';
 
 const customTwMerge = extendTailwindMerge({
   extend: {
@@ -342,6 +343,13 @@ export const getTruncatedFileUrl = (
   return `${leadingSep || ''}${truncatedPath}`;
 };
 
+const nativeFileManagerLabel = (() => {
+  const platform = getCurrentPlatform();
+  if (platform === 'mac') return 'Finder';
+  if (platform === 'windows') return 'Explorer';
+  return 'File Manager';
+})();
+
 export const IDE_SELECTION_ITEMS: Record<OpenFilesInIde, string> = {
   vscode: 'VS Code',
   cursor: 'Cursor',
@@ -349,7 +357,7 @@ export const IDE_SELECTION_ITEMS: Record<OpenFilesInIde, string> = {
   trae: 'Trae',
   zed: 'Zed',
   kiro: 'Kiro',
-  other: 'Other',
+  other: nativeFileManagerLabel,
 };
 
 export const getIDEFileUrl = (
@@ -378,7 +386,7 @@ export const getIDEFileUrl = (
       url = `kiro://file/${absFilePath}`;
       break;
     case 'other':
-      url = `file://${absFilePath}`;
+      url = `stagewise://reveal-file/${absFilePath}`;
       break;
   }
   if (lineNumber) url += `:${lineNumber}`;
