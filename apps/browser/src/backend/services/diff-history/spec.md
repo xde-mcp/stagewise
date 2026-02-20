@@ -209,3 +209,7 @@ Operators:
     - append hunks
 4 (showing contributions in pending-edits for 'readme.md'):
 - Same as 3 but only with latest session - and return all contributions
+
+### Removal attribution
+
+The contributor map (`buildContributorMap`) tracks not only which contributor is responsible for each surviving line (`lineMap`), but also which contributor removed each baseline line that no longer exists (`removalMap`). This is achieved by maintaining a parallel `lineBaselineOrigin` array during the sequential operation replay: each entry records the original 0-indexed baseline position of that line, or `null` if the line was added after the baseline. When a line with a non-null baseline origin is spliced out during replay, the removal is recorded as `removalMap[baselinePosition] = contributor`. This enables correct blame for removed lines in diffs — if an agent deleted a line, the removed line is attributed to that agent, not to `'user'`.

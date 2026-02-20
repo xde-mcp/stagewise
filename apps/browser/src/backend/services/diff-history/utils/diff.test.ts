@@ -356,7 +356,7 @@ describe('diff utilities', () => {
   describe('buildContributorMap', () => {
     it('returns empty map for empty generation', () => {
       const result = buildContributorMap({ 'file-1': [] });
-      expect(result['file-1']).toEqual({});
+      expect(result['file-1']).toEqual({ lineMap: {}, removalMap: {} });
     });
 
     it('attributes all baseline lines to user', () => {
@@ -368,16 +368,15 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      expect(result['file-1']).toEqual({
+      expect(result['file-1'].lineMap).toEqual({
         0: 'user',
         1: 'user',
         2: 'user',
       });
+      expect(result['file-1'].removalMap).toEqual({});
     });
 
     it('attributes added lines to agent, unchanged to user', () => {
-      // Note: diffLines counts the trailing newline as part of the line
-      // So "line1\n" is 1 line, "line1\nline2\n" is 2 lines
       const ops: OperationWithContent[] = [
         createOpWithContent(createBaselineOp({ reason: 'init' }), 'line1\n'),
         createOpWithContent(
@@ -387,9 +386,9 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      // Verify the important parts: line 0 is user (unchanged), line 1 is agent (added)
-      expect(result['file-1'][0]).toBe('user');
-      expect(result['file-1'][1]).toBe('agent-1');
+      expect(result['file-1'].lineMap[0]).toBe('user');
+      expect(result['file-1'].lineMap[1]).toBe('agent-1');
+      expect(result['file-1'].removalMap).toEqual({});
     });
 
     it('tracks multiple agent edits with different contributors', () => {
@@ -406,10 +405,10 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      // Verify the important attributions
-      expect(result['file-1'][0]).toBe('user'); // baseline
-      expect(result['file-1'][1]).toBe('agent-1'); // added by agent1
-      expect(result['file-1'][2]).toBe('agent-2'); // added by agent2
+      expect(result['file-1'].lineMap[0]).toBe('user');
+      expect(result['file-1'].lineMap[1]).toBe('agent-1');
+      expect(result['file-1'].lineMap[2]).toBe('agent-2');
+      expect(result['file-1'].removalMap).toEqual({});
     });
 
     it('attributes user reject edits to user', () => {
@@ -426,18 +425,16 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      expect(result['file-1'][2]).toBe('user');
+      expect(result['file-1'].lineMap[2]).toBe('user');
     });
 
     it('treats subsequent init baseline as user edit (spec A)', () => {
-      // Simulating: session ended, user changed file, new session starts
       const ops: OperationWithContent[] = [
         createOpWithContent(createBaselineOp({ reason: 'init' }), 'original'),
         createOpWithContent(
           createEditOp({ contributor: 'agent-1' }),
           'modified',
         ),
-        // Session boundary: new init with different content
         createOpWithContent(
           createBaselineOp({ reason: 'init' }),
           'user-changed',
@@ -445,12 +442,10 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      // The new init's content should be attributed to 'user'
-      expect(result['file-1'][0]).toBe('user');
+      expect(result['file-1'].lineMap[0]).toBe('user');
     });
 
     it('handles generation starting with edit (no init)', () => {
-      // After file deletion and recreation
       const ops: OperationWithContent[] = [
         createOpWithContent(
           createEditOp({ contributor: 'agent-1', reason: 'tool-1' }),
@@ -459,8 +454,8 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      // All lines from the edit contributor (baseline is empty)
-      expect(result['file-1'][0]).toBe('agent-1');
+      expect(result['file-1'].lineMap[0]).toBe('agent-1');
+      expect(result['file-1'].removalMap).toEqual({});
     });
 
     it('handles mixed contributors modifying same lines', () => {
@@ -480,14 +475,17 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      expect(result['file-1']).toEqual({
-        0: 'user', // unchanged
-        1: 'agent-2', // last modifier
-        2: 'user', // unchanged
+      expect(result['file-1'].lineMap).toEqual({
+        0: 'user',
+        1: 'agent-2',
+        2: 'user',
       });
+      // baseline line 1 ("line2") was removed by agent-1; agent-2 only
+      // removed agent-1's replacement (null origin), so removalMap is unchanged
+      expect(result['file-1'].removalMap).toEqual({ 1: 'agent-1' });
     });
 
-    it('does not include removed lines in final map', () => {
+    it('does not include removed lines in final lineMap', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(
           createBaselineOp({ reason: 'init' }),
@@ -496,16 +494,17 @@ describe('diff utilities', () => {
         createOpWithContent(
           createEditOp({ contributor: 'agent-1' }),
           'line1\nline3',
-        ), // removed line2
+        ),
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      // Only 2 lines remain
-      expect(Object.keys(result['file-1'])).toHaveLength(2);
-      expect(result['file-1']).toEqual({
+      expect(Object.keys(result['file-1'].lineMap)).toHaveLength(2);
+      expect(result['file-1'].lineMap).toEqual({
         0: 'user',
         1: 'user',
       });
+      // baseline line 1 ("line2") was removed by agent-1
+      expect(result['file-1'].removalMap).toEqual({ 1: 'agent-1' });
     });
 
     it('handles complete file replacement', () => {
@@ -521,9 +520,14 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      expect(result['file-1']).toEqual({
+      expect(result['file-1'].lineMap).toEqual({
         0: 'agent-1',
         1: 'agent-1',
+      });
+      expect(result['file-1'].removalMap).toEqual({
+        0: 'agent-1',
+        1: 'agent-1',
+        2: 'agent-1',
       });
     });
 
@@ -540,9 +544,56 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      expect(result['file-1'][0]).toBe('user');
-      expect(result['file-1'][1]).toBe('user');
-      expect(result['file-1'][2]).toBe('agent-1');
+      expect(result['file-1'].lineMap[0]).toBe('user');
+      expect(result['file-1'].lineMap[1]).toBe('user');
+      expect(result['file-1'].lineMap[2]).toBe('agent-1');
+      expect(result['file-1'].removalMap).toEqual({});
+    });
+
+    it('tracks removal by correct contributor across multiple operations', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ reason: 'init' }),
+          'lineA\nlineB\nlineC\n',
+        ),
+        createOpWithContent(
+          createEditOp({ contributor: 'agent-1' }),
+          'lineB\nlineC\n',
+        ),
+        createOpWithContent(
+          createEditOp({ contributor: 'agent-2' }),
+          'lineB\n',
+        ),
+      ];
+      const result = buildContributorMap({ 'file-1': ops });
+
+      expect(result['file-1'].lineMap).toEqual({ 0: 'user' });
+      expect(result['file-1'].removalMap).toEqual({
+        0: 'agent-1',
+        2: 'agent-2',
+      });
+    });
+
+    it('preserves original remover when line is re-added and removed again', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ reason: 'init' }),
+          'keep\nremove-me\n',
+        ),
+        createOpWithContent(createEditOp({ contributor: 'agent-1' }), 'keep\n'),
+        createOpWithContent(
+          createEditOp({ contributor: 'agent-2' }),
+          'keep\nremove-me\n',
+        ),
+        createOpWithContent(createEditOp({ contributor: 'agent-3' }), 'keep\n'),
+      ];
+      const result = buildContributorMap({ 'file-1': ops });
+
+      expect(result['file-1'].lineMap).toEqual({ 0: 'user' });
+      // agent-1 removed baseline line 1 first; agent-2 re-added it (null origin);
+      // agent-3 removed agent-2's line (null origin) — baseline line 1 stays
+      // attributed to agent-1 (first and only removal of the original)
+      expect(result['file-1'].removalMap).toEqual({ 1: 'agent-1' });
     });
   });
 
@@ -567,7 +618,12 @@ describe('diff utilities', () => {
           'same content',
         ),
       ];
-      const contributorMap = { 'file-1': { 0: 'user' as Contributor } };
+      const contributorMap = {
+        'file-1': {
+          lineMap: { 0: 'user' as Contributor },
+          removalMap: {},
+        },
+      };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
         contributorMap,
@@ -595,7 +651,10 @@ describe('diff utilities', () => {
         ),
       ];
       const contributorMap = {
-        'file-1': { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
+        'file-1': {
+          lineMap: { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
+          removalMap: {},
+        },
       };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
@@ -612,7 +671,7 @@ describe('diff utilities', () => {
       }
     });
 
-    it('creates hunks for removed lines', () => {
+    it('creates hunks for removed lines with correct contributor', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(
           createBaselineOp({ reason: 'init', filepath: '/readme.md' }),
@@ -620,7 +679,12 @@ describe('diff utilities', () => {
         ),
         createOpWithContent(createEditOp({ filepath: '/readme.md' }), 'line1'),
       ];
-      const contributorMap = { 'file-1': { 0: 'user' as Contributor } };
+      const contributorMap = {
+        'file-1': {
+          lineMap: { 0: 'user' as Contributor },
+          removalMap: { 1: 'agent-1' as Contributor },
+        },
+      };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
         contributorMap,
@@ -631,6 +695,8 @@ describe('diff utilities', () => {
       expect(isTextFileDiff(diff)).toBe(true);
       if (isTextFileDiff(diff)) {
         expect(diff.hunks.length).toBeGreaterThan(0);
+        const removedChange = diff.lineChanges.find((lc) => lc.removed);
+        expect(removedChange?.contributor).toBe('agent-1');
       }
     });
 
@@ -647,11 +713,17 @@ describe('diff utilities', () => {
       ];
       const contributorMap = {
         'file-1': {
-          0: 'agent-1' as Contributor,
-          1: 'user' as Contributor,
-          2: 'user' as Contributor,
-          3: 'user' as Contributor,
-          4: 'agent-1' as Contributor,
+          lineMap: {
+            0: 'agent-1' as Contributor,
+            1: 'user' as Contributor,
+            2: 'user' as Contributor,
+            3: 'user' as Contributor,
+            4: 'agent-1' as Contributor,
+          },
+          removalMap: {
+            0: 'agent-1' as Contributor,
+            4: 'agent-1' as Contributor,
+          },
         },
       };
       const result = createFileDiffsFromGenerations(
@@ -675,7 +747,12 @@ describe('diff utilities', () => {
           'new file content',
         ),
       ];
-      const contributorMap = { 'file-1': { 0: 'agent-1' as Contributor } };
+      const contributorMap = {
+        'file-1': {
+          lineMap: { 0: 'agent-1' as Contributor },
+          removalMap: {},
+        },
+      };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
         contributorMap,
@@ -704,7 +781,9 @@ describe('diff utilities', () => {
       // Override the last op to have null snapshot_oid
       ops[1].snapshot_oid = null;
 
-      const contributorMap = { 'file-1': {} };
+      const contributorMap = {
+        'file-1': { lineMap: {}, removalMap: {} },
+      };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
         contributorMap,
@@ -734,7 +813,10 @@ describe('diff utilities', () => {
         ),
       ];
       const contributorMap = {
-        'file-1': { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
+        'file-1': {
+          lineMap: { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
+          removalMap: {},
+        },
       };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
@@ -770,8 +852,11 @@ describe('diff utilities', () => {
       ];
       const contributorMap = {
         'file-1': {
-          0: 'user' as Contributor,
-          1: 'agent-1' as Contributor,
+          lineMap: {
+            0: 'user' as Contributor,
+            1: 'agent-1' as Contributor,
+          },
+          removalMap: {},
         },
       };
       const result = createFileDiffsFromGenerations(
@@ -804,7 +889,10 @@ describe('diff utilities', () => {
         ),
       ];
       const contributorMap = {
-        'file-1': { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
+        'file-1': {
+          lineMap: { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
+          removalMap: {},
+        },
       };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
@@ -821,8 +909,6 @@ describe('diff utilities', () => {
     });
 
     it('collects multiple contributors on a single hunk', () => {
-      // Agent modifies line 1, user (via contributorMap) modifies line 2
-      // Both adjacent → single hunk with two contributors
       const ops: OperationWithContent[] = [
         createOpWithContent(
           createBaselineOp({ reason: 'init', filepath: '/readme.md' }),
@@ -838,9 +924,15 @@ describe('diff utilities', () => {
       ];
       const contributorMap = {
         'file-1': {
-          0: 'agent-1' as Contributor,
-          1: 'user' as Contributor,
-          2: 'user' as Contributor,
+          lineMap: {
+            0: 'agent-1' as Contributor,
+            1: 'user' as Contributor,
+            2: 'user' as Contributor,
+          },
+          removalMap: {
+            0: 'agent-1' as Contributor,
+            1: 'agent-1' as Contributor,
+          },
         },
       };
       const result = createFileDiffsFromGenerations(
@@ -860,7 +952,7 @@ describe('diff utilities', () => {
       }
     });
 
-    it('returns empty contributors array for hunks with only removed lines', () => {
+    it('includes removal contributor in hunks with only removed lines', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(
           createBaselineOp({ reason: 'init', filepath: '/readme.md' }),
@@ -871,7 +963,12 @@ describe('diff utilities', () => {
           'line1\n',
         ),
       ];
-      const contributorMap = { 'file-1': { 0: 'user' as Contributor } };
+      const contributorMap = {
+        'file-1': {
+          lineMap: { 0: 'user' as Contributor },
+          removalMap: { 1: 'agent-1' as Contributor },
+        },
+      };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
         contributorMap,
@@ -882,7 +979,7 @@ describe('diff utilities', () => {
       expect(isTextFileDiff(diff)).toBe(true);
       if (isTextFileDiff(diff)) {
         expect(diff.hunks.length).toBeGreaterThan(0);
-        expect(diff.hunks[0].contributors).toEqual([]);
+        expect(diff.hunks[0].contributors).toEqual(['agent-1']);
       }
     });
 
@@ -900,8 +997,14 @@ describe('diff utilities', () => {
         ),
       ];
       const contributorMap = {
-        'file-1': { 0: 'user' as Contributor },
-        'file-2': { 0: 'agent-1' as Contributor },
+        'file-1': {
+          lineMap: { 0: 'user' as Contributor },
+          removalMap: {},
+        },
+        'file-2': {
+          lineMap: { 0: 'agent-1' as Contributor },
+          removalMap: {},
+        },
       };
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops1, 'file-2': ops2 },
@@ -1428,7 +1531,12 @@ describe('diff utilities', () => {
 
       const result = createFileDiffsFromGenerations(
         { 'file-1': ops },
-        { 'file-1': { 0: 'user' as Contributor } },
+        {
+          'file-1': {
+            lineMap: { 0: 'user' as Contributor },
+            removalMap: {},
+          },
+        },
       );
 
       expect(result).toHaveLength(1);
@@ -1459,7 +1567,12 @@ describe('diff utilities', () => {
 
       const result = createFileDiffsFromGenerations(
         { 'file-1': textOps, 'file-2': externalOps },
-        { 'file-1': { 0: 'user' as Contributor } },
+        {
+          'file-1': {
+            lineMap: { 0: 'user' as Contributor },
+            removalMap: {},
+          },
+        },
       );
 
       expect(result).toHaveLength(2);
@@ -1580,8 +1693,11 @@ describe('diff utilities', () => {
       ];
       const contributorMap = {
         'file-1': {
-          0: 'user' as Contributor,
-          1: 'agent-1' as Contributor,
+          lineMap: {
+            0: 'user' as Contributor,
+            1: 'agent-1' as Contributor,
+          },
+          removalMap: {},
         },
       };
       const diffs = createFileDiffsFromGenerations(
@@ -1592,8 +1708,7 @@ describe('diff utilities', () => {
 
       const snapshot = createFileDiffSnapshot(diffs[0]);
       expect(snapshot.hunkIds.length).toBeGreaterThan(0);
-      expect(snapshot.contributors).toContain('user');
-      expect(snapshot.contributors).toContain('agent-1');
+      expect(snapshot.contributors).toEqual(['agent-1']);
     });
 
     it('handles null OIDs for file creation', () => {

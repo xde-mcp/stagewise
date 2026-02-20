@@ -127,35 +127,44 @@ export type OperationWithContent = OperationWithExternal & {
   snapshot_content: string | null;
 };
 
+export type ContributorMaps = {
+  lineMap: { [lineNumber: number]: Contributor };
+  removalMap: { [baselineLineNumber: number]: Contributor };
+};
+
 /**
  * Builds a contributor map for each generation, showing which contributor
- * is responsible for each line in the final content.
+ * is responsible for each line in the final content, and which contributor
+ * removed each baseline line that no longer survives.
  *
  * Algorithm:
- * 1. If generation starts with 'init' baseline, use its content as the baseline (no attribution)
- * 2. If generation doesn't start with 'init', baseline is empty string
+ * 1. If generation starts with a baseline, use its content as the baseline
+ * 2. If generation doesn't start with a baseline, baseline is empty string
  * 3. Process remaining operations sequentially:
  *    - For baselines: attribute added lines to 'user' (per spec A: session boundaries)
  *    - For edits: attribute added lines to the edit's contributor
  * 4. For snapshot_oid=null, treat content as empty string (all lines removed)
+ * 5. Track each line's original baseline position; when a baseline-originating
+ *    line is removed, record the contributor who removed it in `removalMap`.
  *
  * @param generations - Record of fileId to operations with resolved snapshot content
- * @returns Record of fileId to line number → contributor mapping (0-indexed)
+ * @returns Record of fileId to { lineMap, removalMap }
  */
 export function buildContributorMap(
   generations: Record<FileId, OperationWithContent[]>,
-): Record<FileId, { [lineNumber: number]: Contributor }> {
-  const result: Record<FileId, { [lineNumber: number]: Contributor }> = {};
+): Record<FileId, ContributorMaps> {
+  const result: Record<FileId, ContributorMaps> = {};
 
   for (const fileId of Object.keys(generations)) {
     const operations = generations[fileId];
     if (operations.length === 0) {
-      result[fileId] = {};
+      result[fileId] = { lineMap: {}, removalMap: {} };
       continue;
     }
 
-    // Track contributors per line (array where index = line number)
     let lineContributors: Contributor[] = [];
+    let lineBaselineOrigin: (number | null)[] = [];
+    const removalMap: { [baselineLineNumber: number]: Contributor } = {};
     let previousContent = '';
 
     const firstOp = operations[0];
@@ -168,44 +177,42 @@ export function buildContributorMap(
         ? previousContent.split('\n').length
         : 0;
       lineContributors = Array(baselineLines).fill('user' as Contributor);
+      lineBaselineOrigin = Array.from({ length: baselineLines }, (_, i) => i);
       startIndex = 1;
     }
 
-    // Process remaining operations
     for (let i = startIndex; i < operations.length; i++) {
       const op = operations[i];
       const currentContent = op.snapshot_content ?? '';
 
-      // Determine contributor for this operation
-      // Baselines (including subsequent inits per spec A) → 'user'
-      // Edits → the edit's contributor
       const contributor: Contributor =
         op.operation === 'baseline' ? 'user' : op.contributor;
 
-      // Diff previous content vs current content
       const diffResults = diffLines(previousContent, currentContent, {
         oneChangePerToken: true,
       });
 
-      // Walk through diff results and update lineContributors
       let lineIndex = 0;
       for (const diffResult of diffResults) {
         if (diffResult.added) {
-          // Added lines: splice in with this contributor
-          const addedLines = diffResult.value.split('\n');
-          // diffLines includes trailing newline in count, but split adds empty string
-          // Use diffResult.count for accurate line count
-          const lineCount = diffResult.count ?? addedLines.length;
+          const lineCount =
+            diffResult.count ?? diffResult.value.split('\n').length;
           const contributorsToAdd = Array(lineCount).fill(contributor);
+          const originsToAdd: (number | null)[] = Array(lineCount).fill(null);
           lineContributors.splice(lineIndex, 0, ...contributorsToAdd);
+          lineBaselineOrigin.splice(lineIndex, 0, ...originsToAdd);
           lineIndex += lineCount;
         } else if (diffResult.removed) {
-          // Removed lines: splice out from lineContributors
           const lineCount = diffResult.count ?? 0;
+          for (let j = 0; j < lineCount; j++) {
+            const origin = lineBaselineOrigin[lineIndex + j];
+            if (origin !== null) {
+              removalMap[origin] = contributor;
+            }
+          }
           lineContributors.splice(lineIndex, lineCount);
-          // Don't advance lineIndex - we removed lines at this position
+          lineBaselineOrigin.splice(lineIndex, lineCount);
         } else {
-          // Unchanged lines: advance index, keep existing attribution
           const lineCount = diffResult.count ?? 0;
           lineIndex += lineCount;
         }
@@ -214,12 +221,11 @@ export function buildContributorMap(
       previousContent = currentContent;
     }
 
-    // Convert array to map
-    const contributorMap: { [lineNumber: number]: Contributor } = {};
+    const lineMap: { [lineNumber: number]: Contributor } = {};
     for (let i = 0; i < lineContributors.length; i++)
-      contributorMap[i] = lineContributors[i];
+      lineMap[i] = lineContributors[i];
 
-    result[fileId] = contributorMap;
+    result[fileId] = { lineMap, removalMap };
   }
 
   return result;
@@ -284,12 +290,12 @@ function determineExternalChangeType(
  * For external files, creates ExternalFileDiff with a single atomic hunk.
  *
  * @param generations - Record of fileId to operations with resolved snapshot content
- * @param contributorMap - Record of fileId to line number → contributor mapping
+ * @param contributorMap - Record of fileId to { lineMap, removalMap }
  * @returns Array of FileDiff objects, one per generation
  */
 export function createFileDiffsFromGenerations(
   generations: Record<FileId, OperationWithContent[]>,
-  contributorMap: Record<FileId, { [lineNumber: number]: Contributor }>,
+  contributorMap: Record<FileId, ContributorMaps>,
 ): FileDiff[] {
   const result: FileDiff[] = [];
 
@@ -375,7 +381,9 @@ export function createFileDiffsFromGenerations(
     let oldLine = 1; // 1-indexed to match structuredPatch
     let newLine = 1;
     const lineChanges: BlamedLineChange[] = [];
-    const fileContributorMap = contributorMap[fileId] ?? {};
+    const maps = contributorMap[fileId] ?? { lineMap: {}, removalMap: {} };
+    const fileLineMap = maps.lineMap;
+    const fileRemovalMap = maps.removalMap;
     const hunkContributorSets = new Map<string, Set<Contributor>>();
 
     for (const change of changes) {
@@ -383,18 +391,16 @@ export function createFileDiffsFromGenerations(
       let hunkId: string | null = null;
 
       if (change.added || change.removed) {
-        // Find matching hunk for added/removed lines
         hunkId = findHunkId(hunkRanges, oldLine, newLine, change.added);
       }
 
-      // Determine contributor:
-      // - For removed lines: use 'user' as fallback (we don't track old content contributors)
-      // - For added/unchanged lines: lookup from contributorMap using new content line number
+      // Removed lines: look up who removed this baseline line via removalMap
+      // Added/unchanged lines: look up from lineMap using new content line number
       const contributor: Contributor = change.removed
-        ? 'user'
-        : (fileContributorMap[newLine - 1] ?? 'user'); // -1 for 0-indexed
+        ? (fileRemovalMap[oldLine - 1] ?? 'user')
+        : (fileLineMap[newLine - 1] ?? 'user');
 
-      if (hunkId && change.added) {
+      if (hunkId && (change.added || change.removed)) {
         const set = hunkContributorSets.get(hunkId) ?? new Set();
         set.add(contributor);
         hunkContributorSets.set(hunkId, set);
@@ -406,7 +412,6 @@ export function createFileDiffsFromGenerations(
         contributor,
       });
 
-      // Advance line counters
       if (!change.added) oldLine += lineCount;
       if (!change.removed) newLine += lineCount;
     }
@@ -656,7 +661,11 @@ export function createFileDiffSnapshot(diff: FileDiff): FileDiffSnapshot {
   }
 
   const uniqueContributors = [
-    ...new Set(diff.lineChanges.map((lc) => lc.contributor)),
+    ...new Set(
+      diff.lineChanges
+        .filter((lc) => lc.added || lc.removed)
+        .map((lc) => lc.contributor),
+    ),
   ];
 
   return {
