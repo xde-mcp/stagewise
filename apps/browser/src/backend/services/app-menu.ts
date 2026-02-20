@@ -5,6 +5,7 @@ import type { WindowLayoutService } from './window-layout';
 import type { AuthService } from './auth';
 import { fileURLToPath } from 'node:url';
 import { DisposableService } from './disposable';
+import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -58,6 +59,14 @@ export class AppMenuService extends DisposableService {
         id: 'about_menu',
         submenu: [
           { role: 'about' },
+          { type: 'separator' },
+          {
+            label: 'Settings',
+            accelerator: 'CmdOrCtrl+,',
+            click: () => {
+              void this.windowLayoutService.openUrl(SETTINGS_PAGE_URL);
+            },
+          },
           { type: 'separator' },
           {
             label: 'Open our GitHub repository',
