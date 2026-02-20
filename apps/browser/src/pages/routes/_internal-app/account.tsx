@@ -27,7 +27,7 @@ function Page() {
   return (
     <div className="flex h-full w-full flex-col">
       {/* Header */}
-      <div className="flex flex-col items-center border-border/30 border-b px-6 py-4">
+      <div className="flex flex-col items-center border-border-subtle border-b px-6 py-4">
         <div className="w-full max-w-3xl">
           <h1 className="font-semibold text-foreground text-xl">Account</h1>
         </div>
@@ -77,7 +77,7 @@ function AuthenticatedView({
         <p className="text-muted-foreground text-sm">Signed in</p>
       </div>
 
-      <hr className="border-border/30" />
+      <hr className="border-border-subtle" />
 
       {/* Account details */}
       <div className="flex flex-col gap-4">
@@ -133,7 +133,7 @@ function AuthenticatedView({
         </div>
       </div>
 
-      <hr className="border-border/30" />
+      <hr className="border-border-subtle" />
 
       {/* Sign out */}
       <div className="flex justify-end">
@@ -216,7 +216,7 @@ function LoginView({
         )}
       </div>
 
-      <hr className="border-border/30" />
+      <hr className="border-border-subtle" />
 
       {phase === 'form-input' && (
         <div className="flex max-w-sm flex-col gap-4">
