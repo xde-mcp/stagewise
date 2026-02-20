@@ -169,6 +169,7 @@ export type PagesApiContract = {
     validateProviderApiKey: (
       provider: ModelProvider,
       apiKey: string,
+      baseUrl?: string,
     ) => Promise<ApiKeyValidationResult>;
     /** Send an OTP code to the given email for sign-in */
     sendOtp: (email: string) => Promise<{ error?: string }>;

@@ -108,7 +108,7 @@ function Page() {
                   href={appInfo.homepage}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="break-all text-blue-600 text-sm hover:underline dark:text-blue-400"
+                  className="break-all text-primary-foreground text-sm hover:text-hover-derived active:text-active-derived"
                 >
                   {appInfo.homepage}
                 </a>

@@ -187,7 +187,7 @@ function CustomEndpointCard({
     endpoint.apiSpec;
 
   return (
-    <div className="flex items-start justify-between gap-2 rounded-lg border border-border/50 p-4">
+    <div className="flex items-start justify-between gap-2 rounded-lg border border-derived p-4">
       <div className="min-w-0 flex-1">
         <h3 className="font-medium text-foreground text-sm">{endpoint.name}</h3>
         <p className="truncate text-muted-foreground text-xs">
@@ -308,7 +308,7 @@ function CustomEndpointsSection() {
   return (
     <div className="space-y-3">
       {endpoints.length === 0 ? (
-        <div className="rounded-lg border border-border/30 p-4">
+        <div className="rounded-lg border border-derived-subtle p-4">
           <p className="text-center text-muted-foreground text-sm">
             No custom providers configured yet.
           </p>
@@ -324,10 +324,12 @@ function CustomEndpointsSection() {
         ))
       )}
 
-      <Button variant="secondary" size="sm" onClick={handleAdd}>
-        <IconPlusOutline18 className="size-3.5" />
-        Add Provider
-      </Button>
+      <div className="flex justify-end">
+        <Button variant="secondary" size="sm" onClick={handleAdd}>
+          <IconPlusOutline18 className="size-3.5" />
+          Add Provider
+        </Button>
+      </div>
 
       <CustomEndpointDialog
         endpoint={editingEndpoint}
@@ -349,7 +351,7 @@ function Page() {
   return (
     <div className="flex h-full w-full flex-col">
       {/* Header */}
-      <div className="flex items-center border-border/30 border-b px-6 py-4">
+      <div className="flex items-center border-derived-subtle border-b px-6 py-4">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3">
           <Button
             variant="ghost"

@@ -9,6 +9,7 @@ import type {
   FilePickerRequest,
   GlobalConfig,
   ModelSettings,
+  ModelProvider,
   UserPreferences,
   Patch,
   SearchEngine,
@@ -909,6 +910,11 @@ export type KartonContract = {
     preferences: {
       /** Update user preferences by applying Immer patches */
       update: (patches: Patch[]) => Promise<void>;
+      /** Set an encrypted API key for a provider */
+      setProviderApiKey: (
+        provider: ModelProvider,
+        apiKey: string,
+      ) => Promise<void>;
     };
     devToolbar: {
       /** Update the global widget order */

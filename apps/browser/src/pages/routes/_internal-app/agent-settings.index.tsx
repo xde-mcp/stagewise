@@ -15,7 +15,15 @@ import {
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { IdeLogo } from '@ui/components/ide-logo';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+} from 'react';
+import { cn } from '@/utils';
 import type { ContextFilesResult } from '@shared/karton-contracts/pages-api/types';
 import type {
   Patch,
@@ -29,7 +37,6 @@ import {
 import { CodeBlock } from '@ui/components/ui/code-block';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { getIDEFileUrl, IDE_SELECTION_ITEMS } from '@ui/utils';
-import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
 import {
   RadioGroup,
   Radio,
@@ -99,7 +106,7 @@ function ScrollFadeCodeBlock({
     <div className="space-y-2">
       <p className="text-muted-foreground text-xs">{description}</p>
       {/* Outer container for border - not affected by mask */}
-      <div className="relative overflow-hidden rounded-lg border border-derived bg-background">
+      <div className="relative overflow-hidden rounded-lg border border-derived">
         {/* Scrollable content with OverlayScrollbar + fade mask */}
         <OverlayScrollbar
           className="mask-alpha max-h-96"
@@ -123,7 +130,7 @@ function ScrollFadeCodeBlock({
             href={ideHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute right-0 bottom-0 flex h-6 items-center gap-1 rounded-tl-lg rounded-br-lg border-derived border-t border-l bg-background px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground dark:bg-surface-1"
+            className="absolute right-0 bottom-0 flex h-6 items-center gap-1 rounded-tl-lg rounded-br-lg border-derived border-t border-l px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground dark:bg-surface-1"
           >
             <IdeLogo ide={openInIdeSelection} className="size-3" />
             <span>Edit in {ideName}</span>
@@ -211,7 +218,7 @@ function WorkspaceSettingsSection() {
 
   if (!contextFiles?.workspaceLoaded) {
     return (
-      <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+      <div className="rounded-lg border border-derived p-4">
         <p className="text-muted-foreground text-sm">
           No workspace is currently open. Open a workspace to configure
           workspace-specific settings.
@@ -363,6 +370,15 @@ function IdeSelectionSetting() {
 
 const PROVIDERS: ModelProvider[] = ['anthropic', 'openai', 'google'];
 
+function isValidUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
   const preferences = useKartonState((s) => s.preferences);
   const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
@@ -384,7 +400,16 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
   const [validated, setValidated] = useState<
     null | { success: true } | { success: false; error: string }
   >(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const customUrlRef = useRef(config.customBaseUrl ?? '');
   const hasKey = !!config.encryptedApiKey;
+
+  useEffect(() => {
+    if (validated?.success) {
+      const timer = setTimeout(() => setValidated(null), 2_000);
+      return () => clearTimeout(timer);
+    }
+  }, [validated]);
 
   const handleModeChange = useCallback(
     async (newMode: string) => {
@@ -411,17 +436,6 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
       if (!key.trim()) return;
       const trimmedKey = key.trim();
 
-      // Save first (always succeeds)
-      setIsSavingKey(true);
-      try {
-        await setProviderApiKey(provider, trimmedKey);
-        setApiKeyInput('');
-      } finally {
-        setIsSavingKey(false);
-      }
-
-      // Validate in the background (only for official mode — custom endpoints
-      // may use non-standard APIs that would fail the standard validation)
       if (config.mode === 'official') {
         setIsValidating(true);
         setValidated(null);
@@ -429,21 +443,61 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
           const result = await validateProviderApiKey(provider, trimmedKey);
           if (result && !result.success) {
             setValidated({ success: false, error: result.error });
-          } else {
-            setValidated({ success: true });
+            return;
           }
         } catch {
-          // Validation request itself failed — don't show an error for that
-          setValidated({ success: true });
+          setValidated({
+            success: false,
+            error: 'Validation request failed. Please try again.',
+          });
+          return;
         } finally {
           setIsValidating(false);
         }
-      } else {
-        // Custom mode — no validation, just mark as saved
+      } else if (config.mode === 'custom') {
+        const url = customUrlRef.current.trim() || undefined;
+        if (!url) {
+          setUrlError('Please enter an endpoint URL.');
+          return;
+        }
+        if (!isValidUrl(url)) {
+          setUrlError('Please enter a valid URL.');
+          return;
+        }
+        setUrlError(null);
+        setIsValidating(true);
+        setValidated(null);
+        try {
+          const result = await validateProviderApiKey(
+            provider,
+            trimmedKey,
+            url,
+          );
+          if (result && !result.success) {
+            setValidated({ success: false, error: result.error });
+            return;
+          }
+        } catch {
+          setValidated({
+            success: false,
+            error: 'Validation request failed. Please try again.',
+          });
+          return;
+        } finally {
+          setIsValidating(false);
+        }
+      }
+
+      setIsSavingKey(true);
+      try {
+        await setProviderApiKey(provider, trimmedKey);
+        setApiKeyInput('');
         setValidated({ success: true });
+      } finally {
+        setIsSavingKey(false);
       }
     },
-    [provider, config.mode, setProviderApiKey, validateProviderApiKey],
+    [provider, config, setProviderApiKey, validateProviderApiKey],
   );
 
   const handleClearApiKey = useCallback(async () => {
@@ -454,7 +508,7 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
   const showByokFields = config.mode === 'official' || config.mode === 'custom';
 
   return (
-    <div className="space-y-3 rounded-lg border border-border/50 p-4">
+    <div className="space-y-3 rounded-lg border border-derived p-4">
       <div>
         <h3 className="font-medium text-foreground text-sm">
           {displayInfo.name}
@@ -486,7 +540,7 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
 
       {/* BYOK fields: URL + API Key in responsive grid */}
       {showByokFields && (
-        <div className="grid grid-cols-1 gap-3 border-border/30 border-t pt-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 border-derived border-t pt-3 sm:grid-cols-2">
           {/* Endpoint URL */}
           <div className="space-y-1">
             <p className="font-medium text-muted-foreground text-xs">
@@ -500,13 +554,29 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
               }
               placeholder="https://your-proxy.example.com/v1"
               onValueChange={
-                config.mode === 'custom' ? handleCustomUrlChange : undefined
+                config.mode === 'custom'
+                  ? (v) => {
+                      customUrlRef.current = v;
+                      setUrlError(null);
+                      void handleCustomUrlChange(v);
+                    }
+                  : undefined
               }
-              disabled={config.mode === 'official'}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && apiKeyInput.trim()) {
+                  void handleSaveAndValidate(apiKeyInput);
+                }
+              }}
+              disabled={
+                config.mode === 'official' || isValidating || isSavingKey
+              }
               size="sm"
               style={{ maxWidth: 'none' }}
               debounce={400}
             />
+            {urlError && config.mode === 'custom' && (
+              <p className="text-2xs text-error-foreground">{urlError}</p>
+            )}
           </div>
 
           {/* API Key */}
@@ -514,13 +584,13 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
             <p className="font-medium text-muted-foreground text-xs">
               API Key
               {isValidating && (
-                <span className="ml-1.5 font-normal text-muted-foreground">
+                <span className="ml-1.5 font-normal text-subtle-foreground">
                   validating...
                 </span>
               )}
               {!isValidating && validated?.success && (
-                <span className="ml-1.5 font-normal text-green-600 dark:text-green-400">
-                  valid
+                <span className="ml-1.5 font-normal text-success-foreground">
+                  Updated
                 </span>
               )}
             </p>
@@ -537,11 +607,23 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
                   setApiKeyInput(v);
                   setValidated(null);
                 }}
-                onBlur={() => {
-                  if (apiKeyInput.trim()) {
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && apiKeyInput.trim()) {
                     void handleSaveAndValidate(apiKeyInput);
                   }
                 }}
+                onBlur={() => {
+                  if (!apiKeyInput.trim()) return;
+                  if (
+                    config.mode === 'custom' &&
+                    (!customUrlRef.current.trim() ||
+                      !isValidUrl(customUrlRef.current.trim()))
+                  ) {
+                    return;
+                  }
+                  void handleSaveAndValidate(apiKeyInput);
+                }}
+                disabled={isValidating || isSavingKey}
                 size="sm"
                 style={{ maxWidth: 'none' }}
                 className="min-w-0 flex-1"
@@ -551,7 +633,7 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
                   variant="primary"
                   size="sm"
                   onClick={() => void handleSaveAndValidate(apiKeyInput)}
-                  disabled={isSavingKey}
+                  disabled={isValidating || isSavingKey}
                 >
                   Save
                 </Button>
@@ -562,9 +644,7 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
               ) : null}
             </div>
             {validated && !validated.success && (
-              <p className="text-red-500 text-xs dark:text-red-400">
-                {validated.error}
-              </p>
+              <TruncatedErrorText text={validated.error} />
             )}
           </div>
         </div>
@@ -593,7 +673,7 @@ function Page() {
   return (
     <div className="flex h-full w-full flex-col">
       {/* Header */}
-      <div className="flex items-center border-border/30 border-b px-6 py-4">
+      <div className="flex items-center border-derived border-b px-6 py-4">
         <div className="mx-auto w-full max-w-4xl">
           <h1 className="font-semibold text-foreground text-xl">
             Agent Settings
@@ -617,7 +697,7 @@ function Page() {
             <IdeSelectionSetting />
           </section>
 
-          <hr className="border-border/20" />
+          <hr className="border-derived-subtle border-t" />
 
           {/* Models & Providers Section */}
           <section className="space-y-6">
@@ -657,7 +737,7 @@ function Page() {
             <ModelProvidersSection />
           </section>
 
-          <hr className="border-border/20" />
+          <hr className="border-derived-subtle border-t" />
 
           {/* Workspace Settings Section */}
           <section className="space-y-6">
@@ -675,5 +755,43 @@ function Page() {
         </div>
       </OverlayScrollbar>
     </div>
+  );
+}
+
+function isTextTruncated(el: HTMLElement): boolean {
+  if (!el.isConnected) return false;
+  return el.scrollWidth > el.clientWidth;
+}
+
+function TruncatedErrorText({ text }: { text: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const check = () => setIsTruncated(isTextTruncated(el));
+    check();
+
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [text]);
+
+  return (
+    <Tooltip open={isTruncated && tooltipOpen} onOpenChange={setTooltipOpen}>
+      <TooltipTrigger>
+        <p ref={ref} className={cn('truncate text-2xs text-error-foreground')}>
+          {text}
+        </p>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="start">
+        <div className="wrap-break-word line-clamp-12 max-h-48 max-w-xs overflow-y-auto text-2xs leading-relaxed">
+          {text}
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }

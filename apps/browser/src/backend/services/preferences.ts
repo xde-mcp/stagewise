@@ -152,6 +152,17 @@ export class PreferencesService extends DisposableService {
       },
     );
 
+    this.uiKarton.registerServerProcedureHandler(
+      'preferences.setProviderApiKey',
+      async (
+        _callingClientId: string,
+        provider: ModelProvider,
+        apiKey: string,
+      ) => {
+        await this.setProviderApiKey(provider, apiKey);
+      },
+    );
+
     // Dev toolbar procedures
     this.uiKarton.registerServerProcedureHandler(
       'devToolbar.updateWidgetOrder',
@@ -756,6 +767,9 @@ export class PreferencesService extends DisposableService {
     this.logger.debug('[PreferencesService] Tearing down...');
     if (this.uiKarton) {
       this.uiKarton.removeServerProcedureHandler('preferences.update');
+      this.uiKarton.removeServerProcedureHandler(
+        'preferences.setProviderApiKey',
+      );
       this.uiKarton.removeServerProcedureHandler(
         'devToolbar.updateWidgetOrder',
       );

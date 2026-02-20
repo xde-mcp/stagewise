@@ -37,6 +37,10 @@ export function StepAuth({
   const validateApiKeys = useKartonProcedure(
     (p) => p.userAccount.validateApiKeys,
   );
+  const setProviderApiKey = useKartonProcedure(
+    (p) => p.preferences.setProviderApiKey,
+  );
+  const preferencesUpdate = useKartonProcedure((p) => p.preferences.update);
   const authStatus = useKartonState((s) => s.userAccount.status);
   const userEmail = useKartonState((s) =>
     s.userAccount.status === 'authenticated' ? s.userAccount.user?.email : null,
@@ -117,18 +121,45 @@ export function StepAuth({
       openai: apiKey2,
       google: apiKey3,
     })
-      .then((results) => {
+      .then(async (results) => {
         const next: FieldErrors = { ...emptyErrors };
         for (const key of Object.keys(results) as ProviderKey[]) {
           const r = results[key] as ApiKeyValidationResult;
           next[key] = r && !r.success ? r.error : null;
         }
         setFieldErrors(next);
-        if (Object.values(next).every((v) => v === null))
+        if (Object.values(next).every((v) => v === null)) {
+          const keysToSave = (
+            [
+              ['anthropic', apiKey1],
+              ['openai', apiKey2],
+              ['google', apiKey3],
+            ] as [ProviderKey, string][]
+          ).filter(([, v]) => !!v);
+          for (const [provider, key] of keysToSave) {
+            await setProviderApiKey(provider, key);
+            await preferencesUpdate([
+              {
+                op: 'replace' as const,
+                path: ['providerConfigs', provider, 'mode'],
+                value: 'official',
+              },
+            ]);
+          }
           setPhase('authentication-validated');
+        }
       })
       .finally(() => setLoading(false));
-  }, [loading, hasAnyKey, apiKey1, apiKey2, apiKey3, validateApiKeys]);
+  }, [
+    loading,
+    hasAnyKey,
+    apiKey1,
+    apiKey2,
+    apiKey3,
+    validateApiKeys,
+    setProviderApiKey,
+    preferencesUpdate,
+  ]);
 
   useEffect(() => {
     if (isActive) {
@@ -194,7 +225,16 @@ export function StepAuth({
             size="xs"
             id="telemetry-checkbox"
             checked={telemetry}
-            onCheckedChange={setTelemetry}
+            onCheckedChange={(checked: boolean) => {
+              setTelemetry(checked);
+              void preferencesUpdate([
+                {
+                  op: 'replace',
+                  path: ['privacy', 'telemetryLevel'],
+                  value: checked ? 'full' : 'anonymous',
+                },
+              ]);
+            }}
           />
           <label
             htmlFor="telemetry-checkbox"
@@ -433,7 +473,7 @@ export function StepAuth({
         </div>
       )}
 
-      {/* {mode === 'stagewise' && phase === 'form-input' && (
+      {mode === 'stagewise' && phase === 'form-input' && (
         <Button
           variant="ghost"
           size="xs"
@@ -445,43 +485,26 @@ export function StepAuth({
         >
           I want to use my own API keys
         </Button>
-      )} */}
+      )}
     </div>
   );
 }
 
 function isTextTruncated(el: HTMLElement): boolean {
-  const style = getComputedStyle(el);
-  const paddingX =
-    (Number.parseFloat(style.paddingLeft) || 0) +
-    (Number.parseFloat(style.paddingRight) || 0);
-  const availableWidth = el.clientWidth - paddingX;
-
-  const probe = document.createElement('span');
-  probe.style.position = 'absolute';
-  probe.style.visibility = 'hidden';
-  probe.style.whiteSpace = 'nowrap';
-  probe.style.font = style.font;
-  probe.style.letterSpacing = style.letterSpacing;
-  probe.style.wordSpacing = style.wordSpacing;
-  probe.textContent = el.textContent;
-  document.body.appendChild(probe);
-  const textWidth = probe.getBoundingClientRect().width;
-  document.body.removeChild(probe);
-
-  return textWidth > availableWidth;
+  if (!el.isConnected) return false;
+  return el.scrollWidth > el.clientWidth;
 }
 
 function TruncatedErrorText({ id, text }: { id: string; text: string }) {
   const ref = useRef<HTMLParagraphElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 
     const check = () => setIsTruncated(isTextTruncated(el));
-
     check();
 
     const observer = new ResizeObserver(check);
@@ -489,24 +512,20 @@ function TruncatedErrorText({ id, text }: { id: string; text: string }) {
     return () => observer.disconnect();
   }, [text]);
 
-  const paragraph = (
-    <p
-      ref={ref}
-      id={id}
-      className={cn(
-        'truncate text-2xs text-error-foreground',
-        isTruncated && 'app-no-drag',
-      )}
-    >
-      {text}
-    </p>
-  );
-
-  if (!isTruncated) return paragraph;
-
   return (
-    <Tooltip>
-      <TooltipTrigger>{paragraph}</TooltipTrigger>
+    <Tooltip open={isTruncated && tooltipOpen} onOpenChange={setTooltipOpen}>
+      <TooltipTrigger>
+        <p
+          ref={ref}
+          id={id}
+          className={cn(
+            'truncate text-2xs text-error-foreground',
+            isTruncated && 'app-no-drag',
+          )}
+        >
+          {text}
+        </p>
+      </TooltipTrigger>
       <TooltipContent side="bottom" align="start">
         <div className="wrap-break-word line-clamp-12 max-h-48 max-w-xs overflow-y-auto text-2xs leading-relaxed">
           {text}

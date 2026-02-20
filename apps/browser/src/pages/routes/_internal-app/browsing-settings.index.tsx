@@ -183,7 +183,9 @@ function SearchEngineSetting() {
         ))}
       </RadioGroup>
 
-      {deleteError && <p className="text-red-500 text-sm">{deleteError}</p>}
+      {deleteError && (
+        <p className="text-error-foreground text-sm">{deleteError}</p>
+      )}
 
       <div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -256,13 +258,15 @@ function SearchEngineSetting() {
                   URL with %s where the search query should be inserted
                 </p>
                 {newEngine.url && !isUrlValid && (
-                  <p className="text-red-500 text-xs">
+                  <p className="text-error-foreground text-xs">
                     URL must be valid and contain %s placeholder
                   </p>
                 )}
               </div>
 
-              {addError && <p className="text-red-500 text-sm">{addError}</p>}
+              {addError && (
+                <p className="text-error-foreground text-sm">{addError}</p>
+              )}
             </div>
 
             <DialogFooter>

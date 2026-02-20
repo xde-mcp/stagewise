@@ -1256,8 +1256,9 @@ export class PagesService extends DisposableService {
         _callingClientId: string,
         provider: ModelProvider,
         apiKey: string,
+        baseUrl?: string,
       ) => {
-        const results = await validateApiKeys({ [provider]: apiKey });
+        const results = await validateApiKeys({ [provider]: apiKey }, baseUrl);
         return results[provider];
       },
     );

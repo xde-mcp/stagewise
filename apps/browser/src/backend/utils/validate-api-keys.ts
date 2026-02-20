@@ -19,12 +19,16 @@ export type ApiKeysInput = Partial<Record<ApiKeyProvider, string>>;
 
 const providerConfigs: Record<
   ApiKeyProvider,
-  (apiKey: string) => Parameters<typeof generateText>[0]['model']
+  (
+    apiKey: string,
+    baseURL?: string,
+  ) => Parameters<typeof generateText>[0]['model']
 > = {
-  anthropic: (apiKey) => createAnthropic({ apiKey })('claude-haiku-4-5'),
-  openai: (apiKey) => createOpenAI({ apiKey })('gpt-4o-mini'),
-  google: (apiKey) =>
-    createGoogleGenerativeAI({ apiKey })('gemini-2.0-flash-lite'),
+  anthropic: (apiKey, baseURL) =>
+    createAnthropic({ apiKey, baseURL })('claude-haiku-4-5'),
+  openai: (apiKey, baseURL) => createOpenAI({ apiKey, baseURL })('gpt-4o-mini'),
+  google: (apiKey, baseURL) =>
+    createGoogleGenerativeAI({ apiKey, baseURL })('gemini-2.0-flash-lite'),
 };
 
 /**
@@ -33,6 +37,7 @@ const providerConfigs: Record<
  */
 export async function validateApiKeys(
   keys: ApiKeysInput,
+  baseUrl?: string,
 ): Promise<ApiKeyValidationResults> {
   const results: ApiKeyValidationResults = {
     anthropic: null,
@@ -45,7 +50,7 @@ export async function validateApiKeys(
   for (const [provider, apiKey] of Object.entries(keys)) {
     if (!apiKey) continue;
     const k = provider as ApiKeyProvider;
-    const model = providerConfigs[k](apiKey);
+    const model = providerConfigs[k](apiKey, baseUrl);
 
     const p = generateText({
       model,

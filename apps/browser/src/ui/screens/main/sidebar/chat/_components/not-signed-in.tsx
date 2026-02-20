@@ -1,9 +1,10 @@
-import { Button } from '@stagewise/stage-ui/components/button';
+import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { InputOtp } from '@stagewise/stage-ui/components/input-otp';
 import { useKartonProcedure } from '@/hooks/use-karton';
 import { StagewiseOrb } from '@/assets/stagewise';
 import { useState, useCallback } from 'react';
+import { cn } from '@/utils';
 
 type OtpPhase = 'email' | 'code';
 
@@ -82,6 +83,14 @@ export function NotSignedIn() {
             Sign in
           </Button>
         </div>
+      )}
+      {phase === 'email' && (
+        <a
+          href="stagewise://internal/agent-settings"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'xs' }))}
+        >
+          I want to use my own API keys
+        </a>
       )}
 
       {phase === 'code' && (

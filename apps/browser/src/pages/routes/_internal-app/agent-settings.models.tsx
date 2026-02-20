@@ -225,7 +225,7 @@ function CustomModelDialog({
               size="sm"
             />
             {isDuplicate && (
-              <p className="text-red-500 text-xs">
+              <p className="text-error-foreground text-xs">
                 This model ID already exists.
               </p>
             )}
@@ -412,7 +412,7 @@ function CustomModelDialog({
                     Provider Options (JSON)
                   </p>
                   <textarea
-                    className="w-full rounded-lg border border-derived bg-background p-2 font-mono text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-muted-foreground/35"
+                    className="w-full rounded-lg border border-derived p-2 font-mono text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-muted-foreground/35"
                     rows={3}
                     placeholder='{"reasoningEffort": "high"}'
                     value={providerOptionsJson}
@@ -427,7 +427,7 @@ function CustomModelDialog({
                     Headers (JSON)
                   </p>
                   <textarea
-                    className="w-full rounded-lg border border-derived bg-background p-2 font-mono text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-muted-foreground/35"
+                    className="w-full rounded-lg border border-derived p-2 font-mono text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-muted-foreground/35"
                     rows={3}
                     placeholder='{"x-custom-header": "value"}'
                     value={headersJson}
@@ -438,7 +438,7 @@ function CustomModelDialog({
                   />
                 </div>
                 {jsonError && (
-                  <p className="text-red-500 text-xs">{jsonError}</p>
+                  <p className="text-error-foreground text-xs">{jsonError}</p>
                 )}
               </div>
             )}
@@ -626,10 +626,12 @@ function CustomModelsSection() {
         />
       ))}
 
-      <Button variant="secondary" size="sm" onClick={handleAdd}>
-        <IconPlusOutline18 className="size-3.5" />
-        Add Model
-      </Button>
+      <div className="flex justify-end">
+        <Button variant="secondary" size="sm" onClick={handleAdd}>
+          <IconPlusOutline18 className="size-3.5" />
+          Add Model
+        </Button>
+      </div>
 
       <CustomModelDialog
         model={editingModel}
@@ -653,7 +655,7 @@ function Page() {
   return (
     <div className="flex h-full w-full flex-col">
       {/* Header */}
-      <div className="flex items-center border-border/30 border-b px-6 py-4">
+      <div className="flex items-center border-derived border-b px-6 py-4">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3">
           <Button
             variant="ghost"

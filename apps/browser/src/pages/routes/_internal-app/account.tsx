@@ -71,10 +71,10 @@ function AuthenticatedView({
     <>
       {/* User info */}
       <div className="flex flex-col gap-2">
-        <h2 className="font-bold text-3xl text-foreground">
+        <h2 className="font-medium text-foreground text-lg">
           {email ?? 'Unknown user'}
         </h2>
-        <p className="text-lg text-muted-foreground">Signed in</p>
+        <p className="text-muted-foreground text-sm">Signed in</p>
       </div>
 
       <hr className="border-border/30" />
@@ -136,7 +136,7 @@ function AuthenticatedView({
       <hr className="border-border/30" />
 
       {/* Sign out */}
-      <div>
+      <div className="flex justify-end">
         <Button variant="secondary" size="sm" onClick={onLogout}>
           Sign out
         </Button>
@@ -202,17 +202,16 @@ function LoginView({
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h2 className="font-bold text-3xl text-foreground">Sign in</h2>
+        <h2 className="font-medium text-foreground text-lg">Authenticate</h2>
         {phase === 'form-input' && (
-          <p className="text-lg text-muted-foreground">
-            Sign in with your email to access your stagewise account.
+          <p className="text-muted-foreground text-sm">
+            Get access to the latest models with stagewise.
           </p>
         )}
         {phase === 'waiting-for-otp' && (
-          <p className="text-lg text-muted-foreground">
-            We sent a verification code to{' '}
-            <span className="font-semibold text-foreground">{email}</span>.
-            Enter it below.
+          <p className="text-muted-foreground text-sm">
+            We sent a code to{' '}
+            <span className="font-medium text-foreground">{email}</span>.
           </p>
         )}
       </div>
@@ -221,63 +220,65 @@ function LoginView({
 
       {phase === 'form-input' && (
         <div className="flex max-w-sm flex-col gap-4">
-          <Input
-            ref={emailRef}
-            placeholder="you@example.com"
-            size="sm"
-            type="email"
-            value={email}
-            onValueChange={(v) => setEmail(v)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void handleSendOtp();
-            }}
-            disabled={loading}
-          />
-          <div>
+          <div className="flex gap-2">
+            <Input
+              ref={emailRef}
+              placeholder="you@example.com"
+              size="sm"
+              type="email"
+              value={email}
+              onValueChange={(v) => setEmail(v)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleSendOtp();
+              }}
+              disabled={loading}
+            />
             <Button
               variant="primary"
               size="sm"
+              className="shrink-0"
               onClick={() => void handleSendOtp()}
               disabled={loading || !email.trim()}
             >
-              {loading ? 'Sending...' : 'Send verification code'}
+              Sign in
             </Button>
           </div>
         </div>
       )}
 
       {phase === 'waiting-for-otp' && (
-        <div className="flex flex-col gap-4">
-          <InputOtp
-            ref={otpRef}
-            length={6}
-            size="md"
-            value={code}
-            onChange={(val) => setCode(val)}
-            onComplete={() => void handleVerifyOtp()}
-            disabled={loading}
-          />
-          <div className="flex gap-2">
+        <div className="flex flex-col items-start gap-4">
+          <div className="flex items-center gap-2">
+            <InputOtp
+              ref={otpRef}
+              length={6}
+              size="sm"
+              value={code}
+              onChange={(val) => setCode(val)}
+              onComplete={() => void handleVerifyOtp()}
+              disabled={loading}
+            />
             <Button
               variant="primary"
               size="sm"
+              className="shrink-0"
               onClick={() => void handleVerifyOtp()}
               disabled={loading || code.length < 6}
             >
               {loading ? 'Verifying...' : 'Verify'}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setPhase('form-input');
-                setCode('');
-                setError(null);
-              }}
-            >
-              Use a different email
-            </Button>
           </div>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => {
+              setPhase('form-input');
+              setCode('');
+              setError(null);
+            }}
+          >
+            Use a different email
+          </Button>
         </div>
       )}
 
