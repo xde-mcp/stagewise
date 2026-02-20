@@ -1,5 +1,5 @@
 import { Button } from '@stagewise/stage-ui/components/button';
-import { Loader2Icon } from 'lucide-react';
+import { Loader2Icon, XIcon } from 'lucide-react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { StatusCardSection } from './shared';
 import type { MouseEvent } from 'react';
@@ -11,12 +11,13 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
-export type WorkspaceMdStatus = 'hidden' | 'running' | 'completed';
+export type WorkspaceMdStatus = 'hidden' | 'running' | 'completed' | 'error';
 
 export interface WorkspaceMdStatusSectionProps {
   status: WorkspaceMdStatus;
   history: AgentMessage[];
   workspacePath?: string | null;
+  errorMessage?: string | null;
   onDismiss: () => void;
   onShowFile: () => void;
 }
@@ -147,12 +148,14 @@ export function WorkspaceMdStatusSection({
   status,
   history,
   workspacePath,
+  errorMessage,
   onDismiss,
   onShowFile,
 }: WorkspaceMdStatusSectionProps): StatusCardSection | null {
   if (status === 'hidden') return null;
 
   const isRunning = status === 'running';
+  const isError = status === 'error';
   const statusText = getStatusText(history, workspacePath);
   return {
     key: 'project-md-status',
@@ -161,13 +164,44 @@ export function WorkspaceMdStatusSection({
       <TooltipWrapper showTooltip={isRunning}>
         <div className="flex h-6 w-full flex-row items-center justify-between gap-2 pl-1.5 text-muted-foreground text-xs hover:text-foreground has-[button:hover]:text-muted-foreground">
           {isRunning ? (
-            <div className="flex flex-row items-center gap-2">
-              <div className="relative flex size-3 shrink-0 items-center justify-center">
+            <div className="flex flex-row items-center gap-1">
+              <div className="relative flex size-5 shrink-0 items-center justify-center">
                 <Loader2Icon className="size-3 animate-spin text-primary-foreground" />
               </div>
               <span className="shimmer-text-primary truncate font-normal">
                 Generating workspace context
               </span>
+            </div>
+          ) : isError ? (
+            <div className="flex w-full cursor-default flex-row items-center justify-between gap-1 truncate">
+              <div className="flex size-5 shrink-0 flex-row items-center justify-center">
+                <XIcon className="size-3 shrink-0 text-foreground" />
+              </div>
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="truncate font-normal text-muted-foreground">
+                    Context initialization failed:{' '}
+                    {errorMessage ||
+                      'Failed to generate .stagewise/WORKSPACE.md'}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {errorMessage || 'Failed to generate .stagewise/WORKSPACE.md'}
+                </TooltipContent>
+              </Tooltip>
+              <div className="ml-auto flex shrink-0 flex-row items-center justify-start gap-1 pl-3">
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="shrink-0 cursor-pointer"
+                  onClick={(e: MouseEvent) => {
+                    e.stopPropagation();
+                    onDismiss();
+                  }}
+                >
+                  Dismiss
+                </Button>
+              </div>
             </div>
           ) : (
             <>

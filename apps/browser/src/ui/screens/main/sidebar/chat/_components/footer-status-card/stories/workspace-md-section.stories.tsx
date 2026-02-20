@@ -29,17 +29,20 @@ interface WorkspaceMdSectionStoryProps {
   status: WorkspaceMdStatus;
   history: AgentMessage[];
   workspacePath?: string | null;
+  errorMessage?: string | null;
 }
 
 function WorkspaceMdSectionStory({
   status,
   history,
   workspacePath,
+  errorMessage,
 }: WorkspaceMdSectionStoryProps) {
   const section = WorkspaceMdStatusSection({
     status,
     history,
     workspacePath,
+    errorMessage,
     onDismiss: () => console.log('[Storybook] onDismiss called'),
     onShowFile: () =>
       console.log(
@@ -76,7 +79,7 @@ const meta: Meta<typeof WorkspaceMdSectionStory> = {
   argTypes: {
     status: {
       control: 'select',
-      options: ['hidden', 'running', 'completed'],
+      options: ['hidden', 'running', 'completed', 'error'],
       description: 'Current status of the project-md generation',
     },
   },
@@ -268,6 +271,51 @@ export const RunningAbsolutePathWithWorkspace: Story = {
 export const Completed: Story = {
   args: {
     status: 'completed',
+    history: [],
+  },
+};
+
+/**
+ * Error - Agent Failure
+ *
+ * When the agent encounters an error during generation (e.g. model rate limit,
+ * retries exhausted). Shows the error message from the agent in the expandable
+ * content area.
+ */
+export const ErrorAgentFailure: Story = {
+  name: 'Error / Agent Failure',
+  args: {
+    status: 'error',
+    history: [],
+    errorMessage: 'Generation failed after 2 retries: model rate limited',
+  },
+};
+
+/**
+ * Error - Workspace Disconnected
+ *
+ * When the workspace is disconnected while generation is still in progress.
+ * Shows a specific disconnect message.
+ */
+export const ErrorWorkspaceDisconnected: Story = {
+  name: 'Error / Workspace Disconnected',
+  args: {
+    status: 'error',
+    history: [],
+    errorMessage: 'Workspace disconnected during generation',
+  },
+};
+
+/**
+ * Error - No Message
+ *
+ * When an error occurs but no specific message is provided.
+ * Falls back to the default tooltip text; the content area is hidden.
+ */
+export const ErrorNoMessage: Story = {
+  name: 'Error / No Message',
+  args: {
+    status: 'error',
     history: [],
   },
 };
