@@ -8,8 +8,9 @@ import {
   ListChevronsDownUpIcon,
   ListChevronsUpDownIcon,
 } from 'lucide-react';
-import { cn } from '@/utils';
+import { cn, IDE_SELECTION_ITEMS } from '@/utils';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
+import { IdePickerPopover } from '@/components/ide-picker-popover';
 import { diffLines } from 'diff';
 import { useMemo, useState } from 'react';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
@@ -33,7 +34,7 @@ export const MultiEditToolPart = ({
   part: Extract<AgentToolUIPart, { type: 'tool-multiEditTool' }>;
 }) => {
   const [expanded, setExpanded] = useState(true);
-  const { getFileIDEHref } = useFileIDEHref();
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
   const outputWithDiff = part.output as
     | WithDiff<typeof part.output>
     | undefined;
@@ -187,20 +188,26 @@ export const MultiEditToolPart = ({
                 {collapsedDiffView ? 'Expand code diff' : 'Collapse code diff'}
               </TooltipContent>
             </Tooltip>
-            <a
-              href={getFileIDEHref(
-                part.input?.relative_path ?? '',
-                firstLineNumberEdited,
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                buttonVariants({ size: 'xs', variant: 'ghost' }),
-                'shrink-0',
-              )}
-            >
-              <Tooltip>
-                <TooltipTrigger>
+            {(() => {
+              const relPath = part.input?.relative_path ?? '';
+              const ideName = IDE_SELECTION_ITEMS[openInIdeSelection];
+              const anchor = (
+                <a
+                  href={
+                    needsIdePicker
+                      ? '#'
+                      : getFileIDEHref(relPath, firstLineNumberEdited)
+                  }
+                  target={needsIdePicker ? undefined : '_blank'}
+                  rel="noopener noreferrer"
+                  onClick={
+                    needsIdePicker ? (e) => e.preventDefault() : undefined
+                  }
+                  className={cn(
+                    buttonVariants({ size: 'xs', variant: 'ghost' }),
+                    'shrink-0',
+                  )}
+                >
                   <div className="flex flex-row items-center justify-center gap-1">
                     <IdeLogo
                       ide={openInIdeSelection}
@@ -208,15 +215,35 @@ export const MultiEditToolPart = ({
                     />
                     <span className="text-xs">Open file</span>
                   </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {getFileIDEHref(
-                    part.input?.relative_path ?? '',
-                    firstLineNumberEdited,
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </a>
+                </a>
+              );
+              if (needsIdePicker) {
+                return (
+                  <IdePickerPopover
+                    onSelect={(ide) =>
+                      pickIdeAndOpen(ide, relPath, firstLineNumberEdited)
+                    }
+                  >
+                    {anchor}
+                  </IdePickerPopover>
+                );
+              }
+              return (
+                <Tooltip>
+                  <TooltipTrigger>{anchor}</TooltipTrigger>
+                  <TooltipContent>
+                    <div className="flex max-w-96 flex-col gap-1">
+                      <div className="break-all font-mono text-xs">
+                        {relPath}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        Click to open in {ideName}
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })()}
           </div>
         ) : undefined
       }

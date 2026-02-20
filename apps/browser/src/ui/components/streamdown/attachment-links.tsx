@@ -10,6 +10,7 @@ import { useKartonState } from '@/hooks/use-karton';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { usePostHog } from 'posthog-js/react';
+import { IdePickerPopover } from '@ui/components/ide-picker-popover';
 import {
   useAttachmentMetadata,
   type AttachmentMetadata,
@@ -263,55 +264,64 @@ export const WorkspaceFileLink = ({
   const [openAgent] = useOpenAgent();
   const openInIdeChoice = useKartonState((s) => s.globalConfig.openFilesInIde);
   const ideName = IDE_SELECTION_ITEMS[openInIdeChoice];
-  const filePathTools = useFileIDEHref();
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
 
   const displayPath = useMemo(() => {
     return getTruncatedFileUrl(filePath, 3, 128);
   }, [filePath]);
 
+  const pathWithLine = lineNumber ? `${filePath}:${lineNumber}` : filePath;
+
   const processedHref = useMemo(() => {
     if (!openAgent) return '';
-    const pathWithLine = lineNumber ? `${filePath}:${lineNumber}` : filePath;
-    let href = filePathTools.getFileIDEHref(pathWithLine);
+    let href = getFileIDEHref(pathWithLine);
     href = href.replaceAll(
       encodeURIComponent('{{CONVERSATION_ID}}'),
       openAgent,
     );
     return href;
-  }, [filePath, lineNumber, filePathTools, openAgent]);
+  }, [pathWithLine, getFileIDEHref, openAgent]);
+
+  const parsedLineNumber = lineNumber
+    ? Number.parseInt(lineNumber, 10)
+    : undefined;
+
+  const anchor = (
+    <a
+      href={needsIdePicker ? '#' : processedHref}
+      className={cn(
+        'inline-flex items-center gap-0.5',
+        'font-medium text-primary-foreground text-sm',
+        'hover:text-hover-derived',
+        'break-all',
+        incomplete && 'opacity-70',
+      )}
+      target={needsIdePicker ? undefined : '_blank'}
+      rel="noopener noreferrer"
+      onClick={needsIdePicker ? (e) => e.preventDefault() : undefined}
+    >
+      {displayPath || '...'}
+      {lineNumber && <span className="shrink-0 opacity-70">:{lineNumber}</span>}
+      <ExternalLinkIcon className="size-3 shrink-0" />
+    </a>
+  );
+
+  if (needsIdePicker) {
+    return (
+      <IdePickerPopover
+        onSelect={(ide) => pickIdeAndOpen(ide, pathWithLine, parsedLineNumber)}
+      >
+        {anchor}
+      </IdePickerPopover>
+    );
+  }
 
   return (
     <Tooltip>
-      <TooltipTrigger>
-        <a
-          href={processedHref}
-          // onClick={() =>
-          // TODO: Implement all posthog analytics events we've decided to track
-          // posthog?.capture('agent_file_opened_in_ide_via_chat_link', {
-          //   file_path: filePath,
-          //   ide: openInIdeChoice,
-          // })
-          // }
-          className={cn(
-            'inline-flex items-center gap-0.5',
-            'font-medium text-primary-foreground text-sm',
-            'hover:text-hover-derived',
-            'break-all',
-            incomplete && 'opacity-70',
-          )}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {displayPath || '...'}
-          {lineNumber && (
-            <span className="shrink-0 opacity-70">:{lineNumber}</span>
-          )}
-          <ExternalLinkIcon className="size-3 shrink-0" />
-        </a>
-      </TooltipTrigger>
+      <TooltipTrigger>{anchor}</TooltipTrigger>
       <TooltipContent>
-        <div className="flex flex-col gap-1">
-          <div className="font-mono text-xs">{decodeURI(processedHref)}</div>
+        <div className="flex max-w-96 flex-col gap-1">
+          <div className="break-all font-mono text-xs">{pathWithLine}</div>
           <div className="text-muted-foreground text-xs">
             Click to open in {ideName}
           </div>

@@ -3,6 +3,7 @@ import { ChevronLeft, SquareDashedMousePointer } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { getTruncatedFileUrl } from '@ui/utils';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
+import { IdePickerPopover } from '@ui/components/ide-picker-popover';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 import { Button } from '@stagewise/stage-ui/components/button';
@@ -70,7 +71,7 @@ function ElementPreviewContent({
   const checkElementExists = useKartonProcedure(
     (p) => p.browser.checkElementExists,
   );
-  const { getFileIDEHref } = useFileIDEHref();
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
   const [elementExistenceChecked, setElementExistenceChecked] = useState(false);
   const [elementExists, setElementExists] = useState<boolean | null>(null);
 
@@ -308,33 +309,58 @@ function ElementPreviewContent({
                 Related source files
               </p>
               <div className="flex w-full flex-col items-stretch gap-2">
-                {selectedElement.codeMetadata.slice(0, 10).map((metadata) => (
-                  <div
-                    key={`${metadata.relativePath}|${metadata.startLine}`}
-                    className="flex flex-col items-stretch"
-                  >
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <a
-                          href={getFileIDEHref(
-                            metadata.relativePath,
-                            metadata.startLine,
-                          )}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex shrink basis-4/5 gap-1 break-all text-foreground text-sm hover:text-primary"
+                {selectedElement.codeMetadata.slice(0, 10).map((metadata) => {
+                  const anchor = (
+                    <a
+                      href={
+                        needsIdePicker
+                          ? '#'
+                          : getFileIDEHref(
+                              metadata.relativePath,
+                              metadata.startLine,
+                            )
+                      }
+                      target={needsIdePicker ? undefined : '_blank'}
+                      rel="noopener noreferrer"
+                      onClick={
+                        needsIdePicker ? (e) => e.preventDefault() : undefined
+                      }
+                      className="flex shrink basis-4/5 gap-1 break-all text-foreground text-sm hover:text-primary"
+                    >
+                      <IdeLogo
+                        ide={openInIdeSelection}
+                        className="size-3 shrink-0"
+                      />
+                      {getTruncatedFileUrl(metadata.relativePath)}
+                    </a>
+                  );
+
+                  return (
+                    <div
+                      key={`${metadata.relativePath}|${metadata.startLine}`}
+                      className="flex flex-col items-stretch"
+                    >
+                      {needsIdePicker ? (
+                        <IdePickerPopover
+                          onSelect={(ide) =>
+                            pickIdeAndOpen(
+                              ide,
+                              metadata.relativePath,
+                              metadata.startLine,
+                            )
+                          }
                         >
-                          <IdeLogo
-                            ide={openInIdeSelection}
-                            className="size-3 shrink-0"
-                          />
-                          {getTruncatedFileUrl(metadata.relativePath)}
-                        </a>
-                      </TooltipTrigger>
-                      <TooltipContent>{metadata.relation}</TooltipContent>
-                    </Tooltip>
-                  </div>
-                ))}
+                          {anchor}
+                        </IdePickerPopover>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger>{anchor}</TooltipTrigger>
+                          <TooltipContent>{metadata.relation}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

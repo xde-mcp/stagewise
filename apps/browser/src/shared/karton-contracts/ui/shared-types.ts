@@ -271,6 +271,7 @@ export const globalConfigSchema = z
   .object({
     telemetryLevel: z.enum(['off', 'anonymous', 'full']).default('anonymous'),
     openFilesInIde: openFilesInIdeSchema.default('other'),
+    hasSetIde: z.boolean().default(false),
   })
   .loose();
 

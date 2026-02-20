@@ -333,6 +333,7 @@ function IdeSelectionSetting() {
     await setGlobalConfig({
       ...globalConfig,
       openFilesInIde: value as OpenFilesInIde,
+      hasSetIde: true,
     });
   };
 

@@ -187,6 +187,7 @@ export const defaultState: PagesApiState = {
   globalConfig: {
     telemetryLevel: 'full',
     openFilesInIde: 'other',
+    hasSetIde: false,
   },
   userAccount: {
     status: 'unauthenticated',

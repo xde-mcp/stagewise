@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@stagewise/stage-ui/components/skeleton';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
+import { IdePickerPopover } from '@/components/ide-picker-popover';
 import { DiffPreview } from './shared/diff-preview';
-import { cn } from '@/utils';
+import { cn, IDE_SELECTION_ITEMS } from '@/utils';
 import { useMemo, useState } from 'react';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { diffLines } from 'diff';
@@ -35,7 +36,7 @@ export const OverwriteFileToolPart = ({
 }) => {
   const [codeDiffCollapsed, setCodeDiffCollapsed] = useState(true);
   const [expanded, setExpanded] = useState(true);
-  const { getFileIDEHref } = useFileIDEHref();
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
   const outputWithDiff = part.output as
     | WithDiff<typeof part.output>
     | undefined;
@@ -154,24 +155,64 @@ export const OverwriteFileToolPart = ({
               {codeDiffCollapsed ? 'Expand code diff' : 'Collapse code diff'}
             </TooltipContent>
           </Tooltip>
-          <a
-            href={getFileIDEHref(part.input?.relative_path ?? '')}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ size: 'xs', variant: 'ghost' }),
-              'shrink-0',
-            )}
-          >
-            <div className="flex flex-row items-center justify-center gap-1">
-              <IdeLogo ide={openInIdeSelection} className="size-3 shrink-0" />
-              <span className="text-xs">Open file</span>
-            </div>
-          </a>
+          {(() => {
+            const relPath = part.input?.relative_path ?? '';
+            const ideName = IDE_SELECTION_ITEMS[openInIdeSelection];
+            const anchor = (
+              <a
+                href={needsIdePicker ? '#' : getFileIDEHref(relPath)}
+                target={needsIdePicker ? undefined : '_blank'}
+                rel="noopener noreferrer"
+                onClick={needsIdePicker ? (e) => e.preventDefault() : undefined}
+                className={cn(
+                  buttonVariants({ size: 'xs', variant: 'ghost' }),
+                  'shrink-0',
+                )}
+              >
+                <div className="flex flex-row items-center justify-center gap-1">
+                  <IdeLogo
+                    ide={openInIdeSelection}
+                    className="size-3 shrink-0"
+                  />
+                  <span className="text-xs">Open file</span>
+                </div>
+              </a>
+            );
+            if (needsIdePicker) {
+              return (
+                <IdePickerPopover
+                  onSelect={(ide) => pickIdeAndOpen(ide, relPath)}
+                >
+                  {anchor}
+                </IdePickerPopover>
+              );
+            }
+            return (
+              <Tooltip>
+                <TooltipTrigger>{anchor}</TooltipTrigger>
+                <TooltipContent>
+                  <div className="flex max-w-96 flex-col gap-1">
+                    <div className="break-all font-mono text-xs">{relPath}</div>
+                    <div className="text-muted-foreground text-xs">
+                      Click to open in {ideName}
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })()}
         </div>
       );
     else return undefined;
-  }, [state, codeDiffCollapsed, part.input?.relative_path, openInIdeSelection]);
+  }, [
+    state,
+    codeDiffCollapsed,
+    part.input?.relative_path,
+    openInIdeSelection,
+    needsIdePicker,
+    getFileIDEHref,
+    pickIdeAndOpen,
+  ]);
 
   return (
     <ToolPartUI

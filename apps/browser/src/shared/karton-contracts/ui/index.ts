@@ -964,7 +964,8 @@ export const defaultState: KartonContract['state'] = {
   },
   globalConfig: {
     telemetryLevel: 'full',
-    openFilesInIde: 'cursor',
+    openFilesInIde: 'other',
+    hasSetIde: false,
   },
   userExperience: {
     storedExperienceData: {
