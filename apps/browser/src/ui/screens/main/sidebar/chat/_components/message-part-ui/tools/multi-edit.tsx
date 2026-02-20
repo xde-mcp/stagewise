@@ -1,7 +1,7 @@
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
 import { DiffPreview } from './shared/diff-preview';
-import { FileIcon } from './shared/file-icon';
+import { FileIcon } from '@/components/file-icon';
 import {
   Loader2Icon,
   XIcon,

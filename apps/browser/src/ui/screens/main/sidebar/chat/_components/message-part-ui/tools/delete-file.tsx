@@ -7,7 +7,7 @@ import {
   ListChevronsDownUpIcon,
   ListChevronsUpDownIcon,
 } from 'lucide-react';
-import { FileIcon } from './shared/file-icon';
+import { FileIcon } from '@/components/file-icon';
 import { useMemo, useState, useEffect } from 'react';
 import { Skeleton } from '@stagewise/stage-ui/components/skeleton';
 import {

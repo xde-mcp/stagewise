@@ -14,7 +14,7 @@ import {
   useKartonState,
 } from '@/hooks/use-karton';
 import { DiffPreview } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/diff-preview';
-import { FileIcon } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/file-icon';
+import { FileIcon } from '@ui/components/file-icon';
 import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import {
   type FormattedFileDiff,
@@ -69,9 +69,7 @@ const FileDiffItem: FC<{
           {/* File header */}
           <div
             className={`flex h-6 w-full items-center gap-1 bg-background px-2.5 dark:bg-surface-1 ${
-              isOpen
-                ? 'border-border-subtle/50 border-b dark:border-border/70'
-                : ''
+              isOpen ? 'border-border/30 border-b dark:border-border/70' : ''
             }`}
           >
             <FileIcon filePath={edit.fileName} className="size-5 shrink-0" />

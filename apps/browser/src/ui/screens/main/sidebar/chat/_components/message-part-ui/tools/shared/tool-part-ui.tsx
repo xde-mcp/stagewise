@@ -107,7 +107,7 @@ export const ToolPartUI = ({
             // Always have border-b, toggle color to avoid transition-all animating border
             showBorder &&
               (expanded
-                ? 'border-border-subtle/50 dark:border-border/70'
+                ? 'border-border/30 dark:border-border/70'
                 : 'border-transparent'),
             !showBorder &&
               'justify-start py-0 hover:bg-transparent active:bg-transparent',
@@ -156,7 +156,7 @@ export const ToolPartUI = ({
             {contentFooter && (
               <div
                 className={cn(
-                  'absolute right-0 bottom-0 left-0 flex h-6 flex-row items-center justify-start gap-1 rounded-b-lg border-derived border-t bg-background px-2 py-1 text-muted-foreground dark:bg-surface-1',
+                  'absolute right-0 bottom-0 left-0 flex h-6 flex-row items-center justify-start gap-1 rounded-b-lg border-border/30 border-t bg-background px-2 py-1 text-muted-foreground dark:border-border/70 dark:bg-surface-1',
                   contentFooterClassName,
                 )}
               >

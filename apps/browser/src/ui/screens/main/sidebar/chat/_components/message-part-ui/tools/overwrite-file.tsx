@@ -1,6 +1,6 @@
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
-import { FileIcon } from './shared/file-icon';
+import { FileIcon } from '@/components/file-icon';
 import {
   Tooltip,
   TooltipTrigger,

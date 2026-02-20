@@ -3,7 +3,7 @@ import { Loader2Icon, XIcon } from 'lucide-react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { StatusCardSection } from './shared';
 import type { MouseEvent } from 'react';
-import { FileIcon } from '../message-part-ui/tools/shared/file-icon';
+import { FileIcon } from '@/components/file-icon';
 import {
   Tooltip,
   TooltipContent,

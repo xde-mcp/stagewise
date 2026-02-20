@@ -1,7 +1,7 @@
 import { Button } from '@stagewise/stage-ui/components/button';
 import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import { ChevronDownIcon } from 'lucide-react';
-import { FileIcon } from '../message-part-ui/tools/shared/file-icon';
+import { FileIcon } from '@/components/file-icon';
 import { cn } from '@/utils';
 import {
   type StatusCardSection,
