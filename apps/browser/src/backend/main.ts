@@ -545,17 +545,14 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   // Subscribe to UI Karton state changes to sync pending edits to Pages API state
   // This enables real-time updates in the diff-review page
-  let previousPendingEditsSnapshot = '';
+  const previousPendingEditsSnapshots = new Map<string, string>();
   const pendingEditsSyncCallback = (state: typeof uiKarton.state) => {
     const activeAgentInstanceIds = Object.keys(state.agents.instances);
 
     const _workspacePath = state.workspace?.path;
 
-    // Create a snapshot key that detects ANY content changes, not just path changes.
-    // Include path + simple content hash (length + sample chars) for fast but reliable comparison.
     const hashContent = (s: string | null | undefined): string => {
       if (!s) return '0';
-      // Use length + first/last 8 chars + middle char for a quick fingerprint
       const mid = Math.floor(s.length / 2);
       return `${s.length}:${s.slice(0, 8)}:${s.slice(-8)}:${s[mid] ?? ''}`;
     };
@@ -566,13 +563,14 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       const snapshotKey = `${pendingEdits
         .map(
           (e) =>
-            `${e.path}|${hashContent(!e.isExternal ? e.baseline : null)}|${hashContent(!e.isExternal ? e.current : null)}`,
+            `${e.path}|${e.isExternal ? `${e.baselineOid}|${e.currentOid}` : `${hashContent(e.baseline)}|${hashContent(e.current)}`}`,
         )
         .join('||')}`;
 
-      if (snapshotKey !== previousPendingEditsSnapshot) {
-        previousPendingEditsSnapshot = snapshotKey;
-        // Push update to Pages API state
+      const previousSnapshot =
+        previousPendingEditsSnapshots.get(agentInstanceId) ?? '';
+      if (snapshotKey !== previousSnapshot) {
+        previousPendingEditsSnapshots.set(agentInstanceId, snapshotKey);
         pagesService.updatePendingEditsState(agentInstanceId, pendingEdits);
       }
     }
@@ -866,7 +864,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         );
         return;
       }
-      diffHistoryService.acceptAndRejectHunks(
+      await diffHistoryService.acceptAndRejectHunks(
         pendingEdits.flatMap((e) =>
           !e.isExternal ? e.hunks.map((h) => h.id) : [e.hunkId],
         ),
@@ -885,7 +883,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         );
         return;
       }
-      diffHistoryService.acceptAndRejectHunks(
+      await diffHistoryService.acceptAndRejectHunks(
         [],
         pendingEdits.flatMap((e) =>
           !e.isExternal ? e.hunks.map((h) => h.id) : [e.hunkId],
@@ -909,7 +907,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         .flatMap((e) =>
           !e.isExternal ? e.hunks.map((h) => h.id) : [e.hunkId],
         );
-      diffHistoryService.acceptAndRejectHunks(hunkIds, []);
+      await diffHistoryService.acceptAndRejectHunks(hunkIds, []);
     },
   );
 
@@ -928,7 +926,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         .flatMap((e) =>
           !e.isExternal ? e.hunks.map((h) => h.id) : [e.hunkId],
         );
-      diffHistoryService.acceptAndRejectHunks([], hunkIds);
+      await diffHistoryService.acceptAndRejectHunks([], hunkIds);
     },
   );
 

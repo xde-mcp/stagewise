@@ -521,6 +521,24 @@ describe('diff utilities', () => {
         1: 'agent-1',
       });
     });
+
+    it('handles accept baseline at start of generation', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ reason: 'accept' }),
+          'accepted-line1\naccepted-line2\n',
+        ),
+        createOpWithContent(
+          createEditOp({ contributor: 'agent-1', reason: 'tool-1' }),
+          'accepted-line1\naccepted-line2\nnew-line3\n',
+        ),
+      ];
+      const result = buildContributorMap({ 'file-1': ops });
+
+      expect(result['file-1'][0]).toBe('user');
+      expect(result['file-1'][1]).toBe('user');
+      expect(result['file-1'][2]).toBe('agent-1');
+    });
   });
 
   // ===========================================================================
@@ -727,6 +745,42 @@ describe('diff utilities', () => {
         if (addedChange) {
           expect(addedChange.contributor).toBeDefined();
         }
+      }
+    });
+
+    it('handles accept baseline at start of generation', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({
+            reason: 'accept',
+            filepath: '/readme.md',
+            snapshot_oid: 'accept-oid',
+          }),
+          'accepted content',
+        ),
+        createOpWithContent(
+          createEditOp({ filepath: '/readme.md', contributor: 'agent-1' }),
+          'accepted content\nnew line',
+        ),
+      ];
+      const contributorMap = {
+        'file-1': {
+          0: 'user' as Contributor,
+          1: 'agent-1' as Contributor,
+        },
+      };
+      const result = createFileDiffsFromGenerations(
+        { 'file-1': ops },
+        contributorMap,
+      );
+
+      expect(result).toHaveLength(1);
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.baseline).toBe('accepted content');
+        expect(diff.current).toBe('accepted content\nnew line');
+        expect(diff.hunks.length).toBeGreaterThan(0);
       }
     });
 
@@ -1226,6 +1280,35 @@ describe('diff utilities', () => {
         expect(result[0].changeType).toBe('deleted');
         expect(result[0].baselineOid).toBe('original-oid');
         expect(result[0].currentOid).toBeNull();
+      }
+    });
+
+    it('handles accept baseline for external file', () => {
+      const ops: OperationWithContent[] = [
+        createExternalOpWithContent(
+          createBaselineOp({
+            filepath: '/image.png',
+            reason: 'accept',
+            snapshot_oid: 'accepted-oid',
+          }),
+        ),
+        createExternalOpWithContent(
+          createEditOp({
+            filepath: '/image.png',
+            snapshot_oid: 'new-edit-oid',
+            contributor: 'agent-1',
+          }),
+        ),
+      ];
+
+      const result = createFileDiffsFromGenerations({ 'file-1': ops }, {});
+
+      expect(result).toHaveLength(1);
+      expect(isExternalFileDiff(result[0])).toBe(true);
+      if (isExternalFileDiff(result[0])) {
+        expect(result[0].changeType).toBe('modified');
+        expect(result[0].baselineOid).toBe('accepted-oid');
+        expect(result[0].currentOid).toBe('new-edit-oid');
       }
     });
 

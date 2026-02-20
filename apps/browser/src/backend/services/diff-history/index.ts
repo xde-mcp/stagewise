@@ -353,7 +353,10 @@ export class DiffHistoryService extends DisposableService {
     hunkIdsToReject: string[],
   ) {
     const pendingOperations = await getAllPendingOperations(this.db);
-    const pendingDiffs = await this.getFileDiffForOperations(pendingOperations);
+    const pendingDiffs = await this.getFileDiffForOperations(
+      pendingOperations,
+      'pending',
+    );
 
     const { result, failedAcceptedHunkIds, failedRejectedHunkIds } =
       acceptAndRejectHunksUtils(pendingDiffs, hunkIdsToAccept, hunkIdsToReject);
@@ -672,7 +675,7 @@ export class DiffHistoryService extends DisposableService {
       this.db,
       agentInstanceId,
     );
-    const fileDiffs = await this.getFileDiffForOperations(allops);
+    const fileDiffs = await this.getFileDiffForOperations(allops, 'summary');
     return fileDiffs;
   }
 
@@ -683,15 +686,46 @@ export class DiffHistoryService extends DisposableService {
       this.db,
       agentInstanceId,
     );
-    const fileDiffs = await this.getFileDiffForOperations(pendingOps);
+    const fileDiffs = await this.getFileDiffForOperations(
+      pendingOps,
+      'pending',
+    );
     return fileDiffs;
   }
 
   private async getFileDiffForOperations(
     operations: OperationWithExternal[],
+    mode: 'pending' | 'summary',
   ): Promise<FileDiff[]> {
-    const nonExternalOps = operations.filter((op) => !op.isExternal);
-    const externalOps = operations
+    let ops = operations;
+
+    if (mode === 'pending') {
+      // Trim operations to start from the latest baseline per filepath.
+      // After a partial accept, the latest baseline is the accept baseline,
+      // not the init baseline. This ensures pending diffs show only
+      // changes since the last accept.
+      const latestBaselineIdx = new Map<string, number>();
+      for (let i = 0; i < ops.length; i++) {
+        const op = ops[i];
+        if (op.operation === 'baseline') latestBaselineIdx.set(op.filepath, i);
+      }
+      if (latestBaselineIdx.size > 0) {
+        const trimmed: OperationWithExternal[] = [];
+        const seen = new Set<string>();
+        for (let i = 0; i < ops.length; i++) {
+          const op = ops[i];
+          const startIdx = latestBaselineIdx.get(op.filepath);
+          if (startIdx !== undefined && i >= startIdx) {
+            if (!seen.has(op.filepath)) seen.add(op.filepath);
+            trimmed.push(op);
+          } else if (startIdx === undefined) trimmed.push(op);
+        }
+        ops = trimmed;
+      }
+    }
+
+    const nonExternalOps = ops.filter((op) => !op.isExternal);
+    const externalOps = ops
       .filter((op) => op.isExternal)
       .map((op) => ({
         ...op,

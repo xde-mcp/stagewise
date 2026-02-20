@@ -156,23 +156,15 @@ export function buildContributorMap(
     let lineContributors: Contributor[] = [];
     let previousContent = '';
 
-    // Check if first operation is an 'init' baseline
     const firstOp = operations[0];
-    const startsWithInit =
-      firstOp.operation === 'baseline' && firstOp.reason === 'init';
+    const startsWithBaseline = firstOp.operation === 'baseline';
 
-    // Determine starting index for processing
     let startIndex = 0;
-    if (startsWithInit) {
-      // First init is the baseline - set previousContent but don't process for attribution
+    if (startsWithBaseline) {
       previousContent = firstOp.snapshot_content ?? '';
-      // Initialize lineContributors with undefined/placeholder for baseline lines
-      // These lines exist but weren't "added" by anyone in this generation
       const baselineLines = previousContent
         ? previousContent.split('\n').length
         : 0;
-      // We need to track these lines but they have no contributor yet
-      // We'll use 'user' as the default for baseline lines
       lineContributors = Array(baselineLines).fill('user' as Contributor);
       startIndex = 1;
     }
@@ -276,9 +268,7 @@ function determineExternalChangeType(
   lastOp: OperationWithContent,
 ): 'created' | 'deleted' | 'modified' {
   const hasBaseline =
-    firstOp.operation === 'baseline' &&
-    firstOp.reason === 'init' &&
-    firstOp.snapshot_oid !== null;
+    firstOp.operation === 'baseline' && firstOp.snapshot_oid !== null;
   const hasCurrent = lastOp.snapshot_oid !== null;
 
   if (!hasBaseline && hasCurrent) return 'created';
@@ -313,9 +303,7 @@ export function createFileDiffsFromGenerations(
     const isExternalGeneration = operations.some((op) => op.isExternal);
 
     if (isExternalGeneration) {
-      // Create ExternalFileDiff for external/binary files
-      const startsWithInit =
-        firstOp.operation === 'baseline' && firstOp.reason === 'init';
+      const startsWithBaseline = firstOp.operation === 'baseline';
       const changeType = determineExternalChangeType(firstOp, lastOp);
 
       result.push({
@@ -323,7 +311,7 @@ export function createFileDiffsFromGenerations(
         path,
         isExternal: true,
         changeType,
-        baselineOid: startsWithInit ? firstOp.snapshot_oid : null,
+        baselineOid: startsWithBaseline ? firstOp.snapshot_oid : null,
         currentOid: lastOp.snapshot_oid,
         contributor: lastOp.contributor,
         hunkId: generateDeterministicHunkId(
@@ -332,20 +320,18 @@ export function createFileDiffsFromGenerations(
           0,
           0,
           0,
-          `${startsWithInit ? firstOp.snapshot_oid : 'null'}:${lastOp.snapshot_oid}`,
+          `${startsWithBaseline ? firstOp.snapshot_oid : 'null'}:${lastOp.snapshot_oid}`,
         ),
       });
-      continue; // Skip text diff logic
+      continue;
     }
 
-    // Text file processing (existing logic)
-    const startsWithInit =
-      firstOp.operation === 'baseline' && firstOp.reason === 'init';
-    const baseline: string | null = startsWithInit
+    const startsWithBaseline = firstOp.operation === 'baseline';
+    const baseline: string | null = startsWithBaseline
       ? firstOp.snapshot_oid === null
         ? null
         : (firstOp.snapshot_content ?? '')
-      : null; // No init = file didn't exist at generation start
+      : null;
 
     // Determine current: null if file was deleted, otherwise content
     const current: string | null =

@@ -113,6 +113,7 @@ For every user-edit to readme.md, the system will:
 
 1A (view pending edits for readme.md):
 - diff(e_n, b_n) (if e_n == b_n: there are no pending edits, baseline == latest state)
+- Note: b_n is the **latest** baseline, which may be an accept baseline (from 1B) after a partial accept, not necessarily the init baseline. After a partial accept, pending diffs must only show changes since the last accept, not since the original init.
 1B (accept a pending edit for readme.md):
 - append a 'baseline' row with the content of (b_n + accepted hunk)
 1C (reject a pending edit for readme.md):
