@@ -774,6 +774,8 @@ export type TextFileDiff = FileDiffBase & {
   isExternal: false;
   baseline: string | null;
   current: string | null;
+  baselineOid: string | null;
+  currentOid: string | null;
   lineChanges: BlamedLineChange[];
   hunks: BlamedHunk[];
 };
@@ -789,6 +791,27 @@ export type ExternalFileDiff = FileDiffBase & {
 };
 
 export type FileDiff = TextFileDiff | ExternalFileDiff;
+
+export const fileDiffSnapshotSchema = z.object({
+  path: z.string(),
+  fileId: z.string(),
+  isExternal: z.boolean(),
+  baselineOid: z.string().nullable(),
+  currentOid: z.string().nullable(),
+  hunkIds: z.array(z.string()),
+  contributors: z.array(z.string()),
+});
+
+export type FileDiffSnapshot = z.infer<typeof fileDiffSnapshotSchema>;
+
+export const environmentDiffSnapshotSchema = z.object({
+  pending: z.array(fileDiffSnapshotSchema),
+  summary: z.array(fileDiffSnapshotSchema),
+});
+
+export type EnvironmentDiffSnapshot = z.infer<
+  typeof environmentDiffSnapshotSchema
+>;
 
 // Result types for acceptAndRejectHunks
 export type TextFileResult = {

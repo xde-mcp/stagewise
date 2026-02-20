@@ -34,6 +34,8 @@ import type {
   BlamedHunk,
   FileResult,
   ExternalFileResult,
+  FileDiffSnapshot,
+  EnvironmentDiffSnapshot,
 } from '@shared/karton-contracts/ui/shared-types';
 import type { OperationWithExternal } from './db';
 
@@ -421,6 +423,8 @@ export function createFileDiffsFromGenerations(
       isExternal: false,
       baseline,
       current,
+      baselineOid: startsWithBaseline ? firstOp.snapshot_oid : null,
+      currentOid: lastOp.snapshot_oid,
       lineChanges,
       hunks,
     });
@@ -632,4 +636,51 @@ export function acceptAndRejectHunks(
   };
 
   return { result: finalResult, failedAcceptedHunkIds, failedRejectedHunkIds };
+}
+
+/**
+ * Creates a lightweight snapshot from a FileDiff, extracting only the
+ * fingerprints needed for change detection (no full file content).
+ */
+export function createFileDiffSnapshot(diff: FileDiff): FileDiffSnapshot {
+  if (isExternalFileDiff(diff)) {
+    return {
+      path: diff.path,
+      fileId: diff.fileId,
+      isExternal: true,
+      baselineOid: diff.baselineOid,
+      currentOid: diff.currentOid,
+      hunkIds: [diff.hunkId],
+      contributors: [diff.contributor],
+    };
+  }
+
+  const uniqueContributors = [
+    ...new Set(diff.lineChanges.map((lc) => lc.contributor)),
+  ];
+
+  return {
+    path: diff.path,
+    fileId: diff.fileId,
+    isExternal: false,
+    baselineOid: diff.baselineOid,
+    currentOid: diff.currentOid,
+    hunkIds: diff.hunks.map((h) => h.id),
+    contributors: uniqueContributors,
+  };
+}
+
+/**
+ * Creates a full environment diff snapshot from pending and summary
+ * FileDiff arrays. This is the lightweight representation stored
+ * per-message for change detection between agent turns.
+ */
+export function createEnvironmentDiffSnapshot(
+  pending: FileDiff[],
+  summary: FileDiff[],
+): EnvironmentDiffSnapshot {
+  return {
+    pending: pending.map(createFileDiffSnapshot),
+    summary: summary.map(createFileDiffSnapshot),
+  };
 }

@@ -13,6 +13,8 @@ import {
   acceptAndRejectHunks,
   isTextFileDiff,
   isExternalFileDiff,
+  createFileDiffSnapshot,
+  createEnvironmentDiffSnapshot,
 } from './diff';
 
 // =============================================================================
@@ -158,7 +160,9 @@ function createFileDiffFromContent(
     isExternal: false,
     baseline,
     current,
-    lineChanges: [], // Not needed for acceptAndRejectHunks tests
+    baselineOid: baseline !== null ? `oid-baseline-${fileId}` : null,
+    currentOid: current !== null ? `oid-current-${fileId}` : null,
+    lineChanges: [],
     hunks,
   };
 }
@@ -1511,6 +1515,139 @@ describe('diff utilities', () => {
 
       expect(isExternalFileDiff(textDiff)).toBe(false);
       expect(isExternalFileDiff(externalDiff)).toBe(true);
+    });
+  });
+
+  // ===========================================================================
+  // createFileDiffSnapshot / createEnvironmentDiffSnapshot
+  // ===========================================================================
+
+  describe('createFileDiffSnapshot', () => {
+    it('extracts OIDs from text file diff', () => {
+      const textDiff = createFileDiffFromContent(
+        'file-1',
+        '/readme.md',
+        'line1',
+        'line1\nline2',
+      );
+      const snapshot = createFileDiffSnapshot(textDiff);
+
+      expect(snapshot.path).toBe('/readme.md');
+      expect(snapshot.fileId).toBe('file-1');
+      expect(snapshot.isExternal).toBe(false);
+      expect(snapshot.baselineOid).toBe('oid-baseline-file-1');
+      expect(snapshot.currentOid).toBe('oid-current-file-1');
+    });
+
+    it('extracts OIDs from external file diff', () => {
+      const extDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'modified',
+        'baseline-oid-abc',
+        'current-oid-def',
+        'agent-1',
+      );
+      const snapshot = createFileDiffSnapshot(extDiff);
+
+      expect(snapshot.path).toBe('/image.png');
+      expect(snapshot.fileId).toBe('ext-1');
+      expect(snapshot.isExternal).toBe(true);
+      expect(snapshot.baselineOid).toBe('baseline-oid-abc');
+      expect(snapshot.currentOid).toBe('current-oid-def');
+      expect(snapshot.hunkIds).toEqual(['ext-hunk-ext-1']);
+      expect(snapshot.contributors).toEqual(['agent-1']);
+    });
+
+    it('collects hunk IDs and unique contributors from text diff', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({
+            reason: 'init',
+            filepath: '/readme.md',
+            snapshot_oid: 'oid-base',
+          }),
+          'line1\n',
+        ),
+        createOpWithContent(
+          createEditOp({
+            filepath: '/readme.md',
+            contributor: 'agent-1',
+            snapshot_oid: 'oid-edit',
+          }),
+          'line1\nline2\n',
+        ),
+      ];
+      const contributorMap = {
+        'file-1': {
+          0: 'user' as Contributor,
+          1: 'agent-1' as Contributor,
+        },
+      };
+      const diffs = createFileDiffsFromGenerations(
+        { 'file-1': ops },
+        contributorMap,
+      );
+      expect(diffs).toHaveLength(1);
+
+      const snapshot = createFileDiffSnapshot(diffs[0]);
+      expect(snapshot.hunkIds.length).toBeGreaterThan(0);
+      expect(snapshot.contributors).toContain('user');
+      expect(snapshot.contributors).toContain('agent-1');
+    });
+
+    it('handles null OIDs for file creation', () => {
+      const textDiff = createFileDiffFromContent(
+        'file-1',
+        '/new-file.txt',
+        null,
+        'new content',
+      );
+      const snapshot = createFileDiffSnapshot(textDiff);
+
+      expect(snapshot.baselineOid).toBeNull();
+      expect(snapshot.currentOid).toBe('oid-current-file-1');
+    });
+
+    it('handles null OIDs for file deletion', () => {
+      const textDiff = createFileDiffFromContent(
+        'file-1',
+        '/deleted.txt',
+        'old content',
+        null,
+      );
+      const snapshot = createFileDiffSnapshot(textDiff);
+
+      expect(snapshot.baselineOid).toBe('oid-baseline-file-1');
+      expect(snapshot.currentOid).toBeNull();
+    });
+  });
+
+  describe('createEnvironmentDiffSnapshot', () => {
+    it('maps pending and summary arrays to snapshots', () => {
+      const textDiff = createFileDiffFromContent(
+        'file-1',
+        '/readme.md',
+        'a',
+        'b',
+      );
+      const extDiff = createExternalFileDiff(
+        'ext-1',
+        '/image.png',
+        'created',
+        null,
+        'oid-123',
+      );
+      const result = createEnvironmentDiffSnapshot(
+        [textDiff],
+        [textDiff, extDiff],
+      );
+
+      expect(result.pending).toHaveLength(1);
+      expect(result.pending[0].path).toBe('/readme.md');
+      expect(result.summary).toHaveLength(2);
+      expect(result.summary[0].path).toBe('/readme.md');
+      expect(result.summary[1].path).toBe('/image.png');
     });
   });
 });

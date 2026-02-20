@@ -139,6 +139,23 @@ export class AgentManagerService extends DisposableService {
         instanceId: string,
         message: AgentMessage & { role: 'user' },
       ) => {
+        // TODO: Attach environment diff snapshot to message metadata.
+        // Once `environmentDiffSnapshot` is added to the UserMessageMetadata
+        // schema in metadata.ts, uncomment the following to capture the current
+        // diff state on every user message:
+        //
+        // const toolboxState = this.karton.state.toolbox[instanceId];
+        // if (toolboxState) {
+        //   const snapshot = createEnvironmentDiffSnapshot(
+        //     toolboxState.pendingFileDiffs,
+        //     toolboxState.editSummary,
+        //   );
+        //   message.metadata = {
+        //     ...message.metadata,
+        //     environmentDiffSnapshot: snapshot,
+        //   };
+        // }
+
         await this.sendUserMessage(instanceId, message);
       },
     );
