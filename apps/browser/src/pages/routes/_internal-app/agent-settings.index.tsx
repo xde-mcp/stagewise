@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Switch } from '@stagewise/stage-ui/components/switch';
+import { IconFileContentFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { SearchableSelect } from '@stagewise/stage-ui/components/searchable-select';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import {
@@ -231,29 +233,34 @@ function WorkspaceSettingsSection() {
   const hasAnyContextFile = contextFiles.workspaceMd.exists || showAgentsMd;
 
   // Determine default tab - prefer .stagewise/ if it exists
-  const defaultTab = contextFiles.workspaceMd.exists ? 'project' : 'agents';
+  const defaultTab = contextFiles.workspaceMd.exists
+    ? 'workspaceMd'
+    : 'agentsMd';
 
   return (
     <div className="space-y-6">
       {/* AGENTS.md toggle */}
-      <div className="flex items-start justify-between gap-4">
+      <div
+        className="flex cursor-pointer items-center gap-4 rounded-lg border border-derived p-4"
+        onClick={() => handleToggleAgentsMd(!respectAgentsMd)}
+      >
+        <IconFileContentFillDuo18 className="size-5 shrink-0 text-muted-foreground" />
         <div className="flex-1">
-          <h3 className="font-medium text-base text-foreground">
-            Include AGENTS.md in prompt
+          <h3 className="font-medium text-foreground text-sm">
+            Include AGENTS.md
           </h3>
-          <p className="text-muted-foreground text-sm">
-            Not recommended — stagewise already manages optimized, up-to-date
-            project information and offers dedicated files to control agent
-            behavior.
+          <p className="text-muted-foreground text-xs">
+            Usually not needed — stagewise manages project context
+            automatically.
           </p>
         </div>
-
-        <Checkbox
-          checked={respectAgentsMd}
-          onCheckedChange={handleToggleAgentsMd}
-          size="sm"
-          className="mt-1"
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch
+            checked={respectAgentsMd}
+            onCheckedChange={handleToggleAgentsMd}
+            size="sm"
+          />
+        </div>
       </div>
 
       {/* Context files viewer */}
