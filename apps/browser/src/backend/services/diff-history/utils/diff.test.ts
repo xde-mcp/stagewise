@@ -149,6 +149,7 @@ function createFileDiffFromContent(
   const hunks: BlamedHunk[] = patch.hunks.map((hunk, i) => ({
     ...hunk,
     id: `hunk-${fileId}-${i}`,
+    contributors: [],
   }));
 
   return {
@@ -781,6 +782,103 @@ describe('diff utilities', () => {
         expect(diff.baseline).toBe('accepted content');
         expect(diff.current).toBe('accepted content\nnew line');
         expect(diff.hunks.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('populates hunk contributors from added line blame', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ reason: 'init', filepath: '/readme.md' }),
+          'line1\n',
+        ),
+        createOpWithContent(
+          createEditOp({
+            filepath: '/readme.md',
+            contributor: 'agent-1',
+          }),
+          'line1\nline2\n',
+        ),
+      ];
+      const contributorMap = {
+        'file-1': { 0: 'user' as Contributor, 1: 'agent-1' as Contributor },
+      };
+      const result = createFileDiffsFromGenerations(
+        { 'file-1': ops },
+        contributorMap,
+      );
+
+      expect(result).toHaveLength(1);
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.hunks.length).toBeGreaterThan(0);
+        expect(diff.hunks[0].contributors).toEqual(['agent-1']);
+      }
+    });
+
+    it('collects multiple contributors on a single hunk', () => {
+      // Agent modifies line 1, user (via contributorMap) modifies line 2
+      // Both adjacent → single hunk with two contributors
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ reason: 'init', filepath: '/readme.md' }),
+          'line1\nline2\nline3',
+        ),
+        createOpWithContent(
+          createEditOp({
+            filepath: '/readme.md',
+            contributor: 'agent-1',
+          }),
+          'modified1\nmodified2\nline3',
+        ),
+      ];
+      const contributorMap = {
+        'file-1': {
+          0: 'agent-1' as Contributor,
+          1: 'user' as Contributor,
+          2: 'user' as Contributor,
+        },
+      };
+      const result = createFileDiffsFromGenerations(
+        { 'file-1': ops },
+        contributorMap,
+      );
+
+      expect(result).toHaveLength(1);
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.hunks.length).toBeGreaterThan(0);
+        const contributors = diff.hunks[0].contributors;
+        expect(contributors).toContain('agent-1');
+        expect(contributors).toContain('user');
+        expect(contributors).toHaveLength(2);
+      }
+    });
+
+    it('returns empty contributors array for hunks with only removed lines', () => {
+      const ops: OperationWithContent[] = [
+        createOpWithContent(
+          createBaselineOp({ reason: 'init', filepath: '/readme.md' }),
+          'line1\nline2\n',
+        ),
+        createOpWithContent(
+          createEditOp({ filepath: '/readme.md' }),
+          'line1\n',
+        ),
+      ];
+      const contributorMap = { 'file-1': { 0: 'user' as Contributor } };
+      const result = createFileDiffsFromGenerations(
+        { 'file-1': ops },
+        contributorMap,
+      );
+
+      expect(result).toHaveLength(1);
+      const diff = result[0];
+      expect(isTextFileDiff(diff)).toBe(true);
+      if (isTextFileDiff(diff)) {
+        expect(diff.hunks.length).toBeGreaterThan(0);
+        expect(diff.hunks[0].contributors).toEqual([]);
       }
     });
 

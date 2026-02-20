@@ -750,8 +750,18 @@ export type BlamedLineChange = ChangeObject<string> & {
   contributor: Contributor;
 };
 
+/**
+ * A unified-diff hunk enriched with an ID and contributor tracking.
+ *
+ * Because hunks are computed from a single baseline→current diff, a single hunk
+ * can span changes made by different contributors (e.g. an agent edits line 5
+ * and the user edits adjacent line 6 — both land in one hunk). The `contributors`
+ * array lists every distinct contributor whose added lines fall within this hunk,
+ * derived from the per-line blame in `BlamedLineChange`.
+ */
 export type BlamedHunk = StructuredPatchHunk & {
   id: string;
+  contributors: Contributor[];
 };
 
 type FileDiffBase = {

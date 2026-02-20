@@ -343,7 +343,7 @@ export function createFileDiffsFromGenerations(
 
     // Step 3: Generate hunks with IDs using structuredPatch
     const patch = structuredPatch('', '', diffBaseline, diffCurrent, '', '');
-    const hunks: BlamedHunk[] = patch.hunks.map((hunk) => ({
+    const hunksWithoutContributors = patch.hunks.map((hunk) => ({
       ...hunk,
       id: generateDeterministicHunkId(
         path,
@@ -356,7 +356,7 @@ export function createFileDiffsFromGenerations(
     }));
 
     // Build hunk ranges for lookup
-    const hunkRanges: HunkRange[] = hunks.map((h) => ({
+    const hunkRanges: HunkRange[] = hunksWithoutContributors.map((h) => ({
       oldStart: h.oldStart,
       oldEnd: h.oldStart + h.oldLines - 1,
       newStart: h.newStart,
@@ -374,6 +374,7 @@ export function createFileDiffsFromGenerations(
     let newLine = 1;
     const lineChanges: BlamedLineChange[] = [];
     const fileContributorMap = contributorMap[fileId] ?? {};
+    const hunkContributorSets = new Map<string, Set<Contributor>>();
 
     for (const change of changes) {
       const lineCount = change.count ?? 0;
@@ -391,6 +392,12 @@ export function createFileDiffsFromGenerations(
         ? 'user'
         : (fileContributorMap[newLine - 1] ?? 'user'); // -1 for 0-indexed
 
+      if (hunkId && change.added) {
+        const set = hunkContributorSets.get(hunkId) ?? new Set();
+        set.add(contributor);
+        hunkContributorSets.set(hunkId, set);
+      }
+
       lineChanges.push({
         ...change,
         hunkId,
@@ -402,7 +409,12 @@ export function createFileDiffsFromGenerations(
       if (!change.removed) newLine += lineCount;
     }
 
-    // Step 7: Assemble TextFileDiff object
+    // Step 7: Attach contributors to hunks and assemble TextFileDiff
+    const hunks: BlamedHunk[] = hunksWithoutContributors.map((h) => ({
+      ...h,
+      contributors: [...(hunkContributorSets.get(h.id) ?? [])],
+    }));
+
     result.push({
       fileId,
       path,
