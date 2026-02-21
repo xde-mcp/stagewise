@@ -244,7 +244,6 @@ function buildFileReadingTimeline(
     newState: 'input-available',
     input: {
       relative_path: config.targetFile,
-      explanation: 'Reading file',
     },
   });
 

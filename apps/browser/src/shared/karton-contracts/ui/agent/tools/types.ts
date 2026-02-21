@@ -63,9 +63,6 @@ export const readFileToolInputSchema = z.object({
     .describe(
       'Ending line number (1-indexed, INCLUSIVE). Must be >= start_line. Omit to read to end.',
     ),
-  explanation: z
-    .string()
-    .describe('One sentence explaining why this tool is being used.'),
 });
 
 export const readFileToolOutputSchema = z.object({
@@ -173,9 +170,6 @@ export const grepSearchToolInputSchema = z.object({
     .describe(
       'Maximum matches to return. Defaults to 15, maximum allowed is 50.',
     ),
-  explanation: z
-    .string()
-    .describe('One sentence explaining why this tool is being used.'),
 });
 
 export const grepSearchToolOutputSchema = z.object({
@@ -277,12 +271,7 @@ export const deleteFileToolSchema = {
   outputSchema: deleteFileToolOutputSchema,
 } as const;
 
-export const getLintingDiagnosticsToolInputSchema = z.object({
-  explanation: z
-    .string()
-    .optional()
-    .describe('One sentence explaining why you are checking diagnostics.'),
-});
+export const getLintingDiagnosticsToolInputSchema = z.object({});
 
 export const lintingDiagnosticSchema = z.object({
   line: z.number(),

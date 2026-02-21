@@ -22,7 +22,6 @@ Parameters:
 - include_file_pattern (string, OPTIONAL): Glob pattern for files to include. Examples: "*.ts", "**/*.tsx", "src/**/*.js".
 - exclude_file_pattern (string, OPTIONAL): Glob pattern for files to exclude. Examples: "**/test-*.js", "metadata/**".
 - max_matches (number, OPTIONAL): Maximum matches to return. Defaults to 15, maximum allowed is 50.
-- explanation (string, REQUIRED): One sentence explaining why this tool is being used.
 
 Behavior: Searches recursively from current directory. Respects .gitignore by default. Returns matches with file paths, line numbers (1-indexed), and previews (max 500 chars each). Output capped at 50 matches and 40KB total. Binary files automatically skipped.`;
 
@@ -43,7 +42,6 @@ export async function grepSearchToolExecute(
     include_file_pattern,
     exclude_file_pattern,
     max_matches = 50,
-    explanation: _explanation,
   } = params;
 
   try {

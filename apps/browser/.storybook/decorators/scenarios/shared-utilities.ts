@@ -239,7 +239,6 @@ export function createReadFileToolPart(
     | 'output-available' = 'output-available',
   options?: {
     toolCallId?: string;
-    explanation?: string;
   },
 ): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
@@ -251,7 +250,6 @@ export function createReadFileToolPart(
       state: 'input-streaming',
       input: {
         relative_path: relativePath,
-        explanation: options?.explanation || 'Reading file',
       },
     } as AgentToolUIPart;
   }
@@ -263,7 +261,6 @@ export function createReadFileToolPart(
       state: 'input-available',
       input: {
         relative_path: relativePath,
-        explanation: options?.explanation || 'Reading file',
       },
     } as AgentToolUIPart;
   }
@@ -275,7 +272,6 @@ export function createReadFileToolPart(
     state: 'output-available',
     input: {
       relative_path: relativePath,
-      explanation: options?.explanation || 'Reading file',
     },
     output: {
       success: true,
@@ -650,7 +646,6 @@ export function createGrepSearchToolPart(
   options?: {
     toolCallId?: string;
     caseSensitive?: boolean;
-    explanation?: string;
   },
 ): AgentToolUIPart {
   const toolCallId = options?.toolCallId || generateId();
@@ -663,7 +658,6 @@ export function createGrepSearchToolPart(
       input: {
         query,
         max_matches: 100,
-        explanation: options?.explanation || 'Searching for pattern',
         case_sensitive: options?.caseSensitive ?? false,
       },
     } as AgentToolUIPart;
@@ -677,7 +671,6 @@ export function createGrepSearchToolPart(
       input: {
         query,
         max_matches: 100,
-        explanation: options?.explanation || 'Searching for pattern',
         case_sensitive: options?.caseSensitive ?? false,
       },
     } as AgentToolUIPart;
@@ -691,7 +684,6 @@ export function createGrepSearchToolPart(
     input: {
       query,
       max_matches: 100,
-      explanation: options?.explanation || 'Searching for pattern',
       case_sensitive: options?.caseSensitive ?? false,
     },
     output: {

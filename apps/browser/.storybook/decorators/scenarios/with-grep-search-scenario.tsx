@@ -263,7 +263,6 @@ function buildGrepSearchTimeline(
     input: {
       query: config.query,
       max_matches: 100,
-      explanation: 'Searching for pattern',
       case_sensitive: config.options?.caseSensitive ?? false,
     },
   });

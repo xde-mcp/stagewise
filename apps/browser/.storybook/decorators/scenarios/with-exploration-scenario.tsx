@@ -262,7 +262,6 @@ function buildExplorationTimeline(
             'input-streaming',
             {
               toolCallId: initialToolId,
-              explanation: 'Searching for button components',
             },
           ),
       });
