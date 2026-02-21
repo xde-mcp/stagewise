@@ -279,7 +279,9 @@ export const ChatHistory = () => {
 
   // Reconciliation: Remove optimistic messages that have been confirmed by server
   // We match by text content since server generates new IDs
-  useEffect(() => {
+  // useLayoutEffect ensures reconciliation runs BEFORE paint, preventing
+  // a frame where both optimistic and server-confirmed messages are visible
+  useLayoutEffect(() => {
     if (optimisticMessages.length === 0 && replacedMessageId === null) return;
 
     const serverUserMessages = serverMessages.filter((m) => m.role === 'user');
