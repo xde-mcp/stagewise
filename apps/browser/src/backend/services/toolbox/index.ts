@@ -64,6 +64,8 @@ import type {
   DiagnosticsByFile,
   WorkspaceSnapshot,
 } from './types';
+import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import { createEnvironmentDiffSnapshot } from '@/services/diff-history/utils/diff';
 import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info';
 import { getWorkspaceInfo as getWorkspaceInfoUtil } from '@/agents/shared/prompts/utils/workspace-info';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
@@ -461,6 +463,37 @@ export class ToolboxService extends DisposableService {
       tabs: allTabs,
       totalTabCount: Object.keys(browser.tabs).length,
     };
+  }
+
+  public captureEnvironmentSnapshot(
+    agentInstanceId: string,
+  ): EnvironmentSnapshot {
+    const browserState = this.getBrowserSnapshot();
+    const workspaceState = this.getWorkspaceSnapshot();
+    const toolboxState = this.uiKarton.state.toolbox[agentInstanceId];
+
+    const snapshot: EnvironmentSnapshot = {
+      browser: {
+        tabs: browserState.tabs.map((t) => ({
+          handle: t.handle,
+          url: t.url,
+          title: t.title,
+        })),
+        activeTabHandle: browserState.activeTab?.handle ?? null,
+      },
+      workspace: {
+        isConnected: workspaceState.isConnected,
+        workspacePath: workspaceState.workspacePath,
+      },
+      fileDiffs: toolboxState
+        ? createEnvironmentDiffSnapshot(
+            toolboxState.pendingFileDiffs,
+            toolboxState.editSummary,
+          )
+        : { pending: [], summary: [] },
+    };
+
+    return snapshot;
   }
 
   public async getSkillsList(): Promise<Skill[]> {

@@ -11,8 +11,12 @@ import type {
   AgentMessage,
   AgentToolUIPart,
 } from '@shared/karton-contracts/ui/agent';
-import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
+import type {
+  FileAttachment,
+  EnvironmentSnapshot,
+} from '@shared/karton-contracts/ui/agent/metadata';
 import type { SelectedElement } from '@shared/selected-elements';
+import { computeAllEnvironmentChanges } from '../prompts/utils/environment-changes';
 import type { ModelProviderService } from '@/agents/model-provider';
 import {
   relevantCodebaseFilesToContextSnippet,
@@ -102,6 +106,25 @@ function buildSyntheticUserMessageForAttachments(
 }
 
 /**
+ * Build a synthetic `UserModelMessage` carrying environment change
+ * descriptions. Injected between adjacent messages whose environment
+ * snapshots differ so the LLM sees what changed in the environment.
+ */
+export function buildSyntheticEnvironmentChangeMessage(
+  changes: string[],
+): UserModelMessage {
+  return {
+    role: 'user',
+    content: [
+      {
+        type: 'text',
+        text: `<${specialTokens.environmentChangesXmlTag}>\n${changes.map((c) => `- ${c}`).join('\n')}\n</${specialTokens.environmentChangesXmlTag}>`,
+      },
+    ],
+  };
+}
+
+/**
  * Converts a set of UI messages to model messages that then can simply be used to trigger a LLM.
  *
  * We implement this function to integrate handling for our custom formatting of file references etc.
@@ -110,6 +133,9 @@ function buildSyntheticUserMessageForAttachments(
  * @param systemPrompt The  system prompt to prepend to the messages.
  * @param tools The tools to use for the conversation.
  * @param minUncompressedCount The minimum number of uncompacted messages to keep in the conversation.
+ * @param agentInstanceId The agent instance ID, used for computing environment change descriptions.
+ * @param liveSnapshot Optional live environment snapshot captured at the start of the current step.
+ *        Compared against the last message's snapshot to inject a tail env-change without 1-step delay.
  *
  * @returns Model messages that represent the input messages.
  */
@@ -118,6 +144,8 @@ export const convertAgentMessagesToModelMessages = async (
   systemPrompt: string,
   tools: ToolSet,
   minUncompressedCount: number,
+  agentInstanceId: string,
+  liveSnapshot?: EnvironmentSnapshot,
 ): Promise<ModelMessage[]> => {
   // We work backwards first because this makes it easier to apply compacted conversation later on.
   // Every chunk is a turn of the conversation. We later flatten it. We store each chunk individually because some UI messages result in multiple model messages that need to have correct order.
@@ -276,6 +304,26 @@ export const convertAgentMessagesToModelMessages = async (
       ]);
     }
 
+    // Inject a synthetic env-change user message when the environment
+    // snapshot changed between the previous message and this one.
+    if (msgIndex > 0) {
+      const currentSnapshot = messages[msgIndex].metadata?.environmentSnapshot;
+      const previousSnapshot =
+        messages[msgIndex - 1].metadata?.environmentSnapshot;
+      if (currentSnapshot && previousSnapshot) {
+        const changes = computeAllEnvironmentChanges(
+          previousSnapshot,
+          currentSnapshot,
+          agentInstanceId,
+        );
+        if (changes.length > 0) {
+          revertedModelMessageChunks.push([
+            buildSyntheticEnvironmentChangeMessage(changes),
+          ]);
+        }
+      }
+    }
+
     // if the message has compacted chat history, we append it to the model messages history as well and cancel the conversation of all following messages
     const reverseMsgCount = messages.length - msgIndex;
     if (
@@ -294,6 +342,25 @@ export const convertAgentMessagesToModelMessages = async (
         },
       ]);
       break;
+    }
+  }
+
+  // Inject a live env-change at the tail so the model sees changes that
+  // happened since the last message was created (eliminates 1-step delay).
+  if (liveSnapshot) {
+    const lastMsg = messages[messages.length - 1];
+    const lastSnapshot = lastMsg?.metadata?.environmentSnapshot;
+    if (lastSnapshot) {
+      const liveChanges = computeAllEnvironmentChanges(
+        lastSnapshot,
+        liveSnapshot,
+        agentInstanceId,
+      );
+      if (liveChanges.length > 0) {
+        revertedModelMessageChunks.unshift([
+          buildSyntheticEnvironmentChangeMessage(liveChanges),
+        ]);
+      }
     }
   }
 

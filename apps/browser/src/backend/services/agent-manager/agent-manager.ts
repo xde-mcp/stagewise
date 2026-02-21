@@ -17,6 +17,7 @@ import type { z } from 'zod';
 import { AgentPersistenceDB } from './persistence/db';
 import type { GlobalDataPathService } from '../global-data-path';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
+import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 
 /**
  * @note Due to the complex type inference for all this stuff, we sometimes explicitly define types here to avoid errors.
@@ -139,22 +140,14 @@ export class AgentManagerService extends DisposableService {
         instanceId: string,
         message: AgentMessage & { role: 'user' },
       ) => {
-        // TODO: Attach environment diff snapshot to message metadata.
-        // Once `environmentDiffSnapshot` is added to the UserMessageMetadata
-        // schema in metadata.ts, uncomment the following to capture the current
-        // diff state on every user message:
-        //
-        // const toolboxState = this.karton.state.toolbox[instanceId];
-        // if (toolboxState) {
-        //   const snapshot = createEnvironmentDiffSnapshot(
-        //     toolboxState.pendingFileDiffs,
-        //     toolboxState.editSummary,
-        //   );
-        //   message.metadata = {
-        //     ...message.metadata,
-        //     environmentDiffSnapshot: snapshot,
-        //   };
-        // }
+        const environmentSnapshot: EnvironmentSnapshot =
+          this.toolbox.captureEnvironmentSnapshot(instanceId);
+
+        if (message.metadata)
+          message.metadata = {
+            ...message.metadata,
+            environmentSnapshot,
+          };
 
         await this.sendUserMessage(instanceId, message);
       },

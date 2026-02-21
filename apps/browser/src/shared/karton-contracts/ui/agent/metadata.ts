@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { selectedElementSchema } from '../../../selected-elements';
+import { environmentDiffSnapshotSchema } from '../shared-types';
 
 /**
  * Schema for file attachments.
@@ -36,6 +37,36 @@ export const textClipAttachmentSchema = z.object({
 
 export type TextClipAttachment = z.infer<typeof textClipAttachmentSchema>;
 
+export const browserTabSnapshotSchema = z.object({
+  handle: z.string(),
+  url: z.string(),
+  title: z.string(),
+});
+
+export type BrowserTabSnapshot = z.infer<typeof browserTabSnapshotSchema>;
+
+export const browserSnapshotSchema = z.object({
+  tabs: z.array(browserTabSnapshotSchema),
+  activeTabHandle: z.string().nullable(),
+});
+
+export type BrowserSnapshot = z.infer<typeof browserSnapshotSchema>;
+
+export const workspaceSnapshotSchema = z.object({
+  isConnected: z.boolean(),
+  workspacePath: z.string().nullable(),
+});
+
+export type WorkspaceSnapshot = z.infer<typeof workspaceSnapshotSchema>;
+
+export const environmentSnapshotSchema = z.object({
+  browser: browserSnapshotSchema,
+  workspace: workspaceSnapshotSchema,
+  fileDiffs: environmentDiffSnapshotSchema,
+});
+
+export type EnvironmentSnapshot = z.infer<typeof environmentSnapshotSchema>;
+
 const metadataSchema = z.object({
   createdAt: z.date(),
   /** Workspace access path captured at message creation time for persistent file links. */
@@ -52,6 +83,8 @@ const metadataSchema = z.object({
   compressedHistory: z.string().optional(),
   /** All file attachments for the message, containing data. We use this to fuly control how data get's attached in the final message. */
   fileAttachments: z.array(fileAttachmentSchema).optional(),
+  /** Snapshot of browser, workspace, and file-diff state at message creation time. Used to compute environment change descriptions between agent turns. */
+  environmentSnapshot: environmentSnapshotSchema.optional(),
 });
 
 export type UserMessageMetadata = z.infer<typeof metadataSchema>;

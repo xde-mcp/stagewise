@@ -17,6 +17,7 @@ import type {
   AgentTypes,
   AgentState,
 } from '@shared/karton-contracts/ui/agent';
+import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
 import type { ModelId } from '@shared/available-models';
 import type { z } from 'zod';
@@ -871,12 +872,15 @@ export abstract class BaseAgent<
   protected async transformMessagesToModelMessages(
     messages: AgentMessage[],
     systemPrompt: string,
+    liveSnapshot?: EnvironmentSnapshot,
   ): Promise<ModelMessage[]> {
     return convertAgentMessagesToModelMessages(
       messages,
       systemPrompt,
       await this.getToolsForStep(),
       Math.max(this.config.minUncompressedMessages ?? 0, 5),
+      this.instanceId,
+      liveSnapshot,
     );
   }
 
@@ -1470,10 +1474,17 @@ export abstract class BaseAgent<
     // Then, we fetch the system prompt
     const systemPrompt = await this.getSystemPrompt(filteredUIMsgs);
 
+    // Capture a live environment snapshot so the conversion can inject
+    // a tail env-change for anything that changed since the last message.
+    const liveSnapshot = this.toolbox.captureEnvironmentSnapshot(
+      this.instanceId,
+    );
+
     // Then, we use the filtered UI messages and system prompt to transform to model messages
     const modelMessages = await this.transformMessagesToModelMessages(
       filteredUIMsgs,
       systemPrompt,
+      liveSnapshot,
     );
 
     // Then, we allow another step to modify the final model messages
@@ -1570,6 +1581,9 @@ export abstract class BaseAgent<
           agentAccessPath:
             this.toolbox.getWorkspaceSnapshot().workspacePath ?? null,
           partsMetadata: [],
+          environmentSnapshot: this.toolbox.captureEnvironmentSnapshot(
+            this.instanceId,
+          ),
         };
 
         // Add metadata for each part of the message
