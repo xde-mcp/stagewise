@@ -1,5 +1,5 @@
-import type { LspService } from '@/services/workspace/services/lsp';
-import type { AggregatedDiagnostic } from '@/services/workspace/services/lsp/types';
+import type { LspService } from '@/services/toolbox/services/lsp';
+import type { AggregatedDiagnostic } from '@/services/toolbox/services/lsp/types';
 
 /**
  * Collects current LSP diagnostics for a set of modified files.

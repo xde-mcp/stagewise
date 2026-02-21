@@ -5,7 +5,7 @@ import {
   type FileDiagnostics,
   type LintingDiagnostic,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { LspService } from '@/services/workspace/services/lsp';
+import type { LspService } from '@/services/toolbox/services/lsp';
 import { tool } from 'ai';
 import { rethrowCappedToolOutputError } from '../../utils';
 

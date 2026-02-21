@@ -1,4 +1,4 @@
-import type { AggregatedDiagnostic } from '@/services/workspace/services/lsp/types';
+import type { AggregatedDiagnostic } from '@/services/toolbox/services/lsp/types';
 import type { ToolboxService } from '.';
 
 /**

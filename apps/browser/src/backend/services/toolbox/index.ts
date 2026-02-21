@@ -19,7 +19,7 @@ import type { TelemetryService } from '@/services/telemetry';
 import type { GlobalDataPathService } from '@/services/global-data-path';
 import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
-import { LspService } from '@/services/workspace/services/lsp';
+import { LspService } from '@/services/toolbox/services/lsp';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import {
   deleteFileToolExecute,
