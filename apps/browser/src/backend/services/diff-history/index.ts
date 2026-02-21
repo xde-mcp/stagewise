@@ -165,8 +165,6 @@ export class DiffHistoryService extends DisposableService {
       })
       .on('change', async (path) => {
         if (this.filesIgnoredByWatcher.has(path)) return;
-        // No need to check for 'init' baseline - files are only tracked when they have pending edits
-        // (and thus have an init baseline)
         try {
           await storeFileAndAddOperation(path, {
             operation: 'edit',
@@ -178,16 +176,17 @@ export class DiffHistoryService extends DisposableService {
           return;
         }
         this.logDebug(`File changed: ${path}`);
+        await this.updateAllHydratedAgentStates();
       })
       .on('unlink', async (path) => {
         if (this.filesIgnoredByWatcher.has(path)) return;
-        // Add 'null' edit op to mark that the file was deleted
         await insertOperation(this.db, path, null, {
           operation: 'edit',
           contributor: 'user',
           reason: 'user-save',
         });
         this.logDebug(`File unlinked: ${path}`);
+        await this.updateAllHydratedAgentStates();
       });
 
     this.uiKarton.registerStateChangeCallback(this.boundOnStateChange);
@@ -310,7 +309,12 @@ export class DiffHistoryService extends DisposableService {
       );
     }
 
-    await this.updateDiffKartonState(edit.agentInstanceId);
+    await this.updateAllHydratedAgentStates();
+  }
+
+  private async updateAllHydratedAgentStates(): Promise<void> {
+    for (const id of this.hydratedAgentInstanceIds)
+      await this.updateDiffKartonState(id);
     await this.updateWatcher();
   }
 
@@ -385,17 +389,7 @@ export class DiffHistoryService extends DisposableService {
       await this.doReject(filePath, fileResult);
     }
 
-    // Extract unique agent instance IDs from pending operations' contributors
-    // Contributors have format 'agent-{agentInstanceId}' or 'user'
-    const affectedAgentIds = new Set<string>();
-    for (const op of pendingOperations)
-      if (op.contributor.startsWith('agent-'))
-        affectedAgentIds.add(op.contributor.slice(6)); // Remove 'agent-' prefix
-
-    for (const agentInstanceId of affectedAgentIds)
-      await this.updateDiffKartonState(agentInstanceId);
-
-    await this.updateWatcher();
+    await this.updateAllHydratedAgentStates();
   }
 
   private async storeExternalFile(filePath: string, meta: OperationMeta) {
@@ -560,11 +554,7 @@ export class DiffHistoryService extends DisposableService {
         setTimeout(() => this.unignoreFileForWatcher(filePath), 500);
       }
     }
-    if (agentInstanceId) await this.updateDiffKartonState(agentInstanceId);
-    else
-      for (const id of this.hydratedAgentInstanceIds)
-        await this.updateDiffKartonState(id);
-    await this.updateWatcher();
+    await this.updateAllHydratedAgentStates();
   }
 
   /**
