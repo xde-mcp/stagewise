@@ -466,6 +466,13 @@ export type OmniboxSuggestions = {
     lastVisitTime: Date;
     faviconUrl: string | null;
   }[];
+  /** Most visited origins grouped by scheme://host[:port] (for empty-input defaults) */
+  mostVisitedOrigins: {
+    origin: string;
+    visitCount: number;
+    lastVisitTime: Date;
+    faviconUrl: string | null;
+  }[];
   /** Previous search terms matching the input */
   searchTerms: {
     term: string;

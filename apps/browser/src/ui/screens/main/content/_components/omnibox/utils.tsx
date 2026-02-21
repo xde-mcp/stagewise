@@ -290,29 +290,36 @@ export function useOmniboxSuggestions(
           key: 'most-visited',
           label: 'Most visited',
           items:
-            suggestions?.historyEntries.map((entry) => ({
-              type: 'past-page' as const,
-              value: entry.url,
-              label: entry.url,
-              suggestionLabel: (
-                <span className="truncate">
-                  <strong className="max-w-1/2 truncate">{entry.title}</strong>{' '}
-                  <span className="text-muted-foreground">{entry.url}</span>
-                </span>
-              ),
-              suggestionIcon:
-                entry.faviconUrl && entry.faviconUrl.length > 0 ? (
-                  <FaviconIcon
-                    src={entry.faviconUrl}
-                    className="size-4"
-                    fallback={
-                      <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
-                    }
-                  />
-                ) : (
-                  <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
+            suggestions?.mostVisitedOrigins?.map((entry) => {
+              let hostname: string;
+              try {
+                hostname = new URL(entry.origin).host;
+              } catch {
+                hostname = entry.origin;
+              }
+              return {
+                type: 'past-page' as const,
+                value: entry.origin,
+                label: entry.origin,
+                suggestionLabel: (
+                  <span className="truncate">
+                    <strong>{hostname}</strong>
+                  </span>
                 ),
-            })) ?? [],
+                suggestionIcon:
+                  entry.faviconUrl && entry.faviconUrl.length > 0 ? (
+                    <FaviconIcon
+                      src={entry.faviconUrl}
+                      className="size-4"
+                      fallback={
+                        <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
+                      }
+                    />
+                  ) : (
+                    <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
+                  ),
+              };
+            }) ?? [],
         },
         ...(engine
           ? [

@@ -160,6 +160,7 @@ export class OmniboxSuggestionsService extends DisposableService {
         lastVisitTime: h.lastVisitTime,
         faviconUrl: faviconMap.get(h.url) ?? null,
       })),
+      mostVisitedOrigins: [],
       searchTerms: deduplicatedSearchTerms.map((s) => ({
         term: s.term,
         keyword: keywordMap.get(s.keywordId),
@@ -170,17 +171,19 @@ export class OmniboxSuggestionsService extends DisposableService {
 
   /**
    * Get default suggestions when omnibox input is empty.
-   * Returns most visited pages (within last 500 navigations, max 2 per host,
-   * sorted by visit count then URL length) and frequent search terms.
+   * Returns most visited origins (grouped by scheme://host, within a 7-day
+   * window relative to the last history entry, min 2 visits) and frequent
+   * search terms.
    */
   private async getDefaultSuggestions(): Promise<OmniboxSuggestions> {
     // Run queries in parallel for performance
-    const [mostVisitedResults, frequentSearchResults, localPorts] =
+    const [mostVisitedOrigins, frequentSearchResults, localPorts] =
       await Promise.all([
-        this.historyService.getMostVisitedPagesForOmnibox({
-          navigationLimit: 500,
-          resultLimit: 4,
-          maxPerHost: 2,
+        this.historyService.getMostVisitedOrigins({
+          timespanDays: 7,
+          limit: 4,
+          minVisitCount: 2,
+          excludeLocalOrigins: true,
         }),
         this.historyService.getFrequentSearchTermsForOmnibox({
           dayWindow: 7,
@@ -190,22 +193,25 @@ export class OmniboxSuggestionsService extends DisposableService {
         this.getLocalPorts(),
       ]);
 
-    // Get favicons for history URLs
-    const faviconMap = await this.faviconService.getFaviconsForUrls(
-      mostVisitedResults.map((h) => h.url),
-    );
+    // Get favicons for origin URLs (try both bare origin and with trailing slash)
+    const originUrls = mostVisitedOrigins.flatMap((o) => [
+      o.origin,
+      `${o.origin}/`,
+    ]);
+    const faviconMap = await this.faviconService.getFaviconsForUrls(originUrls);
 
     // Get keyword hostnames for search terms
     const keywords = await this.webDataService.getAllKeywords();
     const keywordMap = new Map(keywords.map((k) => [k.id, k.keyword]));
 
     return {
-      historyEntries: mostVisitedResults.map((h) => ({
-        url: h.url,
-        title: h.title,
-        visitCount: h.visitCount,
-        lastVisitTime: h.lastVisitTime,
-        faviconUrl: faviconMap.get(h.url) ?? null,
+      historyEntries: [],
+      mostVisitedOrigins: mostVisitedOrigins.map((o) => ({
+        origin: o.origin,
+        visitCount: o.visitCount,
+        lastVisitTime: o.lastVisitTime,
+        faviconUrl:
+          faviconMap.get(o.origin) ?? faviconMap.get(`${o.origin}/`) ?? null,
       })),
       searchTerms: frequentSearchResults.map((s) => ({
         term: s.term,

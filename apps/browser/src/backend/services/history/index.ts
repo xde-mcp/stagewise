@@ -44,6 +44,13 @@ export interface HistoryQueryResult {
   transition: number;
 }
 
+// Result type for origin-grouped visit counts
+export interface OriginVisitCount {
+  origin: string;
+  visitCount: number;
+  lastVisitTime: Date;
+}
+
 // Internal result type for downloads (fileExists added by PagesService)
 export interface DownloadQueryResult {
   id: number;
@@ -485,6 +492,152 @@ export class HistoryService {
       .limit(1)
       .get();
     return result ? fromWebKitTimestamp(result.time) : null;
+  }
+
+  /**
+   * Get aggregate visit stats for all URLs matching an origin prefix.
+   * Returns total visit count and most recent visit time across all matching URLs.
+   */
+  async getVisitStatsForOrigin(origin: string): Promise<{
+    visitCount: number;
+    lastVisitTime: Date | null;
+    lastTitle: string | null;
+    lastUrl: string | null;
+  }> {
+    const rows = await this.db
+      .select({
+        url: schema.urls.url,
+        title: schema.urls.title,
+        visitCount: schema.urls.visitCount,
+        lastVisitTime: schema.urls.lastVisitTime,
+      })
+      .from(schema.urls)
+      .where(like(schema.urls.url, `${origin}%`));
+
+    if (rows.length === 0) {
+      return {
+        visitCount: 0,
+        lastVisitTime: null,
+        lastTitle: null,
+        lastUrl: null,
+      };
+    }
+
+    let totalVisitCount = 0;
+    let maxLastVisitTime: Date | null = null;
+    let lastTitle: string | null = null;
+    let lastUrl: string | null = null;
+    for (const row of rows) {
+      totalVisitCount += Number(row.visitCount);
+      const time = fromWebKitTimestamp(row.lastVisitTime);
+      if (!maxLastVisitTime || time > maxLastVisitTime) {
+        maxLastVisitTime = time;
+        lastTitle = row.title;
+        lastUrl = row.url;
+      }
+    }
+
+    return {
+      visitCount: totalVisitCount,
+      lastVisitTime: maxLastVisitTime,
+      lastTitle,
+      lastUrl,
+    };
+  }
+
+  /**
+   * Get the most visited origins, grouped by origin (scheme://host[:port]).
+   * Each visit row is counted individually (not the URL-level visitCount).
+   * Supports pagination via limit + offset.
+   *
+   * Time filtering:
+   * - `timespanDays` computes the cutoff relative to the most recent visit,
+   *   so the window stays meaningful even if the browser hasn't been used recently.
+   * - `since` uses an absolute cutoff date.
+   * - If both are set, `timespanDays` takes precedence.
+   * - If neither is set, all history is considered.
+   */
+  async getMostVisitedOrigins(options: {
+    since?: Date;
+    timespanDays?: number;
+    limit: number;
+    offset?: number;
+    minVisitCount?: number;
+    excludeLocalOrigins?: boolean;
+  }): Promise<OriginVisitCount[]> {
+    const { limit, offset = 0, minVisitCount } = options;
+
+    // Determine the cutoff timestamp
+    let sinceTs: bigint;
+    if (options.timespanDays != null) {
+      const lastVisitTime = await this.getLastVisitTime();
+      if (!lastVisitTime) return [];
+      const sinceDate = new Date(
+        lastVisitTime.getTime() - options.timespanDays * 24 * 60 * 60 * 1000,
+      );
+      sinceTs = toWebKitTimestamp(sinceDate);
+    } else if (options.since) {
+      sinceTs = toWebKitTimestamp(options.since);
+    } else {
+      sinceTs = 0n;
+    }
+
+    // Extract origin (scheme://host[:port]) from URL using SQLite string ops.
+    // If there's a path separator after ://, take everything before it;
+    // otherwise use the full URL (e.g. "https://example.com" with no trailing slash).
+    const originExpr = sql<string>`CASE
+      WHEN INSTR(SUBSTR(${schema.urls.url}, INSTR(${schema.urls.url}, '://') + 3), '/') > 0
+      THEN SUBSTR(${schema.urls.url}, 1, INSTR(${schema.urls.url}, '://') + 2 + INSTR(SUBSTR(${schema.urls.url}, INSTR(${schema.urls.url}, '://') + 3), '/') - 1)
+      ELSE ${schema.urls.url}
+    END`;
+
+    const results = await this.db
+      .select({
+        origin: originExpr.as('origin'),
+        visitCount: sql<number>`COUNT(*)`.as('visit_count'),
+        lastVisitTime: sql<bigint>`MAX(${schema.visits.visitTime})`.as(
+          'last_visit_time',
+        ),
+      })
+      .from(schema.visits)
+      .innerJoin(schema.urls, eq(schema.visits.url, schema.urls.id))
+      .where(
+        and(
+          gte(schema.visits.visitTime, sinceTs),
+          sql`${schema.urls.url} IS NOT NULL`,
+          ...(options.excludeLocalOrigins
+            ? [
+                sql`${schema.urls.url} NOT LIKE 'http://localhost%'`,
+                sql`${schema.urls.url} NOT LIKE 'http://127.0.0.1%'`,
+                sql`${schema.urls.url} NOT LIKE 'http://[::1]%'`,
+              ]
+            : []),
+        ),
+      )
+      .groupBy(sql`origin`)
+      .having(sql`COUNT(*) >= ${minVisitCount ?? 1}`)
+      .orderBy(desc(sql`visit_count`))
+      .limit(limit)
+      .offset(offset);
+
+    return results.map((row) => ({
+      origin: row.origin || '',
+      visitCount: Number(row.visitCount),
+      lastVisitTime: fromWebKitTimestamp(row.lastVisitTime),
+    }));
+  }
+
+  /**
+   * Get the timestamp of the most recent visit in the database.
+   */
+  private async getLastVisitTime(): Promise<Date | null> {
+    const result = await this.db
+      .select({
+        time: sql<bigint>`MAX(${schema.visits.visitTime})`,
+      })
+      .from(schema.visits)
+      .get();
+    return result?.time ? fromWebKitTimestamp(result.time) : null;
   }
 
   /**
