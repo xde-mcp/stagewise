@@ -20,7 +20,6 @@ import {
 import { IconFolderFillDuo18, IconEarthFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { cn } from '@/utils';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
-import { LogoWithText } from '@ui/components/ui/logo-with-text';
 import { LogoText } from '@stagewise/stage-ui/components/logo-text';
 import LogoImage from '@assets/icons/icon-64.png';
 
@@ -49,7 +48,10 @@ function HomePage() {
     return (
       <div className="flex size-full min-h-screen min-w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <LogoWithText />
+          <div className="flex items-center gap-2">
+            <img src={LogoImage} alt="stagewise Logo" className="size-8" />
+            <LogoText className="h-8 text-foreground" />
+          </div>
           <span className="text-muted-foreground text-sm">Loading...</span>
         </div>
       </div>
@@ -475,7 +477,6 @@ function OnboardingStartPage() {
   return (
     <div className="flex w-full max-w-2xl flex-col items-start gap-4 px-10">
       <div className="flex items-center gap-2">
-        <LogoWithText className="h-10 text-foreground" />
         <div className="ml-1 inline-flex shrink-0 items-center font-normal text-warning-foreground text-xs">
           {releaseChannel === 'dev' && 'Development Build'}
           {releaseChannel === 'prerelease' && 'Pre-Release Build'}
