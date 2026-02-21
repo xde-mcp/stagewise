@@ -13,6 +13,8 @@ export class LocalPortsScannerService extends DisposableService {
   private readonly logger: Logger;
   private readonly pagesService: PagesService;
   private readonly excludePorts: Set<number>;
+  private cachedEntries: LocalPortEntry[] = [];
+  private lastScanTime = 0;
 
   private constructor(
     logger: Logger,
@@ -66,6 +68,9 @@ export class LocalPortsScannerService extends DisposableService {
           url: `http://localhost:${c.port}`,
         }));
 
+      this.cachedEntries = entries;
+      this.lastScanTime = Date.now();
+
       await this.pagesService.syncLocalPortsState(entries);
       this.logger.debug(
         `[LocalPortsScanner] Updated local ports: ${entries.length} found`,
@@ -73,6 +78,14 @@ export class LocalPortsScannerService extends DisposableService {
     } catch (error) {
       this.logger.warn('[LocalPortsScanner] Scan failed', error);
     }
+  }
+
+  public getCachedEntries(): LocalPortEntry[] {
+    return this.cachedEntries;
+  }
+
+  public getLastScanTime(): number {
+    return this.lastScanTime;
   }
 
   protected onTeardown(): void {

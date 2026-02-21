@@ -472,6 +472,15 @@ export type OmniboxSuggestions = {
     /** The search engine keyword used (if available) */
     keyword?: string;
   }[];
+  /** Locally running pages (dev servers) sorted by visit frequency then port */
+  localPorts: {
+    port: number;
+    url: string;
+    visitCount: number;
+    lastVisitTime: Date | null;
+    lastTitle: string | null;
+    faviconUrl: string | null;
+  }[];
 };
 
 export type AppState = {

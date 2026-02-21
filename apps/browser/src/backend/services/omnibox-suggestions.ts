@@ -3,8 +3,11 @@ import type { KartonService } from './karton';
 import type { HistoryService } from './history';
 import type { WebDataService } from './webdata';
 import type { FaviconService } from './favicon';
+import type { LocalPortsScannerService } from './local-ports-scanner';
 import type { OmniboxSuggestions } from '@shared/karton-contracts/ui';
 import { DisposableService } from './disposable';
+
+const LOCAL_PORTS_CACHE_TTL_MS = 30_000;
 
 /**
  * Service responsible for providing omnibox autocomplete suggestions.
@@ -16,6 +19,7 @@ export class OmniboxSuggestionsService extends DisposableService {
   private readonly historyService: HistoryService;
   private readonly webDataService: WebDataService;
   private readonly faviconService: FaviconService;
+  private readonly localPortsScanner: LocalPortsScannerService;
 
   private constructor(
     logger: Logger,
@@ -23,6 +27,7 @@ export class OmniboxSuggestionsService extends DisposableService {
     historyService: HistoryService,
     webDataService: WebDataService,
     faviconService: FaviconService,
+    localPortsScanner: LocalPortsScannerService,
   ) {
     super();
     this.logger = logger;
@@ -30,6 +35,7 @@ export class OmniboxSuggestionsService extends DisposableService {
     this.historyService = historyService;
     this.webDataService = webDataService;
     this.faviconService = faviconService;
+    this.localPortsScanner = localPortsScanner;
   }
 
   private async initialize(): Promise<void> {
@@ -55,6 +61,7 @@ export class OmniboxSuggestionsService extends DisposableService {
     historyService: HistoryService,
     webDataService: WebDataService,
     faviconService: FaviconService,
+    localPortsScanner: LocalPortsScannerService,
   ): Promise<OmniboxSuggestionsService> {
     const instance = new OmniboxSuggestionsService(
       logger,
@@ -62,6 +69,7 @@ export class OmniboxSuggestionsService extends DisposableService {
       historyService,
       webDataService,
       faviconService,
+      localPortsScanner,
     );
     await instance.initialize();
     return instance;
@@ -89,14 +97,24 @@ export class OmniboxSuggestionsService extends DisposableService {
       return defaults;
     }
 
+    // Check if input matches or is a prefix of "localhost" (min 3 chars)
+    const normalizedForLocalCheck = trimmed
+      .replace(/^http:\/\//i, '')
+      .toLowerCase();
+    const shouldIncludeLocalPorts =
+      (normalizedForLocalCheck.length >= 3 &&
+        'localhost'.startsWith(normalizedForLocalCheck)) ||
+      normalizedForLocalCheck.startsWith('localhost');
+
     // Run queries in parallel for performance
-    const [historyResults, searchTermResults] = await Promise.all([
+    const [historyResults, searchTermResults, localPorts] = await Promise.all([
       this.historyService.queryHistoryForOmnibox({
         text: trimmed,
         limit: 4,
         maxPerHost: 2,
       }),
       this.historyService.querySearchTermsForOmnibox(trimmed, 3),
+      shouldIncludeLocalPorts ? this.getLocalPorts(trimmed, 5) : [],
     ]);
 
     // Deduplicate history entries: keep shortest URL when multiple URLs share a common prefix
@@ -146,6 +164,7 @@ export class OmniboxSuggestionsService extends DisposableService {
         term: s.term,
         keyword: keywordMap.get(s.keywordId),
       })),
+      localPorts,
     };
   }
 
@@ -156,18 +175,20 @@ export class OmniboxSuggestionsService extends DisposableService {
    */
   private async getDefaultSuggestions(): Promise<OmniboxSuggestions> {
     // Run queries in parallel for performance
-    const [mostVisitedResults, frequentSearchResults] = await Promise.all([
-      this.historyService.getMostVisitedPagesForOmnibox({
-        navigationLimit: 500,
-        resultLimit: 4,
-        maxPerHost: 2,
-      }),
-      this.historyService.getFrequentSearchTermsForOmnibox({
-        dayWindow: 7,
-        minOccurrences: 2,
-        limit: 3,
-      }),
-    ]);
+    const [mostVisitedResults, frequentSearchResults, localPorts] =
+      await Promise.all([
+        this.historyService.getMostVisitedPagesForOmnibox({
+          navigationLimit: 500,
+          resultLimit: 4,
+          maxPerHost: 2,
+        }),
+        this.historyService.getFrequentSearchTermsForOmnibox({
+          dayWindow: 7,
+          minOccurrences: 2,
+          limit: 3,
+        }),
+        this.getLocalPorts(),
+      ]);
 
     // Get favicons for history URLs
     const faviconMap = await this.faviconService.getFaviconsForUrls(
@@ -190,6 +211,77 @@ export class OmniboxSuggestionsService extends DisposableService {
         term: s.term,
         keyword: keywordMap.get(s.keywordId),
       })),
+      localPorts,
     };
+  }
+
+  /**
+   * Get local ports sorted by visit frequency then port number.
+   * Uses the LocalPortsScannerService with a 30-second cache TTL.
+   * Optionally filters by input prefix (e.g. "localhost:3" only shows ports starting with 3).
+   */
+  private async getLocalPorts(
+    input?: string,
+    limit = 3,
+  ): Promise<OmniboxSuggestions['localPorts']> {
+    try {
+      // Check if cache is stale, trigger a scan if needed
+      const cacheAge = Date.now() - this.localPortsScanner.getLastScanTime();
+      if (cacheAge > LOCAL_PORTS_CACHE_TTL_MS) {
+        await this.localPortsScanner.scan();
+      }
+
+      let entries = this.localPortsScanner.getCachedEntries();
+
+      // Filter by input if provided (match against url or localhost:port)
+      if (input) {
+        const normalizedInput = input.replace(/^http:\/\//i, '').toLowerCase();
+        entries = entries.filter((e) =>
+          `localhost:${e.port}`.startsWith(normalizedInput),
+        );
+      }
+
+      // Look up visit stats for each port
+      const portsWithStats = await Promise.all(
+        entries.map(async (entry) => {
+          const stats = await this.historyService.getVisitStatsForOrigin(
+            entry.url,
+          );
+          return { ...entry, ...stats };
+        }),
+      );
+
+      // Sort by visit count desc, then by port number asc
+      portsWithStats.sort((a, b) => {
+        if (b.visitCount !== a.visitCount) {
+          return b.visitCount - a.visitCount;
+        }
+        return a.port - b.port;
+      });
+
+      const top = portsWithStats.slice(0, limit);
+
+      // Fetch favicons for ports that have a last-visited URL
+      const urlsForFavicons = top
+        .map((p) => p.lastUrl)
+        .filter((u): u is string => u != null);
+      const faviconMap =
+        await this.faviconService.getFaviconsForUrls(urlsForFavicons);
+
+      return top.map((p) => ({
+        port: p.port,
+        url: p.url,
+        visitCount: p.visitCount,
+        lastVisitTime: p.lastVisitTime,
+        lastTitle: p.lastTitle,
+        faviconUrl: p.lastUrl ? (faviconMap.get(p.lastUrl) ?? null) : null,
+      }));
+    } catch (error) {
+      this.logger.warn(
+        '[OmniboxSuggestionsService] Failed to get local ports',
+        error,
+      );
+      return [];
+    }
   }
 }

@@ -7,35 +7,33 @@ const execFileAsync = promisify(execFile);
 const HTTP_REQUEST_TIMEOUT_MS = 500;
 
 /**
- * Check if a specific port has content available (HTTP server responding)
+ * Check if a specific port has content available (HTTP server responding).
+ * Tries IPv4 (127.0.0.1) first, then falls back to IPv6 (::1) since some
+ * dev servers (e.g. Vite) only listen on the IPv6 loopback.
  */
 export async function checkPortHasContent(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const options = {
-      hostname: '127.0.0.1',
-      port: port,
-      path: '/',
-      method: 'HEAD',
-      timeout: HTTP_REQUEST_TIMEOUT_MS,
-    };
-
-    const req = http.request(options, () => {
-      // Any response means the port has content
-      resolve(true);
+  const tryHost = (hostname: string): Promise<boolean> =>
+    new Promise((resolve) => {
+      const req = http.request(
+        {
+          hostname,
+          port,
+          path: '/',
+          method: 'HEAD',
+          timeout: HTTP_REQUEST_TIMEOUT_MS,
+        },
+        () => resolve(true),
+      );
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(false);
+      });
+      req.end();
     });
 
-    req.on('error', () => {
-      // Error means no content or connection failed
-      resolve(false);
-    });
-
-    req.on('timeout', () => {
-      req.destroy();
-      resolve(false);
-    });
-
-    req.end();
-  });
+  if (await tryHost('127.0.0.1')) return true;
+  return tryHost('::1');
 }
 
 /**

@@ -286,9 +286,9 @@ export const Omnibox = ({
               <Autocomplete.List className="divide-y divide-surface-2">
                 {suggestionGroups
                   .filter((g) => g.items.length > 0)
-                  .map((group, gIdx) => (
+                  .map((group, _gIdx) => (
                     <Autocomplete.Group
-                      key={`${group.label}-${gIdx}`}
+                      key={group.key}
                       className="py-2 first:pt-0 last:pb-0"
                     >
                       {group.label && (

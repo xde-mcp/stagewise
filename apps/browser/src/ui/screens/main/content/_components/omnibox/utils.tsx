@@ -8,10 +8,11 @@ import {
 import type { SearchEngine } from '@shared/karton-contracts/ui/shared-types';
 import type { OmniboxSuggestions } from '@shared/karton-contracts/ui';
 import {
-  IconMagnifierFill18,
-  IconRefreshAnticlockwiseFill18,
-} from 'nucleo-ui-fill-18';
-import { IconGlobe3Fill18 } from 'nucleo-ui-fill-18';
+  IconMagnifierOutline18,
+  IconRefreshAnticlockwiseOutline18,
+  IconGlobe3Outline18,
+  IconWindowCodeOutline18,
+} from 'nucleo-ui-outline-18';
 import { useKartonProcedure } from '@/hooks/use-karton';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
@@ -125,7 +126,8 @@ export function categorizeUrlInput(
 }
 
 export type OmniboxSuggestionGroup = {
-  label?: string;
+  key: string;
+  label?: ReactNode;
   items: OmniboxSuggestionItem[];
 };
 
@@ -136,13 +138,39 @@ export type OmniboxSuggestionItem = {
     | 'page-nav-suggestion'
     | 'search-suggestion'
     | 'past-search'
-    | 'past-page';
+    | 'past-page'
+    | 'local-page';
   value: string; // The actual value of the entry (always an URL) (base-ui default key)
   label?: string; // The value to be displayed in the input (may be different from the value for searches) (base-ui default key)
   suggestionLabel?: string | ReactNode; // The label to be displayed in the suggestion
   suggestionIcon?: ReactNode; // The icon to be displayed in the suggestion
   unselectable?: boolean; // If true, don't show hover/highlight styles and ignore clicks etc.
 };
+
+function FaviconIcon({
+  src,
+  fallback,
+  className,
+}: {
+  src: string;
+  fallback: ReactNode;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <>{fallback}</>;
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 export function useOmniboxSuggestions(
   currentUrl: string | undefined,
@@ -165,15 +193,7 @@ export function useOmniboxSuggestions(
 
   // Fetch suggestions when debounced input changes
   useEffect(() => {
-    console.log(
-      `[useOmniboxSuggestions] Fetching suggestions for: "${debouncedInput}"`,
-    );
-    getSuggestions(debouncedInput).then((suggestions) => {
-      console.log(
-        `[useOmniboxSuggestions] Received ${suggestions.historyEntries.length} history entries, ${suggestions.searchTerms.length} search terms for input: "${debouncedInput}"`,
-      );
-      setSuggestions(suggestions);
-    });
+    getSuggestions(debouncedInput).then(setSuggestions);
   }, [debouncedInput]);
 
   const resetSuggestions = useCallback(() => {
@@ -199,10 +219,55 @@ export function useOmniboxSuggestions(
       }
     })();
 
+    const localPortsGroup: OmniboxSuggestionGroup = {
+      key: 'local-ports',
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          Running locally
+          <span className="relative flex size-1.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-green-500" />
+          </span>
+        </span>
+      ),
+      items:
+        suggestions?.localPorts?.map((entry) => ({
+          type: 'local-page' as const,
+          value: entry.url,
+          label: entry.url,
+          suggestionLabel: (
+            <span className="truncate">
+              <strong>localhost:{entry.port}</strong>
+              {entry.lastTitle && (
+                <>
+                  {' '}
+                  <span className="text-muted-foreground">
+                    {entry.lastTitle}
+                  </span>
+                </>
+              )}
+            </span>
+          ),
+          suggestionIcon:
+            entry.faviconUrl && entry.faviconUrl.length > 0 ? (
+              <FaviconIcon
+                src={entry.faviconUrl}
+                className="size-4"
+                fallback={
+                  <IconWindowCodeOutline18 className="size-4 text-muted-foreground" />
+                }
+              />
+            ) : (
+              <IconWindowCodeOutline18 className="size-4 text-muted-foreground" />
+            ),
+        })) ?? [],
+    };
+
     // When input is empty, only show default suggestions (most visited & frequent searches)
     if (isEmptyInput) {
       const items: OmniboxSuggestionGroup[] = [
         {
+          key: 'search-placeholder',
           items: [
             {
               type: 'search-suggestion' as const,
@@ -214,13 +279,15 @@ export function useOmniboxSuggestions(
                 </span>
               ),
               suggestionIcon: (
-                <IconMagnifierFill18 className="size-4 text-muted-foreground" />
+                <IconMagnifierOutline18 className="size-4 text-muted-foreground" />
               ),
               unselectable: true,
             },
           ],
         },
+        localPortsGroup,
         {
+          key: 'most-visited',
           label: 'Most visited',
           items:
             suggestions?.historyEntries.map((entry) => ({
@@ -235,15 +302,22 @@ export function useOmniboxSuggestions(
               ),
               suggestionIcon:
                 entry.faviconUrl && entry.faviconUrl.length > 0 ? (
-                  <img src={entry.faviconUrl} alt="" className="size-4" />
+                  <FaviconIcon
+                    src={entry.faviconUrl}
+                    className="size-4"
+                    fallback={
+                      <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
+                    }
+                  />
                 ) : (
-                  <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
+                  <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
                 ),
             })) ?? [],
         },
         ...(engine
           ? [
               {
+                key: 'frequent-searches',
                 label: 'Frequent searches',
                 items:
                   suggestions?.searchTerms.map((entry) => ({
@@ -252,7 +326,7 @@ export function useOmniboxSuggestions(
                     label: entry.term,
                     suggestionLabel: <strong>{entry.term}</strong>,
                     suggestionIcon: (
-                      <IconMagnifierFill18 className="size-4 text-muted-foreground" />
+                      <IconMagnifierOutline18 className="size-4 text-muted-foreground" />
                     ),
                   })) ?? [],
               },
@@ -266,13 +340,14 @@ export function useOmniboxSuggestions(
       ...(!changed && currentUrl && currentUrl.length > 0
         ? [
             {
+              key: 'reload',
               items: [
                 {
                   type: 'reload-same-page' as const,
                   value: input,
                   label: input,
                   suggestionIcon: (
-                    <IconRefreshAnticlockwiseFill18 className="size-4 text-muted-foreground" />
+                    <IconRefreshAnticlockwiseOutline18 className="size-4 text-muted-foreground" />
                   ),
                   suggestionLabel: <span>Reload current page</span>,
                 },
@@ -284,6 +359,7 @@ export function useOmniboxSuggestions(
       (inputType === 'url' || inputType === 'url-like' || !engine)
         ? [
             {
+              key: 'page-nav',
               items: [
                 {
                   type: 'page-nav-suggestion' as const,
@@ -295,7 +371,7 @@ export function useOmniboxSuggestions(
                     </span>
                   ),
                   suggestionIcon: (
-                    <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
+                    <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
                   ),
                 },
               ],
@@ -305,6 +381,7 @@ export function useOmniboxSuggestions(
       ...(changed && inputType === 'search' && engine
         ? [
             {
+              key: 'search-suggestion',
               items: [
                 {
                   type: 'search-suggestion' as const,
@@ -320,10 +397,12 @@ export function useOmniboxSuggestions(
                     </span>
                   ),
                   suggestionIcon: (
-                    <img
+                    <FaviconIcon
                       src={engine.faviconUrl}
-                      alt=""
-                      className="size-4 text-muted-foreground"
+                      className="size-4"
+                      fallback={
+                        <IconMagnifierOutline18 className="size-4 text-muted-foreground" />
+                      }
                     />
                   ),
                 },
@@ -331,7 +410,9 @@ export function useOmniboxSuggestions(
             },
           ]
         : []),
+      localPortsGroup,
       {
+        key: 'recent-pages',
         label: 'Recent pages',
         items:
           suggestions?.historyEntries.map((entry) => ({
@@ -346,15 +427,22 @@ export function useOmniboxSuggestions(
             ),
             suggestionIcon:
               entry.faviconUrl && entry.faviconUrl.length > 0 ? (
-                <img src={entry.faviconUrl} alt="" className="size-4" />
+                <FaviconIcon
+                  src={entry.faviconUrl}
+                  className="size-4"
+                  fallback={
+                    <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
+                  }
+                />
               ) : (
-                <IconGlobe3Fill18 className="size-4 text-muted-foreground" />
+                <IconGlobe3Outline18 className="size-4 text-muted-foreground" />
               ),
           })) ?? [],
       },
       ...(engine
         ? [
             {
+              key: 'recent-searches',
               label: 'Recent searches',
               items:
                 suggestions?.searchTerms.map((entry) => ({
@@ -363,7 +451,7 @@ export function useOmniboxSuggestions(
                   label: entry.term,
                   suggestionLabel: <strong>{entry.term}</strong>,
                   suggestionIcon: (
-                    <IconMagnifierFill18 className="size-4 text-muted-foreground" />
+                    <IconMagnifierOutline18 className="size-4 text-muted-foreground" />
                   ),
                 })) ?? [],
             },

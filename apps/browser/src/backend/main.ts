@@ -530,6 +530,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     historyService,
     webDataService,
     faviconService,
+    localPortsScannerService,
   );
 
   // Set the markDownloadsSeen handler for pages-api contract
