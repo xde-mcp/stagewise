@@ -231,6 +231,7 @@ export class ToolboxService extends DisposableService {
           this.clientRuntime!.fileSystem.resolvePath(relativePath);
 
         const beforeState = await captureFileState(absolutePath, this.tempDir);
+        this.diffHistoryService.ignoreFileForWatcher(absolutePath);
         // Execute the actual tool
         const result = await executeFn(params, this.clientRuntime!);
         const afterState = await captureFileState(absolutePath, this.tempDir);
@@ -276,6 +277,11 @@ export class ToolboxService extends DisposableService {
             toolCallId,
           });
           // Don't fail the tool execution if diff-history registration fails
+        } finally {
+          setTimeout(
+            () => this.diffHistoryService.unignoreFileForWatcher(absolutePath),
+            500,
+          );
         }
 
         // Track modified file for LSP diagnostics
@@ -620,6 +626,7 @@ export class ToolboxService extends DisposableService {
       // Ensure parent directory exists and write file
       const parentDir = path.dirname(absolutePath);
       await fs.mkdir(parentDir, { recursive: true });
+      this.diffHistoryService.ignoreFileForWatcher(absolutePath);
       await fs.writeFile(absolutePath, content);
 
       // Capture file state after write
@@ -664,6 +671,11 @@ export class ToolboxService extends DisposableService {
           toolCallId,
         });
         // Don't fail the file write if diff-history registration fails
+      } finally {
+        setTimeout(
+          () => this.diffHistoryService.unignoreFileForWatcher(absolutePath),
+          500,
+        );
       }
 
       // Track modified file for LSP diagnostics
