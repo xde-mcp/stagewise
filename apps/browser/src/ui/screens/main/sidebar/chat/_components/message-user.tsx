@@ -637,10 +637,6 @@ export const MessageUser = memo(
                       <div className="relative flex shrink-0 flex-col items-center justify-end gap-1">
                         <ChatInputActions
                           isAgentWorking={false}
-                          hasTextInput={
-                            (chatInputRef.current?.getTextContent()?.trim()
-                              ?.length ?? 0) > 0
-                          }
                           showElementSelectorButton
                           elementSelectionActive={elementSelectionActive}
                           onToggleElementSelection={
@@ -654,7 +650,6 @@ export const MessageUser = memo(
                               ?.length ?? 0) > 2
                           }
                           onSubmit={handleSubmitEdit}
-                          isActive
                         />
                         {/* Popover anchor positioned at the send button */}
                         <Popover
@@ -684,6 +679,7 @@ export const MessageUser = memo(
                                 variant="primary"
                                 size="xs"
                                 onClick={handleConfirmEdit}
+                                autoFocus
                               >
                                 Resend
                               </Button>

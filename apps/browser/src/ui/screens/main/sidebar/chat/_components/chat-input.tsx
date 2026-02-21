@@ -479,8 +479,6 @@ export const ChatInput = ({
 export interface ChatInputActionsProps {
   /** Whether the agent is currently working (used to determine stop/send button visibility) */
   isAgentWorking?: boolean;
-  /** Whether the input has text (used to switch between stop and send button when agent is working) */
-  hasTextInput?: boolean;
   onStop?: () => void;
 
   showElementSelectorButton?: boolean;
@@ -493,12 +491,10 @@ export interface ChatInputActionsProps {
 
   canSendMessage: boolean;
   onSubmit: () => void;
-  isActive?: boolean;
 }
 
 export function ChatInputActions({
   isAgentWorking = false,
-  hasTextInput = false,
   onStop,
 
   showElementSelectorButton = true,
@@ -511,16 +507,13 @@ export function ChatInputActions({
 
   canSendMessage,
   onSubmit,
-  isActive = true,
 }: ChatInputActionsProps) {
-  // Derive button visibility from agent state and input text
-  // Show stop button when: agent is working AND no text input
-  // Show send button when: agent is not working OR has text input
-  const showStopButton = isAgentWorking && !hasTextInput && !!onStop;
-  const showSendButton = !isAgentWorking || hasTextInput;
+  // Always show the send button; show stop button alongside it when agent is working
+  const showStopButton = isAgentWorking && !!onStop;
+  const showSendButton = true;
 
   return (
-    <div className="flex shrink-0 flex-col items-center justify-end gap-1">
+    <div className="flex shrink-0 flex-col items-end justify-end gap-1">
       {/* Element selector and image upload - always shown (can add context to queued messages) */}
       {showElementSelectorButton && (
         <Tooltip>
@@ -594,38 +587,40 @@ export function ChatInputActions({
           </Tooltip>
         </>
       )}
-      {showStopButton && (
-        <Tooltip>
-          <TooltipTrigger>
-            <Button
-              onClick={onStop}
-              aria-label="Stop agent"
-              variant="secondary"
-              className="group z-10 size-8 shrink-0 cursor-pointer rounded-full p-1 opacity-100! shadow-md backdrop-blur-lg !disabled:*:opacity-10"
-            >
-              <SquareIcon className="size-3.5 fill-current" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Stop agent</TooltipContent>
-        </Tooltip>
-      )}
-      {/* Send button - show when agent is not working OR has text input */}
-      {showSendButton && (
-        <Tooltip>
-          <TooltipTrigger>
-            <Button
-              disabled={!canSendMessage}
-              onClick={onSubmit}
-              aria-label="Send message"
-              variant={isActive ? 'primary' : 'secondary'}
-              className="z-10 size-8 shrink-0 cursor-pointer rounded-full p-1 shadow-md backdrop-blur-lg transition-all"
-            >
-              <ArrowUpIcon className="size-4 stroke-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Send message</TooltipContent>
-        </Tooltip>
-      )}
+      {/* Stop + Send buttons row — stop is shown to the left when agent is working */}
+      <div className="flex flex-row items-center gap-2">
+        {showStopButton && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                onClick={onStop}
+                aria-label="Stop agent"
+                variant="secondary"
+                className="group z-10 size-8 shrink-0 cursor-pointer rounded-full p-1 opacity-100! shadow-md backdrop-blur-lg"
+              >
+                <SquareIcon className="size-3 fill-current" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Stop agent</TooltipContent>
+          </Tooltip>
+        )}
+        {showSendButton && (
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                disabled={!canSendMessage}
+                onClick={onSubmit}
+                aria-label="Send message"
+                variant="primary"
+                className="z-10 size-8 shrink-0 cursor-pointer rounded-full p-1 shadow-md backdrop-blur-lg transition-all disabled:opacity-50"
+              >
+                <ArrowUpIcon className="size-4 stroke-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Send message</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
     </div>
   );
 }

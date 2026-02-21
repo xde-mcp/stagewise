@@ -652,9 +652,6 @@ export function ChatPanelFooter() {
         />
         <ChatInputActions
           isAgentWorking={isWorking}
-          hasTextInput={
-            (chatInputRef.current?.getTextContent()?.trim().length ?? 0) > 0
-          }
           onStop={abortAgent}
           showElementSelectorButton
           elementSelectionActive={elementSelectionActive}
@@ -664,7 +661,6 @@ export function ChatPanelFooter() {
           onAddFileAttachment={handleAddFileAttachment}
           canSendMessage={canSendMessage ?? false}
           onSubmit={handleSubmit}
-          isActive={chatInputActive}
         />
         <StatusCard />
       </div>
