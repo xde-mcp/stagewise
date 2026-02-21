@@ -162,6 +162,10 @@ export class DiffHistoryService extends DisposableService {
         persistent: true,
         atomic: true,
         ignoreInitial: true,
+        awaitWriteFinish: {
+          stabilityThreshold: 150,
+          pollInterval: 50,
+        },
       })
       .on('change', async (path) => {
         if (this.filesIgnoredByWatcher.has(path)) return;
