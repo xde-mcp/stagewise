@@ -219,11 +219,13 @@ export class AgentManagerService extends DisposableService {
         instanceId: string,
         userMessageId: string,
         newMessage: AgentMessage & { role: 'user' },
+        undoToolCalls: boolean,
       ) => {
         return await this.replaceUserMessage(
           instanceId,
           userMessageId,
           newMessage,
+          undoToolCalls,
         );
       },
     );
@@ -696,6 +698,7 @@ export class AgentManagerService extends DisposableService {
     instanceId: string,
     userMessageId: string,
     newMessage: AgentMessage & { role: 'user' },
+    undoToolCalls: boolean,
   ): Promise<string> {
     const agent = this.activeAgents.get(instanceId);
 
@@ -703,7 +706,11 @@ export class AgentManagerService extends DisposableService {
       throw new Error(`Agent with instance id ${instanceId} not found`);
     }
 
-    return await agent.replaceUserMessage(userMessageId, newMessage);
+    return await agent.replaceUserMessage(
+      userMessageId,
+      newMessage,
+      undoToolCalls,
+    );
   }
 
   /**

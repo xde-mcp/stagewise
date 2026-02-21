@@ -222,120 +222,132 @@ export const MessageUser = memo(
     }, []);
 
     // Confirm and execute the edit
-    const handleConfirmEdit = useCallback(async () => {
-      if (!msg.id || !openAgent) {
-        return;
-      }
-
-      // Generate ID early so we can reference it in error handling
-      const newMessageId = generateId();
-
-      try {
-        const combinedSelectedElements = [
-          ...selectedElementsFromWebcontents,
-          ...selectedElementsFromEditor,
-        ];
-
-        // Convert FileAttachments to FileUIParts
-        const fileParts: FileUIPart[] = (
-          await Promise.all(
-            editedFileAttachments.map(fileAttachmentToFileUIPart),
-          )
-        ).filter((part): part is FileUIPart => part !== null);
-
-        // Collect metadata for selected elements
-        // Note: textClipAttachments from extractTextClipsFromTiptapContent will have empty content
-        // because the TipTap JSON only stores IDs (content is looked up from context at render time)
-        const metadata = collectUserMessageMetadata(
-          combinedSelectedElements,
-          pendingTiptapContent,
-          agentAccessPath,
-        );
-
-        // Merge text clip attachments from two sources:
-        // 1. Preserved originals: clips from the original message metadata that
-        //    are still referenced in the edited content (have full content)
-        // 2. Newly pasted clips: freshly pasted during editing (have full content
-        //    from the paste plugin, content.length > 0)
-        // Re-parsed clips from markdown round-trip have content === '' and are excluded.
-        const originalTextClips = msg.metadata?.textClipAttachments ?? [];
-        const extractedClips = metadata.textClipAttachments ?? [];
-        const textClipIdsInContent = new Set(extractedClips.map((tc) => tc.id));
-        const preservedTextClips = originalTextClips.filter((tc) =>
-          textClipIdsInContent.has(tc.id),
-        );
-        const preservedClipIds = new Set(preservedTextClips.map((tc) => tc.id));
-        const newlyPastedClips = extractedClips.filter(
-          (tc) => !preservedClipIds.has(tc.id) && tc.content.length > 0,
-        );
-        const mergedTextClips = [...preservedTextClips, ...newlyPastedClips];
-
-        if (!chatInputRef.current) {
+    const handleConfirmEdit = useCallback(
+      async (undoToolCalls: boolean) => {
+        if (!msg.id || !openAgent) {
           return;
         }
 
-        const markdownText = chatInputRef.current.getTextContent().trim();
+        // Generate ID early so we can reference it in error handling
+        const newMessageId = generateId();
 
-        // Build the new message object
-        const newMessage: AgentMessage & { role: 'user' } = {
-          id: newMessageId,
-          parts: [
-            ...fileParts,
-            {
-              type: 'text' as const,
-              text: markdownText,
+        try {
+          const combinedSelectedElements = [
+            ...selectedElementsFromWebcontents,
+            ...selectedElementsFromEditor,
+          ];
+
+          // Convert FileAttachments to FileUIParts
+          const fileParts: FileUIPart[] = (
+            await Promise.all(
+              editedFileAttachments.map(fileAttachmentToFileUIPart),
+            )
+          ).filter((part): part is FileUIPart => part !== null);
+
+          // Collect metadata for selected elements
+          // Note: textClipAttachments from extractTextClipsFromTiptapContent will have empty content
+          // because the TipTap JSON only stores IDs (content is looked up from context at render time)
+          const metadata = collectUserMessageMetadata(
+            combinedSelectedElements,
+            pendingTiptapContent,
+            agentAccessPath,
+          );
+
+          // Merge text clip attachments from two sources:
+          // 1. Preserved originals: clips from the original message metadata that
+          //    are still referenced in the edited content (have full content)
+          // 2. Newly pasted clips: freshly pasted during editing (have full content
+          //    from the paste plugin, content.length > 0)
+          // Re-parsed clips from markdown round-trip have content === '' and are excluded.
+          const originalTextClips = msg.metadata?.textClipAttachments ?? [];
+          const extractedClips = metadata.textClipAttachments ?? [];
+          const textClipIdsInContent = new Set(
+            extractedClips.map((tc) => tc.id),
+          );
+          const preservedTextClips = originalTextClips.filter((tc) =>
+            textClipIdsInContent.has(tc.id),
+          );
+          const preservedClipIds = new Set(
+            preservedTextClips.map((tc) => tc.id),
+          );
+          const newlyPastedClips = extractedClips.filter(
+            (tc) => !preservedClipIds.has(tc.id) && tc.content.length > 0,
+          );
+          const mergedTextClips = [...preservedTextClips, ...newlyPastedClips];
+
+          if (!chatInputRef.current) {
+            return;
+          }
+
+          const markdownText = chatInputRef.current.getTextContent().trim();
+
+          // Build the new message object
+          const newMessage: AgentMessage & { role: 'user' } = {
+            id: newMessageId,
+            parts: [
+              ...fileParts,
+              {
+                type: 'text' as const,
+                text: markdownText,
+              },
+            ],
+            role: 'user',
+            metadata: {
+              ...metadata,
+              fileAttachments: editedFileAttachments,
+              textClipAttachments:
+                mergedTextClips.length > 0 ? mergedTextClips : undefined,
             },
-          ],
-          role: 'user',
-          metadata: {
-            ...metadata,
-            fileAttachments: editedFileAttachments,
-            textClipAttachments:
-              mergedTextClips.length > 0 ? mergedTextClips : undefined,
-          },
-        };
+          };
 
-        // Dispatch event for optimistic UI - shows edited message immediately
-        // and hides the old message + subsequent messages
-        window.dispatchEvent(
-          new CustomEvent('chat-message-edited', {
-            detail: { replacedMessageId: msg.id, newMessage },
-          }),
-        );
+          // Dispatch event for optimistic UI - shows edited message immediately
+          // and hides the old message + subsequent messages
+          window.dispatchEvent(
+            new CustomEvent('chat-message-edited', {
+              detail: { replacedMessageId: msg.id, newMessage },
+            }),
+          );
 
-        // Single atomic operation - replaces old message with new one
-        // This prevents race conditions where the component unmounts between
-        // revert and send operations
-        // Note: We no longer store tipTapContent - the text part contains markdown
-        // with attachment links (e.g., [](image:abc123))
-        await replaceUserMessage(openAgent, msg.id, newMessage);
+          // Single atomic operation - replaces old message with new one
+          // This prevents race conditions where the component unmounts between
+          // revert and send operations
+          // Note: We no longer store tipTapContent - the text part contains markdown
+          // with attachment links (e.g., [](image:abc123))
+          await replaceUserMessage(
+            openAgent,
+            msg.id,
+            newMessage,
+            undoToolCalls,
+          );
 
-        // Note: State cleanup is minimal since component will unmount after replaceUserMessage
-        // The atomic operation completes before state updates trigger re-render
-      } catch (error) {
-        console.warn('Failed to edit message:', error);
-        posthog.captureException(
-          error instanceof Error ? error : new Error(String(error)),
-          { source: 'renderer', operation: 'editChatMessage' },
-        );
-        // Remove the optimistic message on failure
-        window.dispatchEvent(
-          new CustomEvent('chat-message-failed', {
-            detail: { clientId: newMessageId },
-          }),
-        );
-        // On error, close popover but stay in edit mode so user can retry
-        setIsConfirmOpen(false);
-      }
-    }, [
-      msg.id,
-      openAgent,
-      replaceUserMessage,
-      selectedElementsFromWebcontents,
-      selectedElementsFromEditor,
-      editedFileAttachments,
-      pendingTiptapContent,
-    ]);
+          // Note: State cleanup is minimal since component will unmount after replaceUserMessage
+          // The atomic operation completes before state updates trigger re-render
+        } catch (error) {
+          console.warn('Failed to edit message:', error);
+          posthog.captureException(
+            error instanceof Error ? error : new Error(String(error)),
+            { source: 'renderer', operation: 'editChatMessage' },
+          );
+          // Remove the optimistic message on failure
+          window.dispatchEvent(
+            new CustomEvent('chat-message-failed', {
+              detail: { clientId: newMessageId },
+            }),
+          );
+          // On error, close popover but stay in edit mode so user can retry
+          setIsConfirmOpen(false);
+        }
+      },
+      [
+        msg.id,
+        openAgent,
+        replaceUserMessage,
+        selectedElementsFromWebcontents,
+        selectedElementsFromEditor,
+        editedFileAttachments,
+        pendingTiptapContent,
+      ],
+    );
 
     // Handle files pasted in editor
     const handlePasteFiles = useCallback(
@@ -660,28 +672,27 @@ export const MessageUser = memo(
                             <span className="pointer-events-none absolute right-0 bottom-0 size-8" />
                           </PopoverTrigger>
                           <PopoverContent>
-                            <PopoverTitle>Resend message?</PopoverTitle>
+                            <PopoverTitle>Keep or revert files?</PopoverTitle>
                             <PopoverDescription>
-                              This will clear the chat history and undo file
-                              changes after this point, then send your edited
-                              message.
+                              Do you want to revert file changes made after this
+                              message?
                             </PopoverDescription>
                             <PopoverClose />
                             <PopoverFooter>
                               <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={() => setIsConfirmOpen(false)}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
                                 variant="primary"
                                 size="xs"
-                                onClick={handleConfirmEdit}
+                                onClick={() => handleConfirmEdit(true)}
                                 autoFocus
                               >
-                                Resend
+                                Revert files
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => handleConfirmEdit(false)}
+                              >
+                                Keep
                               </Button>
                             </PopoverFooter>
                           </PopoverContent>

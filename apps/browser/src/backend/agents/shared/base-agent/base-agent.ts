@@ -638,7 +638,29 @@ export abstract class BaseAgent<
   public async replaceUserMessage(
     userMessageId: string,
     newUserMessage: AgentMessage & { role: 'user' },
+    undoToolCalls: boolean,
   ): Promise<string> {
+    const undoneMessages = this.state
+      .get()
+      .history.slice(
+        this.state.get().history.findIndex((msg) => msg.id === userMessageId),
+      );
+
+    const undoneToolCallIds = undoneMessages
+      .filter((msg) => msg.role === 'assistant')
+      .flatMap(
+        (msg) =>
+          msg.parts.filter(
+            (part) =>
+              part.type.startsWith('tool-') || part.type === 'dynamic-tool',
+          ) as (AgentToolUIPart | DynamicToolUIPart)[],
+      )
+      .map((part) => (part as AgentToolUIPart | DynamicToolUIPart).toolCallId);
+
+    if (undoneToolCallIds.length > 0 && undoToolCalls) {
+      await this.toolbox.undoToolCalls(undoneToolCallIds);
+    }
+
     this.state.set((draft) => {
       const replaceMessageIndex = draft.history.findIndex(
         (message) => message.id === userMessageId,

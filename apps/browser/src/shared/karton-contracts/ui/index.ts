@@ -685,6 +685,7 @@ export type KartonContract = {
         agentId: string,
         userMessageId: string,
         newMessage: AgentMessage & { role: 'user' },
+        undoToolCalls: boolean,
       ) => Promise<string>;
       retryLastUserMessage: (agentId: string) => Promise<void>;
       setActiveModelId: (agentId: string, modelId: ModelId) => Promise<void>;
