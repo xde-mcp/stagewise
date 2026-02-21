@@ -153,7 +153,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
     uiKarton,
     globalDataPathService,
-    [], // TODO: Ask Glenn which agent instance ids to watch
   );
 
   // Connect PreferencesService to Karton for reactive sync

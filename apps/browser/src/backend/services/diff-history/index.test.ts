@@ -21,8 +21,10 @@ function createMockKartonService() {
       string,
       { pendingFileDiffs: FileDiff[]; editSummary: FileDiff[] }
     >;
+    agents: { instances: Record<string, unknown> };
   } = {
     toolbox: {},
+    agents: { instances: { '1': {} } },
   };
 
   const procedureHandlers: Map<string, (...args: unknown[]) => unknown> =
@@ -42,9 +44,14 @@ function createMockKartonService() {
     removeServerProcedureHandler: vi.fn((name: string) => {
       procedureHandlers.delete(name);
     }),
+    registerStateChangeCallback: vi.fn(),
+    unregisterStateChangeCallback: vi.fn(),
     // Helpers for tests
     _getProcedureHandler: (name: string) => procedureHandlers.get(name),
     _getToolboxState: (agentId: string) => state.toolbox[agentId],
+    _setAgentInstances: (ids: string[]) => {
+      state.agents.instances = Object.fromEntries(ids.map((id) => [id, {}]));
+    },
   };
 
   return mockKarton as unknown as KartonService & {
@@ -54,6 +61,7 @@ function createMockKartonService() {
     _getToolboxState: (
       agentId: string,
     ) => { pendingFileDiffs: FileDiff[]; editSummary: FileDiff[] } | undefined;
+    _setAgentInstances: (ids: string[]) => void;
   };
 }
 
@@ -169,7 +177,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       expect(service).toBeDefined();
@@ -185,11 +192,11 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('initializes toolbox state for active agent instances', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
       service = await DiffHistoryService.create(
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1', '2'],
       );
 
       expect(mockKarton._getToolboxState('1')).toEqual({
@@ -207,7 +214,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       await service.teardown();
@@ -232,7 +238,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'new-file.txt');
@@ -256,7 +261,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'existing.txt');
@@ -286,7 +290,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'to-delete.txt');
@@ -316,7 +319,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'multi-edit.txt');
@@ -357,7 +359,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const file1 = path.join(testFilesDir, 'file1.txt');
@@ -392,11 +393,11 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('pending diffs', () => {
     it('returns pending diffs for agent that made edits', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
       service = await DiffHistoryService.create(
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1', '2'],
       );
 
       const filePath = path.join(testFilesDir, 'test.txt');
@@ -424,7 +425,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'test.txt');
@@ -459,11 +459,11 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('includes all contributors in pending diffs for same file', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
       service = await DiffHistoryService.create(
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1', '2'],
       );
 
       const filePath = path.join(testFilesDir, 'shared.txt');
@@ -507,7 +507,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'summary.txt');
@@ -531,7 +530,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'sessions.txt');
@@ -573,11 +571,11 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('edit summary excludes sessions where agent did not contribute', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
       service = await DiffHistoryService.create(
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1', '2'],
       );
 
       const filePath = path.join(testFilesDir, 'exclusive.txt');
@@ -608,7 +606,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'accept.txt');
@@ -643,7 +640,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'reject.txt');
@@ -686,7 +682,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'new-to-reject.txt');
@@ -724,7 +719,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'deleted-to-restore.txt');
@@ -763,7 +757,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'partial.txt');
@@ -802,11 +795,11 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('multi-agent contributions', () => {
     it('multiple agents edit same file in same session', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
       service = await DiffHistoryService.create(
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1', '2'],
       );
 
       const filePath = path.join(testFilesDir, 'multi-agent.txt');
@@ -844,11 +837,11 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('contributor attribution in line changes', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
       service = await DiffHistoryService.create(
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1', '2'],
       );
 
       const filePath = path.join(testFilesDir, 'attributed.txt');
@@ -889,11 +882,11 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('edit summary shows contributions from multiple agents', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
       service = await DiffHistoryService.create(
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1', '2'],
       );
 
       const file1 = path.join(testFilesDir, 'agent1-file.txt');
@@ -941,7 +934,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'undo.txt');
@@ -986,7 +978,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'undo-multi.txt');
@@ -1028,7 +1019,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const file1 = path.join(testFilesDir, 'undo-file1.txt');
@@ -1071,7 +1061,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'undo-state.txt');
@@ -1101,7 +1090,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'redo.txt');
@@ -1165,7 +1153,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const blobPath = path.join(testFilesDir, 'binary.bin');
@@ -1195,7 +1182,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const blobPath = path.join(testFilesDir, 'existing-binary.bin');
@@ -1224,7 +1210,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const blobPath = path.join(testFilesDir, 'delete-binary.bin');
@@ -1255,7 +1240,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const blobPath = path.join(testFilesDir, 'accept-binary.bin');
@@ -1294,7 +1278,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const blobPath = path.join(testFilesDir, 'reject-binary.bin');
@@ -1353,7 +1336,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'watched.txt');
@@ -1400,7 +1382,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'locked.txt');
@@ -1443,7 +1424,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'to-watch-delete.txt');
@@ -1490,7 +1470,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'watch-accept.txt');
@@ -1542,7 +1521,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'sessions.txt');
@@ -1595,7 +1573,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'generations.txt');
@@ -1667,7 +1644,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'session-end.txt');
@@ -1709,7 +1685,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'empty.txt');
@@ -1732,7 +1707,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'to-empty.txt');
@@ -1761,7 +1735,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'file with spaces & stuff.txt');
@@ -1785,7 +1758,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'unicode.txt');
@@ -1814,7 +1786,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const filePath = path.join(testFilesDir, 'rapid.txt');
@@ -1846,7 +1817,6 @@ describe('DiffHistoryService (E2E)', () => {
         logger,
         mockKarton,
         mockGlobalDataPath,
-        ['1'],
       );
 
       const fileCount = 20;

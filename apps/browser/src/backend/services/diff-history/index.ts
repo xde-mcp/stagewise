@@ -69,14 +69,14 @@ export class DiffHistoryService extends DisposableService {
   private currentlyWatchedFiles: Set<string> = new Set();
   private dbDriver: Client;
   private db: LibSQLDatabase<typeof schema>;
-  private activeAgentInstanceIds: string[];
+  private hydratedAgentInstanceIds = new Set<string>();
   private blobsDir: string;
+  private readonly boundOnStateChange: () => void;
 
   private constructor(
     logger: Logger,
     uiKarton: KartonService,
     globalDataPathService: GlobalDataPathService,
-    activeAgentInstanceIds: string[],
   ) {
     super();
     this.logger = logger;
@@ -88,24 +88,22 @@ export class DiffHistoryService extends DisposableService {
     );
     this.dbDriver = createClient({ url: `file:${dbPath}`, intMode: 'bigint' });
     this.db = drizzle(this.dbDriver, { schema });
-    this.activeAgentInstanceIds = activeAgentInstanceIds;
     this.blobsDir = path.join(
       globalDataPathService.globalDataPath,
       'diff-history-blobs',
     );
+    this.boundOnStateChange = this.onKartonStateChange.bind(this);
   }
 
   public static async create(
     logger: Logger,
     uiKarton: KartonService,
     globalDataPathService: GlobalDataPathService,
-    activeAgentInstanceIds: string[],
   ): Promise<DiffHistoryService> {
     const instance = new DiffHistoryService(
       logger,
       uiKarton,
       globalDataPathService,
-      activeAgentInstanceIds,
     );
     await instance.initialize();
     logger.debug('[DiffHistoryService] Created service');
@@ -192,17 +190,29 @@ export class DiffHistoryService extends DisposableService {
         this.logDebug(`File unlinked: ${path}`);
       });
 
-    for (const agentInstanceId of this.activeAgentInstanceIds) {
-      try {
-        await this.updateDiffKartonState(agentInstanceId);
-        await this.updateWatcher();
-      } catch (error) {
-        this.logError(
-          `Failed to get edit summary for agent instance ${agentInstanceId}`,
-          error,
-        );
-      }
+    this.uiKarton.registerStateChangeCallback(this.boundOnStateChange);
+    // Hydrate any agent instances already present in karton state
+    this.hydrateNewAgentInstances();
+  }
+
+  private hydrateNewAgentInstances(): void {
+    const currentIds = Object.keys(this.uiKarton.state.agents.instances);
+    for (const id of currentIds) {
+      if (this.hydratedAgentInstanceIds.has(id)) continue;
+      this.hydratedAgentInstanceIds.add(id);
+      this.updateDiffKartonState(id)
+        .then(() => this.updateWatcher())
+        .catch((error) => {
+          this.logError(
+            `Failed to hydrate diff state for agent instance ${id}`,
+            error,
+          );
+        });
     }
+  }
+
+  private onKartonStateChange(): void {
+    this.hydrateNewAgentInstances();
   }
 
   /**
@@ -552,8 +562,8 @@ export class DiffHistoryService extends DisposableService {
     }
     if (agentInstanceId) await this.updateDiffKartonState(agentInstanceId);
     else
-      for (const agentInstanceId of this.activeAgentInstanceIds)
-        await this.updateDiffKartonState(agentInstanceId);
+      for (const id of this.hydratedAgentInstanceIds)
+        await this.updateDiffKartonState(id);
     await this.updateWatcher();
   }
 
@@ -765,6 +775,7 @@ export class DiffHistoryService extends DisposableService {
   }
 
   protected onTeardown(): Promise<void> | void {
+    this.uiKarton.unregisterStateChangeCallback(this.boundOnStateChange);
     this.watcher?.close();
     this.dbDriver.close();
     this.filesIgnoredByWatcher.clear();
