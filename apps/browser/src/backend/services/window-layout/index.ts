@@ -9,6 +9,7 @@ import type { Logger } from '../logger';
 import type { GlobalDataPathService } from '../global-data-path';
 import type { HistoryService } from '../history';
 import type { FaviconService } from '../favicon';
+import type { ThumbnailService } from '../thumbnail';
 import type { PagesService } from '../pages';
 import type { PreferencesService } from '../preferences';
 import type { PageTransition } from '@shared/karton-contracts/pages-api/types';
@@ -49,6 +50,7 @@ export class WindowLayoutService extends DisposableService {
   private readonly globalDataPathService: GlobalDataPathService;
   private readonly historyService: HistoryService;
   private readonly faviconService: FaviconService;
+  private readonly thumbnailService: ThumbnailService | null;
   private readonly pagesService: PagesService;
   private readonly preferencesService: PreferencesService;
 
@@ -101,12 +103,14 @@ export class WindowLayoutService extends DisposableService {
     faviconService: FaviconService,
     pagesService: PagesService,
     preferencesService: PreferencesService,
+    thumbnailService?: ThumbnailService,
   ) {
     super();
     this.logger = logger;
     this.globalDataPathService = globalDataPathService;
     this.historyService = historyService;
     this.faviconService = faviconService;
+    this.thumbnailService = thumbnailService ?? null;
     this.pagesService = pagesService;
     this.preferencesService = preferencesService;
   }
@@ -118,6 +122,7 @@ export class WindowLayoutService extends DisposableService {
     faviconService: FaviconService,
     pagesService: PagesService,
     preferencesService: PreferencesService,
+    thumbnailService?: ThumbnailService,
   ): Promise<WindowLayoutService> {
     const instance = new WindowLayoutService(
       logger,
@@ -126,6 +131,7 @@ export class WindowLayoutService extends DisposableService {
       faviconService,
       pagesService,
       preferencesService,
+      thumbnailService,
     );
     await instance.initialize();
     return instance;
@@ -754,6 +760,7 @@ export class WindowLayoutService extends DisposableService {
         const resolvedUrl = searchUtils.resolveNavigationTarget(target);
         void this.handleCreateTab(resolvedUrl, setActive, id);
       },
+      this.thumbnailService ?? undefined,
     );
 
     // Subscribe to state updates

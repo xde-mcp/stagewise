@@ -327,6 +327,26 @@ export interface LocalPortEntry {
   url: string;
 }
 
+/** Thumbnail image data for an origin, used in home page local port cards */
+export interface OriginThumbnailResult {
+  origin: string;
+  /** Base64-encoded JPEG image data */
+  imageData: string;
+  width: number;
+  height: number;
+}
+
+/** Entry for most visited origins on the home page */
+export interface MostVisitedOriginEntry {
+  origin: string;
+  visitCount: number;
+  /** Epoch milliseconds */
+  lastVisitTime: number;
+  title: string | null;
+  /** The last specific URL visited within this origin (for navigation) */
+  lastUrl: string | null;
+}
+
 /** Result of getExternalFileContent procedure */
 export interface ExternalFileContentResult {
   /** Base64-encoded file content */

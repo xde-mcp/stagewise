@@ -23,6 +23,7 @@ import type {
 import { validateApiKeys } from '../utils/validate-api-keys';
 import type { HistoryService } from './history';
 import type { FaviconService } from './favicon';
+import type { ThumbnailService } from './thumbnail';
 import type { DownloadsService } from './download-manager';
 import type { WebDataService } from './webdata';
 import type { UserExperienceService } from './experience';
@@ -42,6 +43,8 @@ import type {
   ContextFilesResult,
   ExternalFileContentResult,
   LocalPortEntry,
+  OriginThumbnailResult,
+  MostVisitedOriginEntry,
 } from '@shared/karton-contracts/pages-api/types';
 import { DisposableService } from './disposable';
 import type { TelemetryService } from './telemetry';
@@ -60,6 +63,7 @@ export class PagesService extends DisposableService {
   private readonly logger: Logger;
   private readonly historyService: HistoryService;
   private readonly faviconService: FaviconService;
+  private readonly thumbnailService?: ThumbnailService;
   private readonly downloadsService?: DownloadsService;
   private readonly webDataService?: WebDataService;
   private kartonServer: KartonServer<PagesApiContract>;
@@ -119,11 +123,13 @@ export class PagesService extends DisposableService {
     downloadsService: DownloadsService | undefined,
     webDataService: WebDataService | undefined,
     telemetryService: TelemetryService,
+    thumbnailService?: ThumbnailService,
   ) {
     super();
     this.logger = logger;
     this.historyService = historyService;
     this.faviconService = faviconService;
+    this.thumbnailService = thumbnailService;
     this.downloadsService = downloadsService;
     this.webDataService = webDataService;
     this.telemetryService = telemetryService;
@@ -176,6 +182,7 @@ export class PagesService extends DisposableService {
     downloadsService: DownloadsService | undefined,
     webDataService: WebDataService | undefined,
     telemetryService: TelemetryService,
+    thumbnailService?: ThumbnailService,
   ): Promise<PagesService> {
     const instance = new PagesService(
       logger,
@@ -184,6 +191,7 @@ export class PagesService extends DisposableService {
       downloadsService,
       webDataService,
       telemetryService,
+      thumbnailService,
     );
     await instance.initialize();
     logger.debug('[PagesService] Created service');
@@ -707,10 +715,19 @@ export class PagesService extends DisposableService {
           if (options.favicons) {
             // Clear all favicons
             result.faviconsCleared = await this.faviconService.clearAllData();
+            // Also clear thumbnails when favicons are cleared
+            if (this.thumbnailService) {
+              await this.thumbnailService.clearAllData();
+            }
           } else if (options.history) {
             // If only history was cleared, clean up orphaned favicons
             result.faviconsCleared =
               await this.faviconService.cleanupOrphanedFavicons();
+          }
+
+          // Clear thumbnails when cache is cleared
+          if (options.cache && this.thumbnailService) {
+            await this.thumbnailService.clearAllData();
           }
 
           // Clear session data (cookies, cache, storage, etc.)
@@ -793,6 +810,9 @@ export class PagesService extends DisposableService {
             }
             if (options.favicons) {
               vacuumPromises.push(this.faviconService.vacuum());
+            }
+            if ((options.favicons || options.cache) && this.thumbnailService) {
+              vacuumPromises.push(this.thumbnailService.vacuum());
             }
             await Promise.all(vacuumPromises);
           }
@@ -1107,6 +1127,58 @@ export class PagesService extends DisposableService {
           return;
         }
         await this.scanLocalPortsHandler();
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'getThumbnailsForOrigins',
+      async (
+        _callingClientId: string,
+        origins: string[],
+      ): Promise<Record<string, OriginThumbnailResult>> => {
+        if (!this.thumbnailService) {
+          return {};
+        }
+        const map =
+          await this.thumbnailService.getThumbnailsForOrigins(origins);
+        const result: Record<string, OriginThumbnailResult> = {};
+        for (const [origin, thumbnail] of map) {
+          result[origin] = thumbnail;
+        }
+        return result;
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'getMostVisitedOrigins',
+      async (
+        _callingClientId: string,
+        params: { offset: number; limit: number },
+      ): Promise<MostVisitedOriginEntry[]> => {
+        const origins = await this.historyService.getMostVisitedOrigins({
+          limit: params.limit,
+          offset: params.offset,
+          timespanDays: 3,
+          minVisitCount: 1,
+        });
+
+        if (origins.length === 0) return [];
+
+        // Single batched query for titles + last URLs instead of N+1 calls
+        const details = await this.historyService.getLastVisitedUrlsForOrigins(
+          origins.map((o) => o.origin),
+        );
+
+        return origins.map((o) => {
+          const detail = details.get(o.origin);
+          return {
+            origin: o.origin,
+            visitCount: o.visitCount,
+            lastVisitTime: o.lastVisitTime.getTime(),
+            title: detail?.title ?? null,
+            lastUrl: detail?.url ?? null,
+          };
+        });
       },
     );
   }
@@ -1583,6 +1655,8 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('verifyOtp');
     this.kartonServer.removeServerProcedureHandler('logout');
     this.kartonServer.removeServerProcedureHandler('scanLocalPorts');
+    this.kartonServer.removeServerProcedureHandler('getThumbnailsForOrigins');
+    this.kartonServer.removeServerProcedureHandler('getMostVisitedOrigins');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');

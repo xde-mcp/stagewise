@@ -22,6 +22,7 @@ import { PagesService } from './services/pages';
 import { WindowLayoutService } from './services/window-layout';
 import { HistoryService } from './services/history';
 import { FaviconService } from './services/favicon';
+import { ThumbnailService } from './services/thumbnail';
 import { WebDataService } from './services/webdata';
 import { DownloadsService } from './services/download-manager';
 import { DiffHistoryService } from './services/diff-history';
@@ -107,6 +108,15 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
     globalDataPathService,
   );
+  const thumbnailService = await ThumbnailService.create(
+    logger,
+    globalDataPathService,
+  );
+
+  // Evict thumbnails older than 30 days (fire-and-forget)
+  thumbnailService.evictStaleThumbnails(30).catch((err) => {
+    logger.warn('[Main] Failed to evict stale thumbnails', err);
+  });
 
   // Create DownloadsService to track active downloads for pause/resume/cancel
   const downloadsService = await DownloadsService.create(
@@ -123,6 +133,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     downloadsService,
     webDataService,
     telemetryService,
+    thumbnailService,
   );
 
   // Initialize search engines state
@@ -146,6 +157,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     faviconService,
     pagesService,
     preferencesService,
+    thumbnailService,
   );
   const uiKarton = windowLayoutService.uiKarton;
 
@@ -956,6 +968,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     webDataService.teardown();
     historyService.teardown();
     faviconService.teardown();
+    thumbnailService.teardown();
     diffHistoryService.teardown();
     logger.debug('[Main] Services shut down');
   };

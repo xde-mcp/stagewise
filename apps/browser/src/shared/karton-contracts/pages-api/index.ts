@@ -19,6 +19,8 @@ import type {
   ContextFilesResult,
   ExternalFileContentResult,
   LocalPortEntry,
+  OriginThumbnailResult,
+  MostVisitedOriginEntry,
 } from './types';
 import type {
   UserPreferences,
@@ -181,6 +183,15 @@ export type PagesApiContract = {
     logout: () => Promise<void>;
     /** Trigger a fresh scan of local ports */
     scanLocalPorts: () => Promise<void>;
+    /** Get thumbnail images for a list of origins (for home page local port cards) */
+    getThumbnailsForOrigins: (
+      origins: string[],
+    ) => Promise<Record<string, OriginThumbnailResult>>;
+    /** Get most visited origins from browsing history (for home page) */
+    getMostVisitedOrigins: (params: {
+      offset: number;
+      limit: number;
+    }) => Promise<MostVisitedOriginEntry[]>;
   };
 };
 

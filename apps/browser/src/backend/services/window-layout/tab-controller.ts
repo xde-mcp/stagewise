@@ -32,6 +32,7 @@ import {
 } from '@shared/karton-contracts/pages-api/types';
 import type { HistoryService } from '../history';
 import type { FaviconService } from '../favicon';
+import type { ThumbnailService } from '../thumbnail';
 import { canBrowserHandleUrl } from './protocol-utils';
 import { ContextMenuWebContent } from './utils/context-menu-web-content';
 import {
@@ -161,6 +162,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private logger: Logger;
   private historyService: HistoryService;
   private faviconService: FaviconService;
+  private thumbnailService: ThumbnailService | null = null;
   private kartonServer: KartonServer<TabKartonContract>;
   private kartonTransport: ElectronServerTransport;
   private selectedElementTracker: SelectedElementTracker;
@@ -210,6 +212,11 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private readonly SCREENSHOT_INTERVAL_MS = 15000; // 15 seconds
   private screenshotOnResizeTimeout: NodeJS.Timeout | null = null;
   private readonly SCREENSHOT_RESIZE_DEBOUNCE_MS = 200; // 200ms debounce
+
+  // Thumbnail persistence throttle (one save per origin per 60s)
+  private lastThumbnailSaveOrigin: string | null = null;
+  private lastThumbnailSaveTime = 0;
+  private readonly THUMBNAIL_SAVE_INTERVAL_MS = 60_000;
 
   // DevTools debugger tracking
   private devToolsDebugger: Electron.Debugger | null = null;
@@ -314,6 +321,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       setActive?: boolean,
       sourceTabId?: string,
     ) => void,
+    thumbnailService?: ThumbnailService,
   ) {
     super();
     this.id = id;
@@ -324,6 +332,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     this.faviconService = faviconService;
     this.searchUtilsConfig = searchUtilsConfig;
     this.onCreateTab = onCreateTab;
+    this.thumbnailService = thumbnailService ?? null;
 
     this.webContentsView = new WebContentsView({
       webPreferences: {
@@ -1722,10 +1731,73 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       const dataUrl = this.compressImageToTargetSize(image);
       // Update state with screenshot
       this.updateState({ screenshot: dataUrl });
+      // Persist a downscaled thumbnail per origin (fire-and-forget)
+      this.persistOriginThumbnail(image).catch((err) => {
+        this.logger.debug(
+          `[TabController] Failed to persist thumbnail: ${err}`,
+        );
+      });
     } catch (err) {
       // Log error but don't throw - screenshot capture failures shouldn't break the tab
       this.logger.debug(`[TabController] Error capturing screenshot: ${err}`);
     }
+  }
+
+  /**
+   * Downscale a NativeImage to a 400px-wide JPEG thumbnail for DB storage.
+   */
+  private createThumbnailBuffer(image: NativeImage): {
+    buffer: Buffer;
+    width: number;
+    height: number;
+  } {
+    const size = image.getSize();
+    const targetWidth = 400;
+    if (size.width <= 0 || size.height <= 0) {
+      return {
+        buffer: image.toJPEG(50),
+        width: size.width,
+        height: size.height,
+      };
+    }
+    const scale = targetWidth / size.width;
+    const targetHeight = Math.round(size.height * scale);
+    const resized = image.resize({ width: targetWidth, height: targetHeight });
+    return {
+      buffer: resized.toJPEG(50),
+      width: targetWidth,
+      height: targetHeight,
+    };
+  }
+
+  /**
+   * Persist the latest screenshot as a thumbnail keyed by origin.
+   * Throttled to one write per origin per THUMBNAIL_SAVE_INTERVAL_MS.
+   */
+  private async persistOriginThumbnail(image: NativeImage): Promise<void> {
+    if (!this.thumbnailService) return;
+
+    let origin: string;
+    try {
+      origin = new URL(this.currentState.url).origin;
+    } catch {
+      return;
+    }
+    // Skip internal pages and invalid origins
+    if (!origin || origin === 'null') return;
+
+    const now = Date.now();
+    if (
+      this.lastThumbnailSaveOrigin === origin &&
+      now - this.lastThumbnailSaveTime < this.THUMBNAIL_SAVE_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    const { buffer, width, height } = this.createThumbnailBuffer(image);
+    await this.thumbnailService.storeThumbnail(origin, buffer, width, height);
+    this.lastThumbnailSaveOrigin = origin;
+    this.lastThumbnailSaveTime = now;
   }
 
   private async updateViewportInfo() {

@@ -546,6 +546,55 @@ export class HistoryService {
   }
 
   /**
+   * Batch variant of getVisitStatsForOrigin: get the last visited URL and
+   * title for multiple origins in a single query. Returns a map keyed by origin.
+   */
+  async getLastVisitedUrlsForOrigins(
+    origins: string[],
+  ): Promise<Map<string, { title: string | null; url: string }>> {
+    if (origins.length === 0) return new Map();
+
+    const conditions = origins.map((o) => like(schema.urls.url, `${o}%`));
+    const rows = await this.db
+      .select({
+        url: schema.urls.url,
+        title: schema.urls.title,
+        lastVisitTime: schema.urls.lastVisitTime,
+      })
+      .from(schema.urls)
+      .where(or(...conditions));
+
+    // Group by origin and keep the entry with the most recent lastVisitTime
+    const byOrigin = new Map<
+      string,
+      { title: string | null; url: string; lastVisitTime: bigint }
+    >();
+    for (const row of rows) {
+      if (!row.url) continue;
+      let origin: string;
+      try {
+        origin = new URL(row.url).origin;
+      } catch {
+        continue;
+      }
+      const existing = byOrigin.get(origin);
+      if (!existing || row.lastVisitTime > existing.lastVisitTime) {
+        byOrigin.set(origin, {
+          title: row.title,
+          url: row.url,
+          lastVisitTime: row.lastVisitTime,
+        });
+      }
+    }
+
+    const result = new Map<string, { title: string | null; url: string }>();
+    for (const [origin, data] of byOrigin) {
+      result.set(origin, { title: data.title, url: data.url });
+    }
+    return result;
+  }
+
+  /**
    * Get the most visited origins, grouped by origin (scheme://host[:port]).
    * Each visit row is counted individually (not the URL-level visitCount).
    * Supports pagination via limit + offset.
