@@ -185,23 +185,50 @@ export function useOmniboxSuggestions(
 } {
   const getSuggestions = useKartonProcedure((p) => p.getOmniboxSuggestions);
 
-  const [suggestions, setSuggestions] = useState<OmniboxSuggestions | null>(
-    null,
-  );
+  // Separate state for search suggestions (non-empty input) and default suggestions (empty input).
+  // This prevents stale search results from bleeding into the empty-input view and vice versa.
+  const [searchSuggestions, setSearchSuggestions] =
+    useState<OmniboxSuggestions | null>(null);
+  const [defaultSuggestions, setDefaultSuggestions] =
+    useState<OmniboxSuggestions | null>(null);
 
   const debouncedInput = useDebouncedValue(input, 150);
+  const isEmptyInput = input.trim() === '';
 
-  // Fetch suggestions when debounced input changes
+  // Fetch default suggestions immediately when input is empty (no debounce needed).
+  // Runs on mount and whenever the input transitions back to empty.
   useEffect(() => {
-    getSuggestions(debouncedInput).then(setSuggestions);
+    if (isEmptyInput) {
+      let cancelled = false;
+      getSuggestions('').then((result) => {
+        if (!cancelled) setDefaultSuggestions(result);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [isEmptyInput]);
+
+  // Fetch search suggestions based on debounced input (non-empty only).
+  useEffect(() => {
+    if (debouncedInput.trim() !== '') {
+      let cancelled = false;
+      getSuggestions(debouncedInput).then((result) => {
+        if (!cancelled) setSearchSuggestions(result);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
   }, [debouncedInput]);
 
   const resetSuggestions = useCallback(() => {
-    setSuggestions(null);
+    setSearchSuggestions(null);
   }, []);
 
   const groups = useMemo(() => {
-    const isEmptyInput = input.trim() === '';
+    // Use default suggestions when input is empty, search suggestions otherwise.
+    const suggestions = isEmptyInput ? defaultSuggestions : searchSuggestions;
     const inputType = isEmptyInput ? 'search' : categorizeUrlInput(input);
 
     const changed = currentUrl !== input;
@@ -469,11 +496,13 @@ export function useOmniboxSuggestions(
   }, [
     currentUrl,
     input,
+    isEmptyInput,
     searchEngines,
     defaultEngineId,
     searchEngineId,
     searchEngineKeyword,
-    suggestions,
+    searchSuggestions,
+    defaultSuggestions,
   ]);
 
   return {
