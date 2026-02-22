@@ -3,7 +3,6 @@ import type { ReasoningUIPart } from '@shared/karton-contracts/ui';
 import { useMemo } from 'react';
 import { BrainIcon } from 'lucide-react';
 import { Streamdown } from '@/components/streamdown';
-import { useTypeWriterText } from '@/hooks/use-type-writer-text';
 import { ToolPartUI } from './tools/shared/tool-part-ui';
 import { useToolAutoExpand } from './tools/shared/use-tool-auto-expand';
 
@@ -34,11 +33,6 @@ export const ThinkingPart = ({
     return `${Math.round(thinkingDuration / 1000)}s`;
   }, [thinkingDuration]);
 
-  const displayedText = useTypeWriterText(part.text, {
-    showAllOnFirstRender: true,
-    animateOnIncreaseOnly: true,
-    isStreaming: part.state === 'streaming',
-  });
   return (
     <ToolPartUI
       expanded={expanded}
@@ -76,7 +70,7 @@ export const ThinkingPart = ({
       content={
         <div className={cn('pb-1 opacity-75', capMaxHeight ? 'max-h-24!' : '')}>
           <Streamdown isAnimating={part.state === 'streaming'}>
-            {displayedText}
+            {part.text}
           </Streamdown>
         </div>
       }

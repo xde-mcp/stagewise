@@ -1,7 +1,6 @@
 import type { TextUIPart } from '@shared/karton-contracts/ui';
 import { memo } from 'react';
 import { Streamdown } from '@/components/streamdown';
-import { useTypeWriterText } from '@/hooks/use-type-writer-text';
 
 interface TextPartProps {
   part: TextUIPart;
@@ -10,22 +9,16 @@ interface TextPartProps {
 
 export const TextPart = memo(
   ({ part, messageRole }: TextPartProps) => {
-    const displayedText = useTypeWriterText(part.text, {
-      showAllOnFirstRender: true,
-      animateOnIncreaseOnly: true,
-      isStreaming: part.state === 'streaming',
-    });
-
     // Only render markdown for assistant messages
     if (messageRole === 'assistant')
       return (
         <Streamdown isAnimating={part.state === 'streaming'}>
-          {displayedText}
+          {part.text}
         </Streamdown>
       );
 
     // Render plain text for user messages
-    return <span className="whitespace-pre-wrap">{displayedText}</span>;
+    return <span className="whitespace-pre-wrap">{part.text}</span>;
   },
   // Custom comparison to prevent re-renders when only reference changes
   (prevProps, nextProps) =>
