@@ -97,7 +97,7 @@ export const ColorBadge = ({ color, children }: ColorBadgeProps) => {
  */
 export type AttachmentLinkData =
   | { type: 'element'; id: string }
-  | { type: 'image'; id: string }
+  | { type: 'image'; id: string; displayHint?: 'expanded' }
   | { type: 'file'; id: string }
   | { type: 'textClip'; id: string }
   | { type: 'color'; color: string }
@@ -117,7 +117,17 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
   parse: (rest: string) => AttachmentLinkData;
 }> = [
   { prefix: 'element:', parse: (rest) => ({ type: 'element', id: rest }) },
-  { prefix: 'image:', parse: (rest) => ({ type: 'image', id: rest }) },
+  {
+    prefix: 'image:',
+    parse: (rest) => {
+      const [id, fragment] = rest.split('#', 2);
+      return {
+        type: 'image',
+        id,
+        displayHint: fragment === 'expanded' ? 'expanded' : undefined,
+      };
+    },
+  },
   { prefix: 'file:', parse: (rest) => ({ type: 'file', id: rest }) },
   { prefix: 'text-clip:', parse: (rest) => ({ type: 'textClip', id: rest }) },
   {
@@ -401,6 +411,50 @@ export const ImageAttachmentLink = ({
 };
 
 /**
+ * Expanded image attachment link - renders as a large inline preview card.
+ * Used when the agent specifies `#expanded` on an image link.
+ */
+export const ExpandedImageAttachmentLink = ({
+  id,
+  metadata,
+}: AttachmentLinkBaseProps) => {
+  const { url, label } = useMemo(() => {
+    if (!metadata || !('url' in metadata)) return { url: '', label: 'image' };
+    return {
+      url: metadata.url,
+      label:
+        'fileName' in metadata && metadata.fileName
+          ? metadata.fileName
+          : 'image',
+    };
+  }, [metadata]);
+
+  if (!url) return <ImageAttachmentLink id={id} metadata={metadata} />;
+
+  return (
+    <div
+      className={cn(
+        'my-1 inline-flex shrink-0 flex-col overflow-hidden rounded-lg',
+        'border border-border-subtle bg-surface-1',
+      )}
+    >
+      <div className="flex min-h-24 items-center justify-center bg-background p-1.5">
+        <img
+          src={url}
+          alt={label}
+          className="max-h-38 max-w-52 rounded object-contain"
+        />
+      </div>
+      <div className="border-border-subtle border-t px-2.5 py-1.5">
+        <span className="max-w-48 truncate font-medium text-foreground text-xs">
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/**
  * File attachment link - reuses AttachmentNodeView (fallback) in view-only mode.
  */
 export const FileAttachmentLink = ({
@@ -476,6 +530,14 @@ export const AttachmentLinkRouter = ({
         />
       );
     case 'image':
+      if (linkData.displayHint === 'expanded') {
+        return (
+          <ExpandedImageAttachmentLink
+            id={linkData.id}
+            metadata={attachments[linkData.id]}
+          />
+        );
+      }
       return (
         <ImageAttachmentLink
           id={linkData.id}
