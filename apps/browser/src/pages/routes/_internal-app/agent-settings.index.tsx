@@ -155,6 +155,8 @@ function ScrollFadeCodeBlock({
 
 function WorkspaceSettingsSection() {
   const getContextFiles = useKartonProcedure((s) => s.getContextFiles);
+  const getContextFilesRef = useRef(getContextFiles);
+  getContextFilesRef.current = getContextFiles;
 
   const [contextFiles, setContextFiles] = useState<ContextFilesResult | null>(
     null,
@@ -162,7 +164,8 @@ function WorkspaceSettingsSection() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    void getContextFiles()
+    void getContextFilesRef
+      .current()
       .then((files) => {
         setContextFiles(files);
       })
@@ -172,7 +175,7 @@ function WorkspaceSettingsSection() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [getContextFiles]);
+  }, []);
 
   if (isLoading) {
     return (
