@@ -1,29 +1,16 @@
 import posthog from 'posthog-js';
 import { cn } from '@/utils';
-import {
-  IconDotsFill18,
-  IconHistoryFill18,
-  IconPlusFill18,
-} from 'nucleo-ui-fill-18';
-import {
-  IconTrash2Outline24,
-  IconGear2Outline24,
-} from 'nucleo-core-outline-24';
+import { IconDotsFill18, IconPlusFill18 } from 'nucleo-ui-fill-18';
+import { IconGear2Outline24 } from 'nucleo-core-outline-24';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
 import { Button } from '@stagewise/stage-ui/components/button';
-import {
-  SearchableSelect,
-  type SearchableSelectItem,
-} from '@stagewise/stage-ui/components/searchable-select';
 import { Select, type SelectItem } from '@stagewise/stage-ui/components/select';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import TimeAgo from 'react-timeago';
-import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
 import { HotkeyComboText } from '@/components/hotkey-combo-text';
@@ -34,6 +21,7 @@ import {
   AgentTypes,
   type AgentHistoryEntry,
 } from '@shared/karton-contracts/ui/agent';
+import { AgentsSelector, type AgentGroup } from './_components/agents-selector';
 
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createAgent = useKartonProcedure((p) => p.agents.create);
@@ -180,32 +168,19 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     return { 'Active agents': activeAgentsList, ...groupChatsByTime(sorted) };
   }, [agentsList, timeTick, activeAgentsList, activeAgentIds]);
 
-  const minimalFormatter = useMemo(
-    () =>
-      buildFormatter({
-        prefixAgo: '',
-        prefixFromNow: '',
-        suffixAgo: '',
-        suffixFromNow: '',
-        second: '1s',
-        seconds: (value) => `${value}s`,
-        minute: '1m',
-        minutes: (value) => `${value}m`,
-        hour: '1h',
-        hours: (value) => `${value}h`,
-        day: '1d',
-        days: (value) => `${value}d`,
-        week: '1w',
-        weeks: (value) => `${value}w`,
-        month: '1M',
-        months: (value) => `${value}M`,
-        year: '1y',
-        years: (value) => `${value}y`,
-        wordSeparator: '',
-        numbers: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
-      }),
-    [],
-  );
+  // Transform groupedChats into AgentGroup[] for the AgentsSelector
+  const agentGroups = useMemo((): AgentGroup[] => {
+    return Object.entries(groupedChats).map(([label, agents]) => ({
+      label,
+      agents: agents.map((a) => ({
+        id: a.id,
+        title: a.title,
+        lastMessageAt: a.lastMessageAt,
+        messageCount: a.messageCount,
+        isWorking: 'isWorking' in a ? a.isWorking : undefined,
+      })),
+    }));
+  }, [groupedChats]);
 
   // Get draft getter from context (provided by panel-footer)
   const { getDraft } = useChatDraft();
@@ -234,76 +209,18 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     });
   }, [hasMoreHistory, getAgentsHistoryList]);
 
-  const chatSelectItems = useMemo((): SearchableSelectItem[] => {
-    const items: SearchableSelectItem[] = [];
-    for (const [label, groupedAgents] of Object.entries(groupedChats)) {
-      for (const agent of groupedAgents) {
-        // isWorking is only available for active agents
-        const isWorking = 'isWorking' in agent && agent.isWorking;
-        // Check if chat has unseen updates (lastMessageAt > lastViewedAt)
-        // Only show indicator for:
-        // - Messages within the last 24 hours (for backwards compatibility)
-        // - Not the currently open chat
-        // - Chats with at least one message
-        const lastViewedAt = lastViewedChats[agent.id] ?? 0;
-        const hasTrackingEntry = agent.id in lastViewedChats;
-        const lastMessageTime = new Date(agent.lastMessageAt).getTime();
-        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-        const isCurrentlyOpen = agent.id === openAgent;
-        const hasMessages = agent.messageCount > 0;
-        const hasUnseenUpdates =
-          hasTrackingEntry &&
-          !isWorking &&
-          !isCurrentlyOpen &&
-          hasMessages &&
-          lastMessageTime > lastViewedAt &&
-          lastMessageTime > twentyFourHoursAgo;
-        items.push({
-          value: agent.id,
-          label: (
-            <span className="flex w-full items-center gap-2">
-              <span
-                className={cn(
-                  'truncate',
-                  isWorking && 'shimmer-text-primary',
-                  hasUnseenUpdates && 'animate-text-pulse-warning',
-                )}
-              >
-                {agent.title}
-              </span>
-              <span className="shrink-0 text-subtle-foreground text-xs">
-                <TimeAgo
-                  date={agent.lastMessageAt}
-                  formatter={minimalFormatter}
-                  live={false}
-                />
-              </span>
-            </span>
-          ),
-          searchText: agent.title,
-          group: label,
-          action: {
-            icon: <IconTrash2Outline24 className="size-3" />,
-            onClick: (value, e) => {
-              e.stopPropagation();
-              void deleteAgentRef.current(value).catch((e) => {
-                console.error(e);
-                posthog.captureException(
-                  e instanceof Error ? e : new Error(String(e)),
-                  { source: 'renderer', operation: 'deleteAgent' },
-                );
-              });
-              setAgentsListRef.current(
-                agentsListRef.current.filter((agent) => agent.id !== value),
-              );
-            },
-            showOnHover: true,
-          },
-        });
-      }
-    }
-    return items;
-  }, [groupedChats, minimalFormatter, lastViewedChats, openAgent]);
+  const handleDeleteAgent = useCallback((id: string) => {
+    void deleteAgentRef.current(id).catch((e) => {
+      console.error(e);
+      posthog.captureException(e instanceof Error ? e : new Error(String(e)), {
+        source: 'renderer',
+        operation: 'deleteAgent',
+      });
+    });
+    setAgentsListRef.current(
+      agentsListRef.current.filter((agent) => agent.id !== id),
+    );
+  }, []);
 
   // Helper to create a new chat and focus the input
   const createAgentAndFocus = useCallback(async () => {
@@ -402,11 +319,13 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             </Tooltip>
           )}
           {showChatListButton && (
-            <MemoizedChatList
-              chatSelectItems={chatSelectItems}
-              openAgent={openAgent}
-              handleAgentSelect={handleAgentSelect}
+            <AgentsSelector
+              groups={agentGroups}
+              value={openAgent}
+              onValueChange={handleAgentSelect}
+              onDelete={handleDeleteAgent}
               onEndReached={loadMoreHistory}
+              lastViewedChats={lastViewedChats}
             />
           )}
           <Select
@@ -441,49 +360,6 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     </div>
   );
 }
-
-const MemoizedChatList = memo(function MemoizedChatList({
-  chatSelectItems,
-  openAgent,
-  handleAgentSelect,
-  onEndReached,
-}: {
-  chatSelectItems: SearchableSelectItem[];
-  openAgent: string | null;
-  handleAgentSelect: (value: string | null) => void;
-  onEndReached?: () => void;
-}) {
-  return (
-    <SearchableSelect
-      items={chatSelectItems}
-      value={openAgent}
-      onValueChange={(value) => handleAgentSelect(value as string | null)}
-      side="bottom"
-      sideOffset={8}
-      size="xs"
-      popupClassName="min-w-56"
-      listClassName="scrollbar-hover-only"
-      onEndReached={onEndReached}
-      customTrigger={(triggerProps) => (
-        <Tooltip>
-          <TooltipTrigger>
-            <Button
-              {...triggerProps}
-              variant="ghost"
-              size="icon-xs"
-              className="app-no-drag shrink-0"
-            >
-              <IconHistoryFill18 className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <span>Show recent chats</span>
-          </TooltipContent>
-        </Tooltip>
-      )}
-    />
-  );
-});
 
 type TimeAgoLabel = string;
 
