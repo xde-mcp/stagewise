@@ -531,7 +531,7 @@ export const ExploringToolParts = ({
           </div>
         </ExploringContentContext.Provider>
       }
-      contentClassName={hasExpandedChild ? 'max-h-96!' : 'max-h-52!'}
+      contentClassName={hasExpandedChild ? 'max-h-96!' : 'max-h-60!'}
     />
   );
 };
