@@ -1,5 +1,6 @@
 import { Select as SelectBase } from '@base-ui/react/select';
-import { CheckIcon, ChevronDownIcon } from 'lucide-react';
+import { CheckIcon } from 'lucide-react';
+import { IconChevronDownFill18 } from 'nucleo-ui-fill-18';
 import {
   memo,
   useCallback,
@@ -331,9 +332,9 @@ export const SearchableSelect = memo(function SearchableSelect({
       md: 'px-2.5 py-2',
     } satisfies Record<SearchableSelectSize, string>,
     icon: {
-      xs: 'size-3.5',
-      sm: 'size-4',
-      md: 'size-4',
+      xs: 'size-3',
+      sm: 'size-3.5',
+      md: 'size-3.5',
     } satisfies Record<SearchableSelectSize, string>,
   };
 
@@ -364,7 +365,7 @@ export const SearchableSelect = memo(function SearchableSelect({
             {(value: string) => selectedValueToTriggerLabel.get(String(value))}
           </SelectBase.Value>
           <SelectBase.Icon className="shrink-0">
-            <ChevronDownIcon className={sizes.icon[size]} />
+            <IconChevronDownFill18 className={sizes.icon[size]} />
           </SelectBase.Icon>
         </SelectBase.Trigger>
       )}

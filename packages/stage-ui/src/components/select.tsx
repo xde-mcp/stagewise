@@ -265,9 +265,9 @@ const sizes = {
     md: 'px-2.5 py-2',
   } satisfies Record<SelectSize, string>,
   icon: {
-    xs: 'size-3.5',
-    sm: 'size-4',
-    md: 'size-4',
+    xs: 'size-3',
+    sm: 'size-3.5',
+    md: 'size-3.5',
   } satisfies Record<SelectSize, string>,
 };
 
@@ -597,7 +597,7 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
             </OverlayScrollbar>
 
             <SelectBase.ScrollDownArrow className="-ml-1 bottom-0 z-1 flex h-5 w-full shrink-0 items-center justify-center rounded-b-md bg-background text-muted-foreground">
-              <IconChevronDownFill18 className="size-3" />
+              <IconChevronDownFill18 className="size-2" />
             </SelectBase.ScrollDownArrow>
           </SelectBase.Popup>
         </SelectBase.Positioner>
