@@ -286,7 +286,6 @@ export type {
   InspirationWebsite,
   RecentlyOpenedWorkspace,
   StoredExperienceData,
-  WorkspaceStatus,
 } from '../ui';
 
 /** Result of adding a search engine */
@@ -312,14 +311,12 @@ export interface ContextFileInfo {
 
 /** Result of getContextFiles procedure */
 export interface ContextFilesResult {
-  /** Whether a workspace is currently loaded */
-  workspaceLoaded: boolean;
-  /** Workspace root path (null if no workspace loaded) */
-  workspacePath: string | null;
-  /**  file info (auto-generated project analysis at .stagewise/) */
-  workspaceMd: ContextFileInfo;
-  /** AGENTS.md file info (user-created coding guidelines) */
-  agentsMd: ContextFileInfo;
+  [workspacePath: string]: {
+    /**  file info (auto-generated project analysis at .stagewise/) */
+    workspaceMd: ContextFileInfo;
+    /** AGENTS.md file info (user-created coding guidelines) */
+    agentsMd: ContextFileInfo;
+  };
 }
 
 export interface LocalPortEntry {

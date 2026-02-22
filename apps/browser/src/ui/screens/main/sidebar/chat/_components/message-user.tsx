@@ -102,8 +102,8 @@ export const MessageUser = memo(
     const selectedElementsFromWebcontents = useKartonState(
       (s) => s.browser.selectedElements,
     );
-    const agentAccessPath = useKartonState(
-      (s) => s.workspace?.agent?.accessPath,
+    const agentAccessPath = useKartonState((s) =>
+      openAgent ? (s.toolbox[openAgent]?.workspace?.path ?? null) : null,
     );
     const setElementSelectionActiveProc = useKartonProcedure(
       (p) => p.browser.contextSelection.setActive,

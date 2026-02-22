@@ -1,5 +1,4 @@
 import posthog from 'posthog-js';
-import { WorkspaceInfoBadge } from './_components/workspace-info';
 import { cn } from '@/utils';
 import {
   IconDotsFill18,
@@ -49,16 +48,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const activeAgents = useKartonState((s) => s.agents.instances);
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
-  const openWorkspace = useKartonProcedure((p) => p.workspace.open);
   const markChatAsViewed = useKartonProcedure(
     (p) => p.userExperience.markChatAsViewed,
-  );
-
-  // Workspace state
-  const workspaceStatus = useKartonState((s) => s.workspaceStatus);
-  const workspaceConnected = workspaceStatus === 'open';
-  const recentlyOpenedWorkspaces = useKartonState(
-    (s) => s.userExperience.storedExperienceData.recentlyOpenedWorkspaces,
   );
   const lastViewedChats = useKartonState(
     (s) => s.userExperience.storedExperienceData.lastViewedChats,
@@ -349,79 +340,25 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 
   // Build menu items for the options dropdown
   const menuItems = useMemo((): SelectItem[] => {
-    const items: SelectItem[] = [];
-
-    // Show workspace options when not connected
-    if (!workspaceConnected) {
-      // Add recent workspaces (max 3, sorted by most recent)
-      const sortedWorkspaces = [...recentlyOpenedWorkspaces]
-        .sort((a, b) => b.openedAt - a.openedAt)
-        .slice(0, 3);
-
-      for (const workspace of sortedWorkspaces) {
-        items.push({
-          value: `workspace:${workspace.path}`,
-          label: (
-            <span className="flex w-full items-baseline gap-2">
-              <span className="truncate">{workspace.name}</span>
-              <span className="shrink-0 text-subtle-foreground text-xs">
-                <TimeAgo
-                  date={workspace.openedAt}
-                  formatter={minimalFormatter}
-                  live={false}
-                />
-              </span>
-            </span>
-          ),
-          description: (
-            <span className="truncate text-subtle-foreground" dir="rtl">
-              <span dir="ltr">{workspace.path}</span>
-            </span>
-          ),
-          group: 'Connected workspaces',
-        });
-      }
-
-      // Add "Connect a new workspace" option
-      items.push({
-        value: 'open-folder',
+    return [
+      {
+        value: 'settings',
         label: (
-          <span className="flex items-center gap-1.5 text-muted-foreground group-hover/item:text-foreground">
-            <IconPlusFill18 className="size-3.5" />
-            <span>Connect a new workspace</span>
+          <span className="flex items-center gap-1.5">
+            <IconGear2Outline24 className="size-3.5 text-muted-foreground" />
+            <span>Settings</span>
           </span>
         ),
-        group: 'Connected workspaces',
-      });
-    }
-
-    // Always show Settings under General
-    items.push({
-      value: 'settings',
-      label: (
-        <span className="flex items-center gap-1.5">
-          <IconGear2Outline24 className="size-3.5 text-muted-foreground" />
-          <span>Settings</span>
-        </span>
-      ),
-      group: 'General',
-    });
-
-    return items;
-  }, [workspaceConnected, recentlyOpenedWorkspaces, minimalFormatter]);
+      },
+    ];
+  }, []);
 
   // Handle menu selection
   const handleMenuSelect = useCallback(
     (value: string | null) => {
-      if (!value) return;
-
-      if (value.startsWith('workspace:')) {
-        const path = value.replace('workspace:', '');
-        void openWorkspace(path);
-      } else if (value === 'open-folder') void openWorkspace(undefined);
-      else if (value === 'settings') createTab(SETTINGS_PAGE_URL, true);
+      if (value === 'settings') createTab(SETTINGS_PAGE_URL, true);
     },
-    [openWorkspace, createTab],
+    [createTab],
   );
 
   return (
@@ -431,7 +368,6 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
         platform === 'darwin' && !isFullScreen ? 'pl-18' : 'ml-0',
       )}
     >
-      {!isCollapsed && <WorkspaceInfoBadge />}
       <div className="flex-1 shrink-0 group-data-[collapsed=true]:hidden" />
       {!isCollapsed && (
         <div className="@[240px]:flex hidden shrink-0 flex-row items-center">

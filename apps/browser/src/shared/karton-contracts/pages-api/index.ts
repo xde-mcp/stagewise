@@ -15,7 +15,6 @@ import type {
   RemoveSearchEngineResult,
   InspirationWebsite,
   StoredExperienceData,
-  WorkspaceStatus,
   ContextFilesResult,
   ExternalFileContentResult,
   LocalPortEntry,
@@ -46,7 +45,6 @@ export type PagesApiState = {
   /** Home page state (for stagewise://internal/home) */
   homePage: {
     storedExperienceData: StoredExperienceData;
-    workspaceStatus: WorkspaceStatus;
     localPorts: LocalPortEntry[];
   };
   /** User account status, synced from AuthService */
@@ -214,7 +212,6 @@ export const defaultState: PagesApiState = {
       hasSeenOnboardingFlow: false,
       lastViewedChats: {},
     },
-    workspaceStatus: 'closed',
     localPorts: [],
   },
   appInfo: {

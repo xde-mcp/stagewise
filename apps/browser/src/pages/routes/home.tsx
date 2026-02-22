@@ -15,9 +15,8 @@ import {
   IconArrowLeftOutline18,
   IconArrowRightOutline18,
   IconChevronDownOutline18,
-  IconFolder5OpenOutline18,
 } from 'nucleo-ui-outline-18';
-import { IconFolderFillDuo18, IconEarthFillDuo18 } from 'nucleo-ui-fill-duo-18';
+import { IconEarthFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { cn } from '@/utils';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { LogoText } from '@stagewise/stage-ui/components/logo-text';
@@ -40,9 +39,6 @@ export const Route = createFileRoute('/home')({
 
 function HomePage() {
   const isConnected = useKartonConnected();
-  const hasSeenOnboardingFlow = useKartonState(
-    (s) => s.homePage.storedExperienceData.hasSeenOnboardingFlow,
-  );
 
   if (!isConnected) {
     return (
@@ -60,16 +56,12 @@ function HomePage() {
 
   return (
     <div className="flex size-full min-h-screen min-w-screen flex-col items-center justify-center overflow-hidden bg-background">
-      {!hasSeenOnboardingFlow ? (
-        <OnboardingStartPage />
-      ) : (
-        <StartPageWithConnectedWorkspace />
-      )}
+      <StartPage />
     </div>
   );
 }
 
-function StartPageWithConnectedWorkspace() {
+function StartPage() {
   const releaseChannel = useKartonState((s) => s.appInfo.releaseChannel);
 
   return (
@@ -457,71 +449,6 @@ function MostVisitedCard({
             Offline
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function OnboardingStartPage() {
-  const openWorkspace = useKartonProcedure((p) => p.openWorkspace);
-  const setHasSeenOnboardingFlow = useKartonProcedure(
-    (p) => p.setHasSeenOnboardingFlow,
-  );
-
-  const selectAndOpenWorkspace = useCallback(async () => {
-    await openWorkspace(undefined);
-  }, [openWorkspace]);
-
-  const releaseChannel = useKartonState((s) => s.appInfo.releaseChannel);
-
-  return (
-    <div className="flex w-full max-w-2xl flex-col items-start gap-4 px-10">
-      <div className="flex items-center gap-2">
-        <div className="ml-1 inline-flex shrink-0 items-center font-normal text-warning-foreground text-xs">
-          {releaseChannel === 'dev' && 'Development Build'}
-          {releaseChannel === 'prerelease' && 'Pre-Release Build'}
-        </div>
-      </div>
-      <div
-        className={cn(
-          'group/start-page-workspaces mt-2 flex w-full flex-col items-start justify-start gap-4 rounded-lg border border-derived bg-linear-to-tr from-surface-1/70 to-surface-1/50 p-4 dark:bg-surface-1',
-        )}
-      >
-        <div className="flex justify-between gap-20 ">
-          <div className="flex flex-col items-start justify-center gap-1">
-            <h1 className="flex items-center justify-center gap-2 font-medium text-foreground text-xl">
-              Connect a workspace
-            </h1>
-
-            <div className="flex w-full max-w-md flex-col items-start justify-center gap-2 text-muted-foreground text-sm">
-              Connecting a workspace will give the stagewise agent access to
-              your project.
-            </div>
-          </div>
-          <IconFolderFillDuo18 className="size-18" />
-        </div>
-        <div className="flex w-full items-center justify-end gap-4">
-          <Button
-            variant={'ghost'}
-            size="sm"
-            className="mt-2 rounded-lg p-2"
-            onClick={() => setHasSeenOnboardingFlow(true)}
-          >
-            Connect later
-          </Button>
-          <Button
-            variant={'primary'}
-            size="sm"
-            className="mt-2 rounded-lg p-2"
-            onClick={async () => {
-              setHasSeenOnboardingFlow(true);
-              await selectAndOpenWorkspace();
-            }}
-          >
-            <IconFolder5OpenOutline18 className="size-4" />
-            Connect a workspace
-          </Button>
-        </div>
       </div>
     </div>
   );

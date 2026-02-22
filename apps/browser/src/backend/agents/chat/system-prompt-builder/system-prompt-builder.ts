@@ -27,9 +27,11 @@ export async function buildChatSystemPrompt(
 ): Promise<string> {
   const { respectAgentsMd } = workspaceAgentSettings;
 
-  const agentsMdContent = respectAgentsMd ? await toolbox.getAgentsMd() : null;
+  const agentsMdContent = respectAgentsMd
+    ? await toolbox.getAgentsMd(agentInstanceId)
+    : null;
 
-  const workspaceMdContent = await toolbox.getWorkspaceMd();
+  const workspaceMdContent = await toolbox.getWorkspaceMd(agentInstanceId);
 
   const applicationInfo = getApplicationInfo({ respectAgentsMd });
 
@@ -38,7 +40,7 @@ export async function buildChatSystemPrompt(
     `<application-environment-info>${applicationInfo}</application-environment-info>`,
     `<message-structure>${MessageStructure}</message-structure>`,
     `<security-authority-model>${SecurityAuthorityModel}</security-authority-model>`,
-    `<skills>${await getSkillsInformation(toolbox)}</skills>`,
+    `<skills>${await getSkillsInformation(toolbox, agentInstanceId)}</skills>`,
     `<application-state>${await getApplicationStateContext(toolbox, agentInstanceId)}</application-state>`,
     agentsMdContent
       ? `<file path="/AGENTS.md">${agentsMdContent}</file>`

@@ -329,6 +329,9 @@ export class DiffHistoryService extends DisposableService {
     if (!this.uiKarton.state.toolbox[agentInstanceId])
       this.uiKarton.setState((draft) => {
         draft.toolbox[agentInstanceId] = {
+          workspace: {
+            path: null,
+          },
           pendingFileDiffs: [],
           editSummary: [],
         };

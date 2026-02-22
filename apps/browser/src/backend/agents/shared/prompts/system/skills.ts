@@ -1,7 +1,10 @@
 import type { ToolboxContextProvider } from '@/services/toolbox/types';
 
-export const getSkillsInformation = async (toolbox: ToolboxContextProvider) => {
-  const skills = await toolbox.getSkillsList();
+export const getSkillsInformation = async (
+  toolbox: ToolboxContextProvider,
+  agentInstanceId: string,
+) => {
+  const skills = await toolbox.getSkillsList(agentInstanceId);
   return `${prefix}
   
   <available_skills>${skills.map((skill) => `<skill name="${skill.name.replace(/[\n\r]/g, ' ').replace('"', '\"')}" description="${skill.description.replace(/[\n\r]/g, ' ').replace('"', '\"')}" path="${skill.path}" />`).join('')}</available_skills>`;

@@ -51,7 +51,7 @@ export class WorkspaceMdAgent extends BaseAgent<
   protected async onCreated(): Promise<void> {
     const reason = this.instanceConfig?.updateReason;
 
-    const workspaceMd = await this.toolbox.getWorkspaceMd();
+    const workspaceMd = await this.toolbox.getWorkspaceMd(this.instanceId);
 
     await this.sendUserMessage({
       id: '',

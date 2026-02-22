@@ -156,7 +156,9 @@ export function ChatPanelFooter() {
     (p) => p.browser.contextSelection.removeElement,
   );
 
-  const agentAccessPath = useKartonState((s) => s.workspace?.agent?.accessPath);
+  const agentAccessPath = useKartonState((s) =>
+    openAgent ? (s.toolbox[openAgent]?.workspace?.path ?? null) : null,
+  );
 
   const isConnected = useKartonConnected();
   const reconnectState = useKartonReconnectState();

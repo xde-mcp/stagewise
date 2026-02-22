@@ -1601,7 +1601,8 @@ export abstract class BaseAgent<
         existingMessage.metadata ??= {
           createdAt: new Date(),
           agentAccessPath:
-            this.toolbox.getWorkspaceSnapshot().workspacePath ?? null,
+            this.toolbox.getWorkspaceSnapshot(this.instanceId).workspacePath ??
+            null,
           partsMetadata: [],
           environmentSnapshot: this.toolbox.captureEnvironmentSnapshot(
             this.instanceId,

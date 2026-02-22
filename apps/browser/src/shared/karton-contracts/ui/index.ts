@@ -165,8 +165,6 @@ export type StructuredAgentErrorInfo = {
   requestId?: string;
 };
 
-export type WorkspaceStatus = 'open' | 'closed' | 'loading' | 'closing';
-
 export const recentlyOpenedWorkspaceSchema = z.object({
   path: z.string(),
   name: z.string(),
@@ -511,22 +509,13 @@ export type AppState = {
   };
   toolbox: {
     [agentInstanceId: string]: {
+      workspace: {
+        path: string | null;
+      };
       pendingFileDiffs: FileDiff[];
       editSummary: FileDiff[];
     };
   };
-  workspace: {
-    path: string;
-    paths: {
-      data: string;
-      temp: string;
-    };
-    agent: {
-      accessPath: string;
-    } | null;
-    loadedOnStart: boolean;
-  } | null;
-  workspaceStatus: WorkspaceStatus;
   userAccount: {
     status: AuthStatus;
     machineId?: string;
@@ -693,6 +682,11 @@ export type KartonContract = {
     toolbox: {
       acceptHunks: (hunkIds: string[]) => Promise<void>;
       rejectHunks: (hunkIds: string[]) => Promise<void>;
+      openWorkspace: (
+        agentInstanceId: string,
+        workspacePath?: string,
+      ) => Promise<void>;
+      closeWorkspace: (agentInstanceId: string) => Promise<void>;
     };
     userAccount: {
       sendOtp: (email: string) => Promise<{ error?: string }>;
@@ -708,10 +702,6 @@ export type KartonContract = {
         openai: ApiKeyValidationResult;
         google: ApiKeyValidationResult;
       }>;
-    };
-    workspace: {
-      open: (path?: string) => Promise<void>;
-      close: () => Promise<void>;
     };
     userExperience: {
       devAppPreview: {
@@ -960,8 +950,6 @@ export const defaultState: KartonContract['state'] = {
   },
   agents: { instances: {} },
   toolbox: {},
-  workspace: null,
-  workspaceStatus: 'closed',
   userAccount: {
     status: 'unauthenticated',
   },

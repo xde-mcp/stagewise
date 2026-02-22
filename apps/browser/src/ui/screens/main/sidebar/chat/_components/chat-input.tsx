@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from '@tiptap/markdown';
 import { ModelSelect } from './model-select';
+import { WorkspaceSelect } from './workspace-select';
 import { ContextUsageRing } from './context-usage-ring';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@/utils';
@@ -52,6 +53,10 @@ export interface ChatInputProps {
   // Model selector
   showModelSelect?: boolean;
   onModelChange?: () => void;
+
+  // Workspace selector
+  showWorkspaceSelect?: boolean;
+  onWorkspaceChange?: () => void;
 
   // Context usage ring
   showContextUsageRing?: boolean;
@@ -103,6 +108,9 @@ export const ChatInput = ({
 
   showModelSelect = true,
   onModelChange,
+
+  showWorkspaceSelect = true,
+  onWorkspaceChange,
 
   showContextUsageRing = false,
   contextUsedPercentage = 0,
@@ -447,9 +455,13 @@ export const ChatInput = ({
 
       {/* Controls area - only shown when not disabled and has content to show */}
       {!disabled &&
-        (showModelSelect ||
+        (showWorkspaceSelect ||
+          showModelSelect ||
           (showContextUsageRing && contextUsedPercentage > 0)) && (
-          <div className="flex shrink-0 flex-row flex-wrap items-center justify-start gap-1 *:shrink-0">
+          <div className="flex shrink-0 flex-row flex-wrap items-center justify-start gap-2 *:shrink-0">
+            {showWorkspaceSelect && (
+              <WorkspaceSelect onWorkspaceChange={onWorkspaceChange} />
+            )}
             {showModelSelect && (
               <ModelSelect
                 onModelChange={() => {

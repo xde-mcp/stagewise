@@ -42,7 +42,7 @@ export class ChatAgent extends BaseAgent<never, undefined> {
     return buildChatSystemPrompt(
       this.toolbox,
       this.instanceId,
-      this.toolbox.getWorkspaceAgentSettings(),
+      this.toolbox.getWorkspaceAgentSettings(this.instanceId),
     );
   };
 

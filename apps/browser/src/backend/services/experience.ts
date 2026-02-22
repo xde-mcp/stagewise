@@ -545,9 +545,7 @@ export class UserExperienceService extends DisposableService {
 
   /**
    * Sync current home page state to PagesService.
-   * Called when stored experience data or workspace status changes.
    * Uses memoization for storedExperienceData to prevent infinite loops.
-   * Always syncs workspaceStatus to ensure reliable cross-process updates.
    */
   private syncHomePageStateToPagesService(): void {
     if (!this.pagesService) {
@@ -568,15 +566,10 @@ export class UserExperienceService extends DisposableService {
     if (storedDataChanged)
       this.lastSyncedStoredExperienceData = currentStoredData;
 
-    // Always sync workspaceStatus to ensure reliable updates across processes.
-    // This is critical because workspaceStatus changes originate from the UI Karton
-    // (via sidebar workspace.open) and must be propagated to the Pages Karton
-    // for the home page to react correctly.
     this.pagesService.syncHomePageState({
       storedExperienceData: storedDataChanged
         ? state.userExperience.storedExperienceData
         : undefined,
-      workspaceStatus: state.workspaceStatus,
     });
   }
 

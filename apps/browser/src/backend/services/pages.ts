@@ -1106,12 +1106,7 @@ export class PagesService extends DisposableService {
             '[PagesService] getContextFiles called but no handler is set',
           );
           // Return a default response indicating no workspace
-          return {
-            workspaceLoaded: false,
-            workspacePath: null,
-            workspaceMd: { exists: false, path: null, content: null },
-            agentsMd: { exists: false, path: null, content: null },
-          };
+          return {};
         }
         return await this.getContextFilesHandler();
       },
@@ -1524,14 +1519,10 @@ export class PagesService extends DisposableService {
    */
   public syncHomePageState(state: {
     storedExperienceData?: PagesApiContract['state']['homePage']['storedExperienceData'];
-    workspaceStatus?: PagesApiContract['state']['homePage']['workspaceStatus'];
   }): void {
     this.kartonServer.setState((draft) => {
       if (state.storedExperienceData !== undefined) {
         draft.homePage.storedExperienceData = state.storedExperienceData;
-      }
-      if (state.workspaceStatus !== undefined) {
-        draft.homePage.workspaceStatus = state.workspaceStatus;
       }
     });
   }

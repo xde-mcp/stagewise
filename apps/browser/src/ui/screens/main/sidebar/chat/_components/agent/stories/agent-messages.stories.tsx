@@ -27,17 +27,6 @@ const createStoryState = (
       isWorking: options?.isWorking,
     },
     {
-      workspace: {
-        agent: {
-          accessPath: '/Users/user/projects/my-app',
-        },
-        path: '/Users/user/projects/my-app',
-        paths: {
-          data: '/Users/user/projects/my-app/data',
-          temp: '/Users/user/projects/my-app/temp',
-        },
-        loadedOnStart: true,
-      },
       userExperience: {
         storedExperienceData: {
           recentlyOpenedWorkspaces: [],

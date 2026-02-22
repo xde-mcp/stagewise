@@ -1,4 +1,6 @@
 import type { Logger } from '@/services/logger';
+import type { FilePickerService } from '@/services/file-picker';
+import type { UserExperienceService } from '@/services/experience';
 import {
   SandboxService,
   type SandboxFileWriter,
@@ -17,7 +19,7 @@ import type { WindowLayoutService } from '@/services/window-layout';
 import type { AuthService } from '@/services/auth';
 import type { TelemetryService } from '@/services/telemetry';
 import type { GlobalDataPathService } from '@/services/global-data-path';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
+import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import { LspService } from '@/services/toolbox/services/lsp';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
@@ -69,7 +71,12 @@ import { createEnvironmentDiffSnapshot } from '@/services/diff-history/utils/dif
 import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info';
 import { getWorkspaceInfo as getWorkspaceInfoUtil } from '@/agents/shared/prompts/utils/workspace-info';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
-import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
+import {
+  readWorkspaceMd,
+  WORKSPACE_MD_DIR,
+  WORKSPACE_MD_FILENAME,
+} from '@/agents/shared/prompts/utils/read-workspace-md';
+import type { ContextFilesResult } from '@shared/karton-contracts/pages-api/types';
 import {
   getSkills,
   type Skill,
@@ -86,17 +93,17 @@ export class ToolboxService extends DisposableService {
   private readonly authService: AuthService;
   private readonly telemetryService: TelemetryService;
   private readonly globalDataPathService: GlobalDataPathService;
+  private readonly filePickerService: FilePickerService;
+  private readonly userExperienceService: UserExperienceService;
 
   private sandboxService: SandboxService | null = null;
 
-  /** Client runtime for workspace operations - set via setClientRuntime() */
-  private clientRuntime: ClientRuntimeNode | null = null;
-
-  /** LSP service for diagnostics - created when clientRuntime is set */
-  private lspService: LspService | null = null;
+  private openWorkspacePaths: Map<AgentInstanceId, string> = new Map();
+  private clientRuntimesPerPath: Map<string, ClientRuntimeNode> = new Map();
+  private lspServicesPerPath: Map<string, LspService> = new Map();
 
   /** Promise that resolves when LSP service is ready (or null if no workspace) */
-  private lspReady: Promise<LspService | null> = Promise.resolve(null);
+  private lspReady: Map<string, Promise<LspService | null>> = new Map();
 
   /** Cached API client - recreated when auth changes */
   private apiClient: TRPCClient<AppRouter> | null = null;
@@ -121,6 +128,8 @@ export class ToolboxService extends DisposableService {
     authService: AuthService,
     telemetryService: TelemetryService,
     globalDataPathService: GlobalDataPathService,
+    filePickerService: FilePickerService,
+    userExperienceService: UserExperienceService,
   ) {
     super();
     this.logger = logger;
@@ -131,6 +140,8 @@ export class ToolboxService extends DisposableService {
     this.authService = authService;
     this.telemetryService = telemetryService;
     this.globalDataPathService = globalDataPathService;
+    this.filePickerService = filePickerService;
+    this.userExperienceService = userExperienceService;
   }
 
   public static async create(
@@ -142,6 +153,8 @@ export class ToolboxService extends DisposableService {
     authService: AuthService,
     telemetryService: TelemetryService,
     globalDataPathService: GlobalDataPathService,
+    filePickerService: FilePickerService,
+    userExperienceService: UserExperienceService,
   ): Promise<ToolboxService> {
     const instance = new ToolboxService(
       logger,
@@ -152,6 +165,8 @@ export class ToolboxService extends DisposableService {
       authService,
       telemetryService,
       globalDataPathService,
+      filePickerService,
+      userExperienceService,
     );
     await instance.initialize();
     return instance;
@@ -167,39 +182,6 @@ export class ToolboxService extends DisposableService {
       operation,
       ...extra,
     });
-  }
-
-  /**
-   * Set the client runtime for workspace operations.
-   * Call this when a workspace is opened/changed.
-   * This will also create/recreate the LSP service.
-   */
-  public setClientRuntime(clientRuntime: ClientRuntimeNode | null): void {
-    this.clientRuntime = clientRuntime;
-
-    // Clear modified files tracking when workspace changes
-    this.modifiedFilesPerAgent.clear();
-
-    // Teardown old LspService and create new one with the new clientRuntime
-    void this.lspService?.teardown();
-    this.lspService = null;
-
-    if (clientRuntime) {
-      // Store the promise so LSP sync operations can await readiness
-      this.lspReady = LspService.create(this.logger, clientRuntime)
-        .then((lsp) => {
-          this.lspService = lsp;
-          this.logger.debug('[ToolboxService] LspService created');
-          return lsp;
-        })
-        .catch((error) => {
-          this.logger.error('[ToolboxService] Failed to create LspService', {
-            error,
-          });
-          this.report(error as Error, 'createLspService');
-          return null;
-        });
-    } else this.lspReady = Promise.resolve(null);
   }
 
   /**
@@ -220,7 +202,11 @@ export class ToolboxService extends DisposableService {
     ) => Promise<unknown>,
     agentInstanceId: string,
   ) {
-    if (!this.clientRuntime) return null;
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    if (!path || !clientRuntime) return null;
     // Cast to any to bypass AI SDK's strict FlexibleSchema type inference
     // The schemas are validated Zod schemas that work correctly at runtime
     return tool({
@@ -229,13 +215,12 @@ export class ToolboxService extends DisposableService {
       execute: async (params, options) => {
         const { toolCallId } = options as { toolCallId: string };
         const { relative_path: relativePath } = params as TParams;
-        const absolutePath =
-          this.clientRuntime!.fileSystem.resolvePath(relativePath);
+        const absolutePath = clientRuntime.fileSystem.resolvePath(relativePath);
 
         const beforeState = await captureFileState(absolutePath, this.tempDir);
         this.diffHistoryService.ignoreFileForWatcher(absolutePath);
         // Execute the actual tool
-        const result = await executeFn(params, this.clientRuntime!);
+        const result = await executeFn(params, clientRuntime);
         const afterState = await captureFileState(absolutePath, this.tempDir);
 
         // Build AgentFileEdit and register with diff-history
@@ -250,13 +235,17 @@ export class ToolboxService extends DisposableService {
           // Sync with LSP based on operation type
           // File created/modified - update LSP
           if (!editContent.isExternal && editContent.contentAfter !== null)
-            void this.syncFileWithLsp(absolutePath, editContent.contentAfter);
+            void this.syncFileWithLsp(
+              agentInstanceId,
+              absolutePath,
+              editContent.contentAfter,
+            );
           // File deleted - close in LSP to clear diagnostics
           else if (
             !editContent.isExternal &&
             editContent.contentBefore !== null
           )
-            void this.syncFileCloseWithLsp(absolutePath);
+            void this.syncFileCloseWithLsp(agentInstanceId, absolutePath);
 
           await this.diffHistoryService.registerAgentEdit({
             agentInstanceId,
@@ -327,10 +316,15 @@ export class ToolboxService extends DisposableService {
   ): Promise<Tool | null> {
     if (!this.modifiedFilesPerAgent.has(agentInstanceId))
       this.modifiedFilesPerAgent.set(agentInstanceId, new Set());
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    const lspService = path ? this.lspServicesPerPath.get(path) || null : null;
 
     switch (tool) {
       case 'deleteFileTool':
-        if (!this.clientRuntime) return null;
+        if (!clientRuntime) return null;
         return this.wrapFileModifyingTool(
           DELETE_FILE_DESCRIPTION,
           deleteFileToolInputSchema,
@@ -338,16 +332,16 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'globTool':
-        if (!this.clientRuntime) return null;
-        return globTool(this.clientRuntime);
+        if (!clientRuntime) return null;
+        return globTool(clientRuntime);
       case 'grepSearchTool':
-        if (!this.clientRuntime) return null;
-        return grepSearchTool(this.clientRuntime);
+        if (!clientRuntime) return null;
+        return grepSearchTool(clientRuntime);
       case 'listFilesTool':
-        if (!this.clientRuntime) return null;
-        return listFilesTool(this.clientRuntime);
+        if (!clientRuntime) return null;
+        return listFilesTool(clientRuntime);
       case 'multiEditTool':
-        if (!this.clientRuntime) return null;
+        if (!clientRuntime) return null;
         return this.wrapFileModifyingTool(
           MULTI_EDIT_DESCRIPTION,
           multiEditToolInputSchema,
@@ -355,7 +349,7 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'overwriteFileTool':
-        if (!this.clientRuntime) return null;
+        if (!clientRuntime) return null;
         return this.wrapFileModifyingTool(
           OVERWRITE_FILE_DESCRIPTION,
           overwriteFileToolInputSchema,
@@ -363,8 +357,8 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'readFileTool':
-        if (!this.clientRuntime) return null;
-        return readFileTool(this.clientRuntime);
+        if (!clientRuntime) return null;
+        return readFileTool(clientRuntime);
       case 'listLibraryDocsTool':
         if (!this.apiClient) return null;
         return listLibraryDocsTool(this.apiClient);
@@ -372,12 +366,12 @@ export class ToolboxService extends DisposableService {
         if (!this.apiClient) return null;
         return searchInLibraryDocsTool(this.apiClient);
       case 'getLintingDiagnosticsTool':
-        if (!this.lspService) return null;
-        if (!this.clientRuntime) return null;
+        if (!lspService) return null;
+        if (!clientRuntime) return null;
         return getLintingDiagnosticsTool(
-          this.lspService!,
+          lspService,
           this.modifiedFilesPerAgent.get(agentInstanceId)!,
-          this.clientRuntime,
+          clientRuntime,
         );
       case 'executeSandboxJsTool':
         if (!this.windowLayoutService) return null;
@@ -386,9 +380,8 @@ export class ToolboxService extends DisposableService {
         if (!this.windowLayoutService) return null;
         return readConsoleLogsTool(this.windowLayoutService);
       case 'writeWorkspaceMdTool': {
-        const workspacePath = this.uiKarton.state.workspace?.path;
-        if (!workspacePath) return null;
-        return writeWorkspaceMdTool(workspacePath);
+        if (!path) return null;
+        return writeWorkspaceMdTool(path);
       }
       default:
         this.logger.error('[ToolboxService] Tool not found', { tool });
@@ -412,19 +405,36 @@ export class ToolboxService extends DisposableService {
     return this.diffHistoryService.undoToolCalls(toolCallIds);
   }
 
-  public getWorkspaceSnapshot(): WorkspaceSnapshot {
-    const workspace = this.uiKarton.state.workspace;
+  public getWorkspaceSnapshot(agentInstanceId: string): WorkspaceSnapshot {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    if (!path || !clientRuntime)
+      return {
+        isConnected: false,
+        workspacePath: null,
+        cwd: null,
+        workspaceMdPath: null,
+      };
+
     return {
-      isConnected: this.clientRuntime !== null,
-      workspacePath: workspace?.path ?? null,
-      cwd: this.clientRuntime?.fileSystem.getCurrentWorkingDirectory() ?? null,
-      workspaceMdPath: workspace?.path ?? null,
+      isConnected: clientRuntime !== null,
+      workspacePath: path ?? null,
+      cwd: clientRuntime.fileSystem.getCurrentWorkingDirectory() ?? null,
+      workspaceMdPath: path ?? null,
     };
   }
 
-  public async getWorkspaceInfo(): Promise<WorkspaceInfo | null> {
-    if (!this.clientRuntime) return null;
-    return getWorkspaceInfoUtil(this.clientRuntime);
+  public async getWorkspaceInfo(
+    agentInstanceId: string,
+  ): Promise<WorkspaceInfo | null> {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    if (!path || !clientRuntime) return null;
+    return getWorkspaceInfoUtil(clientRuntime);
   }
 
   public getBrowserSnapshot(): BrowserSnapshot {
@@ -469,7 +479,7 @@ export class ToolboxService extends DisposableService {
     agentInstanceId: string,
   ): EnvironmentSnapshot {
     const browserState = this.getBrowserSnapshot();
-    const workspaceState = this.getWorkspaceSnapshot();
+    const workspaceState = this.getWorkspaceSnapshot(agentInstanceId);
     const toolboxState = this.uiKarton.state.toolbox[agentInstanceId];
 
     const snapshot: EnvironmentSnapshot = {
@@ -496,40 +506,96 @@ export class ToolboxService extends DisposableService {
     return snapshot;
   }
 
-  public async getSkillsList(): Promise<Skill[]> {
-    if (!this.clientRuntime) return [];
-    return await getSkills(this.clientRuntime);
+  public async getSkillsList(agentInstanceId: string): Promise<Skill[]> {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    if (!path || !clientRuntime) return [];
+    return await getSkills(clientRuntime);
   }
 
-  public getWorkspaceAgentSettings(): WorkspaceAgentSettings {
-    const workspacePath = this.uiKarton.state.workspace?.path ?? null;
-    if (!workspacePath) return { respectAgentsMd: false };
+  public getWorkspaceAgentSettings(
+    agentInstanceId: string,
+  ): WorkspaceAgentSettings {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    if (!path || !clientRuntime) return { respectAgentsMd: false };
     return (
-      this.uiKarton.state.preferences?.agent?.workspaceSettings?.[
-        workspacePath
-      ] ?? { respectAgentsMd: false }
+      this.uiKarton.state.preferences?.agent?.workspaceSettings?.[path] ?? {
+        respectAgentsMd: false,
+      }
     );
   }
 
-  public async getAgentsMd(): Promise<string | null> {
-    if (!this.clientRuntime) return null;
-    return readAgentsMd(this.clientRuntime);
+  public async getAgentsMd(agentInstanceId: string): Promise<string | null> {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    if (!path || !clientRuntime) return null;
+    return readAgentsMd(clientRuntime);
   }
 
-  public async getWorkspaceMd(): Promise<string | null> {
-    const workspacePath = this.uiKarton.state.workspace?.path ?? null;
-    if (!workspacePath) return null;
-    return readWorkspaceMd(workspacePath);
+  public async getWorkspaceMd(agentInstanceId: string): Promise<string | null> {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const clientRuntime = path
+      ? this.clientRuntimesPerPath.get(path) || null
+      : null;
+    if (!path || !clientRuntime) return null;
+    return readWorkspaceMd(path);
+  }
+
+  public async getContextFilesForAllWorkspaces(): Promise<ContextFilesResult> {
+    const uniquePaths = new Set(this.openWorkspacePaths.values());
+    const result: ContextFilesResult = {};
+
+    await Promise.all(
+      [...uniquePaths].map(async (wsPath) => {
+        const clientRuntime = this.clientRuntimesPerPath.get(wsPath);
+
+        const workspaceMdPath = path.resolve(
+          wsPath,
+          WORKSPACE_MD_DIR,
+          WORKSPACE_MD_FILENAME,
+        );
+        const agentsMdPath = path.resolve(wsPath, 'AGENTS.md');
+
+        const [workspaceMdContent, agentsMdContent] = await Promise.all([
+          readWorkspaceMd(wsPath),
+          clientRuntime ? readAgentsMd(clientRuntime) : null,
+        ]);
+
+        result[wsPath] = {
+          workspaceMd: {
+            exists: workspaceMdContent !== null,
+            path: workspaceMdPath,
+            content: workspaceMdContent,
+          },
+          agentsMd: {
+            exists: agentsMdContent !== null,
+            path: agentsMdPath,
+            content: agentsMdContent,
+          },
+        };
+      }),
+    );
+
+    return result;
   }
 
   public async getLspDiagnosticsForAgent(
     agentInstanceId: string,
   ): Promise<DiagnosticsByFile> {
     const modifiedFiles = this.modifiedFilesPerAgent.get(agentInstanceId);
-    if (!this.lspService || !modifiedFiles || modifiedFiles.size === 0) {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    const lspService = path ? this.lspServicesPerPath.get(path) || null : null;
+    if (!lspService || !modifiedFiles || modifiedFiles.size === 0)
       return new Map();
-    }
-    return collectDiagnosticsForFiles(this.lspService, modifiedFiles);
+
+    return collectDiagnosticsForFiles(lspService, modifiedFiles);
   }
 
   /**
@@ -566,11 +632,14 @@ export class ToolboxService extends DisposableService {
    * Waits for LSP service to be ready before syncing.
    */
   private async syncFileWithLsp(
+    agentInstanceId: string,
     filePath: string,
     content: string,
   ): Promise<void> {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    if (!path) throw new Error('No workspace connected');
     // Wait for LSP to be ready before syncing
-    const lsp = await this.lspReady;
+    const lsp = await this.lspReady.get(path);
     if (!lsp) return;
 
     try {
@@ -590,15 +659,19 @@ export class ToolboxService extends DisposableService {
    * Call this after a file is deleted by a tool.
    * Waits for LSP service to be ready before closing.
    */
-  private async syncFileCloseWithLsp(filePath: string): Promise<void> {
-    // Wait for LSP to be ready before closing
-    const lsp = await this.lspReady;
+  private async syncFileCloseWithLsp(
+    agentInstanceId: string,
+    filePath: string,
+  ): Promise<void> {
+    const path = this.openWorkspacePaths.get(agentInstanceId);
+    if (!path) throw new Error('No workspace connected');
+    const lsp = await this.lspReady.get(path);
     if (!lsp) return;
-
+    // Wait for LSP to be ready before closing
     try {
-      await lsp.closeFile(filePath);
+      await lsp.touchFile(filePath);
     } catch (err) {
-      this.logger.debug('[ToolboxService] Failed to close file in LSP', {
+      this.logger.debug('[ToolboxService] Failed to touch file in LSP', {
         error: err,
         path: filePath,
       });
@@ -639,19 +712,19 @@ export class ToolboxService extends DisposableService {
       content,
       toolCallId,
     ) => {
-      if (!this.clientRuntime) {
-        throw new Error('No workspace connected');
-      }
+      const workspacePath = this.openWorkspacePaths.get(agentId);
+      if (!workspacePath) throw new Error('No workspace connected');
 
-      const absolutePath =
-        this.clientRuntime.fileSystem.resolvePath(relativePath);
+      const clientRuntime = this.clientRuntimesPerPath.get(workspacePath);
+      if (!clientRuntime) throw new Error('No client runtime found');
+
+      const absolutePath = clientRuntime.fileSystem.resolvePath(relativePath);
       const workspaceRoot =
-        this.clientRuntime.fileSystem.getCurrentWorkingDirectory();
+        clientRuntime.fileSystem.getCurrentWorkingDirectory();
 
       // Security check: ensure path is within workspace
-      if (!absolutePath.startsWith(workspaceRoot)) {
+      if (!absolutePath.startsWith(workspaceRoot))
         throw new Error('Path must be within workspace');
-      }
 
       // Capture file state before write
       const beforeState = await captureFileState(absolutePath, this.tempDir);
@@ -676,7 +749,11 @@ export class ToolboxService extends DisposableService {
 
         // Sync with LSP if it's a text file
         if (!editContent.isExternal && editContent.contentAfter !== null) {
-          void this.syncFileWithLsp(absolutePath, editContent.contentAfter);
+          void this.syncFileWithLsp(
+            agentId,
+            absolutePath,
+            editContent.contentAfter,
+          );
         }
 
         await this.diffHistoryService.registerAgentEdit({
@@ -796,15 +873,102 @@ export class ToolboxService extends DisposableService {
     this.authService.registerAuthStateChangeCallback(() =>
       this.refreshApiClient(),
     );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.openWorkspace',
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+        workspacePath?: string,
+      ) => {
+        await this.handleOpenWorkspace(agentInstanceId, workspacePath);
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.closeWorkspace',
+      async (_callingClientId: string, agentInstanceId: string) => {
+        await this.handleCloseWorkspace(agentInstanceId);
+      },
+    );
+  }
+
+  private async handleOpenWorkspace(
+    agentInstanceId: string,
+    workspacePath?: string,
+  ): Promise<void> {
+    let resolvedWorkspacePath: string | undefined;
+    if (!workspacePath) {
+      const filePickerResponses = await this.filePickerService.createRequest({
+        title: 'Select a workspace',
+        description: 'Select a workspace to load',
+        type: 'directory',
+        multiple: false,
+      });
+      if (filePickerResponses.length === 0) return;
+
+      this.openWorkspacePaths.set(agentInstanceId, filePickerResponses[0]);
+      resolvedWorkspacePath = filePickerResponses[0];
+    } else resolvedWorkspacePath = workspacePath;
+    if (!resolvedWorkspacePath) return;
+    this.openWorkspacePaths.set(agentInstanceId, resolvedWorkspacePath);
+    this.clientRuntimesPerPath.set(
+      resolvedWorkspacePath,
+      new ClientRuntimeNode({
+        workingDirectory: resolvedWorkspacePath,
+        rgBinaryBasePath: this.globalDataPathService.globalDataPath,
+      }),
+    );
+    const lspPromise = LspService.create(
+      this.logger,
+      this.clientRuntimesPerPath.get(resolvedWorkspacePath)!,
+    );
+    this.lspReady.set(resolvedWorkspacePath, lspPromise);
+    const lspService = await lspPromise;
+    this.lspServicesPerPath.set(resolvedWorkspacePath, lspService);
+    await this.userExperienceService.saveRecentlyOpenedWorkspace({
+      path: resolvedWorkspacePath,
+      name: path.basename(resolvedWorkspacePath),
+      openedAt: Date.now(),
+    });
+    if (!this.uiKarton.state.toolbox[agentInstanceId]) {
+      this.uiKarton.setState((draft) => {
+        draft.toolbox[agentInstanceId] = {
+          workspace: {
+            path: null,
+          },
+          pendingFileDiffs: [],
+          editSummary: [],
+        };
+      });
+    }
+    this.uiKarton.setState((draft) => {
+      draft.toolbox[agentInstanceId].workspace.path = resolvedWorkspacePath;
+    });
+    // TODO: checkAndGenerateWorkspaceMd somehow
+  }
+
+  private async handleCloseWorkspace(agentInstanceId: string): Promise<void> {
+    const workspacePath = this.openWorkspacePaths.get(agentInstanceId);
+    if (!workspacePath) return;
+    this.openWorkspacePaths.delete(agentInstanceId);
+    const lspService = this.lspServicesPerPath.get(workspacePath);
+    if (lspService) void lspService.teardown();
+
+    this.clientRuntimesPerPath.delete(workspacePath);
+    this.lspServicesPerPath.delete(workspacePath);
+    this.lspReady.delete(workspacePath);
+    this.uiKarton.setState((draft) => {
+      draft.toolbox[agentInstanceId].workspace.path = null;
+    });
   }
 
   protected onTeardown(): Promise<void> | void {
     this.apiClient = null;
-    this.clientRuntime = null;
+    for (const lspService of this.lspServicesPerPath.values())
+      void lspService.teardown();
 
-    // Teardown LSP service
-    void this.lspService?.teardown();
-    this.lspService = null;
+    this.lspServicesPerPath.clear();
 
     void this.sandboxService?.teardown();
     this.sandboxService = null;

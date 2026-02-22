@@ -37,17 +37,6 @@ const baseState: Partial<AppState> = {
   ...createDefaultAgentState({
     activeModelId: availableModels[0]?.modelId,
   }),
-  workspace: {
-    path: '/Users/user/projects/my-app',
-    paths: {
-      data: '/Users/user/projects/my-app/data',
-      temp: '/Users/user/projects/my-app/temp',
-    },
-    loadedOnStart: true,
-    agent: {
-      accessPath: '/Users/user/projects/my-app',
-    },
-  },
   userExperience: {
     storedExperienceData: {
       recentlyOpenedWorkspaces: [],

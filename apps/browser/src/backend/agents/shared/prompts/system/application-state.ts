@@ -16,7 +16,7 @@ export const getApplicationStateContext = async (
 ) => {
   const browserSnapshot = await toolbox.getBrowserSnapshot();
 
-  const workspaceSnapshot = toolbox.getWorkspaceSnapshot();
+  const workspaceSnapshot = toolbox.getWorkspaceSnapshot(agentInstanceId);
 
   const diagnostics = await toolbox.getLspDiagnosticsForAgent(agentInstanceId);
 

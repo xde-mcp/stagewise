@@ -6,7 +6,6 @@ import { app } from 'electron';
 import { AuthService } from './services/auth';
 import { AgentManagerService } from './services/agent-manager';
 import { UserExperienceService } from './services/experience';
-import { WorkspaceService } from './services/workspace';
 import { FilePickerService } from './services/file-picker';
 import { existsSync, unlinkSync } from 'node:fs';
 import { AppMenuService } from './services/app-menu';
@@ -37,15 +36,7 @@ import type { DownloadSummary } from '@shared/karton-contracts/ui';
 import { OmniboxSuggestionsService } from './services/omnibox-suggestions';
 import { ensureRipgrepInstalled } from '@stagewise/agent-runtime-node';
 import { shell } from 'electron';
-import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { ToolboxService } from './services/toolbox';
-import {
-  readWorkspaceMd,
-  WORKSPACE_MD_FILENAME,
-  WORKSPACE_MD_DIR,
-} from './agents/shared/prompts/utils/read-workspace-md';
-import { readAgentsMd } from './agents/shared/prompts/utils/read-agents-md';
-import { resolve } from 'node:path';
 import { ModelProviderService } from './agents/model-provider';
 
 export type MainParameters = {
@@ -571,8 +562,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   const pendingEditsSyncCallback = (state: typeof uiKarton.state) => {
     const activeAgentInstanceIds = Object.keys(state.agents.instances);
 
-    const _workspacePath = state.workspace?.path;
-
     const hashContent = (s: string | null | undefined): string => {
       if (!s) return '0';
       const mid = Math.floor(s.length / 2);
@@ -689,6 +678,13 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
   );
 
+  const userExperienceService = await UserExperienceService.create(
+    logger,
+    uiKarton,
+    globalDataPathService,
+    telemetryService,
+  );
+
   const toolboxService = await ToolboxService.create(
     logger,
     uiKarton,
@@ -698,39 +694,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     authService,
     telemetryService,
     globalDataPathService,
-  );
-
-  const workspaceService = await WorkspaceService.create(
-    logger,
     filePickerService,
-    telemetryService,
-    uiKarton,
-    globalDataPathService,
-    notificationService,
-    authService,
+    userExperienceService,
   );
-
-  workspaceService.registerWorkspaceChangeListener((event) => {
-    switch (event.type) {
-      case 'loaded': {
-        const accessPath = event.selectedPath;
-        const clientRuntime = new ClientRuntimeNode({
-          workingDirectory: accessPath,
-          rgBinaryBasePath: globalDataPathService.globalDataPath,
-        });
-        toolboxService.setClientRuntime(clientRuntime);
-        void _userExperienceService.saveRecentlyOpenedWorkspace({
-          path: event.selectedPath,
-          name: event.name,
-          openedAt: Date.now(),
-        });
-        break;
-      }
-      case 'unloaded':
-        toolboxService.setClientRuntime(null);
-        break;
-    }
-  });
 
   const _appMenuService = new AppMenuService(
     logger,
@@ -738,31 +704,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     windowLayoutService,
   );
 
-  const _userExperienceService = await UserExperienceService.create(
-    logger,
-    uiKarton,
-    globalDataPathService,
-    telemetryService,
-  );
-
   // Wire up home page services - bidirectional connection between services
-  _userExperienceService.setPagesService(pagesService);
-  pagesService.setUserExperienceService(_userExperienceService);
-  pagesService.setOpenWorkspaceHandler(async (path?: string) => {
-    try {
-      // Unload current workspace first if one is loaded
-      if (workspaceService.isLoaded) {
-        await workspaceService.unloadWorkspace();
-      }
-      await workspaceService.loadWorkspace(path);
-    } catch (error) {
-      logger.error(`[Main] Failed to open workspace: ${error}`);
-      telemetryService.captureException(
-        error instanceof Error ? error : new Error(String(error)),
-        { service: 'main', operation: 'openWorkspace' },
-      );
-    }
-  });
+  userExperienceService.setPagesService(pagesService);
+  pagesService.setUserExperienceService(userExperienceService);
 
   // Wire up certificate trust handler for error page "Continue (UNSAFE!)" button
   pagesService.setTrustCertificateAndReloadHandler(
@@ -772,61 +716,9 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   );
 
   // Wire up context files handler for agent settings page
-  pagesService.setGetContextFilesHandler(async () => {
-    if (!workspaceService.isLoaded) {
-      return {
-        workspaceLoaded: false,
-        workspacePath: null,
-        workspaceMd: { exists: false, path: null, content: null },
-        agentsMd: { exists: false, path: null, content: null },
-      };
-    }
-
-    const workspacePath = workspaceService.path;
-
-    // Read WORKSPACE.md from .stagewise directory in workspace
-    let workspaceMdInfo: {
-      exists: boolean;
-      path: string | null;
-      content: string | null;
-    } = { exists: false, path: null, content: null };
-    const workspaceMdFullPath = resolve(
-      workspacePath,
-      WORKSPACE_MD_DIR,
-      WORKSPACE_MD_FILENAME,
-    );
-    const workspaceMdContent = await readWorkspaceMd(workspacePath);
-    workspaceMdInfo = {
-      exists: workspaceMdContent !== null,
-      path: workspaceMdFullPath,
-      content: workspaceMdContent,
-    };
-
-    // Read AGENTS.md from workspace root
-    let agentsMdInfo: {
-      exists: boolean;
-      path: string | null;
-      content: string | null;
-    } = { exists: false, path: null, content: null };
-    const clientRuntime = new ClientRuntimeNode({
-      workingDirectory: workspacePath,
-      rgBinaryBasePath: globalDataPathService.globalDataPath,
-    });
-    const agentsMdContent = await readAgentsMd(clientRuntime);
-    const agentsMdFullPath = resolve(workspacePath, 'AGENTS.md');
-    agentsMdInfo = {
-      exists: agentsMdContent !== null,
-      path: agentsMdFullPath,
-      content: agentsMdContent,
-    };
-
-    return {
-      workspaceLoaded: true,
-      workspacePath,
-      workspaceMd: workspaceMdInfo,
-      agentsMd: agentsMdInfo,
-    };
-  });
+  pagesService.setGetContextFilesHandler(() =>
+    toolboxService.getContextFilesForAllWorkspaces(),
+  );
 
   const modelProviderService = new ModelProviderService(
     telemetryService,
@@ -842,9 +734,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
     modelProviderService,
   );
-
-  // Wire AgentManagerService into WorkspaceService for  generation
-  workspaceService.setAgentManagerService(_agentManagerService);
 
   // No need to unregister this callback, as it will be destroyed when the main app shuts down
   authService.registerAuthStateChangeCallback((newAuthState) => {
@@ -954,8 +843,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   logger.debug('[Main] Normal operation services bootstrapped');
 
-  // After all services got started, we're now ready to load the initial workspace (which is either the user given path or the cwd).
-  // We only load the current workspace as default workspace if the folder contains a stagewise.json file. (We don't verify it tho)
   logger.debug('[Main] Startup complete');
 
   // Handle command line arguments for URLs on initial startup

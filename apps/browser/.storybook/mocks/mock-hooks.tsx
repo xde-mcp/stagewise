@@ -44,18 +44,6 @@ export const MockKartonProvider: React.FC<MockKartonProviderProps> = ({
 }) => {
   const state = useMemo<AppState>(() => {
     // Create a complete mock workspace (defaultState.workspace is null)
-    const mockWorkspace: AppState['workspace'] = {
-      path: '/mock/workspace',
-      paths: {
-        data: '/mock/workspace/.stagewise',
-        temp: '/mock/workspace/.stagewise/tmp',
-      },
-      agent: {
-        accessPath: '/mock/workspace/path',
-      },
-      loadedOnStart: true,
-    };
-
     // Create a complete default state with all required fields
     const completeDefaultState: AppState = {
       ...defaultState,
@@ -63,7 +51,6 @@ export const MockKartonProvider: React.FC<MockKartonProviderProps> = ({
         ...defaultState.globalConfig,
         openFilesInIde: 'vscode',
       },
-      workspace: mockWorkspace,
     };
 
     // Deep merge mockState with completeDefaultState
@@ -81,17 +68,6 @@ export const MockKartonProvider: React.FC<MockKartonProviderProps> = ({
           ...mockState.agents?.instances,
         },
       },
-      workspace:
-        mockState.workspace !== undefined
-          ? ({
-              ...completeDefaultState.workspace,
-              ...mockState.workspace,
-              agent: {
-                ...completeDefaultState.workspace?.agent,
-                ...mockState.workspace?.agent,
-              },
-            } as AppState['workspace'])
-          : completeDefaultState.workspace,
     };
   }, [mockState]);
 

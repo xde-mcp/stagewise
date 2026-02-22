@@ -10,6 +10,11 @@ import {
   TabsContent,
 } from '@stagewise/stage-ui/components/tabs';
 import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@stagewise/stage-ui/components/collapsible';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -48,6 +53,7 @@ import { Input } from '@stagewise/stage-ui/components/input';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { produceWithPatches, enablePatches } from 'immer';
 import { IconChevronRightOutline18 } from 'nucleo-ui-outline-18';
+import { ChevronDownIcon } from 'lucide-react';
 
 enablePatches();
 
@@ -149,8 +155,6 @@ function ScrollFadeCodeBlock({
 
 function WorkspaceSettingsSection() {
   const getContextFiles = useKartonProcedure((s) => s.getContextFiles);
-  const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
-  const preferences = useKartonState((s) => s.preferences);
 
   const [contextFiles, setContextFiles] = useState<ContextFilesResult | null>(
     null,
@@ -170,17 +174,73 @@ function WorkspaceSettingsSection() {
       });
   }, [getContextFiles]);
 
-  const workspacePath = contextFiles?.workspacePath ?? null;
+  if (isLoading) {
+    return (
+      <div className="text-muted-foreground text-sm">
+        Loading workspace settings...
+      </div>
+    );
+  }
 
-  const respectAgentsMd = workspacePath
-    ? (preferences?.agent?.workspaceSettings?.[workspacePath]
-        ?.respectAgentsMd ?? false)
-    : false;
+  const entries = contextFiles ? Object.entries(contextFiles) : [];
+
+  if (entries.length === 0) {
+    return (
+      <div className="rounded-lg border border-derived p-4">
+        <p className="text-muted-foreground text-sm">
+          No workspaces are currently connected. Connect a workspace to an agent
+          to configure workspace-specific settings.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {entries.map(([wsPath, files]) => (
+        <WorkspaceContextSection
+          key={wsPath}
+          workspacePath={wsPath}
+          workspaceMd={files.workspaceMd}
+          agentsMd={files.agentsMd}
+          defaultOpen={entries.length === 1}
+        />
+      ))}
+    </div>
+  );
+}
+
+function WorkspaceContextSection({
+  workspacePath,
+  workspaceMd,
+  agentsMd,
+  defaultOpen,
+}: {
+  workspacePath: string;
+  workspaceMd: ContextFilesResult[string]['workspaceMd'];
+  agentsMd: ContextFilesResult[string]['agentsMd'];
+  defaultOpen: boolean;
+}) {
+  const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
+  const preferences = useKartonState((s) => s.preferences);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  const folderName = useMemo(
+    () =>
+      workspacePath
+        .replace('\\', '/')
+        .split('/')
+        .filter((p) => p !== '')
+        .pop() ?? workspacePath,
+    [workspacePath],
+  );
+
+  const respectAgentsMd =
+    preferences?.agent?.workspaceSettings?.[workspacePath]?.respectAgentsMd ??
+    false;
 
   const handleToggleAgentsMd = useCallback(
     async (checked: boolean) => {
-      if (!workspacePath) return;
-
       const currentSettings =
         preferences?.agent?.workspaceSettings?.[workspacePath];
 
@@ -210,116 +270,130 @@ function WorkspaceSettingsSection() {
     [workspacePath, preferences, updatePreferences],
   );
 
-  if (isLoading) {
-    return (
-      <div className="text-muted-foreground text-sm">
-        Loading workspace settings...
-      </div>
-    );
-  }
+  const showAgentsMd = respectAgentsMd && agentsMd.exists;
+  const hasAnyContextFile = workspaceMd.exists || showAgentsMd;
 
-  if (!contextFiles?.workspaceLoaded) {
-    return (
-      <div className="rounded-lg border border-derived p-4">
-        <p className="text-muted-foreground text-sm">
-          No workspace is currently open. Open a workspace to configure
-          workspace-specific settings.
-        </p>
-      </div>
-    );
-  }
-
-  const showAgentsMd = respectAgentsMd && contextFiles.agentsMd.exists;
-  const hasAnyContextFile = contextFiles.workspaceMd.exists || showAgentsMd;
-
-  // Determine default tab - prefer .stagewise/ if it exists
-  const defaultTab = contextFiles.workspaceMd.exists
-    ? 'workspaceMd'
-    : 'agentsMd';
+  const defaultTab = workspaceMd.exists ? 'workspaceMd' : 'agentsMd';
 
   return (
-    <div className="space-y-6">
-      {/* AGENTS.md toggle */}
-      <div
-        className="flex cursor-pointer items-center gap-4 rounded-lg border border-derived p-4"
-        onClick={() => handleToggleAgentsMd(!respectAgentsMd)}
-      >
-        <IconFileContentFillDuo18 className="size-5 shrink-0 text-muted-foreground" />
-        <div className="flex-1">
-          <h3 className="font-medium text-foreground text-sm">
-            Include AGENTS.md
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            Usually not needed — stagewise manages project context
-            automatically.
-          </p>
-        </div>
-        <div onClick={(e) => e.stopPropagation()}>
-          <Switch
-            checked={respectAgentsMd}
-            onCheckedChange={handleToggleAgentsMd}
-            size="sm"
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div className="rounded-lg border border-derived">
+        <CollapsibleTrigger size="default" className="px-4">
+          <div className="flex min-w-0 flex-col items-start">
+            <span className="font-medium text-foreground text-sm">
+              {folderName}
+            </span>
+            <Tooltip>
+              <TooltipTrigger>
+                <span
+                  className="max-w-80 truncate text-muted-foreground text-xs"
+                  dir="rtl"
+                >
+                  <span dir="ltr">{workspacePath}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <span className="block max-w-80 break-all">
+                  {workspacePath}
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <ChevronDownIcon
+            className={cn(
+              'ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-150',
+              isOpen && 'rotate-180',
+            )}
           />
-        </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="px-4 pb-4">
+          <div className="space-y-4">
+            {/* AGENTS.md toggle */}
+            <div
+              className="flex cursor-pointer items-center gap-4 rounded-lg border border-derived p-3"
+              onClick={() => handleToggleAgentsMd(!respectAgentsMd)}
+            >
+              <IconFileContentFillDuo18 className="size-5 shrink-0 text-muted-foreground" />
+              <div className="flex-1">
+                <h3 className="font-medium text-foreground text-sm">
+                  Include AGENTS.md
+                </h3>
+                <p className="text-muted-foreground text-xs">
+                  Usually not needed — stagewise manages project context
+                  automatically.
+                </p>
+              </div>
+              <div onClick={(e) => e.stopPropagation()}>
+                <Switch
+                  checked={respectAgentsMd}
+                  onCheckedChange={handleToggleAgentsMd}
+                  size="sm"
+                />
+              </div>
+            </div>
+
+            {/* Context files viewer */}
+            {hasAnyContextFile && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-foreground text-sm">
+                  Context files
+                </h3>
+                <Tabs defaultValue={defaultTab} className="w-full">
+                  <TabsList className="max-w-96">
+                    {workspaceMd.exists && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <TabsTrigger value="workspaceMd">
+                            WORKSPACE.md
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span className="block max-w-80 break-all">
+                            {workspaceMd.path}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {showAgentsMd && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <TabsTrigger value="agentsMd">AGENTS.md</TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span className="block max-w-80 break-all">
+                            {agentsMd.path}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </TabsList>
+
+                  {workspaceMd.exists && (
+                    <TabsContent value="workspaceMd" className="w-full">
+                      <ScrollFadeCodeBlock
+                        code={workspaceMd.content ?? ''}
+                        description="Auto-generated project analysis stored in your project's .stagewise folder."
+                        filePath={workspaceMd.path}
+                      />
+                    </TabsContent>
+                  )}
+
+                  {showAgentsMd && (
+                    <TabsContent value="agentsMd" className="w-full">
+                      <ScrollFadeCodeBlock
+                        code={agentsMd.content ?? ''}
+                        description="User-created coding guidelines from your workspace root."
+                        filePath={agentsMd.path}
+                      />
+                    </TabsContent>
+                  )}
+                </Tabs>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
       </div>
-
-      {/* Context files viewer */}
-      {hasAnyContextFile && (
-        <div className="space-y-2">
-          <h3 className="font-medium text-base text-foreground">
-            Context files
-          </h3>
-          <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="max-w-96">
-              {contextFiles.workspaceMd.exists && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <TabsTrigger value="workspaceMd">WORKSPACE.md</TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span className="block max-w-80 break-all">
-                      {contextFiles.workspaceMd.path}
-                    </span>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {showAgentsMd && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <TabsTrigger value="agentsMd">AGENTS.md</TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span className="block max-w-80 break-all">
-                      {contextFiles.agentsMd.path}
-                    </span>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </TabsList>
-
-            {contextFiles.workspaceMd.exists && (
-              <TabsContent value="workspaceMd" className="w-full">
-                <ScrollFadeCodeBlock
-                  code={contextFiles.workspaceMd.content ?? ''}
-                  description="Auto-generated project analysis stored in your project's .stagewise folder."
-                  filePath={contextFiles.workspaceMd.path}
-                />
-              </TabsContent>
-            )}
-
-            {showAgentsMd && (
-              <TabsContent value="agentsMd" className="w-full">
-                <ScrollFadeCodeBlock
-                  code={contextFiles.agentsMd.content ?? ''}
-                  description="User-created coding guidelines from your workspace root."
-                  filePath={contextFiles.agentsMd.path}
-                />
-              </TabsContent>
-            )}
-          </Tabs>
-        </div>
-      )}
-    </div>
+    </Collapsible>
   );
 }
 

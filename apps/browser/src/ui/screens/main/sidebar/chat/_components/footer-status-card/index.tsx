@@ -81,13 +81,13 @@ export function StatusCard() {
       : EMPTY_HISTORY,
   );
 
-  // Get workspace path for relativizing file paths in status text
-  const workspacePath = useKartonState(
-    (s) => s.workspace?.agent?.accessPath ?? null,
+  // Get workspace path for relativizing file paths in status text (per-agent)
+  const workspacePath = useKartonState((s) =>
+    openAgentId ? (s.toolbox[openAgentId]?.workspace?.path ?? null) : null,
   );
 
   const workspaceConnected = useKartonState(
-    (s) => s.workspaceStatus === 'open',
+    (s) => !!openAgentId && !!s.toolbox[openAgentId]?.workspace?.path,
   );
 
   // Track WorkspaceMd status with completion/error state
