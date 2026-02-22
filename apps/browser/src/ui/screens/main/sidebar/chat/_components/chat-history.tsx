@@ -260,6 +260,38 @@ export const ChatHistory = () => {
       }, []);
   }, [history]);
 
+  // For each user message, check if any subsequent messages contain
+  // file-modifying tool outputs (detected via _diff or _hasFileWrites markers).
+  // Uses a single reverse scan so the check is O(n) overall.
+  const hasFileModsAfterMap = useMemo(() => {
+    const result = new Map<string, boolean>();
+    let suffixHasFileMods = false;
+    for (let i = serverMessages.length - 1; i >= 0; i--) {
+      const msg = serverMessages[i];
+      if (msg.role === 'user') result.set(msg.id, suffixHasFileMods);
+      else if (msg.role === 'assistant') {
+        if (
+          !suffixHasFileMods &&
+          msg.parts.some((part) => {
+            if (!part.type.startsWith('tool-')) return false;
+            const toolPart = part as { state: string; output?: unknown };
+            if (toolPart.state !== 'output-available') return false;
+            const output = toolPart.output as
+              | Record<string, unknown>
+              | undefined;
+            return (
+              output != null &&
+              ('_diff' in output || '_hasFileWrites' in output)
+            );
+          })
+        ) {
+          suffixHasFileMods = true;
+        }
+      }
+    }
+    return result;
+  }, [serverMessages]);
+
   // Optimistic messages - shown immediately before server confirms
   const [optimisticMessages, setOptimisticMessages] = useState<
     OptimisticMessage[]
@@ -545,6 +577,9 @@ export const ChatHistory = () => {
             message={message as AgentMessage & { role: 'user' }}
             isLastMessage={isLastMessage}
             isWorking={isWorking ?? false}
+            hasSubsequentFileModifications={
+              hasFileModsAfterMap.get(message.id) ?? false
+            }
           />
         ) : (
           <MessageAssistant

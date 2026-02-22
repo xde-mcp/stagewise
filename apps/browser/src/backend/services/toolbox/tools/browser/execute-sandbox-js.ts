@@ -44,16 +44,20 @@ export const executeSandboxJsTool = (
     inputSchema: executeSandboxJsToolInputSchema,
     execute: async (params, options) => {
       const { toolCallId } = options as { toolCallId: string };
-      // Set the tool call ID for this execution so file writes are tracked correctly
       sandboxService.setAgentToolCallId(agentInstanceId, toolCallId);
       try {
-        return await executeSandboxJsToolExecute(
+        const result = await executeSandboxJsToolExecute(
           params,
           agentInstanceId,
           sandboxService,
         );
+        const fileWriteCount =
+          sandboxService.getAndClearFileWriteCount(agentInstanceId);
+        if (fileWriteCount > 0)
+          return { ...result, _hasFileWrites: true as const };
+
+        return result;
       } finally {
-        // Always clear the tool call ID after execution completes
         sandboxService.clearAgentToolCallId(agentInstanceId);
       }
     },

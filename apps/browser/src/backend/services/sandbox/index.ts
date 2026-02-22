@@ -68,6 +68,7 @@ export class SandboxService extends DisposableService {
   private agentToWorker = new Map<string, WorkerInfo>();
   private pendingRequests = new Map<string, PendingRequest>();
   private agentToolCallIds = new Map<string, string>();
+  private fileWriteCountPerExecution = new Map<string, number>();
   private reqId = 0;
 
   constructor(
@@ -114,6 +115,16 @@ export class SandboxService extends DisposableService {
    */
   clearAgentToolCallId(agentId: string) {
     this.agentToolCallIds.delete(agentId);
+  }
+
+  /**
+   * Return and reset the file write count accumulated during the current execution.
+   * Called by execute-sandbox-js tool after execution to attach _hasFileWrites marker.
+   */
+  getAndClearFileWriteCount(agentId: string): number {
+    const count = this.fileWriteCountPerExecution.get(agentId) ?? 0;
+    this.fileWriteCountPerExecution.delete(agentId);
+    return count;
   }
 
   async initialize() {
@@ -168,6 +179,7 @@ export class SandboxService extends DisposableService {
     worker.load--;
     this.agentToWorker.delete(agentId);
     this.agentToolCallIds.delete(agentId);
+    this.fileWriteCountPerExecution.delete(agentId);
   }
 
   async execute(
@@ -280,6 +292,10 @@ export class SandboxService extends DisposableService {
             contentBuffer,
             toolCallId,
           );
+          this.fileWriteCountPerExecution.set(
+            msg.agentId,
+            (this.fileWriteCountPerExecution.get(msg.agentId) ?? 0) + 1,
+          );
           this.safeSend(worker, {
             type: 'write-file-result',
             id: msg.id,
@@ -386,5 +402,6 @@ export class SandboxService extends DisposableService {
     this.agentToWorker.clear();
     this.pendingRequests.clear();
     this.agentToolCallIds.clear();
+    this.fileWriteCountPerExecution.clear();
   }
 }

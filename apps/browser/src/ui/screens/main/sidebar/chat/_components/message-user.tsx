@@ -58,11 +58,13 @@ export const MessageUser = memo(
     isLastMessage,
     measureRef,
     isWorking,
+    hasSubsequentFileModifications,
   }: {
     message: UserMessage;
     isLastMessage: boolean;
     measureRef?: (el: HTMLDivElement | null) => void;
     isWorking: boolean;
+    hasSubsequentFileModifications?: boolean;
   }) {
     const chatInputRef = useRef<ChatInputHandle>(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -214,14 +216,6 @@ export const MessageUser = memo(
       setSelectedElementsFromEditor([]);
     }, []);
 
-    // Submit triggers confirmation
-    const handleSubmitEdit = useCallback(() => {
-      const textContent = chatInputRef.current?.getTextContent().trim();
-      if ((textContent?.length ?? 0) <= 2) return;
-      setIsConfirmOpen(true);
-    }, []);
-
-    // Confirm and execute the edit
     const handleConfirmEdit = useCallback(
       async (undoToolCalls: boolean) => {
         if (!msg.id || !openAgent) {
@@ -348,6 +342,16 @@ export const MessageUser = memo(
         pendingTiptapContent,
       ],
     );
+
+    const handleSubmitEdit = useCallback(() => {
+      const textContent = chatInputRef.current?.getTextContent().trim();
+      if ((textContent?.length ?? 0) <= 2) return;
+      if (hasSubsequentFileModifications) {
+        setIsConfirmOpen(true);
+      } else {
+        void handleConfirmEdit(false);
+      }
+    }, [hasSubsequentFileModifications, handleConfirmEdit]);
 
     // Handle files pasted in editor
     const handlePasteFiles = useCallback(
@@ -714,6 +718,11 @@ export const MessageUser = memo(
     if (prevProps.isLastMessage !== nextProps.isLastMessage) return false;
     if (prevProps.isWorking !== nextProps.isWorking) return false;
     if (!!prevProps.measureRef !== !!nextProps.measureRef) return false;
+    if (
+      prevProps.hasSubsequentFileModifications !==
+      nextProps.hasSubsequentFileModifications
+    )
+      return false;
     if (prevProps.message.parts.length !== nextProps.message.parts.length)
       return false;
 
