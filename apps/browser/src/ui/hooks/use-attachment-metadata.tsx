@@ -51,6 +51,20 @@ export const AttachmentMetadataProvider = ({
       message.metadata?.selectedPreviewElements?.forEach((e) => {
         if (e.stagewiseId) record[e.stagewiseId] = e;
       });
+      // Collect _customFileAttachments from sandbox tool outputs
+      for (const part of message.parts) {
+        if (
+          (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
+          'output' in part &&
+          part.output &&
+          typeof part.output === 'object'
+        ) {
+          const custom = (part.output as Record<string, unknown>)
+            ._customFileAttachments;
+          if (Array.isArray(custom))
+            for (const att of custom as FileAttachment[]) record[att.id] = att;
+        }
+      }
     }
 
     return record;
