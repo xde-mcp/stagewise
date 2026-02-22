@@ -669,7 +669,7 @@ export class ToolboxService extends DisposableService {
     if (!lsp) return;
     // Wait for LSP to be ready before closing
     try {
-      await lsp.touchFile(filePath);
+      await lsp.closeFile(filePath);
     } catch (err) {
       this.logger.debug('[ToolboxService] Failed to touch file in LSP', {
         error: err,
