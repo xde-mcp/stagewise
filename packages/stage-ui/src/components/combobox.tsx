@@ -158,6 +158,7 @@ export const ComboboxContent = forwardRef<
     ref,
   ) => (
     <ComboboxBase.Portal>
+      <ComboboxBase.Backdrop className="fixed inset-0 z-50" />
       <ComboboxBase.Positioner
         side={side}
         sideOffset={sideOffset}
