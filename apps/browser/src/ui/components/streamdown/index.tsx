@@ -243,6 +243,12 @@ export const Streamdown = ({
   return (
     <StreamdownProvider isStreaming={isAnimating}>
       <StreamdownBase
+        animated={{
+          animation: 'fadeIn',
+          duration: 100,
+          easing: 'ease-out',
+          sep: 'word',
+        }}
         isAnimating={isAnimating}
         mode={isAnimating ? 'streaming' : 'static'}
         shikiTheme={['light-plus', 'dark-plus']}
@@ -274,7 +280,7 @@ export const Streamdown = ({
           th: MemoTh,
           td: MemoTd,
         }}
-        rehypePlugins={[defaultRehypePlugins.raw!, defaultRehypePlugins.katex!]}
+        rehypePlugins={[defaultRehypePlugins.raw!]}
       >
         {preprocessMarkdown(children)}
       </StreamdownBase>
