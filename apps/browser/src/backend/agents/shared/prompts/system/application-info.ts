@@ -50,9 +50,11 @@ Provides full browser debugging + control (DOM, CSS, JS eval, network, input, sc
 
 Use via sandbox API (sendCDP)
 
-Pre-enabled CDP domains: \`DOM\`, \`CSS\`, \`Page\`, \`Runtime\`, \`Log\`, \`Console\`. (do NOT call \`<Domain>.enable()\`).
+Pre-enabled CDP domains: \`DOM\`, \`CSS\`, \`Page\`, \`Runtime\`, \`Log\`, \`Console\`. (do NOT call \`<Domain>.enable()\` for these).
 
-For all other domains (e.g. \`Network\`, \`Overlay\`, \`Input\`, \`Emulation\`), call \`<Domain>.enable\` via sendCDP before using their methods.
+Domains that do NOT have an \`enable\` method (use their methods directly, never call \`<Domain>.enable\`): \`Input\`, \`Emulation\`, \`IO\`, \`Target\`, \`Browser\`, \`SystemInfo\`, \`Schema\`.
+
+For event-based domains not listed above (e.g. \`Network\`, \`Overlay\`, \`Debugger\`, \`Fetch\`, \`DOMStorage\`, \`Performance\`, \`Profiler\`), call \`<Domain>.enable\` via sendCDP before using their methods or receiving their events.
 
 ### Sandbox API (\`API.*\`)
 
