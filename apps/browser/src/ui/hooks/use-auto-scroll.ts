@@ -161,6 +161,7 @@ export function useAutoScroll(
 
         pendingScrollFrame = requestAnimationFrame(() => {
           pendingScrollFrame = null;
+          if (!isAutoScrollLockedRef.current) return;
           scrollToBottom();
         });
       });
@@ -182,6 +183,20 @@ export function useAutoScroll(
     },
     [enabled, initializeAtBottom, handleWheel, handleScrollEnd, scrollToBottom],
   );
+
+  // Disconnect observer and listeners when `enabled` becomes false.
+  // The scrollerRef callback is only re-invoked when the DOM element changes,
+  // not when `enabled` changes, so we need this effect for cleanup.
+  useEffect(() => {
+    if (enabled) return;
+    const viewport = viewportRef.current;
+    if (viewport) {
+      viewport.removeEventListener('wheel', handleWheel);
+      viewport.removeEventListener('scrollend', handleScrollEnd);
+    }
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+  }, [enabled, handleWheel, handleScrollEnd]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -697,6 +697,75 @@ export function createGrepSearchToolPart(
   } as AgentToolUIPart;
 }
 
+/**
+ * Create an execute sandbox JS tool part
+ */
+export function createExecuteSandboxJsToolPart(
+  script: string,
+  state:
+    | 'input-streaming'
+    | 'input-available'
+    | 'output-available'
+    | 'output-error' = 'output-available',
+  options?: {
+    toolCallId?: string;
+    result?: string;
+    errorText?: string;
+    customFileAttachments?: Array<{
+      id: string;
+      mediaType: string;
+      fileName?: string;
+      url: string;
+      validationError?: string;
+    }>;
+  },
+): AgentToolUIPart {
+  const toolCallId = options?.toolCallId || generateId();
+
+  if (state === 'input-streaming') {
+    return {
+      type: 'tool-executeSandboxJsTool',
+      toolCallId,
+      state: 'input-streaming',
+      input: { script },
+    } as AgentToolUIPart;
+  }
+
+  if (state === 'input-available') {
+    return {
+      type: 'tool-executeSandboxJsTool',
+      toolCallId,
+      state: 'input-available',
+      input: { script },
+    } as AgentToolUIPart;
+  }
+
+  if (state === 'output-error') {
+    return {
+      type: 'tool-executeSandboxJsTool',
+      toolCallId,
+      state: 'output-error',
+      input: { script },
+      errorText:
+        options?.errorText ?? 'Error: Script execution failed unexpectedly',
+    } as AgentToolUIPart;
+  }
+
+  return {
+    type: 'tool-executeSandboxJsTool',
+    toolCallId,
+    state: 'output-available',
+    input: { script },
+    output: {
+      message: 'Successfully executed sandbox JavaScript',
+      result: { result: options?.result ?? '{}' },
+      ...(options?.customFileAttachments && {
+        _customFileAttachments: options.customFileAttachments,
+      }),
+    },
+  } as AgentToolUIPart;
+}
+
 // ============================================================================
 // Agent Instance Helpers
 // ============================================================================

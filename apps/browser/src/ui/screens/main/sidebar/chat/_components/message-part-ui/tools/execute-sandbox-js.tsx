@@ -1,12 +1,19 @@
-import { ChevronDownIcon, Loader2Icon, XIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import {
+  ChevronDownIcon,
+  FileIcon,
+  FileTextIcon,
+  FileWarningIcon,
+  ImageIcon,
+  Loader2Icon,
+  XIcon,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconWindowPointerOutline18 } from 'nucleo-ui-outline-18';
 import {
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent,
 } from '@stagewise/stage-ui/components/collapsible';
-import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { CodeBlock } from '@/components/ui/code-block';
 import { StreamingCodeBlock } from '@/components/ui/streaming-code-block';
@@ -14,6 +21,7 @@ import { cn } from '@/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import { useKartonState } from '@/hooks/use-karton';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
+import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 import { getSandboxLabel } from './utils/cdp-label-utils';
 
 export const ExecuteSandboxJsToolPart = ({
@@ -77,6 +85,73 @@ export const ExecuteSandboxJsToolPart = ({
     }
   }, [part.output?.result?.result]);
 
+  const customAttachments = useMemo(() => {
+    const raw = (part.output as Record<string, unknown> | undefined)
+      ?._customFileAttachments;
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    return raw as FileAttachment[];
+  }, [part.output]);
+
+  const hasResultContent = !!formattedResult || !!customAttachments;
+
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (
+      state !== 'success' ||
+      !expanded ||
+      !hasResultContent ||
+      !resultRef.current
+    )
+      return;
+
+    let attempts = 0;
+    const maxAttempts = 15;
+    let frameId: number;
+
+    const findScrollParent = (el: HTMLElement): HTMLElement | null => {
+      let node = el.parentElement;
+      while (node) {
+        if (
+          node.hasAttribute('data-overlayscrollbars-viewport') &&
+          node.scrollHeight > node.clientHeight
+        )
+          return node;
+
+        node = node.parentElement;
+      }
+      return null;
+    };
+
+    const tryScroll = () => {
+      const el = resultRef.current;
+      if (!el) return;
+
+      const scrollParent = findScrollParent(el);
+      attempts++;
+
+      if (scrollParent) {
+        scrollParent.dispatchEvent(
+          new WheelEvent('wheel', { deltaY: -1, bubbles: false }),
+        );
+        const offset =
+          el.getBoundingClientRect().top -
+          scrollParent.getBoundingClientRect().top -
+          5;
+        scrollParent.scrollTop += offset;
+        return;
+      }
+
+      if (attempts < maxAttempts) frameId = requestAnimationFrame(tryScroll);
+    };
+
+    frameId = requestAnimationFrame(tryScroll);
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [state, hasResultContent, expanded]);
+
   if (state === 'error') {
     return (
       <ToolPartUI
@@ -112,26 +187,11 @@ export const ExecuteSandboxJsToolPart = ({
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
-                  {capMaxHeight ? (
-                    <OverlayScrollbar
-                      className="max-h-28"
-                      options={{ overflow: { x: 'hidden', y: 'scroll' } }}
-                    >
-                      <CodeBlock
-                        code={part.input.script}
-                        language="javascript"
-                        hideActionButtons
-                      />
-                    </OverlayScrollbar>
-                  ) : (
-                    <div className="overflow-y-hidden">
-                      <CodeBlock
-                        code={part.input.script}
-                        language="javascript"
-                        hideActionButtons
-                      />
-                    </div>
-                  )}
+                  <CodeBlock
+                    code={part.input.script}
+                    language="javascript"
+                    hideActionButtons
+                  />
                 </CollapsibleContent>
               </Collapsible>
             )}
@@ -152,16 +212,11 @@ export const ExecuteSandboxJsToolPart = ({
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
-                  <OverlayScrollbar
-                    className={cn('max-h-24')}
-                    options={{ overflow: { x: 'hidden', y: 'scroll' } }}
-                  >
-                    <CodeBlock
-                      code={part.errorText}
-                      language="javascript"
-                      hideActionButtons
-                    />
-                  </OverlayScrollbar>
+                  <CodeBlock
+                    code={part.errorText}
+                    language="javascript"
+                    hideActionButtons
+                  />
                 </CollapsibleContent>
               </Collapsible>
             )}
@@ -179,6 +234,7 @@ export const ExecuteSandboxJsToolPart = ({
       expanded={expanded}
       setExpanded={handleUserSetExpanded}
       isShimmering={!disableShimmer && streaming}
+      autoScroll={streaming}
       trigger={
         <>
           {!streaming && (
@@ -230,57 +286,47 @@ export const ExecuteSandboxJsToolPart = ({
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
-                  {capMaxHeight ? (
-                    <OverlayScrollbar
-                      className="max-h-28"
-                      options={{ overflow: { x: 'hidden', y: 'scroll' } }}
-                    >
-                      <CodeBlock
-                        code={part.input.script}
-                        language="javascript"
-                        hideActionButtons
-                      />
-                    </OverlayScrollbar>
-                  ) : (
-                    <div className="overflow-y-hidden">
-                      <CodeBlock
-                        code={part.input.script}
-                        language="javascript"
-                        hideActionButtons
-                      />
-                    </div>
-                  )}
+                  <CodeBlock
+                    code={part.input.script}
+                    language="javascript"
+                    hideActionButtons
+                  />
                 </CollapsibleContent>
               </Collapsible>
-              {formattedResult && (
-                <Collapsible
-                  open={resultExpanded}
-                  onOpenChange={setResultExpanded}
-                >
-                  <CollapsibleTrigger size="condensed" className="">
-                    <ChevronDownIcon
-                      className={cn(
-                        'size-3 transition-transform duration-150',
-                        !resultExpanded && '-rotate-90',
-                      )}
-                    />
-                    <span className="mb-1 text-[10px] uppercase tracking-wider">
-                      Result
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="duration-0!">
-                    <OverlayScrollbar
-                      className={cn('max-h-24')}
-                      options={{ overflow: { x: 'hidden', y: 'scroll' } }}
-                    >
-                      <CodeBlock
-                        code={formattedResult}
-                        language="json"
-                        hideActionButtons
+              {hasResultContent && (
+                <div ref={resultRef}>
+                  <Collapsible
+                    open={resultExpanded}
+                    onOpenChange={setResultExpanded}
+                  >
+                    <CollapsibleTrigger size="condensed" className="">
+                      <ChevronDownIcon
+                        className={cn(
+                          'size-3 transition-transform duration-150',
+                          !resultExpanded && '-rotate-90',
+                        )}
                       />
-                    </OverlayScrollbar>
-                  </CollapsibleContent>
-                </Collapsible>
+                      <span className="mb-1 text-[10px] uppercase tracking-wider">
+                        Result
+                      </span>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="duration-0!">
+                      {customAttachments ? (
+                        <AttachmentPreviewCards
+                          attachments={customAttachments}
+                        />
+                      ) : (
+                        formattedResult && (
+                          <CodeBlock
+                            code={formattedResult}
+                            language="json"
+                            hideActionButtons
+                          />
+                        )
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
               )}
             </div>
           )}
@@ -291,6 +337,63 @@ export const ExecuteSandboxJsToolPart = ({
       }
       contentFooterClassName="px-0"
     />
+  );
+};
+
+const getFileIcon = (mediaType: string, hasError: boolean) => {
+  if (hasError) return <FileWarningIcon className="size-8 text-destructive" />;
+  if (mediaType.startsWith('image/'))
+    return <ImageIcon className="size-8 text-muted-foreground" />;
+  if (
+    mediaType.startsWith('text/') ||
+    mediaType === 'application/json' ||
+    mediaType === 'application/pdf'
+  )
+    return <FileTextIcon className="size-8 text-muted-foreground" />;
+  return <FileIcon className="size-8 text-muted-foreground" />;
+};
+
+const AttachmentPreviewCards = ({
+  attachments,
+}: {
+  attachments: FileAttachment[];
+}) => {
+  return (
+    <div className="flex flex-row gap-2 overflow-x-auto px-1 py-2">
+      {attachments.map((att) => {
+        const isImage =
+          att.mediaType.startsWith('image/') && !att.validationError;
+        return (
+          <div
+            key={att.id}
+            className={cn(
+              'flex shrink-0 flex-col overflow-hidden rounded-lg',
+              'border border-border-subtle bg-surface-1',
+              att.validationError && 'border-destructive/30',
+            )}
+          >
+            {isImage ? (
+              <div className="flex min-h-24 items-center justify-center bg-background p-1.5">
+                <img
+                  src={att.url}
+                  alt={att.fileName ?? att.id}
+                  className="max-h-38 max-w-52 rounded object-contain"
+                />
+              </div>
+            ) : (
+              <div className="flex size-24 items-center justify-center bg-background">
+                {getFileIcon(att.mediaType, !!att.validationError)}
+              </div>
+            )}
+            <div className="border-border-subtle border-t px-2.5 py-1">
+              <span className="max-w-48 truncate font-medium text-foreground text-xs">
+                {att.fileName ?? att.id}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 
