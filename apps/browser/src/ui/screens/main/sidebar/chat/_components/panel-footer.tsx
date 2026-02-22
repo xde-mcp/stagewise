@@ -106,9 +106,14 @@ export function ChatPanelFooter() {
     );
   }, [openAgent]);
 
+  const [canSendMessage, setCanSendMessage] = useState(false);
+
   const updateChatInputState = useCallback(
     (newInputState: Content) => {
       setLocalInputState(newInputState);
+      setCanSendMessage(
+        (chatInputRef.current?.getTextContent()?.trim().length ?? 0) > 2,
+      );
       if (openAgent) {
         void setChatInputState(openAgent, JSON.stringify(newInputState));
       }
@@ -294,6 +299,12 @@ export function ChatPanelFooter() {
     if (openAgent) await stopAgent(openAgent);
   }, [stopAgent, openAgent]);
 
+  // Stable abort callback for ChatInputActions — avoids memo-busting when
+  // abortAgent's reference changes (e.g. openAgent switches).
+  const abortAgentRef = useRef(abortAgent);
+  abortAgentRef.current = abortAgent;
+  const stableAbortAgent = useCallback(() => abortAgentRef.current(), []);
+
   const isVerboseMode = useKartonState(
     (s) => s.appInfo.releaseChannel === 'dev',
   );
@@ -305,26 +316,47 @@ export function ChatPanelFooter() {
     return true;
   }, [isConnected, reconnectState.isReconnecting]);
 
-  const canSendMessage = useMemo(() => {
-    // Allow sending when input is enabled and has enough text
-    // (backend will queue if agent is working)
-    return (
-      enableInputField &&
-      (chatInputRef.current?.getTextContent()?.trim().length ?? 0) > 2
-    );
-  }, [enableInputField, localInputState]);
+  // canSendMessage is driven by setCanSendMessage in updateChatInputState
+  // and gated by enableInputField. No dep on localInputState to stay stable.
+  const effectiveCanSendMessage = canSendMessage && enableInputField;
 
   const hasOpenedInternalPage =
     activeTabUrl?.startsWith('stagewise://internal/') ?? false;
 
+  // Refs for values read at call time inside handleSubmit.
+  // This keeps handleSubmit's dependency array stable (no localInputState,
+  // fileAttachments, localSelectedElements, canSendMessage) which in turn
+  // keeps the onSubmit prop passed to ChatInputActions referentially stable
+  // across keystrokes and streaming updates.
+  const localInputStateRef = useRef(localInputState);
+  localInputStateRef.current = localInputState;
+
+  const fileAttachmentsRef = useRef(fileAttachments);
+  fileAttachmentsRef.current = fileAttachments;
+
+  const localSelectedElementsRef = useRef(localSelectedElements);
+  localSelectedElementsRef.current = localSelectedElements;
+
+  const canSendMessageRef = useRef(effectiveCanSendMessage);
+  canSendMessageRef.current = effectiveCanSendMessage;
+
+  const agentAccessPathRef = useRef(agentAccessPath);
+  agentAccessPathRef.current = agentAccessPath;
+
   const handleSubmit = useCallback(async () => {
-    if (!canSendMessage) return;
+    if (!canSendMessageRef.current) return;
+
+    // Read frequently-changing values from refs at call time
+    const currentLocalInputState = localInputStateRef.current;
+    const currentFileAttachments = fileAttachmentsRef.current;
+    const currentSelectedElements = localSelectedElementsRef.current;
+    const currentAccessPath = agentAccessPathRef.current;
 
     // Collect metadata for selected elements and text clips
     const metadata = collectUserMessageMetadata(
-      localSelectedElements,
-      localInputState,
-      agentAccessPath,
+      currentSelectedElements,
+      currentLocalInputState,
+      currentAccessPath,
     );
 
     const markdownText = chatInputRef.current!.getTextContent();
@@ -338,12 +370,12 @@ export function ChatPanelFooter() {
       role: 'user',
       metadata: {
         ...metadata,
-        fileAttachments,
+        fileAttachments: currentFileAttachments,
       },
     };
 
     // Save for restore on error
-    const previousContent = localInputState;
+    const previousContent = currentLocalInputState;
 
     clearAll();
     stopContextSelector();
@@ -355,6 +387,7 @@ export function ChatPanelFooter() {
       content: [{ type: 'paragraph' }],
     };
     setLocalInputState(emptyDoc);
+    setCanSendMessage(false);
     if (openAgent) void setChatInputState(openAgent, JSON.stringify(emptyDoc));
 
     // Dispatch event with message data for optimistic rendering
@@ -389,11 +422,6 @@ export function ChatPanelFooter() {
       );
     }
   }, [
-    localInputState,
-    canSendMessage,
-    fileAttachments,
-    localSelectedElements,
-    agentAccessPath,
     sendUserMessage,
     openAgent,
     setChatInputState,
@@ -682,14 +710,14 @@ export function ChatPanelFooter() {
         />
         <ChatInputActions
           isAgentWorking={isWorking}
-          onStop={abortAgent}
+          onStop={stableAbortAgent}
           showElementSelectorButton
           elementSelectionActive={elementSelectionActive}
           onToggleElementSelection={handleToggleElementSelection}
           elementSelectorDisabled={hasOpenedInternalPage}
           showImageUploadButton
           onAddFileAttachment={handleAddFileAttachment}
-          canSendMessage={canSendMessage ?? false}
+          canSendMessage={effectiveCanSendMessage}
           onSubmit={handleSubmit}
         />
         <StatusCard />
