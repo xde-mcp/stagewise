@@ -34,7 +34,7 @@ import {
   type AttachmentAttributes,
   type AttachmentType,
 } from './rich-text';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 // Re-export types for convenience
 export type { AttachmentAttributes, AttachmentType };
 
@@ -505,7 +505,7 @@ export interface ChatInputActionsProps {
   onSubmit: () => void;
 }
 
-export function ChatInputActions({
+export const ChatInputActions = memo(function ChatInputActions({
   isAgentWorking = false,
   onStop,
 
@@ -635,4 +635,4 @@ export function ChatInputActions({
       </div>
     </div>
   );
-}
+});

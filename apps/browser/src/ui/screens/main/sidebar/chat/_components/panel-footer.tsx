@@ -39,6 +39,10 @@ import {
   enrichTipTapContent,
 } from '@/utils/tiptap-content-utils';
 
+// Stable empty arrays to avoid new-reference re-renders
+const EMPTY_HISTORY: AgentMessage[] = [];
+const EMPTY_QUEUE: (AgentMessage & { role: 'user' })[] = [];
+
 export function ChatPanelFooter() {
   const chatInputRef = useRef<ChatInputHandle>(null);
   const { registerDraftGetter } = useChatDraft();
@@ -59,15 +63,28 @@ export function ChatPanelFooter() {
   const isWorkingRef = useRef(isWorking);
   isWorkingRef.current = isWorking;
 
+  // History is only used inside abortAgent (via ref) — subscribe with a
+  // stable empty-array fallback so the selector doesn't trigger re-renders
+  // from new [] allocations, while Immer structural sharing keeps the
+  // actual history reference stable between unrelated state changes.
   const history = useKartonState((s) =>
-    openAgent ? s.agents.instances[openAgent]?.state.history : [],
+    openAgent
+      ? (s.agents.instances[openAgent]?.state.history ?? EMPTY_HISTORY)
+      : EMPTY_HISTORY,
   );
   const historyRef = useRef(history);
   historyRef.current = history;
 
+  // Read server-side input state only to initialize / re-initialize on agent
+  // switch.  We do NOT use this value for rendering — localInputState drives
+  // the editor.  Subscribing here is intentional so the ref stays fresh for
+  // the openAgent-change effect below.
   const chatInputState = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.inputState : null,
   );
+  const chatInputStateRef = useRef(chatInputState);
+  chatInputStateRef.current = chatInputState;
+
   const setChatInputState = useKartonProcedure(
     (p) => p.agents.updateInputState,
   );
@@ -77,6 +94,17 @@ export function ChatPanelFooter() {
       ? JSON.parse(chatInputState)
       : null,
   );
+
+  // Re-sync local input state when the active agent changes
+  const prevOpenAgentRef = useRef(openAgent);
+  useEffect(() => {
+    if (openAgent === prevOpenAgentRef.current) return;
+    prevOpenAgentRef.current = openAgent;
+    const serverState = chatInputStateRef.current;
+    setLocalInputState(
+      serverState && serverState.length > 0 ? JSON.parse(serverState) : null,
+    );
+  }, [openAgent]);
 
   const updateChatInputState = useCallback(
     (newInputState: Content) => {
@@ -121,11 +149,10 @@ export function ChatPanelFooter() {
       });
   }, [openAgent]);
 
-  const activeTabId = useKartonState((s) => s.browser.activeTabId);
-  const tabs = useKartonState((s) => s.browser.tabs);
-  const activeTab = useMemo(() => {
-    return activeTabId ? tabs[activeTabId] : null;
-  }, [tabs, activeTabId]);
+  const activeTabUrl = useKartonState((s) => {
+    const tabId = s.browser.activeTabId;
+    return tabId ? (s.browser.tabs[tabId]?.url ?? null) : null;
+  });
 
   // Element selection state from Karton
   const selectionModeActive = useKartonState(
@@ -287,9 +314,8 @@ export function ChatPanelFooter() {
     );
   }, [enableInputField, localInputState]);
 
-  const hasOpenedInternalPage = useMemo(() => {
-    return activeTab?.url?.startsWith('stagewise://internal/') ?? false;
-  }, [activeTab?.url]);
+  const hasOpenedInternalPage =
+    activeTabUrl?.startsWith('stagewise://internal/') ?? false;
 
   const handleSubmit = useCallback(async () => {
     if (!canSendMessage) return;
@@ -387,7 +413,9 @@ export function ChatPanelFooter() {
   }, [usedTokens, maxTokens]);
 
   const queuedMessages = useKartonState((s) =>
-    openAgent ? s.agents.instances[openAgent]?.state.queuedMessages : [],
+    openAgent
+      ? (s.agents.instances[openAgent]?.state.queuedMessages ?? EMPTY_QUEUE)
+      : EMPTY_QUEUE,
   );
   const flushQueue = useKartonProcedure((p) => p.agents.flushQueue);
   const handleFlushQueue = useCallback(() => {
@@ -483,7 +511,7 @@ export function ChatPanelFooter() {
         await togglePanelKeyboardFocus('stagewise-ui');
       } else if (
         !elementSelectionActive &&
-        !activeTab?.url?.startsWith('stagewise://internal/')
+        !activeTabUrl?.startsWith('stagewise://internal/')
       ) {
         // State 2: Sidebar open, element selection OFF, *not* on the start page → activate element selection
         startContextSelector();
@@ -499,7 +527,7 @@ export function ChatPanelFooter() {
       elementSelectionActive,
       startContextSelector,
       togglePanelKeyboardFocus,
-      activeTab?.url,
+      activeTabUrl,
     ]),
     HotkeyActions.TOGGLE_CONTEXT_SELECTOR,
   );

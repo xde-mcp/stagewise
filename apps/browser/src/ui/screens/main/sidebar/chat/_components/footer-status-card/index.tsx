@@ -26,15 +26,12 @@ export function StatusCard() {
   // Use ref to persist previousHeight across effect re-runs (fixes flickering)
   const previousHeightRef = useRef(0);
   const [openAgentId] = useOpenAgent();
-  const toolbox = useKartonState((s) => s.toolbox);
-  const pendingDiffs = useMemo(() => {
-    if (!openAgentId) return [];
-    return toolbox[openAgentId]?.pendingFileDiffs;
-  }, [toolbox, openAgentId]);
-  const diffSummary = useMemo(() => {
-    if (!openAgentId) return [];
-    return toolbox[openAgentId]?.editSummary;
-  }, [toolbox, openAgentId]);
+  const pendingDiffs = useKartonState((s) =>
+    openAgentId ? s.toolbox[openAgentId]?.pendingFileDiffs : undefined,
+  );
+  const diffSummary = useKartonState((s) =>
+    openAgentId ? s.toolbox[openAgentId]?.editSummary : undefined,
+  );
 
   const rejectAllPendingEdits = useKartonProcedure(
     (p) => p.toolbox.rejectHunks,
