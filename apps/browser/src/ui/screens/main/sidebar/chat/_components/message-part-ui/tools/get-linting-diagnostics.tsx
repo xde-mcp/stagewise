@@ -71,6 +71,7 @@ export const GetLintingDiagnosticsToolPart = ({
     <ToolPartUI
       expanded={expanded}
       setExpanded={handleUserSetExpanded}
+      isShimmering={!disableShimmer && streaming}
       trigger={
         <>
           {!streaming &&

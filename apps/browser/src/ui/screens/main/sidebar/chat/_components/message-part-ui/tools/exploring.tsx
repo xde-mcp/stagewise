@@ -503,6 +503,7 @@ export const ExploringToolParts = ({
     <ToolPartUI
       expanded={expanded}
       setExpanded={setExpanded}
+      isShimmering={isShimmering}
       trigger={
         <div className={cn(`flex flex-row items-center justify-start gap-2`)}>
           <div className="flex flex-1 flex-row items-center justify-start gap-1 text-xs">

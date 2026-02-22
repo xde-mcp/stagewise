@@ -90,6 +90,7 @@ export const ReadConsoleLogsToolPart = ({
     <ToolPartUI
       expanded={expanded}
       setExpanded={handleUserSetExpanded}
+      isShimmering={!disableShimmer && streaming}
       trigger={
         <>
           {!streaming && <TerminalIcon className="size-3 shrink-0" />}

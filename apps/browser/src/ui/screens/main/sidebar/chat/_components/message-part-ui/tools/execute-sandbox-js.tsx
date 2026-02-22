@@ -178,6 +178,7 @@ export const ExecuteSandboxJsToolPart = ({
       showBorder={showBorder}
       expanded={expanded}
       setExpanded={handleUserSetExpanded}
+      isShimmering={!disableShimmer && streaming}
       trigger={
         <>
           {!streaming && (

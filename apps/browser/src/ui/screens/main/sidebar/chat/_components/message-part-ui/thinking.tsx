@@ -43,6 +43,7 @@ export const ThinkingPart = ({
     <ToolPartUI
       expanded={expanded}
       setExpanded={handleUserSetExpanded}
+      isShimmering={isShimmering}
       trigger={
         <>
           <BrainIcon

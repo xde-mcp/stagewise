@@ -20,6 +20,7 @@ export const ToolPartUI = ({
   setExpanded: controlledSetExpanded,
   showBorder = false,
   autoScroll = true,
+  isShimmering = false,
 }: {
   trigger?: React.ReactNode;
   content?: React.ReactNode;
@@ -30,6 +31,7 @@ export const ToolPartUI = ({
   setExpanded?: (expanded: boolean) => void;
   showBorder?: boolean;
   autoScroll?: boolean;
+  isShimmering?: boolean;
 }) => {
   // Internal state for uncontrolled mode
   const [internalExpanded, setInternalExpanded] = useState(true);
@@ -125,6 +127,7 @@ export const ToolPartUI = ({
               expanded && 'rotate-180',
               !showBorder && !expanded && 'hidden group-hover/trigger:block',
               showBorder && 'ml-auto',
+              isShimmering && 'text-primary-foreground',
             )}
           />
         </CollapsibleTrigger>
