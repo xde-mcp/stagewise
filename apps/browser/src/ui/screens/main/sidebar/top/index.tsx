@@ -9,7 +9,12 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Select, type SelectItem } from '@stagewise/stage-ui/components/select';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import {
+  useComparingSelector,
+  useKartonProcedure,
+  useKartonState,
+} from '@/hooks/use-karton';
+import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
@@ -23,6 +28,81 @@ import {
 } from '@shared/karton-contracts/ui/agent';
 import { AgentsSelector, type AgentGroup } from './_components/agents-selector';
 
+// Static menu items — no component state captured, safe at module scope.
+const menuItems: SelectItem[] = [
+  {
+    value: 'settings',
+    label: (
+      <span className="flex items-center gap-1.5">
+        <IconGear2Outline24 className="size-3.5 text-muted-foreground" />
+        <span>Settings</span>
+      </span>
+    ),
+  },
+];
+
+// Static trigger renderer — takes triggerProps as argument, captures nothing.
+const menuTrigger = (
+  triggerProps: React.ComponentPropsWithoutRef<'button'>,
+) => (
+  <Tooltip>
+    <TooltipTrigger>
+      <Button
+        {...triggerProps}
+        variant="ghost"
+        size="icon-xs"
+        className="app-no-drag shrink-0"
+      >
+        <IconDotsFill18 className="size-4" />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent side="bottom">
+      <span>More options</span>
+    </TooltipContent>
+  </Tooltip>
+);
+
+/** Shape returned by the activeAgentsList selector. */
+type ActiveAgentSummary = {
+  id: string;
+  title: string;
+  createdAt: Date;
+  lastMessageAt: Date;
+  messageCount: number;
+  parentAgentInstanceId: string | null;
+  isWorking: boolean;
+};
+
+/**
+ * Custom comparator for the activeAgentsList selector.
+ * Compares only the fields we derive — avoids re-renders when irrelevant agent
+ * state changes (e.g. streaming tokens, model switches, queued messages).
+ *
+ * Date fields are compared by getTime() because Karton's `deep` comparator
+ * treats Date objects as opaque (0 enumerable props → always "equal").
+ */
+function activeAgentListEqual(
+  a: ActiveAgentSummary[],
+  b: ActiveAgentSummary[],
+): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const ai = a[i];
+    const bi = b[i];
+    if (
+      ai.id !== bi.id ||
+      ai.title !== bi.title ||
+      ai.messageCount !== bi.messageCount ||
+      ai.isWorking !== bi.isWorking ||
+      ai.parentAgentInstanceId !== bi.parentAgentInstanceId ||
+      ai.createdAt.getTime() !== bi.createdAt.getTime() ||
+      ai.lastMessageAt.getTime() !== bi.lastMessageAt.getTime()
+    )
+      return false;
+  }
+  return true;
+}
+
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createAgent = useKartonProcedure((p) => p.agents.create);
   const resumeAgent = useKartonProcedure((p) => p.agents.resume);
@@ -33,7 +113,15 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const platform = useKartonState((s) => s.appInfo.platform);
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
   const [openAgent, setOpenAgent] = useOpenAgent();
-  const activeAgents = useKartonState((s) => s.agents.instances);
+
+  // Narrow selector: only re-renders when the open agent's model changes.
+  // Used by createAgentAndFocus (via ref) to seed the new chat with the same model.
+  const openAgentModelId = useKartonState((s) =>
+    openAgent
+      ? (s.agents.instances[openAgent]?.state.activeModelId ?? null)
+      : null,
+  );
+
   const currentWorkspacePath = useKartonState((s) =>
     openAgent ? (s.toolbox[openAgent]?.workspace?.path ?? null) : null,
   );
@@ -42,8 +130,12 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const markChatAsViewed = useKartonProcedure(
     (p) => p.userExperience.markChatAsViewed,
   );
+  // shallow compare: Record<string, number> — prevents re-renders when
+  // unrelated storedExperienceData fields change.
   const lastViewedChats = useKartonState(
-    (s) => s.userExperience.storedExperienceData.lastViewedChats,
+    useComparingSelector(
+      (s) => s.userExperience.storedExperienceData.lastViewedChats,
+    ),
   );
 
   // Tick every 5 minutes to refresh time-ago labels and groupings.
@@ -55,26 +147,40 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     return () => clearInterval(interval);
   }, []);
 
-  const activeAgentsList = useMemo(() => {
-    return Object.entries(activeAgents)
-      .filter(([_, agent]) => agent.type === AgentTypes.CHAT)
-      .map(([id, agent]) => ({
-        id: id,
-        title: agent.state.title,
-        createdAt: agent.state.history[0]?.metadata?.createdAt ?? new Date(0),
-        lastMessageAt:
-          agent.state.history[agent.state.history.length - 1]?.metadata
-            ?.createdAt ?? new Date(),
-        messageCount: agent.state.history.length,
-        parentAgentInstanceId: agent.parentAgentInstanceId,
-        isWorking: agent.state.isWorking,
-      }))
-      .sort(
-        (a, b) =>
-          new Date(b.lastMessageAt).getTime() -
-          new Date(a.lastMessageAt).getTime(),
-      );
-  }, [activeAgents]);
+  // Derive the active-agents list directly in the selector so we subscribe to
+  // narrow changes only.  The custom comparator (activeAgentListEqual) checks
+  // each field with getTime() for Date values — preventing re-renders from
+  // irrelevant agent state mutations (streaming, model switch, queued messages).
+  //
+  // Cost: selector runs O(n) filter+map+sort on every Karton state change, but
+  // n = active CHAT agents (typically 1-5) so this is < 0.1 ms.  The comparator
+  // short-circuits on the first mismatch, so the common "no change" path is a
+  // fast element-by-element scan that avoids triggering React re-renders.
+  const activeAgentsList = useKartonState(
+    useComparingSelector(
+      (s): ActiveAgentSummary[] =>
+        Object.entries(s.agents.instances)
+          .filter(([_, agent]) => agent.type === AgentTypes.CHAT)
+          .map(([id, agent]) => ({
+            id,
+            title: agent.state.title,
+            createdAt:
+              agent.state.history[0]?.metadata?.createdAt ?? new Date(0),
+            lastMessageAt:
+              agent.state.history[agent.state.history.length - 1]?.metadata
+                ?.createdAt ?? new Date(0),
+            messageCount: agent.state.history.length,
+            parentAgentInstanceId: agent.parentAgentInstanceId,
+            isWorking: agent.state.isWorking,
+          }))
+          .sort(
+            (a, b) =>
+              new Date(b.lastMessageAt).getTime() -
+              new Date(a.lastMessageAt).getTime(),
+          ),
+      activeAgentListEqual,
+    ),
+  );
   const [agentsList, setAgentsList] = useState<
     Awaited<ReturnType<typeof getAgentsHistoryList>>
   >([]);
@@ -86,13 +192,17 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 
   const PAGE_SIZE = 200;
 
-  const activeAgentIds = useMemo(() => {
-    return Object.keys(activeAgents);
-  }, [Object.keys(activeAgents).length]);
+  const activeAgentIds = useKartonState(
+    useComparingSelector((s) => Object.keys(s.agents.instances)),
+  );
+  const activeAgentIdSet = useMemo(
+    () => new Set(activeAgentIds),
+    [activeAgentIds],
+  );
 
   useEffect(() => {
     // Wait until we have at least one active agent before fetching history
-    if (Object.keys(activeAgents).length === 0) {
+    if (activeAgentIdSet.size === 0) {
       return;
     }
     // Reset pagination state on fresh fetch
@@ -101,9 +211,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     rawFetchedCountRef.current = 0;
     getAgentsHistoryList(0, PAGE_SIZE).then((a) => {
       rawFetchedCountRef.current = a.length;
-      const filtered = a.filter(
-        (agent) => !Object.keys(activeAgents).includes(agent.id),
-      );
+      const filtered = a.filter((agent) => !activeAgentIdSet.has(agent.id));
       setAgentsList(filtered);
       if (a.length < PAGE_SIZE) setHasMoreHistory(false);
     });
@@ -111,10 +219,10 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
 
   // If the open agent isn't active anymore, we need to update the open agent to the first active agent.
   useEffect(() => {
-    if (!openAgent || !Object.keys(activeAgents).includes(openAgent)) {
-      setOpenAgent(Object.keys(activeAgents)[0]);
+    if (!openAgent || !activeAgentIdSet.has(openAgent)) {
+      setOpenAgent(activeAgentIds[0]);
     }
-  }, [openAgent, activeAgents]);
+  }, [openAgent, activeAgentIdSet, activeAgentIds]);
 
   // FIX 1: Defer markChatAsViewed to avoid triggering a re-render cascade during chat switch.
   // Uses requestIdleCallback (with setTimeout fallback) so the lastViewedChats state update
@@ -146,55 +254,63 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when openAgent changes, not when procedure reference changes
   }, [openAgent]);
 
-  const showChatListButton = useMemo(() => {
-    return agentsList.length > 0 || Object.keys(activeAgents).length > 1;
-  }, [agentsList, activeAgents]);
+  const showChatListButton = agentsList.length > 0 || activeAgentIdSet.size > 1;
+  const showNewChatButton = openAgent !== null;
 
-  const showNewChatButton = useMemo(() => {
-    return openAgent !== null;
-  }, [openAgent]);
-
-  const groupedChats = useMemo(() => {
-    // Filter out active agents from history to avoid duplicates
+  // Sort history separately — O(n log n) only recomputes when data actually changes,
+  // NOT on every timeTick (which only affects grouping labels).
+  const sortedHistory = useMemo(() => {
     const filtered = agentsList.filter(
-      (agent) => !activeAgentIds.includes(agent.id),
+      (agent) => !activeAgentIdSet.has(agent.id),
     );
-    // Sort by updatedAt descending so most recent chats appear first
-    const sorted = filtered.sort(
+    return filtered.sort(
       (a, b) =>
         new Date(b.lastMessageAt).getTime() -
         new Date(a.lastMessageAt).getTime(),
     );
-    return { 'Active agents': activeAgentsList, ...groupChatsByTime(sorted) };
-  }, [agentsList, timeTick, activeAgentsList, activeAgentIds]);
+  }, [agentsList, activeAgentIdSet]);
 
-  // Transform groupedChats into AgentGroup[] for the AgentsSelector
+  // Group history by time labels, merge with active agents, and transform into
+  // AgentGroup[] in a single memo.  Sorting is kept separate above so a timeTick
+  // change (which only affects label boundaries) doesn't re-sort.
   const agentGroups = useMemo((): AgentGroup[] => {
-    return Object.entries(groupedChats).map(([label, agents]) => ({
-      label,
-      agents: agents.map((a) => ({
-        id: a.id,
-        title: a.title,
-        lastMessageAt: a.lastMessageAt,
-        messageCount: a.messageCount,
-        isWorking: 'isWorking' in a ? a.isWorking : undefined,
+    const historyGroups = groupChatsByTime(sortedHistory);
+
+    const toEntry = (a: {
+      id: string;
+      title: string;
+      lastMessageAt: Date;
+      messageCount: number;
+      isWorking?: boolean;
+    }) => ({
+      id: a.id,
+      title: a.title,
+      lastMessageAt: a.lastMessageAt,
+      messageCount: a.messageCount,
+      isWorking: a.isWorking,
+    });
+
+    return [
+      { label: 'Active agents', agents: activeAgentsList.map(toEntry) },
+      ...Object.entries(historyGroups).map(([label, agents]) => ({
+        label,
+        agents: agents.map(toEntry),
       })),
-    }));
-  }, [groupedChats]);
+    ];
+  }, [sortedHistory, activeAgentsList, timeTick]);
 
   // Get draft getter from context (provided by panel-footer)
   const { getDraft } = useChatDraft();
 
   // Use refs for values only needed inside callbacks (not during render).
-  // deleteAgent/agentsList are used in onClick handlers (only called on user interaction).
+  // deleteAgent/agentsList are used in onClick handlers (only called on user
+  // interaction), so refs avoid re-creating callbacks on every state change.
   const deleteAgentRef = useRef(deleteAgent);
   deleteAgentRef.current = deleteAgent;
-  const agentsListRef = useRef(agentsList);
-  agentsListRef.current = agentsList;
   const openAgentRef = useRef(openAgent);
   openAgentRef.current = openAgent;
-  const setAgentsListRef = useRef(setAgentsList);
-  setAgentsListRef.current = setAgentsList;
+  const openAgentModelIdRef = useRef(openAgentModelId);
+  openAgentModelIdRef.current = openAgentModelId;
 
   // Load more history entries when the user scrolls to the bottom of the list.
   const loadMoreHistory = useCallback(() => {
@@ -217,17 +333,16 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
         operation: 'deleteAgent',
       });
     });
-    setAgentsListRef.current(
-      agentsListRef.current.filter((agent) => agent.id !== id),
-    );
+    // Functional updater: always sees latest state, safe under rapid successive deletes.
+    setAgentsList((prev) => prev.filter((agent) => agent.id !== id));
   }, []);
 
-  // Helper to create a new chat and focus the input
+  // Helper to create a new chat and focus the input.
+  // openAgentModelId is read via ref — it's only needed at invocation time
+  // and should NOT cause this callback to be recreated on model changes.
   const createAgentAndFocus = useCallback(async () => {
     const currentInputState = getDraft();
-    const currentModelId = openAgent
-      ? activeAgents[openAgent]?.state.activeModelId
-      : undefined;
+    const currentModelId = openAgentModelIdRef.current ?? undefined;
     const newAgent = await createAgent(
       currentInputState || undefined,
       currentModelId,
@@ -236,14 +351,11 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     setOpenAgent(newAgent);
     void getAgentsHistoryList(0, PAGE_SIZE).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [
-    createAgent,
-    getDraft,
-    getAgentsHistoryList,
-    openAgent,
-    activeAgents,
-    currentWorkspacePath,
-  ]);
+  }, [createAgent, getDraft, getAgentsHistoryList, currentWorkspacePath]);
+
+  const handleCreateAgent = useCallback(() => {
+    void createAgentAndFocus();
+  }, [createAgentAndFocus]);
 
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {
@@ -264,21 +376,6 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     },
     [setOpenAgent],
   );
-
-  // Build menu items for the options dropdown
-  const menuItems = useMemo((): SelectItem[] => {
-    return [
-      {
-        value: 'settings',
-        label: (
-          <span className="flex items-center gap-1.5">
-            <IconGear2Outline24 className="size-3.5 text-muted-foreground" />
-            <span>Settings</span>
-          </span>
-        ),
-      },
-    ];
-  }, []);
 
   // Handle menu selection
   const handleMenuSelect = useCallback(
@@ -305,7 +402,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                   variant="ghost"
                   size="icon-xs"
                   className="shrink-0"
-                  onClick={() => void createAgentAndFocus()}
+                  onClick={handleCreateAgent}
                 >
                   <IconPlusFill18 className="size-4" />
                 </Button>
@@ -337,23 +434,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             popupClassName="max-w-64"
             size="xs"
             showItemIndicator={false}
-            customTrigger={(triggerProps) => (
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    {...triggerProps}
-                    variant="ghost"
-                    size="icon-xs"
-                    className="app-no-drag shrink-0"
-                  >
-                    <IconDotsFill18 className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <span>More options</span>
-                </TooltipContent>
-              </Tooltip>
-            )}
+            customTrigger={menuTrigger}
           />
         </div>
       )}
@@ -371,22 +452,21 @@ type TimeAgoLabel = string;
 function groupChatsByTime(
   agentsList: AgentHistoryEntry[],
 ): Record<TimeAgoLabel, AgentHistoryEntry[]> {
-  // Helper function to get time label for a chat
+  // Hoist Date allocations outside the per-item helper — avoids creating
+  // 3 Date objects per agent entry in the list.
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayStartMs = todayStart.getTime();
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth();
+
   // Uses calendar-day boundaries (midnight in user's timezone) instead of
   // absolute time differences for more intuitive "Yesterday" grouping
   function getTimeLabel(date: Date): string {
-    const now = new Date();
     const chatDate = new Date(date);
 
-    // Get start of today (midnight) in user's local timezone
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-
     // Calculate calendar days ago (based on midnight boundaries)
-    const diffFromTodayStart = todayStart.getTime() - chatDate.getTime();
+    const diffFromTodayStart = todayStartMs - chatDate.getTime();
     const calendarDaysAgo = Math.ceil(
       diffFromTodayStart / (1000 * 60 * 60 * 24),
     );
@@ -404,8 +484,6 @@ function groupChatsByTime(
     }
 
     // Monthly grouping (30 days to 1 year)
-    const nowYear = now.getFullYear();
-    const nowMonth = now.getMonth();
     const chatYear = chatDate.getFullYear();
     const chatMonth = chatDate.getMonth();
 

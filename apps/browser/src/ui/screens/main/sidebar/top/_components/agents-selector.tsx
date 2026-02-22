@@ -19,6 +19,7 @@ import { Button } from '@stagewise/stage-ui/components/button';
 import { IconHistoryFill18 } from 'nucleo-ui-fill-18';
 import { IconTrash2Outline24 } from 'nucleo-core-outline-24';
 import { cn } from '@/utils';
+import type React from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TimeAgo from 'react-timeago';
 import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
@@ -131,6 +132,15 @@ export const AgentsSelector = memo(function AgentsSelector({
     [onValueChange],
   );
 
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      const agentId = e.currentTarget.dataset.agentId;
+      if (agentId) onDelete(agentId);
+    },
+    [onDelete],
+  );
+
   const handleOpenChange = useCallback((open: boolean) => {
     if (!open) setInputValue('');
   }, []);
@@ -224,10 +234,8 @@ export const AgentsSelector = memo(function AgentsSelector({
                       <button
                         type="button"
                         className="col-start-3 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground opacity-0 transition-colors hover:text-foreground group-hover/item:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(agent.id);
-                        }}
+                        data-agent-id={agent.id}
+                        onClick={handleDeleteClick}
                       >
                         <IconTrash2Outline24 className="size-3" />
                       </button>
