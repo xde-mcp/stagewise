@@ -893,7 +893,7 @@ export class ToolboxService extends DisposableService {
     );
   }
 
-  private async handleOpenWorkspace(
+  public async handleOpenWorkspace(
     agentInstanceId: string,
     workspacePath?: string,
   ): Promise<void> {
@@ -912,20 +912,22 @@ export class ToolboxService extends DisposableService {
     } else resolvedWorkspacePath = workspacePath;
     if (!resolvedWorkspacePath) return;
     this.openWorkspacePaths.set(agentInstanceId, resolvedWorkspacePath);
-    this.clientRuntimesPerPath.set(
-      resolvedWorkspacePath,
-      new ClientRuntimeNode({
-        workingDirectory: resolvedWorkspacePath,
-        rgBinaryBasePath: this.globalDataPathService.globalDataPath,
-      }),
-    );
-    const lspPromise = LspService.create(
-      this.logger,
-      this.clientRuntimesPerPath.get(resolvedWorkspacePath)!,
-    );
-    this.lspReady.set(resolvedWorkspacePath, lspPromise);
-    const lspService = await lspPromise;
-    this.lspServicesPerPath.set(resolvedWorkspacePath, lspService);
+    if (!this.clientRuntimesPerPath.has(resolvedWorkspacePath)) {
+      this.clientRuntimesPerPath.set(
+        resolvedWorkspacePath,
+        new ClientRuntimeNode({
+          workingDirectory: resolvedWorkspacePath,
+          rgBinaryBasePath: this.globalDataPathService.globalDataPath,
+        }),
+      );
+      const lspPromise = LspService.create(
+        this.logger,
+        this.clientRuntimesPerPath.get(resolvedWorkspacePath)!,
+      );
+      this.lspReady.set(resolvedWorkspacePath, lspPromise);
+      const lspService = await lspPromise;
+      this.lspServicesPerPath.set(resolvedWorkspacePath, lspService);
+    }
     await this.userExperienceService.saveRecentlyOpenedWorkspace({
       path: resolvedWorkspacePath,
       name: path.basename(resolvedWorkspacePath),
@@ -948,16 +950,22 @@ export class ToolboxService extends DisposableService {
     // TODO: checkAndGenerateWorkspaceMd somehow
   }
 
-  private async handleCloseWorkspace(agentInstanceId: string): Promise<void> {
+  public async handleCloseWorkspace(agentInstanceId: string): Promise<void> {
     const workspacePath = this.openWorkspacePaths.get(agentInstanceId);
     if (!workspacePath) return;
     this.openWorkspacePaths.delete(agentInstanceId);
-    const lspService = this.lspServicesPerPath.get(workspacePath);
-    if (lspService) void lspService.teardown();
 
-    this.clientRuntimesPerPath.delete(workspacePath);
-    this.lspServicesPerPath.delete(workspacePath);
-    this.lspReady.delete(workspacePath);
+    const stillInUse = [...this.openWorkspacePaths.values()].includes(
+      workspacePath,
+    );
+    if (!stillInUse) {
+      const lspService = this.lspServicesPerPath.get(workspacePath);
+      if (lspService) void lspService.teardown();
+      this.clientRuntimesPerPath.delete(workspacePath);
+      this.lspServicesPerPath.delete(workspacePath);
+      this.lspReady.delete(workspacePath);
+    }
+
     this.uiKarton.setState((draft) => {
       draft.toolbox[agentInstanceId].workspace.path = null;
     });

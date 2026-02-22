@@ -112,17 +112,23 @@ export class AgentManagerService extends DisposableService {
         _callingClientId: string,
         initialInputState?: string,
         modelId?: ModelId,
+        workspacePath?: string,
       ) => {
-        return (
-          await this.createAgent(
-            AgentTypes.CHAT,
-            undefined,
-            undefined,
-            modelId ? { activeModelId: modelId } : undefined,
-            undefined,
-            initialInputState,
-          )
-        ).instanceId;
+        const agent = await this.createAgent(
+          AgentTypes.CHAT,
+          undefined,
+          undefined,
+          modelId ? { activeModelId: modelId } : undefined,
+          undefined,
+          initialInputState,
+        );
+        if (workspacePath) {
+          await this.toolbox.handleOpenWorkspace(
+            agent.instanceId,
+            workspacePath,
+          );
+        }
+        return agent.instanceId;
       },
     );
     this.karton.registerServerProcedureHandler(

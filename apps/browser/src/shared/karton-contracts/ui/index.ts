@@ -639,6 +639,7 @@ export type KartonContract = {
       create: (
         initialInputState?: string,
         modelId?: ModelId,
+        workspacePath?: string,
       ) => Promise<string>;
       resume: (agentId: string) => Promise<void>;
       delete: (agentId: string) => Promise<void>;

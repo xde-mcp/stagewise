@@ -46,6 +46,9 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
   const [openAgent, setOpenAgent] = useOpenAgent();
   const activeAgents = useKartonState((s) => s.agents.instances);
+  const currentWorkspacePath = useKartonState((s) =>
+    openAgent ? (s.toolbox[openAgent]?.workspace?.path ?? null) : null,
+  );
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
   const markChatAsViewed = useKartonProcedure(
@@ -305,18 +308,25 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   // Helper to create a new chat and focus the input
   const createAgentAndFocus = useCallback(async () => {
     const currentInputState = getDraft();
-    // Pass the currently open agent's model to the new agent
     const currentModelId = openAgent
       ? activeAgents[openAgent]?.state.activeModelId
       : undefined;
     const newAgent = await createAgent(
       currentInputState || undefined,
       currentModelId,
+      currentWorkspacePath ?? undefined,
     );
     setOpenAgent(newAgent);
     void getAgentsHistoryList(0, PAGE_SIZE).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [createAgent, getDraft, getAgentsHistoryList, openAgent, activeAgents]);
+  }, [
+    createAgent,
+    getDraft,
+    getAgentsHistoryList,
+    openAgent,
+    activeAgents,
+    currentWorkspacePath,
+  ]);
 
   // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
   useHotKeyListener(() => {
