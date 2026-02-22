@@ -316,7 +316,11 @@ export const ChatHistory = () => {
   useLayoutEffect(() => {
     if (optimisticMessages.length === 0 && replacedMessageId === null) return;
 
-    const serverUserMessages = serverMessages.filter((m) => m.role === 'user');
+    // Exclude the message being replaced — its text could match the
+    // optimistic replacement and cause premature "confirmation".
+    const serverUserMessages = serverMessages.filter(
+      (m) => m.role === 'user' && m.id !== replacedMessageId,
+    );
 
     // Check each optimistic message to see if it's been confirmed
     const confirmedClientIds: string[] = [];
@@ -466,9 +470,12 @@ export const ChatHistory = () => {
       const { replacedMessageId: replaceId, newMessage } = e.detail;
       // Mark the old message (and all after it) for hiding
       setReplacedMessageId(replaceId);
-      // Add the new edited message as optimistic
+      // Add the new edited message as optimistic, reusing the replaced
+      // message's ID so Virtuoso sees an in-place update (same key) instead
+      // of a remove+add, which avoids a one-frame gap.
       const optimisticMsg: OptimisticMessage = {
         ...newMessage,
+        id: replaceId,
         _optimistic: true,
         _clientId: newMessage.id,
       };

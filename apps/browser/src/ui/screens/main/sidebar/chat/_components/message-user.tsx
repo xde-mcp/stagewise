@@ -231,12 +231,11 @@ export const MessageUser = memo(
             ...selectedElementsFromEditor,
           ];
 
-          // Convert FileAttachments to FileUIParts
-          const fileParts: FileUIPart[] = (
-            await Promise.all(
-              editedFileAttachments.map(fileAttachmentToFileUIPart),
-            )
-          ).filter((part): part is FileUIPart => part !== null);
+          // Convert FileAttachments to FileUIParts (synchronous to keep
+          // everything before the optimistic event dispatch in one tick)
+          const fileParts: FileUIPart[] = editedFileAttachments
+            .map(fileAttachmentToFileUIPart)
+            .filter((part): part is FileUIPart => part !== null);
 
           // Collect metadata for selected elements
           // Note: textClipAttachments from extractTextClipsFromTiptapContent will have empty content
@@ -293,6 +292,10 @@ export const MessageUser = memo(
                 mergedTextClips.length > 0 ? mergedTextClips : undefined,
             },
           };
+
+          // Exit edit mode before dispatch so the reused component instance
+          // (same Virtuoso key) renders in view mode immediately.
+          setIsEditing(false);
 
           // Dispatch event for optimistic UI - shows edited message immediately
           // and hides the old message + subsequent messages

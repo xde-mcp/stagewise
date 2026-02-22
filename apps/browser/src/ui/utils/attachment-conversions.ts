@@ -56,14 +56,13 @@ export function fileUIPartToFileAttachment(
 
 /**
  * Convert a FileAttachment to a FileUIPart for sending messages.
- * This converts the blob URL back to a data URL for transmission.
  *
  * @param attachment - The file attachment from chat state
  * @returns A FileUIPart suitable for including in a ChatMessage, or null if conversion failed
  */
-export async function fileAttachmentToFileUIPart(
+export function fileAttachmentToFileUIPart(
   attachment: FileAttachment,
-): Promise<FileUIPart | null> {
+): FileUIPart | null {
   try {
     return {
       type: 'file' as const,
