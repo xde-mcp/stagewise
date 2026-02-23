@@ -72,8 +72,12 @@ function formatFileChange(
  *
  * Never reports:
  * - "modified by you" (agent already knows about its own edits)
- * - "edits accepted/rejected" (replaced by "your edits no longer present")
  * - "new pending edits" / "edits undone" (irrelevant to the agent)
+ *
+ * Distinguishes accept from reject by comparing the summary's
+ * currentOid: if the summary still reflects the pending content,
+ * the edits were accepted (not reported); otherwise they were
+ * reverted (reported as "your edits no longer present").
  */
 export function computeFileDiffChanges(
   previous: EnvironmentDiffSnapshot | null,
@@ -86,6 +90,7 @@ export function computeFileDiffChanges(
   const prevPending = buildSnapshotMap(previous.pending);
   const currPending = buildSnapshotMap(current.pending);
   const prevSummary = buildSnapshotMap(previous.summary);
+  const currSummary = buildSnapshotMap(current.summary);
 
   const fileChanges = new Map<string, FileChange>();
 
@@ -121,7 +126,15 @@ export function computeFileDiffChanges(
   for (const [path, prev] of prevPending) {
     if (currPending.has(path)) continue;
     const selfWasContributor = prev.contributors.includes(selfKey);
-    if (selfWasContributor) {
+
+    // Check if the pending content survived by comparing OIDs:
+    // if the summary's current state still matches what was pending,
+    // the edits were accepted into the baseline — not reverted.
+    const summarySnap = currSummary.get(path);
+    const editsStillReflectedInSummary =
+      summarySnap != null && summarySnap.currentOid === prev.currentOid;
+
+    if (selfWasContributor && !editsStillReflectedInSummary) {
       const entry = getOrCreate(fileChanges, path);
       entry.editsGone = true;
     }
@@ -149,7 +162,15 @@ export function computeFileDiffChanges(
     const selfWasPrev = prev.contributors.includes(selfKey);
     const selfInCurr = curr.contributors.includes(selfKey);
     if (selfWasPrev && !selfInCurr) {
-      entry.editsGone = true;
+      // Agent removed from pending contributors — check if the
+      // agent's edits were accepted (reflected in summary) rather
+      // than reverted. Use the same OID comparison as section 2,
+      // but against the current pending's currentOid since the
+      // file is still in pending with other contributors' changes.
+      const summarySnap = currSummary.get(path);
+      const editsStillReflected =
+        summarySnap != null && summarySnap.currentOid === curr.currentOid;
+      if (!editsStillReflected) entry.editsGone = true;
     } else if (!baselineChanged && hunksReduced && selfWasPrev) {
       entry.editsPartiallyRemoved = true;
     }

@@ -206,7 +206,32 @@ describe('computeFileDiffChanges', () => {
 
   // -- Your edits status --
 
-  it('detects edits gone when file disappears from pending (self was contributor)', () => {
+  it('detects edits gone when file disappears from pending (rejected, summary reverted)', () => {
+    const previous = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'agent-edit-oid',
+          contributors: ['agent-1'],
+        }),
+      ],
+      [],
+    );
+    const current = makeEnv(
+      [],
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'reverted-oid',
+          contributors: ['agent-1'],
+        }),
+      ],
+    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS}: your edits no longer present`);
+  });
+
+  it('detects edits gone when file disappears from pending with no summary', () => {
     const previous = makeEnv(
       [makeSnapshot({ path: ABS, contributors: ['agent-1'] })],
       [],
@@ -214,6 +239,40 @@ describe('computeFileDiffChanges', () => {
     const current = makeEnv([], []);
     const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toContain(`${ABS}: your edits no longer present`);
+  });
+
+  it('does not report edits gone when file was accepted (summary currentOid matches pending)', () => {
+    const previous = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          baselineOid: 'base-oid',
+          currentOid: 'agent-edit-oid',
+          contributors: ['agent-1'],
+        }),
+      ],
+      [
+        makeSnapshot({
+          path: ABS,
+          baselineOid: 'base-oid',
+          currentOid: 'agent-edit-oid',
+          contributors: ['agent-1'],
+        }),
+      ],
+    );
+    const current = makeEnv(
+      [],
+      [
+        makeSnapshot({
+          path: ABS,
+          baselineOid: 'base-oid',
+          currentOid: 'agent-edit-oid',
+          contributors: ['agent-1'],
+        }),
+      ],
+    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toEqual([]);
   });
 
   it('does not report edits gone when self was not contributor', () => {
@@ -226,7 +285,7 @@ describe('computeFileDiffChanges', () => {
     expect(result).toEqual([]);
   });
 
-  it('detects edits gone when self disappears from contributors in pending', () => {
+  it('detects edits gone when self disappears from contributors in pending (no summary match)', () => {
     const previous = makeEnv(
       [
         makeSnapshot({
@@ -249,6 +308,37 @@ describe('computeFileDiffChanges', () => {
     );
     const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toContain(`${ABS}: your edits no longer present`);
+  });
+
+  it('does not report edits gone when self disappears from pending contributors but summary reflects edits', () => {
+    const previous = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'shared-curr',
+          contributors: ['agent-1', 'agent-42'],
+        }),
+      ],
+      [],
+    );
+    const current = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'shared-curr',
+          contributors: ['agent-42'],
+        }),
+      ],
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'shared-curr',
+          contributors: ['agent-1'],
+        }),
+      ],
+    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toEqual([]);
   });
 
   it('detects partial removal (hunks reduced, baseline unchanged)', () => {
