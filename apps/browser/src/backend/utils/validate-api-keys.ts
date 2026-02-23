@@ -28,7 +28,7 @@ const providerConfigs: Record<
     createAnthropic({ apiKey, baseURL })('claude-haiku-4-5'),
   openai: (apiKey, baseURL) => createOpenAI({ apiKey, baseURL })('gpt-4o-mini'),
   google: (apiKey, baseURL) =>
-    createGoogleGenerativeAI({ apiKey, baseURL })('gemini-2.0-flash-lite'),
+    createGoogleGenerativeAI({ apiKey, baseURL })('gemini-2.5-flash-lite'),
 };
 
 /**
