@@ -465,7 +465,16 @@ export const ChatInput = ({
             )}
           >
             {showWorkspaceSelect && (
-              <WorkspaceSelect onWorkspaceChange={onWorkspaceChange} />
+              <WorkspaceSelect
+                onWorkspaceChange={() => {
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      editor?.commands.focus('end');
+                      onWorkspaceChange?.();
+                    });
+                  });
+                }}
+              />
             )}
             {showModelSelect && (
               <ModelSelect
