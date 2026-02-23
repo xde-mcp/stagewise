@@ -1855,4 +1855,210 @@ describe('DiffHistoryService (E2E)', () => {
       expect(toolboxState?.pendingFileDiffs).toHaveLength(fileCount);
     });
   });
+
+  // ===========================================================================
+  // 12. Accept All Pending Edits For Agent
+  // ===========================================================================
+
+  describe('acceptAllPendingEditsForAgent', () => {
+    it('accepts all pending hunks for a single file', async () => {
+      service = await DiffHistoryService.create(
+        logger,
+        mockKarton,
+        mockGlobalDataPath,
+      );
+
+      const filePath = path.join(testFilesDir, 'accept-all-single.txt');
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: filePath,
+        toolCallId: 'tool-1',
+        isExternal: false,
+        contentBefore: 'original',
+        contentAfter: 'modified by agent',
+      });
+
+      let toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(1);
+
+      await service.acceptAllPendingEditsForAgent('1');
+
+      toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
+    });
+
+    it('accepts all pending hunks across multiple files', async () => {
+      service = await DiffHistoryService.create(
+        logger,
+        mockKarton,
+        mockGlobalDataPath,
+      );
+
+      const file1 = path.join(testFilesDir, 'accept-all-multi-1.txt');
+      const file2 = path.join(testFilesDir, 'accept-all-multi-2.txt');
+      const file3 = path.join(testFilesDir, 'accept-all-multi-3.txt');
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: file1,
+        toolCallId: 'tool-1',
+        isExternal: false,
+        contentBefore: 'original 1',
+        contentAfter: 'modified 1',
+      });
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: file2,
+        toolCallId: 'tool-2',
+        isExternal: false,
+        contentBefore: 'original 2',
+        contentAfter: 'modified 2',
+      });
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: file3,
+        toolCallId: 'tool-3',
+        isExternal: false,
+        contentBefore: 'original 3',
+        contentAfter: 'modified 3',
+      });
+
+      let toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(3);
+
+      await service.acceptAllPendingEditsForAgent('1');
+
+      toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
+    });
+
+    it('no-op when there are no pending edits', async () => {
+      service = await DiffHistoryService.create(
+        logger,
+        mockKarton,
+        mockGlobalDataPath,
+      );
+
+      const toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
+
+      await service.acceptAllPendingEditsForAgent('1');
+
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
+    });
+
+    it('only accepts hunks for the specified agent (multi-agent isolation)', async () => {
+      mockKarton._setAgentInstances(['1', '2']);
+      service = await DiffHistoryService.create(
+        logger,
+        mockKarton,
+        mockGlobalDataPath,
+      );
+
+      const file1 = path.join(testFilesDir, 'agent1-only.txt');
+      const file2 = path.join(testFilesDir, 'agent2-only.txt');
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: file1,
+        toolCallId: 'tool-1',
+        isExternal: false,
+        contentBefore: 'original',
+        contentAfter: 'agent-1 edit',
+      });
+
+      await service.registerAgentEdit({
+        agentInstanceId: '2',
+        path: file2,
+        toolCallId: 'tool-2',
+        isExternal: false,
+        contentBefore: 'original',
+        contentAfter: 'agent-2 edit',
+      });
+
+      let agent1State = mockKarton._getToolboxState('1');
+      let agent2State = mockKarton._getToolboxState('2');
+      expect(agent1State?.pendingFileDiffs).toHaveLength(1);
+      expect(agent2State?.pendingFileDiffs).toHaveLength(1);
+
+      await service.acceptAllPendingEditsForAgent('1');
+
+      agent1State = mockKarton._getToolboxState('1');
+      agent2State = mockKarton._getToolboxState('2');
+      expect(agent1State?.pendingFileDiffs).toHaveLength(0);
+      expect(agent2State?.pendingFileDiffs).toHaveLength(1);
+    });
+
+    it('accepts external file pending edits', async () => {
+      service = await DiffHistoryService.create(
+        logger,
+        mockKarton,
+        mockGlobalDataPath,
+      );
+
+      const blobPath = path.join(testFilesDir, 'accept-all-blob.bin');
+      const tempAfterPath = path.join(tempDir, 'accept-all-after.bin');
+      await createTempFile(tempAfterPath, 'binary content');
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: blobPath,
+        toolCallId: 'tool-1',
+        isExternal: true,
+        tempPathToBeforeContent: null,
+        tempPathToAfterContent: tempAfterPath,
+      });
+
+      let toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(1);
+      expect(toolboxState?.pendingFileDiffs[0].isExternal).toBe(true);
+
+      await service.acceptAllPendingEditsForAgent('1');
+
+      toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
+    });
+
+    it('accepts mixed text and external pending edits', async () => {
+      service = await DiffHistoryService.create(
+        logger,
+        mockKarton,
+        mockGlobalDataPath,
+      );
+
+      const textFile = path.join(testFilesDir, 'accept-all-mixed.txt');
+      const blobFile = path.join(testFilesDir, 'accept-all-mixed.bin');
+      const tempAfterPath = path.join(tempDir, 'accept-all-mixed-after.bin');
+      await createTempFile(tempAfterPath, 'binary content');
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: textFile,
+        toolCallId: 'tool-1',
+        isExternal: false,
+        contentBefore: 'original text',
+        contentAfter: 'modified text',
+      });
+
+      await service.registerAgentEdit({
+        agentInstanceId: '1',
+        path: blobFile,
+        toolCallId: 'tool-2',
+        isExternal: true,
+        tempPathToBeforeContent: null,
+        tempPathToAfterContent: tempAfterPath,
+      });
+
+      let toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(2);
+
+      await service.acceptAllPendingEditsForAgent('1');
+
+      toolboxState = mockKarton._getToolboxState('1');
+      expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
+    });
+  });
 });

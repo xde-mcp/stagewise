@@ -519,6 +519,16 @@ export class AgentManagerService extends DisposableService {
       await this.deleteAgent(childAgentInstanceId);
     }
 
+    // Accept all pending diffs before archiving so no "hanging" diffs remain
+    try {
+      await this.toolbox.acceptAllPendingEditsForAgent(instanceId);
+    } catch (error) {
+      this.logger.error(
+        `[AgentManager] Failed to accept pending edits for agent ${instanceId}`,
+        error,
+      );
+    }
+
     // Archive this agent (stops it, tears down resources, removes from active state)
     await this.archiveAgent(instanceId);
 
@@ -567,9 +577,10 @@ export class AgentManagerService extends DisposableService {
     // Clear the active agents map.
     this.activeAgents.delete(instanceId);
 
-    // Clear the karton state of the agent.
+    // Clear the karton state of the agent and its toolbox state.
     this.karton.setState((draft) => {
       delete draft.agents.instances[instanceId];
+      delete draft.toolbox[instanceId];
     });
   }
 

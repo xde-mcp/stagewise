@@ -651,6 +651,14 @@ export class ToolboxService extends DisposableService {
     this.apiClient = this.getOrCreateApiClient();
   }
 
+  public async acceptAllPendingEditsForAgent(
+    agentInstanceId: string,
+  ): Promise<void> {
+    await this.diffHistoryService.acceptAllPendingEditsForAgent(
+      agentInstanceId,
+    );
+  }
+
   /**
    * Clear tracking data for a specific agent instance.
    * Call this when an agent session ends.

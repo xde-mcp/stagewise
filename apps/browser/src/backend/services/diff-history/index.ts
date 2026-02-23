@@ -216,6 +216,18 @@ export class DiffHistoryService extends DisposableService {
 
   private onKartonStateChange(): void {
     this.hydrateNewAgentInstances();
+    this.pruneRemovedAgentInstances();
+  }
+
+  private pruneRemovedAgentInstances(): void {
+    const currentIds = new Set(
+      Object.keys(this.uiKarton.state.agents.instances),
+    );
+    for (const id of this.hydratedAgentInstanceIds) {
+      if (!currentIds.has(id)) {
+        this.hydratedAgentInstanceIds.delete(id);
+      }
+    }
   }
 
   /**
@@ -367,6 +379,29 @@ export class DiffHistoryService extends DisposableService {
       this.watcher?.unwatch(path);
       this.currentlyWatchedFiles.delete(path);
     });
+  }
+
+  /**
+   * Accepts all pending diff hunks for a given agent instance.
+   * Should be called before an agent is deleted to ensure no
+   * "hanging" pending diffs remain in the system.
+   */
+  public async acceptAllPendingEditsForAgent(
+    agentInstanceId: string,
+  ): Promise<void> {
+    const pendingDiffs =
+      await this.getPendingFileDiffsForAgentInstanceId(agentInstanceId);
+    if (pendingDiffs.length === 0) return;
+
+    const hunkIds = pendingDiffs.flatMap((e) =>
+      !e.isExternal ? e.hunks.map((h) => h.id) : [e.hunkId],
+    );
+    if (hunkIds.length === 0) return;
+
+    this.logDebug(
+      `Accepting all ${hunkIds.length} pending hunks for agent ${agentInstanceId}`,
+    );
+    await this.acceptAndRejectHunks(hunkIds, []);
   }
 
   public async acceptAndRejectHunks(
