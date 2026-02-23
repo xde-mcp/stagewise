@@ -2,9 +2,12 @@ import {
   type OverwriteFileToolInput,
   overwriteFileToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { tool } from 'ai';
-import { rethrowCappedToolOutputError } from '../../utils';
+import {
+  type MountedClientRuntimes,
+  rethrowCappedToolOutputError,
+} from '../../utils';
+import { resolveMountedRelativePath } from '../../utils/path-mounting';
 
 /* Due to an issue in zod schema conversion in the ai sdk,
    the schema descriptions are not properly used for the prompts -
@@ -26,9 +29,11 @@ Behavior: Creates parent directories if needed. No size limit on file write itse
  */
 export async function overwriteFileToolExecute(
   params: OverwriteFileToolInput,
-  clientRuntime: ClientRuntimeNode,
+  mountedRuntimes: MountedClientRuntimes,
 ) {
-  const { relative_path, content } = params;
+  const { clientRuntime, relativePath: relative_path } =
+    resolveMountedRelativePath(mountedRuntimes, params.relative_path);
+  const { content } = params;
 
   try {
     const absolutePath = clientRuntime.fileSystem.resolvePath(relative_path);
@@ -81,11 +86,11 @@ export async function overwriteFileToolExecute(
   }
 }
 
-export const overwriteFileTool = (clientRuntime: ClientRuntimeNode) =>
+export const overwriteFileTool = (mountedRuntimes: MountedClientRuntimes) =>
   tool({
     description: DESCRIPTION,
     inputSchema: overwriteFileToolInputSchema,
     execute: async (args) => {
-      return overwriteFileToolExecute(args, clientRuntime);
+      return overwriteFileToolExecute(args, mountedRuntimes);
     },
   });

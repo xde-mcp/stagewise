@@ -16,8 +16,7 @@ function makeSnapshot(
       activeTabHandle: 't_1',
     },
     workspace: {
-      isConnected: true,
-      workspacePath: '/project',
+      mounts: [{ prefix: 'w1', path: '/project' }],
     },
     fileDiffs: { pending: [], summary: [] },
     ...overrides,
@@ -27,7 +26,7 @@ function makeSnapshot(
 function makeMetadata(snapshot?: EnvironmentSnapshot): UserMessageMetadata {
   return {
     createdAt: new Date(),
-    agentAccessPath: '/project',
+    mountedPaths: [{ prefix: 'w1', path: '/project' }],
     partsMetadata: [],
     environmentSnapshot: snapshot,
   };
@@ -165,8 +164,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
     const snap1 = makeSnapshot();
     const snap2 = makeSnapshot({
       workspace: {
-        isConnected: false,
-        workspacePath: null,
+        mounts: [],
       },
     });
     const messages: AgentMessage[] = [
@@ -201,7 +199,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
         text: string;
       }
     ).text;
-    expect(text).toContain('workspace disconnected');
+    expect(text).toContain('workspace unmounted: w1');
   });
 
   it('injects env-change between consecutive assistant messages', async () => {
@@ -287,8 +285,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
     const snap1 = makeSnapshot();
     const snap2 = makeSnapshot({
       workspace: {
-        isConnected: false,
-        workspacePath: null,
+        mounts: [],
       },
     });
     const messages: AgentMessage[] = [
@@ -376,8 +373,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
     const snap = makeSnapshot();
     const liveSnap = makeSnapshot({
       workspace: {
-        isConnected: false,
-        workspacePath: null,
+        mounts: [],
       },
     });
     const messages: AgentMessage[] = [
@@ -414,7 +410,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       .find((m) => m.role !== 'system');
     expect(lastNonSystem).toBeDefined();
     const text = ((lastNonSystem as any).content[0] as { text: string }).text;
-    expect(text).toContain('workspace disconnected');
+    expect(text).toContain('workspace unmounted: w1');
   });
 
   it('does not inject live env-change when liveSnapshot matches last message', async () => {

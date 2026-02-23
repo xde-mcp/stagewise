@@ -1,17 +1,37 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
-import { useMessageAccessPath } from '@ui/hooks/use-message-access-path';
+import { useMountedPaths } from '@ui/hooks/use-mounted-paths';
 import { getIDEFileUrl } from '@ui/utils';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
+import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 
+function resolveAbsolutePath(
+  relativeFilePath: string,
+  mounts: Mount[],
+): string | null {
+  for (const mount of mounts) {
+    if (relativeFilePath.startsWith(`${mount.prefix}/`)) {
+      const stripped = relativeFilePath.slice(mount.prefix.length + 1);
+      return `${mount.path.replace('\\', '/')}/${stripped.replace('\\', '/')}`;
+    }
+  }
+  if (mounts.length === 1) {
+    return `${mounts[0].path.replace('\\', '/')}/${relativeFilePath.replace('\\', '/')}`;
+  }
+  return null;
+}
+
 export function useFileIDEHref() {
-  const messageAccessPath = useMessageAccessPath();
+  const historicalMounts = useMountedPaths();
   const [openAgentId] = useOpenAgent();
-  const liveAccessPath = useKartonState((s) =>
-    openAgentId ? (s.toolbox[openAgentId]?.workspace?.path ?? null) : null,
+  const liveMounts = useKartonState((s) =>
+    openAgentId ? (s.toolbox[openAgentId]?.workspace?.mounts ?? null) : null,
   );
-  const accessPath = messageAccessPath ?? liveAccessPath;
+  const mounts = useMemo(
+    () => historicalMounts ?? liveMounts ?? [],
+    [historicalMounts, liveMounts],
+  );
   const globalConfig = useKartonState((s) => s.globalConfig);
   const setGlobalConfig = useKartonProcedure((s) => s.config.set);
 
@@ -19,16 +39,15 @@ export function useFileIDEHref() {
 
   const getFileIDEHref = useCallback(
     (relativeFilePath: string, lineNumber?: number) => {
-      if (!accessPath) return '#';
+      const absolutePath = resolveAbsolutePath(relativeFilePath, mounts);
+      if (!absolutePath) return '#';
       return getIDEFileUrl(
-        accessPath.replace('\\', '/') +
-          '/' +
-          relativeFilePath.replace('\\', '/'),
+        absolutePath,
         globalConfig.openFilesInIde,
         lineNumber,
       );
     },
-    [accessPath, globalConfig.openFilesInIde],
+    [mounts, globalConfig.openFilesInIde],
   );
 
   const pickIdeAndOpen = useCallback(
@@ -43,17 +62,12 @@ export function useFileIDEHref() {
         hasSetIde: true,
       });
 
-      if (!accessPath) return;
-      const url = getIDEFileUrl(
-        accessPath.replace('\\', '/') +
-          '/' +
-          relativeFilePath.replace('\\', '/'),
-        ide,
-        lineNumber,
-      );
+      const absolutePath = resolveAbsolutePath(relativeFilePath, mounts);
+      if (!absolutePath) return;
+      const url = getIDEFileUrl(absolutePath, ide, lineNumber);
       window.open(url, '_blank');
     },
-    [globalConfig, setGlobalConfig, accessPath],
+    [globalConfig, setGlobalConfig, mounts],
   );
 
   return {

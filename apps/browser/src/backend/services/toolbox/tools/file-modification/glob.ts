@@ -2,12 +2,12 @@ import {
   type GlobToolInput,
   globToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { tool } from 'ai';
 import {
   rethrowCappedToolOutputError,
   capToolOutput,
   formatTruncationMessage,
+  type MountedClientRuntimes,
 } from '../../utils';
 
 /* Due to an issue in zod schema conversion in the ai sdk,
@@ -29,8 +29,10 @@ Behavior: Respects .gitignore by default. Returns relative file paths sorted by 
  */
 export async function globToolExecute(
   params: GlobToolInput,
-  clientRuntime: ClientRuntimeNode,
+  mountedRuntimes: MountedClientRuntimes,
 ) {
+  const clientRuntime = mountedRuntimes.get(params.mount_prefix);
+  if (!clientRuntime) throw new Error('Mounted path not found');
   const { pattern } = params;
 
   try {
@@ -99,11 +101,11 @@ export async function globToolExecute(
   }
 }
 
-export const globTool = (clientRuntime: ClientRuntimeNode) =>
+export const globTool = (mountedRuntimes: MountedClientRuntimes) =>
   tool({
     description: DESCRIPTION,
     inputSchema: globToolInputSchema,
     execute: async (args) => {
-      return globToolExecute(args, clientRuntime);
+      return globToolExecute(args, mountedRuntimes);
     },
   });

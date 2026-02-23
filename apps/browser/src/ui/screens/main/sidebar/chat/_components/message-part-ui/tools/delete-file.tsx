@@ -16,7 +16,7 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { diffLines } from 'diff';
-import { cn } from '@/utils';
+import { cn, stripMountPrefix } from '@/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
@@ -60,7 +60,7 @@ export const DeleteFileToolPart = ({
 
   const path = useMemo(() => {
     if (!part.input?.relative_path) return null;
-    return part.input?.relative_path;
+    return stripMountPrefix(part.input.relative_path);
   }, [part.input?.relative_path]);
 
   // Force expanded to false when in error state

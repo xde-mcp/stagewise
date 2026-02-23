@@ -6,7 +6,10 @@ import { extractTextClipsFromTiptapContent } from '@ui/screens/main/sidebar/chat
 import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
-import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
+import type {
+  FileAttachment,
+  Mount,
+} from '@shared/karton-contracts/ui/agent/metadata';
 import type { Content } from '@tiptap/core';
 import { getCurrentPlatform } from '@shared/hotkeys';
 
@@ -55,15 +58,13 @@ export async function fileToDataUrl(file: File): Promise<string> {
 export const collectUserMessageMetadata = (
   selectedElements: SelectedElement[],
   tiptapContent?: Content,
-  agentAccessPath?: string | null,
+  mountedPaths?: Mount[],
 ): UserMessageMetadata => {
-  // Extract text clip attachments from TipTap content
-  // These are collapsed long texts that show as @{id} in plain text
   const textClipAttachments = extractTextClipsFromTiptapContent(tiptapContent);
 
   return {
     createdAt: new Date(),
-    agentAccessPath: agentAccessPath ?? null,
+    mountedPaths: mountedPaths ?? undefined,
     partsMetadata: [],
     selectedPreviewElements: selectedElements,
     textClipAttachments:
@@ -219,6 +220,17 @@ export const openFileUrl = async (url: string, filename?: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 };
+
+const MOUNT_PREFIX_RE = /^w\d+\//;
+
+/**
+ * Strip a mount prefix (e.g. "w1/") from a workspace-relative path
+ * so it can be displayed without the internal addressing scheme.
+ */
+export function stripMountPrefix(path: string): string {
+  if (!path.includes('/')) return '';
+  return path.replace(MOUNT_PREFIX_RE, '');
+}
 
 export const getTruncatedFileUrl = (
   url: string,

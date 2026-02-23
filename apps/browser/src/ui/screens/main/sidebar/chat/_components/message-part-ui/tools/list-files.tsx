@@ -1,6 +1,6 @@
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
-import { getTruncatedFileUrl } from '@ui/utils';
+import { getTruncatedFileUrl, stripMountPrefix } from '@ui/utils';
 import { FolderOpenIcon } from 'lucide-react';
 
 export const ListFilesToolPart = ({
@@ -12,6 +12,7 @@ export const ListFilesToolPart = ({
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {
+  const pathWithoutPrefix = stripMountPrefix(part.input?.relative_path ?? '');
   const streamingText = part.input?.includeDirectories
     ? 'Listing directories...'
     : 'Listing files...';
@@ -22,9 +23,11 @@ export const ListFilesToolPart = ({
         <span className="truncate font-normal opacity-75">
           {part.output?.result?.totalFiles}{' '}
           {part.input?.includeDirectories ? 'directories' : 'files'}
-          {part.input?.relative_path && (
-            <> in {getTruncatedFileUrl(part.input.relative_path)}</>
-          )}
+          {part.input?.relative_path &&
+            pathWithoutPrefix !== '/' &&
+            pathWithoutPrefix !== '' && (
+              <> in {getTruncatedFileUrl(pathWithoutPrefix)}</>
+            )}
         </span>
       </span>
     ) : undefined;

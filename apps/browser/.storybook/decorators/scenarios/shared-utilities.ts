@@ -607,7 +607,7 @@ export function createGlobToolPart(
       state: 'input-available',
       input: {
         pattern,
-        relative_path: options?.relativePath,
+        mount_prefix: 'ws1',
       },
     } as AgentToolUIPart;
   }
@@ -619,7 +619,7 @@ export function createGlobToolPart(
     state: 'output-available',
     input: {
       pattern,
-      relative_path: options?.relativePath,
+      mount_prefix: 'ws1',
     },
     output: {
       message: `Found ${totalMatches} files matching "${pattern}"`,
@@ -682,6 +682,7 @@ export function createGrepSearchToolPart(
     toolCallId,
     state: 'output-available',
     input: {
+      mount_prefix: 'ws1',
       query,
       max_matches: 100,
       case_sensitive: options?.caseSensitive ?? false,

@@ -1,9 +1,5 @@
 import { Select, type SelectItem } from '@stagewise/stage-ui/components/select';
-import {
-  IconPlusFill18,
-  IconChevronDownFill18,
-  IconXmarkFill18,
-} from 'nucleo-ui-fill-18';
+import { IconPlusFill18, IconXmarkFill18 } from 'nucleo-ui-fill-18';
 import { IconFolderContent2FillDuo18 } from 'nucleo-ui-fill-duo-18';
 import {
   Tooltip,
@@ -14,10 +10,11 @@ import { cn } from '@stagewise/stage-ui/lib/utils';
 
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useOpenAgent } from '@/hooks/use-open-chat';
-import { useMemo, useCallback, useState } from 'react';
-import { Button } from '@stagewise/stage-ui/components/button';
+import { useMemo, useCallback } from 'react';
 import TimeAgo from 'react-timeago';
 import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
+
+const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
 
 interface WorkspaceSelectProps {
   onWorkspaceChange?: () => void;
@@ -25,15 +22,21 @@ interface WorkspaceSelectProps {
 
 export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
   const [openAgent] = useOpenAgent();
-  const [isHoveringDisconnect, setIsHoveringDisconnect] = useState(false);
-  const selectedWorkspace = useKartonState((s) =>
-    openAgent ? s.toolbox[openAgent]?.workspace?.path : null,
-  );
+
   const recentlyOpenedWorkspaces = useKartonState(
     (s) => s.userExperience.storedExperienceData.recentlyOpenedWorkspaces,
   );
-  const openWorkspace = useKartonProcedure((p) => p.toolbox.openWorkspace);
-  const closeWorkspace = useKartonProcedure((p) => p.toolbox.closeWorkspace);
+  const mountWorkspace = useKartonProcedure((p) => p.toolbox.mountWorkspace);
+  const unmountWorkspace = useKartonProcedure(
+    (p) => p.toolbox.unmountWorkspace,
+  );
+  const allMounts = useKartonState((s) =>
+    openAgent
+      ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
+      : EMPTY_MOUNTS,
+  );
+
+  const hasMounts = allMounts.length > 0;
 
   const minimalFormatter = useMemo(
     () =>
@@ -62,12 +65,13 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
     [],
   );
 
+  // Only recent (non-mounted) workspaces in the popover
   const menuItems = useMemo((): SelectItem[] => {
     const items: SelectItem[] = [];
 
-    // Recent workspaces (max 3, sorted by most recent, excluding current)
+    const mountedPaths = new Set(allMounts.map((m) => m.path));
     const sortedWorkspaces = [...recentlyOpenedWorkspaces]
-      .filter((w) => w.path !== selectedWorkspace)
+      .filter((w) => !mountedPaths.has(w.path))
       .sort((a, b) => b.openedAt - a.openedAt)
       .slice(0, 3);
 
@@ -95,20 +99,19 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
       });
     }
 
-    // Connect a new workspace option
     items.push({
       value: 'open-folder',
       label: (
         <span className="flex items-center gap-1.5 text-muted-foreground group-hover/item:text-foreground">
           <IconPlusFill18 className="size-3.5" />
-          <span>Connect a new workspace</span>
+          <span>Mount a new workspace</span>
         </span>
       ),
       group: 'Recent workspaces',
     });
 
     return items;
-  }, [selectedWorkspace, recentlyOpenedWorkspaces, minimalFormatter]);
+  }, [allMounts, recentlyOpenedWorkspaces, minimalFormatter]);
 
   const handleMenuSelect = useCallback(
     (value: string | null) => {
@@ -116,110 +119,175 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
 
       if (value.startsWith('workspace:')) {
         const path = value.replace('workspace:', '');
-        void openWorkspace(openAgent, path);
+        void mountWorkspace(openAgent, path);
         onWorkspaceChange?.();
       } else if (value === 'open-folder') {
-        void openWorkspace(openAgent, undefined);
+        void mountWorkspace(openAgent, undefined);
         onWorkspaceChange?.();
       }
     },
-    [openAgent, openWorkspace, onWorkspaceChange],
+    [openAgent, mountWorkspace, onWorkspaceChange],
   );
 
-  const handleDisconnect = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsHoveringDisconnect(false);
-      if (openAgent) {
-        void closeWorkspace(openAgent);
-        onWorkspaceChange?.();
-      }
-    },
-    [openAgent, closeWorkspace, onWorkspaceChange],
-  );
+  const renderItem = useCallback((item: SelectItem) => {
+    const isRecent = String(item.value).startsWith('workspace:');
+    const hasDescription = !!item.description;
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    // Reset hover state when popup opens/closes to prevent stuck state
-    if (open) {
-      setIsHoveringDisconnect(false);
+    if (isRecent) {
+      const path = String(item.value).replace('workspace:', '');
+      const name = path.split('/').pop() || path;
+      return (
+        <Tooltip>
+          <TooltipTrigger>
+            <div className="flex w-full cursor-pointer flex-col">
+              <div
+                className={cn(
+                  'flex flex-col transition-[mask-image] duration-200',
+                  'group-hover/item:mask-[linear-gradient(to_left,transparent_0px,transparent_24px,black_48px)]',
+                )}
+              >
+                <div className="flex min-w-0 flex-row items-center gap-2 text-xs">
+                  <span className="truncate">{item.label}</span>
+                </div>
+                {hasDescription && (
+                  <span className="truncate text-subtle-foreground text-xs leading-normal">
+                    {item.description}
+                  </span>
+                )}
+              </div>
+              <span className="-translate-y-1/2 absolute top-1/2 right-1 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
+                <IconPlusFill18 className="size-3 text-muted-foreground group-hover/item:text-foreground" />
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Mount {name}</TooltipContent>
+        </Tooltip>
+      );
     }
+
+    // "Mount a new workspace" item
+    return (
+      <div className="flex w-full cursor-pointer flex-col">
+        <div className="flex min-w-0 flex-row items-center gap-2 text-xs">
+          <span className="truncate">{item.label}</span>
+        </div>
+        {hasDescription && (
+          <span className="truncate text-subtle-foreground text-xs leading-normal">
+            {item.description}
+          </span>
+        )}
+      </div>
+    );
   }, []);
+
+  const handleUnmount = useCallback(
+    (prefix: string) => {
+      if (openAgent) {
+        void unmountWorkspace(openAgent, prefix);
+        onWorkspaceChange?.();
+      }
+    },
+    [openAgent, unmountWorkspace, onWorkspaceChange],
+  );
 
   if (!openAgent) return null;
 
-  // Get display name from path (last segment)
-  const displayName = selectedWorkspace
-    ? selectedWorkspace.split('/').pop() || selectedWorkspace
-    : 'Connect workspace';
-
   return (
-    <Select
-      items={menuItems}
-      value={null}
-      onValueChange={handleMenuSelect}
-      onOpenChange={handleOpenChange}
-      side="top"
-      sideOffset={8}
-      popupClassName="max-w-64"
-      size="xs"
-      showItemIndicator={false}
-      customTrigger={(triggerProps) => (
-        <Button
-          {...triggerProps}
-          variant="ghost"
-          size="xs"
-          className="group/ws-trigger min-w-0 max-w-48 px-1.5"
-        >
-          {selectedWorkspace && (
-            <IconFolderContent2FillDuo18
-              className={cn(
-                'size-3.5 shrink-0',
-                isHoveringDisconnect && 'text-muted-foreground',
-              )}
-            />
-          )}
-          <span
+    <>
+      {/* Mounted workspace badges */}
+      {allMounts.map((mount) => {
+        const name = mount.path.split('/').pop() || mount.path;
+        return (
+          <div
+            key={mount.prefix}
             className={cn(
-              'min-w-0 truncate text-xs',
-              isHoveringDisconnect && 'text-muted-foreground',
+              'group/badge inline-flex items-center gap-1',
+              'rounded-md border border-derived-subtle px-1.5 py-0.5',
+              'text-xs transition-colors duration-100',
+              'hover:bg-hover-derived',
             )}
           >
-            {displayName}
-          </span>
-          {selectedWorkspace ? (
+            <IconFolderContent2FillDuo18 className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="max-w-32 truncate text-foreground">{name}</span>
             <Tooltip>
               <TooltipTrigger>
                 <span
                   role="button"
                   tabIndex={-1}
-                  onClick={handleDisconnect}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onMouseEnter={() => setIsHoveringDisconnect(true)}
-                  onMouseLeave={() => setIsHoveringDisconnect(false)}
-                  className="relative size-3 shrink-0 overflow-hidden"
+                  onClick={() => handleUnmount(mount.prefix)}
+                  className={cn(
+                    'flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded',
+                    'text-subtle-foreground transition-colors duration-100',
+                    'hover:text-foreground',
+                  )}
                 >
-                  {/* Chevron - hidden on button hover */}
-                  <IconChevronDownFill18 className="size-3 group-hover/ws-trigger:opacity-0" />
-                  {/* X icon - shown on button hover, highlighted on direct hover */}
-                  <IconXmarkFill18
-                    className={cn(
-                      'absolute inset-0 size-3 opacity-0 group-hover/ws-trigger:opacity-100',
-                      isHoveringDisconnect && 'text-foreground',
-                    )}
-                  />
+                  <IconXmarkFill18 className="size-2.5" />
                 </span>
               </TooltipTrigger>
-              <TooltipContent>Disconnect workspace</TooltipContent>
+              <TooltipContent>Unmount {name}</TooltipContent>
+            </Tooltip>
+          </div>
+        );
+      })}
+
+      {/* Mount button — opens the Select popover with recents */}
+      <Select
+        items={menuItems}
+        value={null}
+        onValueChange={handleMenuSelect}
+        side="top"
+        sideOffset={8}
+        popupClassName="max-w-64"
+        scrollContainerClassName="max-h-96"
+        size="xs"
+        showItemIndicator={false}
+        itemClassName="relative [&>*]:w-full"
+        renderItem={renderItem}
+        customTrigger={(triggerProps) =>
+          hasMounts ? (
+            <Tooltip>
+              <TooltipTrigger>
+                <button
+                  {...triggerProps}
+                  className={cn(
+                    'mr-1 inline-flex cursor-pointer items-center gap-0.5',
+                    'rounded-md border border-derived-subtle px-1.5 py-0.5',
+                    'text-muted-foreground transition-colors duration-100',
+                    'hover:bg-hover-derived hover:text-foreground',
+                  )}
+                >
+                  <IconFolderContent2FillDuo18 className="size-3.5" />
+                  <IconPlusFill18 className="size-2.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Give the agent access to your files.
+              </TooltipContent>
             </Tooltip>
           ) : (
-            <IconPlusFill18 className="size-3.5 shrink-0" />
-          )}
-        </Button>
-      )}
-    />
+            <Tooltip>
+              <TooltipTrigger>
+                <button
+                  {...triggerProps}
+                  className={cn(
+                    'mr-1 inline-flex cursor-pointer items-center gap-1',
+                    'rounded-md border border-derived-subtle px-2 py-0.5',
+                    'text-muted-foreground text-xs transition-colors duration-100',
+                    'hover:bg-hover-derived hover:text-foreground',
+                  )}
+                >
+                  <IconFolderContent2FillDuo18 className="size-3.5" />
+                  <span>Mount a workspace</span>
+                  <IconPlusFill18 className="size-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Give the agent access to your files.
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+      />
+    </>
   );
 }

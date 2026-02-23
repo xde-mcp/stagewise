@@ -2,13 +2,14 @@ import {
   type ListFilesToolInput,
   listFilesToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { tool } from 'ai';
 import {
   rethrowCappedToolOutputError,
   capToolOutput,
   formatTruncationMessage,
+  type MountedClientRuntimes,
 } from '../../utils';
+import { resolveMountedRelativePath } from '../../utils/path-mounting';
 
 /* Due to an issue in zod schema conversion in the ai sdk,
    the schema descriptions are not properly used for the prompts -
@@ -34,10 +35,14 @@ export const DESCRIPTION = `List files and directories in a path (like 'ls' or '
  */
 export async function listFilesToolExecute(
   params: ListFilesToolInput,
-  clientRuntime: ClientRuntimeNode,
+  mountedRuntimes: MountedClientRuntimes,
 ) {
+  const { clientRuntime, relativePath: relPath } = resolveMountedRelativePath(
+    mountedRuntimes,
+    params.relative_path,
+  );
+  if (!clientRuntime) throw new Error('Mounted path not found');
   const {
-    relative_path: relPath = '.',
     recursive = false,
     maxDepth,
     pattern,
@@ -143,11 +148,11 @@ export async function listFilesToolExecute(
   }
 }
 
-export const listFilesTool = (clientRuntime: ClientRuntimeNode) =>
+export const listFilesTool = (mountedRuntimes: MountedClientRuntimes) =>
   tool({
     description: DESCRIPTION,
     inputSchema: listFilesToolInputSchema,
     execute: async (args) => {
-      return listFilesToolExecute(args, clientRuntime);
+      return listFilesToolExecute(args, mountedRuntimes);
     },
   });

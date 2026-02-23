@@ -138,8 +138,6 @@ export type PagesApiContract = {
     }) => Promise<InspirationWebsite>;
     /** Set whether user has seen the onboarding flow */
     setHasSeenOnboardingFlow: (value: boolean) => Promise<void>;
-    /** Open a workspace (shows file picker if no path provided) */
-    openWorkspace: (path?: string) => Promise<void>;
     /**
      * Trust a certificate for a specific origin in a tab and reload.
      * This adds the origin to a per-tab whitelist that allows certificate errors.

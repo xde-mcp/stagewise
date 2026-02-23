@@ -1,13 +1,13 @@
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
+import type { MountedLspServices } from '../../utils';
 import {
   getLintingDiagnosticsToolInputSchema,
   type DiagnosticsSummary,
   type FileDiagnostics,
   type LintingDiagnostic,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { LspService } from '@/services/toolbox/services/lsp';
 import { tool } from 'ai';
 import { rethrowCappedToolOutputError } from '../../utils';
+import { resolveMountedLspService } from '../../utils/path-mounting';
 
 const description = `MANDATORY: Get linting and type-checking diagnostics for files modified during this session.
 
@@ -31,13 +31,10 @@ type LintingDiagnosticsResult = {
 };
 
 export const getLintingDiagnosticsToolExecute = async (
-  lspService: LspService,
-  modifiedFiles: Set<string>,
-  clientRuntime: ClientRuntimeNode,
+  mountedLspServices: MountedLspServices,
+  paths: string[],
 ) => {
-  //   return lspService.getAllDiagnostics();
-
-  if (modifiedFiles.size === 0) {
+  if (paths.length === 0) {
     return {
       files: [],
       summary: {
@@ -51,14 +48,22 @@ export const getLintingDiagnosticsToolExecute = async (
     };
   }
 
-  // Wait briefly for LSP servers to finish analyzing
-  // TypeScript and ESLint can take a few hundred ms to report diagnostics
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  // Touch all files in parallel so LSP servers open and analyze them,
+  // then wait for diagnostics to arrive (3s timeout per file).
+  await Promise.all(
+    paths.map(async (mountedPath) => {
+      try {
+        const { lspService, relativePath } = resolveMountedLspService(
+          mountedLspServices,
+          mountedPath,
+        );
+        await lspService.touchFile(relativePath, true);
+      } catch {
+        // Silently skip -- we still attempt to collect diagnostics below
+      }
+    }),
+  );
 
-  // Collect current diagnostics from LSP servers
-  const agentAccessPath = clientRuntime.fileSystem.getCurrentWorkingDirectory();
-
-  // Build structured result
   const files: LintingDiagnosticsResult['files'] = [];
 
   let totalErrors = 0;
@@ -66,16 +71,17 @@ export const getLintingDiagnosticsToolExecute = async (
   let totalInfos = 0;
   let totalHints = 0;
 
-  for (const filePath of modifiedFiles) {
+  for (const mountedPath of paths) {
     try {
+      const { lspService, relativePath } = resolveMountedLspService(
+        mountedLspServices,
+        mountedPath,
+      );
+
       const aggregatedDiagnostics =
-        await lspService.getDiagnosticsForFile(filePath);
+        await lspService.getDiagnosticsForFile(relativePath);
 
       if (aggregatedDiagnostics.length === 0) continue;
-
-      const relativePath = filePath.startsWith(agentAccessPath)
-        ? filePath.slice(agentAccessPath.length).replace(/^\//, '')
-        : filePath;
 
       const fileDiagnostics: LintingDiagnostic[] = [];
 
@@ -87,7 +93,6 @@ export const getLintingDiagnosticsToolExecute = async (
           severity,
           source: diagnostic.source ?? serverID,
           message: diagnostic.message,
-          // Convert code to string for AI SDK type validation compatibility
           code:
             diagnostic.code !== undefined ? String(diagnostic.code) : undefined,
         });
@@ -99,7 +104,7 @@ export const getLintingDiagnosticsToolExecute = async (
       }
 
       if (fileDiagnostics.length > 0) {
-        files.push({ path: relativePath, diagnostics: fileDiagnostics });
+        files.push({ path: mountedPath, diagnostics: fileDiagnostics });
       }
     } catch (error) {
       rethrowCappedToolOutputError(error);
@@ -110,7 +115,7 @@ export const getLintingDiagnosticsToolExecute = async (
 
   if (totalIssues === 0) {
     return {
-      message: 'No linting issues found in modified files.',
+      message: 'No linting issues found in the specified files.',
       files: [],
       summary: {
         totalFiles: files.length,
@@ -138,18 +143,12 @@ export const getLintingDiagnosticsToolExecute = async (
 };
 
 export const getLintingDiagnosticsTool = (
-  lspService: LspService,
-  modifiedFiles: Set<string>,
-  clientRuntime: ClientRuntimeNode,
+  mountedLspServices: MountedLspServices,
 ) =>
   tool({
     description,
     inputSchema: getLintingDiagnosticsToolInputSchema,
-    execute: async () => {
-      return getLintingDiagnosticsToolExecute(
-        lspService,
-        modifiedFiles,
-        clientRuntime,
-      );
+    execute: async ({ paths }) => {
+      return getLintingDiagnosticsToolExecute(mountedLspServices, paths);
     },
   });

@@ -1,4 +1,5 @@
 import { Button } from '@stagewise/stage-ui/components/button';
+import { stripMountPrefix } from '@/utils';
 import { Loader2Icon, XIcon } from 'lucide-react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { StatusCardSection } from './shared';
@@ -13,38 +14,37 @@ import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 export type WorkspaceMdStatus = 'hidden' | 'running' | 'completed' | 'error';
 
+interface MountEntry {
+  prefix: string;
+  path: string;
+}
+
 export interface WorkspaceMdStatusSectionProps {
   status: WorkspaceMdStatus;
   history: AgentMessage[];
-  workspacePath?: string | null;
+  workspaceMounts?: MountEntry[];
   errorMessage?: string | null;
   onDismiss: () => void;
   onShowFile: () => void;
 }
 
-/**
- * Make a path relative to the workspace path for display
- */
 function relativizePath(
-  path: string | undefined,
-  workspacePath: string | null | undefined,
+  filePath: string | undefined,
+  mounts: MountEntry[] | undefined,
 ): string | undefined {
-  if (!path) return path;
-  if (!workspacePath) return path;
+  if (!filePath || !mounts || mounts.length === 0) return filePath;
 
-  // Normalize both paths (handle trailing slashes)
-  const normalizedWorkspace = workspacePath.replace(/\/+$/, '');
-  const normalizedPath = path.replace(/\/+$/, '');
-
-  if (normalizedPath.startsWith(normalizedWorkspace)) {
-    // Remove workspace prefix and leading slash
-    const relativePath = normalizedPath
-      .slice(normalizedWorkspace.length)
-      .replace(/^\/+/, '');
-    return relativePath || '.';
+  const normalizedPath = stripMountPrefix(filePath);
+  for (const mount of mounts) {
+    const normalizedMount = mount.path.replace(/\/+$/, '');
+    if (normalizedPath.startsWith(normalizedMount)) {
+      const rel = normalizedPath
+        .slice(normalizedMount.length)
+        .replace(/^\/+/, '');
+      return rel || '.';
+    }
   }
-
-  return path;
+  return filePath;
 }
 
 /**
@@ -54,7 +54,7 @@ function relativizePath(
  */
 function getStatusText(
   history: AgentMessage[],
-  workspacePath: string | null | undefined,
+  mounts: MountEntry[] | undefined,
 ): string {
   const INITIALIZING_TEXT = 'Initializing .stagewise/WORKSPACE.md...';
   const ANALYZING_TEXT = 'Analyzing workspace...';
@@ -83,13 +83,13 @@ function getStatusText(
   switch (lastToolPart?.type) {
     case 'tool-readFileTool': {
       const rawPath = lastToolPart.input?.relative_path;
-      const relativePath = relativizePath(rawPath, workspacePath);
+      const relativePath = relativizePath(rawPath, mounts);
       const fileName = relativePath?.split('/').pop();
       return fileName ? `Reading ${fileName}...` : 'Reading file...';
     }
     case 'tool-listFilesTool': {
       const rawPath = lastToolPart.input?.relative_path;
-      const p = relativizePath(rawPath, workspacePath);
+      const p = relativizePath(rawPath, mounts);
       const relativePath = p === '' ? '/' : p === '.' ? '. ' : p;
       return relativePath
         ? `Listing files in ${relativePath}...`
@@ -103,20 +103,19 @@ function getStatusText(
       const query = lastToolPart.input?.query;
       return query ? `Searching code for ${query}...` : 'Searching code...';
     }
-    case 'tool-writeWorkspaceMdTool': {
-      return 'Writing .stagewise/WORKSPACE.md...';
+    case 'tool-overwriteFileTool': {
+      return 'Writing WORKSPACE.md...';
     }
     default: {
       if (!lastMessage) return INITIALIZING_TEXT;
 
-      // Check across all assistant messages for writeWorkspaceMdTool
-      const hadWritingWorkspaceMd = assistantMessages?.some((m) =>
-        m.parts.some((p) => p.type === 'tool-writeWorkspaceMdTool'),
+      const hadOverwritingWorkspaceMd = assistantMessages?.some((m) =>
+        m.parts.some((p) => p.type === 'tool-overwriteFileTool'),
       );
       const lastType = lastMessage.parts.at(-1)?.type;
       if (
         (lastType === 'reasoning' || lastType === 'text') &&
-        hadWritingWorkspaceMd
+        hadOverwritingWorkspaceMd
       )
         return 'Finishing up...';
 
@@ -147,7 +146,7 @@ function TooltipWrapper({
 export function WorkspaceMdStatusSection({
   status,
   history,
-  workspacePath,
+  workspaceMounts,
   errorMessage,
   onDismiss,
   onShowFile,
@@ -156,7 +155,7 @@ export function WorkspaceMdStatusSection({
 
   const isRunning = status === 'running';
   const isError = status === 'error';
-  const statusText = getStatusText(history, workspacePath);
+  const statusText = getStatusText(history, workspaceMounts);
   return {
     key: 'project-md-status',
     defaultOpen: true,

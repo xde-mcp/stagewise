@@ -510,7 +510,7 @@ export type AppState = {
   toolbox: {
     [agentInstanceId: string]: {
       workspace: {
-        path: string | null;
+        mounts: Array<{ prefix: string; path: string }>;
       };
       pendingFileDiffs: FileDiff[];
       editSummary: FileDiff[];
@@ -639,7 +639,7 @@ export type KartonContract = {
       create: (
         initialInputState?: string,
         modelId?: ModelId,
-        workspacePath?: string,
+        workspacePaths?: string[],
       ) => Promise<string>;
       resume: (agentId: string) => Promise<void>;
       delete: (agentId: string) => Promise<void>;
@@ -683,11 +683,14 @@ export type KartonContract = {
     toolbox: {
       acceptHunks: (hunkIds: string[]) => Promise<void>;
       rejectHunks: (hunkIds: string[]) => Promise<void>;
-      openWorkspace: (
+      mountWorkspace: (
         agentInstanceId: string,
         workspacePath?: string,
       ) => Promise<void>;
-      closeWorkspace: (agentInstanceId: string) => Promise<void>;
+      unmountWorkspace: (
+        agentInstanceId: string,
+        mountPrefix: string,
+      ) => Promise<void>;
     };
     userAccount: {
       sendOtp: (email: string) => Promise<{ error?: string }>;

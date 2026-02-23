@@ -102,7 +102,6 @@ export class PagesService extends DisposableService {
   private logoutHandler?: () => Promise<void>;
   // Home page service dependencies
   private userExperienceService?: UserExperienceService;
-  private openWorkspaceHandler?: (path?: string) => Promise<void>;
   private trustCertificateAndReloadHandler?: (
     tabId: string,
     origin: string,
@@ -1056,19 +1055,6 @@ export class PagesService extends DisposableService {
     );
 
     this.kartonServer.registerServerProcedureHandler(
-      'openWorkspace',
-      async (_callingClientId: string, path?: string): Promise<void> => {
-        if (!this.openWorkspaceHandler) {
-          this.logger.warn(
-            '[PagesService] openWorkspace called but no handler is set',
-          );
-          return;
-        }
-        await this.openWorkspaceHandler(path);
-      },
-    );
-
-    this.kartonServer.registerServerProcedureHandler(
       'trustCertificateAndReload',
       async (
         _callingClientId: string,
@@ -1414,16 +1400,6 @@ export class PagesService extends DisposableService {
   }
 
   /**
-   * Set the handler for opening a workspace.
-   * This should be called by main.ts to wire up to WorkspaceManager.
-   */
-  public setOpenWorkspaceHandler(
-    handler: (path?: string) => Promise<void>,
-  ): void {
-    this.openWorkspaceHandler = handler;
-  }
-
-  /**
    * Set the handler for trusting a certificate and reloading the tab.
    * This should be called by main.ts to wire up to WindowLayoutService.
    */
@@ -1633,7 +1609,6 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('removeSearchEngine');
     this.kartonServer.removeServerProcedureHandler('getInspirationWebsites');
     this.kartonServer.removeServerProcedureHandler('setHasSeenOnboardingFlow');
-    this.kartonServer.removeServerProcedureHandler('openWorkspace');
     this.kartonServer.removeServerProcedureHandler('trustCertificateAndReload');
     this.kartonServer.removeServerProcedureHandler('setGlobalConfig');
     this.kartonServer.removeServerProcedureHandler('getContextFiles');
@@ -1661,7 +1636,6 @@ export class PagesService extends DisposableService {
     this.currentPort = undefined;
     this.openTabHandler = undefined;
     this.userExperienceService = undefined;
-    this.openWorkspaceHandler = undefined;
     this.trustCertificateAndReloadHandler = undefined;
     this.getContextFilesHandler = undefined;
     this.getExternalFileContentHandler = undefined;

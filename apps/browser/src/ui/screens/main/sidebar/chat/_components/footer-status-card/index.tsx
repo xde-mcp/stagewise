@@ -20,6 +20,7 @@ import {
 // Stable empty arrays to avoid infinite loop with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];
 const EMPTY_QUEUE: (AgentMessage & { role: 'user' })[] = [];
+const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
 
 export function StatusCard() {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -78,14 +79,12 @@ export function StatusCard() {
       : EMPTY_HISTORY,
   );
 
-  // Get workspace path for relativizing file paths in status text (per-agent)
-  const workspacePath = useKartonState((s) =>
-    openAgentId ? (s.toolbox[openAgentId]?.workspace?.path ?? null) : null,
+  const workspaceMounts = useKartonState((s) =>
+    openAgentId
+      ? (s.toolbox[openAgentId]?.workspace?.mounts ?? EMPTY_MOUNTS)
+      : EMPTY_MOUNTS,
   );
-
-  const workspaceConnected = useKartonState(
-    (s) => !!openAgentId && !!s.toolbox[openAgentId]?.workspace?.path,
-  );
+  const workspaceConnected = workspaceMounts.length > 0;
 
   // Track WorkspaceMd status with completion/error state
   const [workspaceMdStatus, setWorkspaceMdStatus] =
@@ -179,7 +178,7 @@ export function StatusCard() {
     const workspaceMdSection = WorkspaceMdStatusSection({
       status: workspaceMdStatus,
       history: workspaceMdHistory,
-      workspacePath,
+      workspaceMounts,
       errorMessage: workspaceMdErrorMessage,
       onDismiss: handleWorkspaceMdDismiss,
       onShowFile: handleWorkspaceMdShowFile,
@@ -212,7 +211,7 @@ export function StatusCard() {
   }, [
     workspaceMdStatus,
     workspaceMdHistory,
-    workspacePath,
+    workspaceMounts,
     workspaceMdErrorMessage,
     handleWorkspaceMdDismiss,
     handleWorkspaceMdShowFile,

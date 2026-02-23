@@ -130,7 +130,7 @@ export function buildSyntheticEnvironmentChangeMessage(
  * We implement this function to integrate handling for our custom formatting of file references etc.
  *
  * @param messages Messages that should be converted to model messages.
- * @param systemPrompt The  system prompt to prepend to the messages.
+ * @param systemPrompt The system prompt to prepend to the messages.
  * @param tools The tools to use for the conversation.
  * @param minUncompressedCount The minimum number of uncompacted messages to keep in the conversation.
  * @param agentInstanceId The agent instance ID, used for computing environment change descriptions.

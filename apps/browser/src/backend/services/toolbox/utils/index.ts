@@ -4,6 +4,12 @@ import { MAX_DIFF_TEXT_FILE_SIZE } from '@shared/karton-contracts/ui/shared-type
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import type { LspService } from '../services/lsp';
+
+type MountPrefix = string;
+
+export type MountedClientRuntimes = Map<MountPrefix, ClientRuntimeNode>;
+export type MountedLspServices = Map<MountPrefix, LspService>;
 
 const FILE_SIZE_LIMITS = {
   DEFAULT_MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB

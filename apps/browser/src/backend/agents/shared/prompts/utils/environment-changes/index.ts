@@ -29,7 +29,6 @@ export function computeAllEnvironmentChanges(
       previous.fileDiffs,
       current.fileDiffs,
       agentInstanceId,
-      current.workspace.workspacePath,
     ),
   ];
 }

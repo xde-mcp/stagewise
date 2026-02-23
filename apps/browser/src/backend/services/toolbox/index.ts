@@ -1,16 +1,9 @@
 import type { Logger } from '@/services/logger';
+import { MountManagerService } from './services/mount-manager';
 import type { FilePickerService } from '@/services/file-picker';
 import type { UserExperienceService } from '@/services/experience';
-import {
-  SandboxService,
-  type SandboxFileWriter,
-  type AttachmentResolver,
-} from '../sandbox';
-import {
-  MAX_IMAGE_SIZE,
-  MAX_DOCUMENT_SIZE,
-  type WorkspaceAgentSettings,
-} from '@shared/karton-contracts/ui/shared-types';
+import { SandboxService } from '../sandbox';
+import type { WorkspaceAgentSettings } from '@shared/karton-contracts/ui/shared-types';
 import type { KartonService } from '@/services/karton';
 import type { GlobalConfigService } from '@/services/global-config';
 import { DisposableService } from '@/services/disposable';
@@ -19,9 +12,11 @@ import type { WindowLayoutService } from '@/services/window-layout';
 import type { AuthService } from '@/services/auth';
 import type { TelemetryService } from '@/services/telemetry';
 import type { GlobalDataPathService } from '@/services/global-data-path';
-import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
-import { LspService } from '@/services/toolbox/services/lsp';
+import {
+  createSandboxFileWriter,
+  createAttachmentResolver,
+} from './utils/sandbox-callbacks';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import {
   deleteFileToolExecute,
@@ -44,16 +39,14 @@ import {
 import { grepSearchTool } from './tools/file-modification/grep-search';
 import { executeSandboxJsTool } from './tools/browser/execute-sandbox-js';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
-import { writeWorkspaceMdTool } from './tools/stagewise-data/write-workspace-md';
 import { type Tool, tool } from 'ai';
 import {
   buildAgentFileEditContent,
   captureFileState,
   cleanupTempFile,
+  type MountedClientRuntimes,
 } from './utils';
-import { collectDiagnosticsForFiles } from './utils/context-getters';
 import path from 'node:path';
-import fs from 'node:fs/promises';
 import type { z } from 'zod';
 import {
   deleteFileToolInputSchema,
@@ -61,11 +54,7 @@ import {
   overwriteFileToolInputSchema,
   type StagewiseToolSet,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type {
-  BrowserSnapshot,
-  DiagnosticsByFile,
-  WorkspaceSnapshot,
-} from './types';
+import type { BrowserSnapshot, WorkspaceSnapshot } from './types';
 import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { createEnvironmentDiffSnapshot } from '@/services/diff-history/utils/diff';
 import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info';
@@ -81,8 +70,10 @@ import {
   getSkills,
   type Skill,
 } from '@/agents/shared/prompts/utils/get-skills';
+import { resolveMountedRelativePath } from './utils/path-mounting';
 
-type AgentInstanceId = string;
+type MountedPrefix = string;
+type MountedPath = string;
 
 export class ToolboxService extends DisposableService {
   private readonly logger: Logger;
@@ -98,18 +89,10 @@ export class ToolboxService extends DisposableService {
 
   private sandboxService: SandboxService | null = null;
 
-  private openWorkspacePaths: Map<AgentInstanceId, string> = new Map();
-  private clientRuntimesPerPath: Map<string, ClientRuntimeNode> = new Map();
-  private lspServicesPerPath: Map<string, LspService> = new Map();
-
-  /** Promise that resolves when LSP service is ready (or null if no workspace) */
-  private lspReady: Map<string, Promise<LspService | null>> = new Map();
+  private mountManagerService: MountManagerService | null = null;
 
   /** Cached API client - recreated when auth changes */
   private apiClient: TRPCClient<AppRouter> | null = null;
-
-  /** Files modified per agent instance - used to collect LSP diagnostics */
-  private modifiedFilesPerAgent: Map<AgentInstanceId, Set<string>> = new Map();
 
   /** Temp directory for capturing file state (external/binary files) */
   private get tempDir(): string {
@@ -198,29 +181,30 @@ export class ToolboxService extends DisposableService {
     inputSchema: z.ZodType<TParams>,
     executeFn: (
       params: TParams,
-      runtime: ClientRuntimeNode,
+      mountedRuntimes: MountedClientRuntimes,
     ) => Promise<unknown>,
     agentInstanceId: string,
   ) {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    if (!path || !clientRuntime) return null;
     // Cast to any to bypass AI SDK's strict FlexibleSchema type inference
     // The schemas are validated Zod schemas that work correctly at runtime
     return tool({
       description,
       inputSchema: inputSchema as z.ZodType<TParams>,
       execute: async (params, options) => {
+        const mountedRuntimes =
+          this.mountManagerService?.getMountedRuntimes(agentInstanceId);
+        if (!mountedRuntimes) throw new Error('No mounted workspaces found');
+        const { clientRuntime, relativePath } = resolveMountedRelativePath(
+          mountedRuntimes,
+          params.relative_path,
+        );
         const { toolCallId } = options as { toolCallId: string };
-        const { relative_path: relativePath } = params as TParams;
         const absolutePath = clientRuntime.fileSystem.resolvePath(relativePath);
 
         const beforeState = await captureFileState(absolutePath, this.tempDir);
         this.diffHistoryService.ignoreFileForWatcher(absolutePath);
         // Execute the actual tool
-        const result = await executeFn(params, clientRuntime);
+        const result = await executeFn(params, mountedRuntimes);
         const afterState = await captureFileState(absolutePath, this.tempDir);
 
         // Build AgentFileEdit and register with diff-history
@@ -235,7 +219,7 @@ export class ToolboxService extends DisposableService {
           // Sync with LSP based on operation type
           // File created/modified - update LSP
           if (!editContent.isExternal && editContent.contentAfter !== null)
-            void this.syncFileWithLsp(
+            void this.mountManagerService?.syncFileWithLsp(
               agentInstanceId,
               absolutePath,
               editContent.contentAfter,
@@ -245,7 +229,10 @@ export class ToolboxService extends DisposableService {
             !editContent.isExternal &&
             editContent.contentBefore !== null
           )
-            void this.syncFileCloseWithLsp(agentInstanceId, absolutePath);
+            void this.mountManagerService?.syncFileCloseWithLsp(
+              agentInstanceId,
+              absolutePath,
+            );
 
           await this.diffHistoryService.registerAgentEdit({
             agentInstanceId,
@@ -274,10 +261,6 @@ export class ToolboxService extends DisposableService {
             500,
           );
         }
-
-        // Track modified file for LSP diagnostics
-        const modifiedFiles = this.modifiedFilesPerAgent.get(agentInstanceId);
-        if (modifiedFiles) modifiedFiles.add(absolutePath);
 
         // Attach diff data for UI rendering (stripped before LLM sees it)
         const _diff =
@@ -314,17 +297,17 @@ export class ToolboxService extends DisposableService {
     tool: TToolName,
     agentInstanceId: string,
   ): Promise<Tool | null> {
-    if (!this.modifiedFilesPerAgent.has(agentInstanceId))
-      this.modifiedFilesPerAgent.set(agentInstanceId, new Set());
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    const lspService = path ? this.lspServicesPerPath.get(path) || null : null;
+    const mountedRuntimes =
+      this.mountManagerService?.getMountedRuntimes(agentInstanceId);
+    if (!mountedRuntimes) return null;
+
+    const mountedLspServices =
+      this.mountManagerService?.getMountedLspServices(agentInstanceId);
+    if (!mountedLspServices) return null;
 
     switch (tool) {
       case 'deleteFileTool':
-        if (!clientRuntime) return null;
+        if (mountedRuntimes.size === 0) return null;
         return this.wrapFileModifyingTool(
           DELETE_FILE_DESCRIPTION,
           deleteFileToolInputSchema,
@@ -332,16 +315,16 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'globTool':
-        if (!clientRuntime) return null;
-        return globTool(clientRuntime);
+        if (mountedRuntimes.size === 0) return null;
+        return globTool(mountedRuntimes);
       case 'grepSearchTool':
-        if (!clientRuntime) return null;
-        return grepSearchTool(clientRuntime);
+        if (mountedRuntimes.size === 0) return null;
+        return grepSearchTool(mountedRuntimes);
       case 'listFilesTool':
-        if (!clientRuntime) return null;
-        return listFilesTool(clientRuntime);
+        if (mountedRuntimes.size === 0) return null;
+        return listFilesTool(mountedRuntimes);
       case 'multiEditTool':
-        if (!clientRuntime) return null;
+        if (mountedRuntimes.size === 0) return null;
         return this.wrapFileModifyingTool(
           MULTI_EDIT_DESCRIPTION,
           multiEditToolInputSchema,
@@ -349,7 +332,7 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'overwriteFileTool':
-        if (!clientRuntime) return null;
+        if (mountedRuntimes.size === 0) return null;
         return this.wrapFileModifyingTool(
           OVERWRITE_FILE_DESCRIPTION,
           overwriteFileToolInputSchema,
@@ -357,32 +340,24 @@ export class ToolboxService extends DisposableService {
           agentInstanceId,
         );
       case 'readFileTool':
-        if (!clientRuntime) return null;
-        return readFileTool(clientRuntime);
+        if (mountedRuntimes.size === 0) return null;
+        return readFileTool(mountedRuntimes);
       case 'listLibraryDocsTool':
         if (!this.apiClient) return null;
         return listLibraryDocsTool(this.apiClient);
       case 'searchInLibraryDocsTool':
         if (!this.apiClient) return null;
         return searchInLibraryDocsTool(this.apiClient);
-      case 'getLintingDiagnosticsTool':
-        if (!lspService) return null;
-        if (!clientRuntime) return null;
-        return getLintingDiagnosticsTool(
-          lspService,
-          this.modifiedFilesPerAgent.get(agentInstanceId)!,
-          clientRuntime,
-        );
+      case 'getLintingDiagnosticsTool': {
+        if (!mountedLspServices) return null;
+        return getLintingDiagnosticsTool(mountedLspServices);
+      }
       case 'executeSandboxJsTool':
         if (!this.windowLayoutService) return null;
         return executeSandboxJsTool(this.sandboxService!, agentInstanceId);
       case 'readConsoleLogsTool':
         if (!this.windowLayoutService) return null;
         return readConsoleLogsTool(this.windowLayoutService);
-      case 'writeWorkspaceMdTool': {
-        if (!path) return null;
-        return writeWorkspaceMdTool(path);
-      }
       default:
         this.logger.error('[ToolboxService] Tool not found', { tool });
         return null;
@@ -406,35 +381,37 @@ export class ToolboxService extends DisposableService {
   }
 
   public getWorkspaceSnapshot(agentInstanceId: string): WorkspaceSnapshot {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    if (!path || !clientRuntime)
-      return {
-        isConnected: false,
-        workspacePath: null,
-        cwd: null,
-        workspaceMdPath: null,
-      };
+    return (
+      this.mountManagerService?.getWorkspaceSnapshot(agentInstanceId) ?? {
+        mounts: [],
+      }
+    );
+  }
 
-    return {
-      isConnected: clientRuntime !== null,
-      workspacePath: path ?? null,
-      cwd: clientRuntime.fileSystem.getCurrentWorkingDirectory() ?? null,
-      workspaceMdPath: path ?? null,
-    };
+  public handleMountWorkspace(agentInstanceId: string, workspacePath: string) {
+    return this.mountManagerService?.handleMountWorkspace(
+      agentInstanceId,
+      workspacePath,
+    );
+  }
+
+  public handleUnmountWorkspace(agentInstanceId: string, mountPrefix: string) {
+    return this.mountManagerService?.handleUnmountWorkspace(
+      agentInstanceId,
+      mountPrefix,
+    );
   }
 
   public async getWorkspaceInfo(
     agentInstanceId: string,
-  ): Promise<WorkspaceInfo | null> {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    if (!path || !clientRuntime) return null;
-    return getWorkspaceInfoUtil(clientRuntime);
+  ): Promise<WorkspaceInfo[]> {
+    const mountsWithRt =
+      this.mountManagerService?.getMountedRuntimes(agentInstanceId);
+    if (!mountsWithRt) return [];
+    if (mountsWithRt.size === 0) return [];
+    return Promise.all(
+      [...mountsWithRt.values()].map((m) => getWorkspaceInfoUtil(m)),
+    );
   }
 
   public getBrowserSnapshot(): BrowserSnapshot {
@@ -479,7 +456,8 @@ export class ToolboxService extends DisposableService {
     agentInstanceId: string,
   ): EnvironmentSnapshot {
     const browserState = this.getBrowserSnapshot();
-    const workspaceState = this.getWorkspaceSnapshot(agentInstanceId);
+    const workspaceState =
+      this.mountManagerService?.getWorkspaceSnapshot(agentInstanceId);
     const toolboxState = this.uiKarton.state.toolbox[agentInstanceId];
 
     const snapshot: EnvironmentSnapshot = {
@@ -491,10 +469,7 @@ export class ToolboxService extends DisposableService {
         })),
         activeTabHandle: browserState.activeTab?.handle ?? null,
       },
-      workspace: {
-        isConnected: workspaceState.isConnected,
-        workspacePath: workspaceState.workspacePath,
-      },
+      workspace: workspaceState || { mounts: [] },
       fileDiffs: toolboxState
         ? createEnvironmentDiffSnapshot(
             toolboxState.pendingFileDiffs,
@@ -507,54 +482,96 @@ export class ToolboxService extends DisposableService {
   }
 
   public async getSkillsList(agentInstanceId: string): Promise<Skill[]> {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    if (!path || !clientRuntime) return [];
-    return await getSkills(clientRuntime);
+    const mountsWithRt =
+      this.mountManagerService?.getMountedRuntimes(agentInstanceId);
+    if (!mountsWithRt) return [];
+    if (mountsWithRt.size === 0) return [];
+
+    const allSkills = await Promise.all(
+      [...mountsWithRt.values()].map((m) => getSkills(m)),
+    );
+
+    const seen = new Set<string>();
+    const result: Skill[] = [];
+    for (const skills of allSkills) {
+      for (const skill of skills) {
+        if (seen.has(skill.name)) continue;
+        seen.add(skill.name);
+        result.push(skill);
+      }
+    }
+    return result;
   }
 
   public getWorkspaceAgentSettings(
     agentInstanceId: string,
-  ): WorkspaceAgentSettings {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    if (!path || !clientRuntime) return { respectAgentsMd: false };
-    return (
-      this.uiKarton.state.preferences?.agent?.workspaceSettings?.[path] ?? {
-        respectAgentsMd: false,
+  ): Map<string, WorkspaceAgentSettings> {
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    const result = new Map<string, WorkspaceAgentSettings>();
+    for (const mount of mounts ?? []) {
+      result.set(
+        mount.prefix,
+        this.uiKarton.state.preferences?.agent?.workspaceSettings?.[
+          mount.path
+        ] ?? { respectAgentsMd: false },
+      );
+    }
+    return result;
+  }
+
+  public async getAgentsMd(
+    agentInstanceId: string,
+  ): Promise<Array<{ mountPrefix: string; content: string }>> {
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    if (!mounts) return [];
+    if (mounts.length === 0) return [];
+    const results: Array<{ mountPrefix: string; content: string }> = [];
+    for (const mount of mounts) {
+      const settings = this.uiKarton.state.preferences?.agent
+        ?.workspaceSettings?.[mount.path] ?? { respectAgentsMd: false };
+      if (!settings.respectAgentsMd) continue;
+      const content = await readAgentsMd(mount.clientRuntime);
+      if (content) results.push({ mountPrefix: mount.prefix, content });
+    }
+    return results;
+  }
+
+  public async getWorkspaceMd(
+    agentInstanceId: string,
+  ): Promise<Array<{ mountPrefix: string; path: string; content: string }>> {
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    if (!mounts) return [];
+    if (mounts.length === 0) return [];
+    const results: Array<{
+      mountPrefix: string;
+      path: string;
+      content: string;
+    }> = [];
+    for (const mount of mounts) {
+      const content = await readWorkspaceMd(mount.path);
+      if (content) {
+        results.push({
+          mountPrefix: mount.prefix,
+          path: mount.path,
+          content,
+        });
       }
-    );
-  }
-
-  public async getAgentsMd(agentInstanceId: string): Promise<string | null> {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    if (!path || !clientRuntime) return null;
-    return readAgentsMd(clientRuntime);
-  }
-
-  public async getWorkspaceMd(agentInstanceId: string): Promise<string | null> {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const clientRuntime = path
-      ? this.clientRuntimesPerPath.get(path) || null
-      : null;
-    if (!path || !clientRuntime) return null;
-    return readWorkspaceMd(path);
+    }
+    return results;
   }
 
   public async getContextFilesForAllWorkspaces(): Promise<ContextFilesResult> {
-    const uniquePaths = new Set(this.openWorkspacePaths.values());
+    const uniquePaths = this.mountManagerService?.getAllMountedPaths();
     const result: ContextFilesResult = {};
 
     await Promise.all(
-      [...uniquePaths].map(async (wsPath) => {
-        const clientRuntime = this.clientRuntimesPerPath.get(wsPath);
+      [...(uniquePaths ?? [])].map(async (wsPath) => {
+        const clientRuntime =
+          this.mountManagerService?.getClientRuntimeForPath(wsPath);
+        if (!clientRuntime) return;
 
         const workspaceMdPath = path.resolve(
           wsPath,
@@ -586,18 +603,6 @@ export class ToolboxService extends DisposableService {
     return result;
   }
 
-  public async getLspDiagnosticsForAgent(
-    agentInstanceId: string,
-  ): Promise<DiagnosticsByFile> {
-    const modifiedFiles = this.modifiedFilesPerAgent.get(agentInstanceId);
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    const lspService = path ? this.lspServicesPerPath.get(path) || null : null;
-    if (!lspService || !modifiedFiles || modifiedFiles.size === 0)
-      return new Map();
-
-    return collectDiagnosticsForFiles(lspService, modifiedFiles);
-  }
-
   /**
    * Get or create an authenticated API client.
    * Returns null if not authenticated.
@@ -626,59 +631,16 @@ export class ToolboxService extends DisposableService {
     return this.apiClient;
   }
 
-  /**
-   * Update a file's content in all applicable LSP servers.
-   * Call this after a file is modified by a tool.
-   * Waits for LSP service to be ready before syncing.
-   */
-  private async syncFileWithLsp(
+  public getMountedPathsForAgent(
     agentInstanceId: string,
-    filePath: string,
-    content: string,
-  ): Promise<void> {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    if (!path) throw new Error('No workspace connected');
-    // Wait for LSP to be ready before syncing
-    const lsp = await this.lspReady.get(path);
-    if (!lsp) return;
+  ): Map<MountedPrefix, MountedPath> {
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    if (!mounts) return new Map();
+    const result = new Map<MountedPrefix, MountedPath>();
+    for (const mount of mounts) result.set(mount.prefix, mount.path);
 
-    try {
-      await lsp.touchFile(filePath);
-      await lsp.updateFile(filePath, content);
-    } catch (err) {
-      this.logger.debug('[ToolboxService] Failed to sync file with LSP', {
-        error: err,
-        path: filePath,
-      });
-      this.report(err as Error, 'syncFileWithLsp', { path: filePath });
-    }
-  }
-
-  /**
-   * Close a file in all applicable LSP servers.
-   * Call this after a file is deleted by a tool.
-   * Waits for LSP service to be ready before closing.
-   */
-  private async syncFileCloseWithLsp(
-    agentInstanceId: string,
-    filePath: string,
-  ): Promise<void> {
-    const path = this.openWorkspacePaths.get(agentInstanceId);
-    if (!path) throw new Error('No workspace connected');
-    const lsp = await this.lspReady.get(path);
-    if (!lsp) return;
-    // Wait for LSP to be ready before closing
-    try {
-      await lsp.closeFile(filePath);
-    } catch (err) {
-      this.logger.debug('[ToolboxService] Failed to touch file in LSP', {
-        error: err,
-        path: filePath,
-      });
-      this.report(err as Error, 'syncFileCloseWithLsp', {
-        path: filePath,
-      });
-    }
+    return result;
   }
 
   /**
@@ -694,7 +656,7 @@ export class ToolboxService extends DisposableService {
    * Call this when an agent session ends.
    */
   public clearAgentTracking(agentInstanceId: string): void {
-    this.modifiedFilesPerAgent.delete(agentInstanceId);
+    this.mountManagerService?.clearAgentMounts(agentInstanceId);
     this.sandboxService?.destroyAgent(agentInstanceId);
   }
 
@@ -704,163 +666,26 @@ export class ToolboxService extends DisposableService {
     // Eagerly initialize the API client if auth is already available
     this.apiClient = this.getOrCreateApiClient();
 
-    // Create the file writer callback for sandbox file operations
-    // Content is already decoded to Buffer by SandboxService
-    const fileWriter: SandboxFileWriter = async (
-      agentId,
-      relativePath,
-      content,
-      toolCallId,
-    ) => {
-      const workspacePath = this.openWorkspacePaths.get(agentId);
-      if (!workspacePath) throw new Error('No workspace connected');
+    this.mountManagerService = await MountManagerService.create(
+      this.logger,
+      this.filePickerService,
+      this.globalDataPathService,
+      this.userExperienceService,
+      this.uiKarton,
+      this.telemetryService,
+    );
 
-      const clientRuntime = this.clientRuntimesPerPath.get(workspacePath);
-      if (!clientRuntime) throw new Error('No client runtime found');
+    const fileWriter = createSandboxFileWriter({
+      mountManager: this.mountManagerService,
+      diffHistoryService: this.diffHistoryService,
+      logger: this.logger,
+      telemetryService: this.telemetryService,
+      tempDir: this.tempDir,
+    });
 
-      const absolutePath = clientRuntime.fileSystem.resolvePath(relativePath);
-      const workspaceRoot =
-        clientRuntime.fileSystem.getCurrentWorkingDirectory();
-
-      // Security check: ensure path is within workspace
-      if (!absolutePath.startsWith(workspaceRoot))
-        throw new Error('Path must be within workspace');
-
-      // Capture file state before write
-      const beforeState = await captureFileState(absolutePath, this.tempDir);
-
-      // Ensure parent directory exists and write file
-      const parentDir = path.dirname(absolutePath);
-      await fs.mkdir(parentDir, { recursive: true });
-      this.diffHistoryService.ignoreFileForWatcher(absolutePath);
-      await fs.writeFile(absolutePath, content);
-
-      // Capture file state after write
-      const afterState = await captureFileState(absolutePath, this.tempDir);
-
-      // Register with diff-history
-      try {
-        const { editContent, tempFilesToCleanup } =
-          await buildAgentFileEditContent(
-            beforeState,
-            afterState,
-            this.tempDir,
-          );
-
-        // Sync with LSP if it's a text file
-        if (!editContent.isExternal && editContent.contentAfter !== null) {
-          void this.syncFileWithLsp(
-            agentId,
-            absolutePath,
-            editContent.contentAfter,
-          );
-        }
-
-        await this.diffHistoryService.registerAgentEdit({
-          agentInstanceId: agentId,
-          path: absolutePath,
-          toolCallId,
-          ...editContent,
-        });
-
-        // Clean up temp files after registration
-        for (const tempFile of tempFilesToCleanup) {
-          void cleanupTempFile(tempFile);
-        }
-      } catch (error) {
-        this.logger.error(
-          '[ToolboxService] Failed to register sandbox file write',
-          {
-            error,
-            path: absolutePath,
-            toolCallId,
-          },
-        );
-        this.report(error as Error, 'registerSandboxWrite', {
-          path: absolutePath,
-          toolCallId,
-        });
-        // Don't fail the file write if diff-history registration fails
-      } finally {
-        setTimeout(
-          () => this.diffHistoryService.unignoreFileForWatcher(absolutePath),
-          500,
-        );
-      }
-
-      // Track modified file for LSP diagnostics
-      if (!this.modifiedFilesPerAgent.has(agentId)) {
-        this.modifiedFilesPerAgent.set(agentId, new Set());
-      }
-      this.modifiedFilesPerAgent.get(agentId)!.add(absolutePath);
-
-      return { success: true as const, bytesWritten: content.length };
-    };
-
-    // Create the attachment resolver callback for sandbox attachment access
-    const attachmentResolver: AttachmentResolver = async (
-      agentId,
-      attachmentId,
-    ) => {
-      // Look up agent's message history from Karton state
-      const agentInstance = this.uiKarton.state.agents.instances[agentId];
-      if (!agentInstance) {
-        throw new Error(`Agent not found or has no message history`);
-      }
-
-      const history = agentInstance.state.history;
-      if (!history || history.length === 0) {
-        throw new Error(`Agent not found or has no message history`);
-      }
-
-      // Search all user messages for the attachment by ID
-      for (const message of history) {
-        if (message.role !== 'user') continue;
-
-        const fileAttachments = message.metadata?.fileAttachments;
-        if (!fileAttachments) continue;
-
-        const attachment = fileAttachments.find((f) => f.id === attachmentId);
-        if (!attachment) continue;
-
-        // Check if attachment has a validation error (e.g., unsupported type or size)
-        if (attachment.validationError)
-          throw new Error(
-            `Attachment is not supported: ${attachment.validationError}`,
-          );
-
-        // Check if attachment has a URL (data URL)
-        if (!attachment.url) throw new Error(`Attachment has no data URL`);
-
-        // Parse the data URL to extract content
-        const dataUrlMatch = attachment.url.match(/^data:([^;]+);base64,(.+)$/);
-        if (!dataUrlMatch)
-          throw new Error(`Attachment has invalid data URL format`);
-
-        const content = Buffer.from(dataUrlMatch[2], 'base64');
-
-        // Validate size limits based on media type
-        const isImage = attachment.mediaType.startsWith('image/');
-        const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
-        const maxSizeLabel = isImage ? '5MB' : '20MB';
-
-        if (content.length > maxSize)
-          throw new Error(
-            `${isImage ? 'Image' : 'Document'} attachment exceeds ${maxSizeLabel} limit`,
-          );
-
-        return {
-          id: attachment.id,
-          fileName: attachment.fileName ?? 'attachment',
-          mediaType: attachment.mediaType,
-          content,
-        };
-      }
-
-      throw new Error(
-        `Attachment with ID "${attachmentId}" not found in conversation`,
-      );
-    };
+    const attachmentResolver = createAttachmentResolver({
+      uiKarton: this.uiKarton,
+    });
 
     this.sandboxService = await SandboxService.create(
       this.windowLayoutService,
@@ -873,117 +698,15 @@ export class ToolboxService extends DisposableService {
     this.authService.registerAuthStateChangeCallback(() =>
       this.refreshApiClient(),
     );
-
-    this.uiKarton.registerServerProcedureHandler(
-      'toolbox.openWorkspace',
-      async (
-        _callingClientId: string,
-        agentInstanceId: string,
-        workspacePath?: string,
-      ) => {
-        await this.handleOpenWorkspace(agentInstanceId, workspacePath);
-      },
-    );
-
-    this.uiKarton.registerServerProcedureHandler(
-      'toolbox.closeWorkspace',
-      async (_callingClientId: string, agentInstanceId: string) => {
-        await this.handleCloseWorkspace(agentInstanceId);
-      },
-    );
-  }
-
-  public async handleOpenWorkspace(
-    agentInstanceId: string,
-    workspacePath?: string,
-  ): Promise<void> {
-    let resolvedWorkspacePath: string | undefined;
-    if (!workspacePath) {
-      const filePickerResponses = await this.filePickerService.createRequest({
-        title: 'Select a workspace',
-        description: 'Select a workspace to load',
-        type: 'directory',
-        multiple: false,
-      });
-      if (filePickerResponses.length === 0) return;
-
-      this.openWorkspacePaths.set(agentInstanceId, filePickerResponses[0]);
-      resolvedWorkspacePath = filePickerResponses[0];
-    } else resolvedWorkspacePath = workspacePath;
-    if (!resolvedWorkspacePath) return;
-    this.openWorkspacePaths.set(agentInstanceId, resolvedWorkspacePath);
-    if (!this.clientRuntimesPerPath.has(resolvedWorkspacePath)) {
-      this.clientRuntimesPerPath.set(
-        resolvedWorkspacePath,
-        new ClientRuntimeNode({
-          workingDirectory: resolvedWorkspacePath,
-          rgBinaryBasePath: this.globalDataPathService.globalDataPath,
-        }),
-      );
-      const lspPromise = LspService.create(
-        this.logger,
-        this.clientRuntimesPerPath.get(resolvedWorkspacePath)!,
-      );
-      this.lspReady.set(resolvedWorkspacePath, lspPromise);
-      const lspService = await lspPromise;
-      this.lspServicesPerPath.set(resolvedWorkspacePath, lspService);
-    }
-    await this.userExperienceService.saveRecentlyOpenedWorkspace({
-      path: resolvedWorkspacePath,
-      name: path.basename(resolvedWorkspacePath),
-      openedAt: Date.now(),
-    });
-    if (!this.uiKarton.state.toolbox[agentInstanceId]) {
-      this.uiKarton.setState((draft) => {
-        draft.toolbox[agentInstanceId] = {
-          workspace: {
-            path: null,
-          },
-          pendingFileDiffs: [],
-          editSummary: [],
-        };
-      });
-    }
-    this.uiKarton.setState((draft) => {
-      draft.toolbox[agentInstanceId].workspace.path = resolvedWorkspacePath;
-    });
-    // TODO: checkAndGenerateWorkspaceMd somehow
-  }
-
-  public async handleCloseWorkspace(agentInstanceId: string): Promise<void> {
-    const workspacePath = this.openWorkspacePaths.get(agentInstanceId);
-    if (!workspacePath) return;
-    this.openWorkspacePaths.delete(agentInstanceId);
-
-    const stillInUse = [...this.openWorkspacePaths.values()].includes(
-      workspacePath,
-    );
-    if (!stillInUse) {
-      const lspService = this.lspServicesPerPath.get(workspacePath);
-      if (lspService) void lspService.teardown();
-      this.clientRuntimesPerPath.delete(workspacePath);
-      this.lspServicesPerPath.delete(workspacePath);
-      this.lspReady.delete(workspacePath);
-    }
-
-    this.uiKarton.setState((draft) => {
-      draft.toolbox[agentInstanceId].workspace.path = null;
-    });
   }
 
   protected onTeardown(): Promise<void> | void {
     this.apiClient = null;
-    for (const lspService of this.lspServicesPerPath.values())
-      void lspService.teardown();
 
-    this.lspServicesPerPath.clear();
+    void this.mountManagerService?.teardown();
+    this.mountManagerService = null;
 
     void this.sandboxService?.teardown();
     this.sandboxService = null;
-
-    // Clear modified files tracking
-    this.modifiedFilesPerAgent.clear();
-
-    return Promise.resolve();
   }
 }

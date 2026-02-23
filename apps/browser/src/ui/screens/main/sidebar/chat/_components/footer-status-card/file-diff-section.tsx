@@ -26,7 +26,7 @@ export function formatFileDiff(fileDiff: FileDiff): FormattedFileDiff {
   };
 }
 
-function FileDiffFileItem({
+export function FileDiffFileItem({
   fileDiff,
   onOpenDiffReview,
 }: {

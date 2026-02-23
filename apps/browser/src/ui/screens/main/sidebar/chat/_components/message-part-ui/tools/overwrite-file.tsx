@@ -16,7 +16,7 @@ import { Skeleton } from '@stagewise/stage-ui/components/skeleton';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { IdePickerPopover } from '@/components/ide-picker-popover';
 import { DiffPreview } from './shared/diff-preview';
-import { cn, IDE_SELECTION_ITEMS } from '@/utils';
+import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@/utils';
 import { useMemo, useState } from 'react';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { diffLines } from 'diff';
@@ -83,7 +83,7 @@ export const OverwriteFileToolPart = ({
 
   const path = useMemo(() => {
     if (!part.input?.relative_path) return null;
-    return part.input?.relative_path;
+    return stripMountPrefix(part.input.relative_path);
   }, [part.input?.relative_path]);
 
   const effectiveExpanded = useMemo(() => {
@@ -192,7 +192,9 @@ export const OverwriteFileToolPart = ({
                 <TooltipTrigger>{anchor}</TooltipTrigger>
                 <TooltipContent>
                   <div className="flex max-w-96 flex-col gap-1">
-                    <div className="break-all font-mono text-xs">{relPath}</div>
+                    <div className="break-all font-mono text-xs">
+                      {stripMountPrefix(relPath)}
+                    </div>
                     <div className="text-muted-foreground text-xs">
                       Click to open in {ideName}
                     </div>

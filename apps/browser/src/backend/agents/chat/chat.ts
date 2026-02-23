@@ -39,11 +39,7 @@ export class ChatAgent extends BaseAgent<never, undefined> {
   } satisfies BaseAgentConfig<never>;
 
   protected getSystemPrompt = async (): Promise<string> => {
-    return buildChatSystemPrompt(
-      this.toolbox,
-      this.instanceId,
-      this.toolbox.getWorkspaceAgentSettings(this.instanceId),
-    );
+    return buildChatSystemPrompt(this.toolbox, this.instanceId);
   };
 
   protected getTools = async () => {
@@ -67,11 +63,18 @@ export class ChatAgent extends BaseAgent<never, undefined> {
       readConsoleLogsTool: await box.getTool('readConsoleLogsTool', id),
       // IMPORTANT: The type for this tool is defined in @apps/browser/src/shared/karton-contracts/ui/agent/tools/types.ts - update the type when you change this input schema.
       updateWorkspaceMdTool: this.getSpawnChildAgentTool(
-        'Triggers an update of the  file. Use this whenever you find that the content of the  in the system context is outdated or needs to be updated. Provide a brief reason for the update.',
-        z.object({ updateReason: z.string().min(5) }),
+        'Triggers an update of the `.stagewise/WORKSPACE.md` file. Use this whenever you find that the content of the file `.stagewise/WORKSPACE.md` in the system context is outdated or needs to be updated. Provide a brief reason for the update. Most importantly, provide the mount prefix of the workspace to update.',
+        z.object({
+          updateReason: z.string().min(5),
+          mountPrefix: z.string().min(1),
+        }),
         AgentTypes.WORKSPACE_MD,
         (input) => {
-          return { updateReason: input.updateReason };
+          return {
+            updateReason: input.updateReason,
+            mountPrefix: input.mountPrefix,
+            parentAgentInstanceId: this.instanceId,
+          };
         },
         'asynchronous',
       ),

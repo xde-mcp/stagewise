@@ -8,7 +8,7 @@ import {
   ListChevronsDownUpIcon,
   ListChevronsUpDownIcon,
 } from 'lucide-react';
-import { cn, IDE_SELECTION_ITEMS } from '@/utils';
+import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@/utils';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { IdePickerPopover } from '@/components/ide-picker-popover';
 import { diffLines } from 'diff';
@@ -81,7 +81,7 @@ export const MultiEditToolPart = ({
 
   const path = useMemo(() => {
     if (!part.input?.relative_path) return null;
-    return part.input?.relative_path;
+    return stripMountPrefix(part.input.relative_path);
   }, [part.input?.relative_path]);
 
   const firstLineNumberEdited = useMemo(() => {
@@ -234,7 +234,7 @@ export const MultiEditToolPart = ({
                   <TooltipContent>
                     <div className="flex max-w-96 flex-col gap-1">
                       <div className="break-all font-mono text-xs">
-                        {relPath}
+                        {stripMountPrefix(relPath)}
                       </div>
                       <div className="text-muted-foreground text-xs">
                         Click to open in {ideName}

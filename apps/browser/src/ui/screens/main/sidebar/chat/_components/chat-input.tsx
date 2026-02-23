@@ -458,7 +458,12 @@ export const ChatInput = ({
         (showWorkspaceSelect ||
           showModelSelect ||
           (showContextUsageRing && contextUsedPercentage > 0)) && (
-          <div className="flex shrink-0 flex-row flex-wrap items-center justify-start gap-2 *:shrink-0">
+          <div
+            className={cn(
+              'flex shrink-0 flex-row flex-wrap items-center justify-start gap-2 *:shrink-0',
+              !showWorkspaceSelect && 'pl-1',
+            )}
+          >
             {showWorkspaceSelect && (
               <WorkspaceSelect onWorkspaceChange={onWorkspaceChange} />
             )}

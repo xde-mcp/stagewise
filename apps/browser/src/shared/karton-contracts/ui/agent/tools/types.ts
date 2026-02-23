@@ -16,7 +16,9 @@ import type { InferUITools, Tool } from 'ai';
 export const overwriteFileToolInputSchema = z.object({
   relative_path: z
     .string()
-    .describe('Relative file path to overwrite or create.'),
+    .describe(
+      'Relative file path to overwrite or create. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+    ),
   content: z
     .string()
     .describe(
@@ -46,7 +48,9 @@ export const overwriteFileToolSchema = {
 export const readFileToolInputSchema = z.object({
   relative_path: z
     .string()
-    .describe('Relative path of file to read. File must exist.'),
+    .describe(
+      'Relative path of file to read. File must exist. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+    ),
   start_line: z
     .number()
     .int()
@@ -92,8 +96,9 @@ export const readFileToolSchema = {
 export const listFilesToolInputSchema = z.object({
   relative_path: z
     .string()
-    .optional()
-    .describe("Path to list. Defaults to current directory ('.')."),
+    .describe(
+      'Path to list. Must include a valid mount prefix. e.g. "/ws1/path/to/list"',
+    ),
   recursive: z
     .boolean()
     .optional()
@@ -141,6 +146,7 @@ export const listFilesToolSchema = {
 } as const;
 
 export const grepSearchToolInputSchema = z.object({
+  mount_prefix: z.string().describe('Mount prefix to use for the grep search.'),
   query: z
     .string()
     .describe(
@@ -192,6 +198,7 @@ export const grepSearchToolSchema = {
 } as const;
 
 export const globToolInputSchema = z.object({
+  mount_prefix: z.string().describe('Mount prefix to use for the glob search.'),
   pattern: z
     .string()
     .describe(
@@ -231,7 +238,9 @@ const editSchema = z.object({
 export const multiEditToolInputSchema = z.object({
   relative_path: z
     .string()
-    .describe('Relative file path to edit. File must exist.'),
+    .describe(
+      'Relative file path to edit. File must exist. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+    ),
   edits: z
     .array(editSchema)
     .min(1)
@@ -256,7 +265,9 @@ export const multiEditToolSchema = {
 export const deleteFileToolInputSchema = z.object({
   relative_path: z
     .string()
-    .describe('Relative file path to delete. Must be an existing file.'),
+    .describe(
+      'Relative file path to delete. Must be an existing file. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+    ),
 });
 
 export const deleteFileToolOutputSchema = z.object({
@@ -271,7 +282,13 @@ export const deleteFileToolSchema = {
   outputSchema: deleteFileToolOutputSchema,
 } as const;
 
-export const getLintingDiagnosticsToolInputSchema = z.object({});
+export const getLintingDiagnosticsToolInputSchema = z.object({
+  paths: z
+    .array(z.string())
+    .describe(
+      'Paths to the files to get linting diagnostics for. Must include a valid mount prefix. e.g. "/ws1/path/to/file.ts"',
+    ),
+});
 
 export const lintingDiagnosticSchema = z.object({
   line: z.number(),
@@ -285,7 +302,11 @@ export const lintingDiagnosticSchema = z.object({
 });
 
 export const fileDiagnosticsSchema = z.object({
-  path: z.string(),
+  path: z
+    .string()
+    .describe(
+      'Path to the file to get linting diagnostics for. Must include a valid mount prefix. e.g. "/ws1/path/to/file.ts"',
+    ),
   diagnostics: z.array(lintingDiagnosticSchema),
 });
 
@@ -324,7 +345,10 @@ export const updateWorkspaceMdToolInputSchema = z.object({
   updateReason: z
     .string()
     .min(5)
-    .describe('Brief reason for triggering the  update.'),
+    .describe(
+      'Brief reason for triggering the .stagewise/WORKSPACE.md update.',
+    ),
+  mountPrefix: z.string().describe('Mount prefix of the workspace to update.'),
 });
 
 export const updateWorkspaceMdToolOutputSchema = z.object({
@@ -341,28 +365,6 @@ export type UpdateWorkspaceMdToolOutput = z.infer<
 export const updateWorkspaceMdToolSchema = {
   inputSchema: updateWorkspaceMdToolInputSchema,
   outputSchema: updateWorkspaceMdToolOutputSchema,
-} as const;
-
-export const writeWorkspaceMdToolInputSchema = z.object({
-  content: z.string().describe('The complete  content to write'),
-});
-
-export const writeWorkspaceMdToolOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
-  path: z.string(),
-});
-
-export type WriteWorkspaceMdToolInput = z.infer<
-  typeof writeWorkspaceMdToolInputSchema
->;
-export type WriteWorkspaceMdToolOutput = z.infer<
-  typeof writeWorkspaceMdToolOutputSchema
->;
-
-export const writeWorkspaceMdToolSchema = {
-  inputSchema: writeWorkspaceMdToolInputSchema,
-  outputSchema: writeWorkspaceMdToolOutputSchema,
 } as const;
 
 export const executeSandboxJsToolInputSchema = z.object({
@@ -528,7 +530,6 @@ export const allToolSchemas = {
   deleteFileTool: deleteFileToolSchema,
   getLintingDiagnosticsTool: getLintingDiagnosticsToolSchema,
   updateWorkspaceMdTool: updateWorkspaceMdToolSchema,
-  writeWorkspaceMdTool: writeWorkspaceMdToolSchema,
   executeSandboxJsTool: executeSandboxJsToolSchema,
   readConsoleLogsTool: readConsoleLogsToolSchema,
   listLibraryDocsTool: listLibraryDocsToolSchema,

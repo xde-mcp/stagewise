@@ -1,4 +1,3 @@
-import type { AggregatedDiagnostic } from '@/services/toolbox/services/lsp/types';
 import type { ToolboxService } from '.';
 
 /**
@@ -21,19 +20,14 @@ export type BrowserTabInfo = {
 };
 
 /**
- * Snapshot of workspace connection state and paths.
+ * Snapshot of workspace connection state and mounted paths.
  */
 export type WorkspaceSnapshot = {
-  isConnected: boolean;
-  workspacePath: string | null;
-  cwd: string | null;
-  workspaceMdPath: string | null;
+  mounts: Array<{
+    prefix: string;
+    path: string;
+  }>;
 };
-
-/**
- * Map of absolute file paths to their aggregated LSP diagnostics.
- */
-export type DiagnosticsByFile = Map<string, AggregatedDiagnostic[]>;
 
 /**
  * Narrowed type that only exposes the context-providing getters
@@ -49,6 +43,5 @@ export type ToolboxContextProvider = Pick<
   | 'captureEnvironmentSnapshot'
   | 'getAgentsMd'
   | 'getWorkspaceMd'
-  | 'getLspDiagnosticsForAgent'
   | 'getSkillsList'
 >;

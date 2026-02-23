@@ -1,5 +1,4 @@
 import type { ToolboxContextProvider } from '@/services/toolbox/types';
-import type { WorkspaceAgentSettings } from '@shared/karton-contracts/ui/shared-types';
 
 // Import basic system prompt parts
 import { getApplicationInfo } from '../../shared/prompts/system/application-info';
@@ -17,23 +16,29 @@ import { getSkillsInformation } from '../../shared/prompts/system/skills';
  * 4. Security authority model (prevent prompt injection etc.)
  * 5. Skills information (what skills are available and how to use them)
  * 6. Long-term app state (open workspace, etc.)
- * 7. Pre-read files (AGENTS.md and )
+ * 7. Pre-read files (AGENTS.md and WORKSPACE.md per mount)
  */
 
 export async function buildChatSystemPrompt(
   toolbox: ToolboxContextProvider,
   agentInstanceId: string,
-  workspaceAgentSettings: WorkspaceAgentSettings,
 ): Promise<string> {
-  const { respectAgentsMd } = workspaceAgentSettings;
+  const agentsMdEntries = await toolbox.getAgentsMd(agentInstanceId);
+  const workspaceMdEntries = await toolbox.getWorkspaceMd(agentInstanceId);
 
-  const agentsMdContent = respectAgentsMd
-    ? await toolbox.getAgentsMd(agentInstanceId)
-    : null;
+  const hasAgentsMd = agentsMdEntries.length > 0;
+  const applicationInfo = getApplicationInfo({
+    respectAgentsMd: hasAgentsMd,
+  });
 
-  const workspaceMdContent = await toolbox.getWorkspaceMd(agentInstanceId);
+  const agentsMdParts = agentsMdEntries.map(
+    (e) => `<file path="${e.mountPrefix}/AGENTS.md">${e.content}</file>`,
+  );
 
-  const applicationInfo = getApplicationInfo({ respectAgentsMd });
+  const workspaceMdParts = workspaceMdEntries.map(
+    (e) =>
+      `<file path="${e.mountPrefix}/.stagewise/WORKSPACE.md">${e.content}</file>`,
+  );
 
   const prompt = [
     `<identity>${Identity}</identity>`,
@@ -42,12 +47,8 @@ export async function buildChatSystemPrompt(
     `<security-authority-model>${SecurityAuthorityModel}</security-authority-model>`,
     `<skills>${await getSkillsInformation(toolbox, agentInstanceId)}</skills>`,
     `<application-state>${await getApplicationStateContext(toolbox, agentInstanceId)}</application-state>`,
-    agentsMdContent
-      ? `<file path="/AGENTS.md">${agentsMdContent}</file>`
-      : undefined,
-    workspaceMdContent
-      ? `<file path=".stagewise/WORKSPACE.md">${workspaceMdContent}</file>`
-      : undefined,
+    ...agentsMdParts,
+    ...workspaceMdParts,
   ]
     .filter(Boolean)
     .join('\n');

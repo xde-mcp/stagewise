@@ -1,8 +1,8 @@
+import type { MountedClientRuntimes } from '../../utils';
 import {
   type GrepSearchToolInput,
   grepSearchToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { tool } from 'ai';
 import {
   rethrowCappedToolOutputError,
@@ -34,8 +34,10 @@ Behavior: Searches recursively from current directory. Respects .gitignore by de
  */
 export async function grepSearchToolExecute(
   params: GrepSearchToolInput,
-  clientRuntime: ClientRuntimeNode,
+  mountedRuntimes: MountedClientRuntimes,
 ) {
+  const clientRuntime = mountedRuntimes.get(params.mount_prefix);
+  if (!clientRuntime) throw new Error('Mounted path not found');
   const {
     query,
     case_sensitive,
@@ -152,11 +154,11 @@ export async function grepSearchToolExecute(
   }
 }
 
-export const grepSearchTool = (clientRuntime: ClientRuntimeNode) =>
+export const grepSearchTool = (mountedRuntimes: MountedClientRuntimes) =>
   tool({
     description: DESCRIPTION,
     inputSchema: grepSearchToolInputSchema,
     execute: async (args) => {
-      return grepSearchToolExecute(args, clientRuntime);
+      return grepSearchToolExecute(args, mountedRuntimes);
     },
   });

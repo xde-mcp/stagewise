@@ -1,6 +1,11 @@
 import { useMemo, useState, useRef, type ReactNode } from 'react';
 import { ExternalLinkIcon } from 'lucide-react';
-import { cn, IDE_SELECTION_ITEMS, getTruncatedFileUrl } from '@ui/utils';
+import {
+  cn,
+  IDE_SELECTION_ITEMS,
+  getTruncatedFileUrl,
+  stripMountPrefix,
+} from '@ui/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -276,10 +281,15 @@ export const WorkspaceFileLink = ({
   const ideName = IDE_SELECTION_ITEMS[openInIdeChoice];
   const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
 
-  const displayPath = useMemo(() => {
-    return getTruncatedFileUrl(filePath, 3, 128);
-  }, [filePath]);
+  const strippedPath = stripMountPrefix(filePath);
 
+  const displayPath = useMemo(() => {
+    return getTruncatedFileUrl(strippedPath, 3, 128);
+  }, [strippedPath]);
+
+  const displayPathWithLine = lineNumber
+    ? `${strippedPath}:${lineNumber}`
+    : strippedPath;
   const pathWithLine = lineNumber ? `${filePath}:${lineNumber}` : filePath;
 
   const processedHref = useMemo(() => {
@@ -331,7 +341,9 @@ export const WorkspaceFileLink = ({
       <TooltipTrigger>{anchor}</TooltipTrigger>
       <TooltipContent>
         <div className="flex max-w-96 flex-col gap-1">
-          <div className="break-all font-mono text-xs">{pathWithLine}</div>
+          <div className="break-all font-mono text-xs">
+            {displayPathWithLine}
+          </div>
           <div className="text-muted-foreground text-xs">
             Click to open in {ideName}
           </div>

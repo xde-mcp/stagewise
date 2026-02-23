@@ -567,7 +567,7 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      expect(result['file-1'].lineMap).toEqual({ 0: 'user' });
+      expect(result['file-1'].lineMap).toEqual({ 0: 'user', 1: 'user' });
       expect(result['file-1'].removalMap).toEqual({
         0: 'agent-1',
         2: 'agent-2',
@@ -589,7 +589,7 @@ describe('diff utilities', () => {
       ];
       const result = buildContributorMap({ 'file-1': ops });
 
-      expect(result['file-1'].lineMap).toEqual({ 0: 'user' });
+      expect(result['file-1'].lineMap).toEqual({ 0: 'user', 1: 'user' });
       // agent-1 removed baseline line 1 first; agent-2 re-added it (null origin);
       // agent-3 removed agent-2's line (null origin) — baseline line 1 stays
       // attributed to agent-1 (first and only removal of the original)
@@ -675,13 +675,16 @@ describe('diff utilities', () => {
       const ops: OperationWithContent[] = [
         createOpWithContent(
           createBaselineOp({ reason: 'init', filepath: '/readme.md' }),
-          'line1\nline2',
+          'line1\nline2\n',
         ),
-        createOpWithContent(createEditOp({ filepath: '/readme.md' }), 'line1'),
+        createOpWithContent(
+          createEditOp({ filepath: '/readme.md' }),
+          'line1\n',
+        ),
       ];
       const contributorMap = {
         'file-1': {
-          lineMap: { 0: 'user' as Contributor },
+          lineMap: { 0: 'user' as Contributor, 1: 'user' as Contributor },
           removalMap: { 1: 'agent-1' as Contributor },
         },
       };

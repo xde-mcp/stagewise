@@ -5,7 +5,7 @@ import {
 import { useMemo } from 'react';
 import { Loader2Icon, XCircleIcon } from 'lucide-react';
 import { ToolPartUI } from './shared/tool-part-ui';
-import { cn } from '@/utils';
+import { cn, stripMountPrefix } from '@/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import type { LintingDiagnostic } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
@@ -106,7 +106,7 @@ export const GetLintingDiagnosticsToolPart = ({
               {files.map((file) => (
                 <div key={file.path} className="flex flex-col gap-0.5">
                   <div className="truncate font-medium text-muted-foreground text-xs">
-                    {file.path}
+                    {stripMountPrefix(file.path)}
                   </div>
                   <div className="flex flex-col gap-0.5 pl-2">
                     {file.diagnostics.map((diag, idx) => (
@@ -195,7 +195,7 @@ const SuccessHeader = ({
 const LoadingHeader = ({ disableShimmer }: { disableShimmer?: boolean }) => {
   return (
     <div className="flex flex-row items-center justify-start gap-1 overflow-hidden">
-      <Loader2Icon className="size-3 shrink-0 animate-spin text-primary" />
+      <Loader2Icon className="size-3 shrink-0 animate-spin text-primary-foreground" />
       <span
         dir="ltr"
         className={cn(

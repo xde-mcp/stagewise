@@ -8,7 +8,7 @@ import {
   markdownToTipTapContent,
 } from '@/utils/tiptap-content-utils';
 import { cn, collectUserMessageMetadata } from '@/utils';
-import { MessageAccessPathProvider } from '@/hooks/use-message-access-path';
+import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { FileUIPart } from 'ai';
 import {
@@ -51,6 +51,8 @@ import type { Content } from '@tiptap/core';
 import { IconMagicWandSparkle } from 'nucleo-micro-bold';
 
 type UserMessage = AgentMessage & { role: 'user' };
+
+const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
 
 export const MessageUser = memo(
   function MessageUser({
@@ -104,8 +106,10 @@ export const MessageUser = memo(
     const selectedElementsFromWebcontents = useKartonState(
       (s) => s.browser.selectedElements,
     );
-    const agentAccessPath = useKartonState((s) =>
-      openAgent ? (s.toolbox[openAgent]?.workspace?.path ?? null) : null,
+    const mountedPaths = useKartonState((s) =>
+      openAgent
+        ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
+        : EMPTY_MOUNTS,
     );
     const setElementSelectionActiveProc = useKartonProcedure(
       (p) => p.browser.contextSelection.setActive,
@@ -243,7 +247,7 @@ export const MessageUser = memo(
           const metadata = collectUserMessageMetadata(
             combinedSelectedElements,
             pendingTiptapContent,
-            agentAccessPath,
+            mountedPaths,
           );
 
           // Merge text clip attachments from two sources:
@@ -564,7 +568,7 @@ export const MessageUser = memo(
 
     // Conditional rendering: view-only mode uses lightweight renderer, edit mode uses full TipTap
     return (
-      <MessageAccessPathProvider value={msg.metadata?.agentAccessPath ?? null}>
+      <MountedPathsProvider value={msg.metadata?.mountedPaths ?? null}>
         <MessageAttachmentsProvider
           elements={allAvailableElements}
           fileAttachments={allFileAttachments}
@@ -643,6 +647,7 @@ export const MessageUser = memo(
                         onEscape={handleCancelEditing}
                         placeholder="Edit your message..."
                         showModelSelect
+                        showWorkspaceSelect={false}
                         onModelChange={() => chatInputRef.current?.focus()}
                         showContextUsageRing={false}
                         attachmentCount={totalAttachments}
@@ -712,7 +717,7 @@ export const MessageUser = memo(
             </div>
           </div>
         </MessageAttachmentsProvider>
-      </MessageAccessPathProvider>
+      </MountedPathsProvider>
     );
   },
   // Custom comparison to prevent re-renders when message object references change

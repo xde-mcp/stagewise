@@ -42,6 +42,7 @@ import {
 // Stable empty arrays to avoid new-reference re-renders
 const EMPTY_HISTORY: AgentMessage[] = [];
 const EMPTY_QUEUE: (AgentMessage & { role: 'user' })[] = [];
+const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
 
 export function ChatPanelFooter() {
   const chatInputRef = useRef<ChatInputHandle>(null);
@@ -188,8 +189,10 @@ export function ChatPanelFooter() {
     (p) => p.browser.contextSelection.removeElement,
   );
 
-  const agentAccessPath = useKartonState((s) =>
-    openAgent ? (s.toolbox[openAgent]?.workspace?.path ?? null) : null,
+  const mountedPaths = useKartonState((s) =>
+    openAgent
+      ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
+      : EMPTY_MOUNTS,
   );
 
   const isConnected = useKartonConnected();
@@ -340,8 +343,8 @@ export function ChatPanelFooter() {
   const canSendMessageRef = useRef(effectiveCanSendMessage);
   canSendMessageRef.current = effectiveCanSendMessage;
 
-  const agentAccessPathRef = useRef(agentAccessPath);
-  agentAccessPathRef.current = agentAccessPath;
+  const mountedPathsRef = useRef(mountedPaths);
+  mountedPathsRef.current = mountedPaths;
 
   const handleSubmit = useCallback(async () => {
     if (!canSendMessageRef.current) return;
@@ -350,13 +353,13 @@ export function ChatPanelFooter() {
     const currentLocalInputState = localInputStateRef.current;
     const currentFileAttachments = fileAttachmentsRef.current;
     const currentSelectedElements = localSelectedElementsRef.current;
-    const currentAccessPath = agentAccessPathRef.current;
+    const currentMountedPaths = mountedPathsRef.current;
 
     // Collect metadata for selected elements and text clips
     const metadata = collectUserMessageMetadata(
       currentSelectedElements,
       currentLocalInputState,
-      currentAccessPath,
+      currentMountedPaths,
     );
 
     const markdownText = chatInputRef.current!.getTextContent();

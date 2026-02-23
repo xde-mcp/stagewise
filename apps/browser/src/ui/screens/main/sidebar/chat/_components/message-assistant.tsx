@@ -14,7 +14,7 @@ import type {
 } from '@shared/karton-contracts/ui/agent';
 import type { UIAgentTools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { useMemo, memo } from 'react';
-import { MessageAccessPathProvider } from '@/hooks/use-message-access-path';
+import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
 import { ThinkingPart } from './message-part-ui/thinking';
 import { FilePart } from './message-part-ui/file';
 import { TextPart } from './message-part-ui/text';
@@ -78,7 +78,7 @@ export const MessageAssistant = memo(
     if (isEmptyMessage && !isLastMessage) return null;
 
     return (
-      <MessageAccessPathProvider value={msg.metadata?.agentAccessPath ?? null}>
+      <MountedPathsProvider value={msg.metadata?.mountedPaths ?? null}>
         <div className={cn('flex w-full flex-col gap-1')}>
           {msg.metadata?.compressedHistory && (
             <div
@@ -253,7 +253,7 @@ export const MessageAssistant = memo(
             </div>
           </div>
         </div>
-      </MessageAccessPathProvider>
+      </MountedPathsProvider>
     );
   },
   // Custom comparison to prevent re-renders when message object references change

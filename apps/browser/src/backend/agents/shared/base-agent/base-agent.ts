@@ -1029,13 +1029,21 @@ export abstract class BaseAgent<
           this.spawnChildAgentHandler<AT>(
             agentType,
             config,
-            (_finishOutput) => {
-              // no-op for asynchronous mode
+            (_finishOutput) => {},
+            (error) => {
+              this.report(error, 'spawnChildAgent');
+              this.logger.error(
+                `[${this.agentType}] Async child agent ${agentType} failed during execution`,
+                { error },
+              );
             },
-            (_error) => {
-              // no-op for asynchronous mode
-            },
-          );
+          ).catch((error: unknown) => {
+            this.report(error as Error, 'spawnChildAgent');
+            this.logger.error(
+              `[${this.agentType}] Failed to spawn async child agent ${agentType}`,
+              { error },
+            );
+          });
           return { message: `Agent ${agentType} spawned asynchronously` };
         }
 
@@ -1600,9 +1608,8 @@ export abstract class BaseAgent<
         // Add metadata for message creation
         existingMessage.metadata ??= {
           createdAt: new Date(),
-          agentAccessPath:
-            this.toolbox.getWorkspaceSnapshot(this.instanceId).workspacePath ??
-            null,
+          mountedPaths: this.toolbox.getWorkspaceSnapshot(this.instanceId)
+            .mounts,
           partsMetadata: [],
           environmentSnapshot: this.toolbox.captureEnvironmentSnapshot(
             this.instanceId,

@@ -28,20 +28,20 @@ function createMockToolMessage(
 interface WorkspaceMdSectionStoryProps {
   status: WorkspaceMdStatus;
   history: AgentMessage[];
-  workspacePath?: string | null;
+  workspaceMounts?: { prefix: string; path: string }[];
   errorMessage?: string | null;
 }
 
 function WorkspaceMdSectionStory({
   status,
   history,
-  workspacePath,
+  workspaceMounts,
   errorMessage,
 }: WorkspaceMdSectionStoryProps) {
   const section = WorkspaceMdStatusSection({
     status,
     history,
-    workspacePath,
+    workspaceMounts,
     errorMessage,
     onDismiss: () => console.log('[Storybook] onDismiss called'),
     onShowFile: () =>
@@ -190,14 +190,14 @@ export const RunningGrepSearch: Story = {
 /**
  * Running - Writing
  *
- * When the agent is writing the final  file.
+ * When the agent is writing the final .stagewise/WORKSPACE.md file.
  * Shows "Writing ..."
  */
 export const RunningWritingFile: Story = {
   name: 'Running / Writing ',
   args: {
     status: 'running',
-    history: [createMockToolMessage('tool-writeWorkspaceMdTool', {})],
+    history: [createMockToolMessage('tool-overwriteFileTool', {})],
   },
 };
 
@@ -222,16 +222,16 @@ export const RunningMultipleToolCalls: Story = {
 };
 
 /**
- * Running - Absolute Path (without workspacePath)
+ * Running - Absolute Path (no mounts)
  *
- * When agent uses absolute paths and no workspacePath is provided,
- * shows the full path (ugly).
+ * When agent uses absolute paths and no mounts are provided,
+ * shows the full path.
  */
-export const RunningAbsolutePathNoWorkspace: Story = {
-  name: 'Running / Absolute Path (no workspace)',
+export const RunningAbsolutePathNoMounts: Story = {
+  name: 'Running / Absolute Path (no mounts)',
   args: {
     status: 'running',
-    workspacePath: null,
+    workspaceMounts: [],
     history: [
       createMockToolMessage('tool-listFilesTool', {
         relative_path: '/Users/user/projects/my-app/src/components',
@@ -241,17 +241,17 @@ export const RunningAbsolutePathNoWorkspace: Story = {
 };
 
 /**
- * Running - Absolute Path (with workspacePath)
+ * Running - Absolute Path (with mounts)
  *
- * When agent uses absolute paths but workspacePath is provided,
- * the path is relativized for display (nice!).
+ * When agent uses absolute paths and mounts are provided,
+ * the path is relativized for display.
  * Shows "Listing files in src/components..." instead of the full path.
  */
-export const RunningAbsolutePathWithWorkspace: Story = {
-  name: 'Running / Absolute Path (with workspace)',
+export const RunningAbsolutePathWithMounts: Story = {
+  name: 'Running / Absolute Path (with mounts)',
   args: {
     status: 'running',
-    workspacePath: '/Users/user/projects/my-app',
+    workspaceMounts: [{ prefix: 'w1', path: '/Users/user/projects/my-app' }],
     history: [
       createMockToolMessage('tool-listFilesTool', {
         relative_path: '/Users/user/projects/my-app/src/components',

@@ -5,8 +5,6 @@ import type {
 } from '@shared/karton-contracts/ui/shared-types';
 import { computeFileDiffChanges } from './file-diff-changes';
 
-const WORKSPACE = '/home/user/project';
-
 function makeSnapshot(
   overrides: Partial<FileDiffSnapshot> & { path: string },
 ): FileDiffSnapshot {
@@ -29,7 +27,7 @@ function makeEnv(
 }
 
 const AGENT_ID = '1';
-const ABS = `${WORKSPACE}/src/file.txt`;
+const ABS = '/home/user/project/src/file.txt';
 
 describe('computeFileDiffChanges', () => {
   it('returns empty array when previous is null', () => {
@@ -37,9 +35,7 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS })],
       [makeSnapshot({ path: ABS })],
     );
-    expect(computeFileDiffChanges(null, current, AGENT_ID, WORKSPACE)).toEqual(
-      [],
-    );
+    expect(computeFileDiffChanges(null, current, AGENT_ID)).toEqual([]);
   });
 
   it('returns empty array when nothing changed', () => {
@@ -47,53 +43,17 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS })],
       [makeSnapshot({ path: ABS })],
     );
-    expect(
-      computeFileDiffChanges(snapshot, snapshot, AGENT_ID, WORKSPACE),
-    ).toEqual([]);
+    expect(computeFileDiffChanges(snapshot, snapshot, AGENT_ID)).toEqual([]);
   });
 
-  // -- Relative path output --
-
-  it('outputs relative paths when workspace path is provided', () => {
+  it('uses absolute paths in output', () => {
     const previous = makeEnv([], []);
     const current = makeEnv(
       [makeSnapshot({ path: ABS, contributors: ['agent-99'] })],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt modified by: [agent-99]');
-    expect(result.join('')).not.toContain(WORKSPACE);
-  });
-
-  it('falls back to absolute path when workspace is null', () => {
-    const previous = makeEnv([], []);
-    const current = makeEnv(
-      [makeSnapshot({ path: ABS, contributors: ['agent-99'] })],
-      [],
-    );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID, null);
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toContain(`${ABS} modified by: [agent-99]`);
-  });
-
-  it('falls back to absolute path when path does not start with workspace', () => {
-    const otherPath = '/other/location/file.txt';
-    const previous = makeEnv([], []);
-    const current = makeEnv(
-      [makeSnapshot({ path: otherPath, contributors: ['user'] })],
-      [],
-    );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain(`${otherPath} modified by: [user]`);
   });
 
   // -- Self edits are never reported --
@@ -104,9 +64,7 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS, contributors: ['agent-1'] })],
       [],
     );
-    expect(
-      computeFileDiffChanges(previous, current, AGENT_ID, WORKSPACE),
-    ).toEqual([]);
+    expect(computeFileDiffChanges(previous, current, AGENT_ID)).toEqual([]);
   });
 
   it('does not report self as modifier when self is among contributors', () => {
@@ -130,12 +88,7 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toEqual([]);
     expect(result.join('')).not.toContain('you');
   });
@@ -148,13 +101,8 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS, contributors: ['agent-99'] })],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt modified by: [agent-99]');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS} modified by: [agent-99]`);
   });
 
   it('reports user when file appears with only user contributor', () => {
@@ -163,13 +111,8 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS, contributors: ['user'] })],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt modified by: [user]');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS} modified by: [user]`);
   });
 
   it('reports only other agents when self also contributed on first appearance', () => {
@@ -183,13 +126,8 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt modified by: [agent-42]');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS} modified by: [agent-42]`);
     expect(result.join('')).not.toContain('you');
   });
 
@@ -214,13 +152,8 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt modified by: [agent-42]');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS} modified by: [agent-42]`);
   });
 
   it('reports user modification via new contributor', () => {
@@ -244,13 +177,8 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt modified by: [user]');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS} modified by: [user]`);
   });
 
   it('reports new contributors from summary comparison', () => {
@@ -272,13 +200,8 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt modified by: [agent-42]');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS} modified by: [agent-42]`);
   });
 
   // -- Your edits status --
@@ -289,13 +212,8 @@ describe('computeFileDiffChanges', () => {
       [],
     );
     const current = makeEnv([], []);
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt: your edits no longer present');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS}: your edits no longer present`);
   });
 
   it('does not report edits gone when self was not contributor', () => {
@@ -304,12 +222,7 @@ describe('computeFileDiffChanges', () => {
       [],
     );
     const current = makeEnv([], []);
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toEqual([]);
   });
 
@@ -334,13 +247,8 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt: your edits no longer present');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS}: your edits no longer present`);
   });
 
   it('detects partial removal (hunks reduced, baseline unchanged)', () => {
@@ -368,13 +276,8 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
-    expect(result).toContain('src/file.txt: some of your edits were removed');
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toContain(`${ABS}: some of your edits were removed`);
   });
 
   // -- Combined: modifiers + edits status --
@@ -400,14 +303,9 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toContain(
-      'src/file.txt modified by: [user] (your edits no longer present)',
+      `${ABS} modified by: [user] (your edits no longer present)`,
     );
   });
 
@@ -436,14 +334,9 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toContain(
-      'src/file.txt modified by: [user] (some of your edits were removed)',
+      `${ABS} modified by: [user] (some of your edits were removed)`,
     );
   });
 
@@ -457,12 +350,7 @@ describe('computeFileDiffChanges', () => {
     });
     const previous = makeEnv([snap], []);
     const current = makeEnv([snap], []);
-    const result = computeFileDiffChanges(
-      previous,
-      current,
-      AGENT_ID,
-      WORKSPACE,
-    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { EyeIcon } from 'lucide-react';
+import { stripMountPrefix } from '@/utils';
 
 export const ReadFileToolPart = ({
   part,
@@ -11,8 +12,12 @@ export const ReadFileToolPart = ({
   disableShimmer?: boolean;
   minimal?: boolean;
 }) => {
-  const streamingText = part.input?.relative_path
-    ? `Reading ${part.input.relative_path}...`
+  const displayPath = part.input?.relative_path
+    ? stripMountPrefix(part.input.relative_path)
+    : undefined;
+
+  const streamingText = displayPath
+    ? `Reading ${displayPath}...`
     : 'Reading file...';
 
   const finishedText =
@@ -20,7 +25,7 @@ export const ReadFileToolPart = ({
       <span className="flex min-w-0 gap-1">
         <span className="shrink-0 truncate font-medium">Read </span>
         <span className="truncate font-normal opacity-75">
-          {part.input?.relative_path ?? ''}
+          {displayPath ?? ''}
           {part.output?.result?.linesRead && (
             <> ({part.output?.result?.linesRead} lines)</>
           )}

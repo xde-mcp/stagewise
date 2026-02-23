@@ -103,6 +103,8 @@ function activeAgentListEqual(
   return true;
 }
 
+const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
+
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createAgent = useKartonProcedure((p) => p.agents.create);
   const resumeAgent = useKartonProcedure((p) => p.agents.resume);
@@ -122,8 +124,10 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       : null,
   );
 
-  const currentWorkspacePath = useKartonState((s) =>
-    openAgent ? (s.toolbox[openAgent]?.workspace?.path ?? null) : null,
+  const currentMounts = useKartonState((s) =>
+    openAgent
+      ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
+      : EMPTY_MOUNTS,
   );
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
@@ -311,6 +315,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   openAgentRef.current = openAgent;
   const openAgentModelIdRef = useRef(openAgentModelId);
   openAgentModelIdRef.current = openAgentModelId;
+  const currentMountPathsRef = useRef(currentMounts.map((m) => m.path));
+  currentMountPathsRef.current = currentMounts.map((m) => m.path);
 
   // Load more history entries when the user scrolls to the bottom of the list.
   const loadMoreHistory = useCallback(() => {
@@ -343,15 +349,16 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createAgentAndFocus = useCallback(async () => {
     const currentInputState = getDraft();
     const currentModelId = openAgentModelIdRef.current ?? undefined;
+    const paths = currentMountPathsRef.current;
     const newAgent = await createAgent(
       currentInputState || undefined,
       currentModelId,
-      currentWorkspacePath ?? undefined,
+      paths.length > 0 ? paths : undefined,
     );
     setOpenAgent(newAgent);
     void getAgentsHistoryList(0, PAGE_SIZE).then(setAgentsList);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-  }, [createAgent, getDraft, getAgentsHistoryList, currentWorkspacePath]);
+  }, [createAgent, getDraft, getAgentsHistoryList]);
 
   const handleCreateAgent = useCallback(() => {
     void createAgentAndFocus();

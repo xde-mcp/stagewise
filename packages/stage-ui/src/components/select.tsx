@@ -131,6 +131,11 @@ export interface SelectProps<
   popupClassName?: string;
 
   /**
+   * Custom className for the list element
+   */
+  scrollContainerClassName?: string;
+
+  /**
    * Custom className for item elements
    */
   itemClassName?: string;
@@ -294,6 +299,7 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
     triggerVariant = 'secondary',
     triggerClassName,
     popupClassName,
+    scrollContainerClassName,
     itemClassName,
     renderValue,
     renderItem,
@@ -528,7 +534,9 @@ function SelectInner<Value = string | null, Multiple extends boolean = false>(
               <IconChevronUpFill18 className="size-3" />
             </SelectBase.ScrollUpArrow>
 
-            <OverlayScrollbar className="max-h-48">
+            <OverlayScrollbar
+              className={cn('max-h-48', scrollContainerClassName)}
+            >
               <SelectBase.List className="flex flex-col gap-0.5">
                 {groupedItems.map(
                   ({ group, items: groupItems }, groupIndex) => (

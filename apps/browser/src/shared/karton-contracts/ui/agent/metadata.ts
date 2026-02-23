@@ -52,9 +52,15 @@ export const browserSnapshotSchema = z.object({
 
 export type BrowserSnapshot = z.infer<typeof browserSnapshotSchema>;
 
+export const mountSchema = z.object({
+  prefix: z.string(),
+  path: z.string(),
+});
+
+export type Mount = z.infer<typeof mountSchema>;
+
 export const workspaceSnapshotSchema = z.object({
-  isConnected: z.boolean(),
-  workspacePath: z.string().nullable(),
+  mounts: z.array(mountSchema),
 });
 
 export type WorkspaceSnapshot = z.infer<typeof workspaceSnapshotSchema>;
@@ -69,8 +75,8 @@ export type EnvironmentSnapshot = z.infer<typeof environmentSnapshotSchema>;
 
 const metadataSchema = z.object({
   createdAt: z.date(),
-  /** Workspace access path captured at message creation time for persistent file links. */
-  agentAccessPath: z.string().nullish(),
+  /** Mounted workspace paths captured at message creation time for persistent file links. */
+  mountedPaths: z.array(mountSchema).optional(),
   partsMetadata: z.array(
     z
       .object({ startedAt: z.date().optional(), endedAt: z.date().optional() })

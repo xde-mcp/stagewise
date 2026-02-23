@@ -44,36 +44,24 @@ function newContributorsExcludingSelf(
   return currContributors.filter((c) => !prevSet.has(c) && c !== selfKey);
 }
 
-function toRelativePath(
-  absolutePath: string,
-  workspacePath: string | null,
-): string {
-  if (workspacePath && absolutePath.startsWith(workspacePath)) {
-    return absolutePath.slice(workspacePath.length).replace(/^\//, '');
-  }
-  return absolutePath;
-}
-
 function formatFileChange(
   path: string,
   change: FileChange,
   agentInstanceId: string,
-  workspacePath: string | null,
 ): string | null {
-  const rel = toRelativePath(path, workspacePath);
   const hasModifiers = change.modifiers.length > 0;
   const formatted = change.modifiers.map((c) =>
     formatContributor(c, agentInstanceId),
   );
 
   if (hasModifiers && change.editsGone)
-    return `${rel} modified by: [${formatted.join(', ')}] (your edits no longer present)`;
+    return `${path} modified by: [${formatted.join(', ')}] (your edits no longer present)`;
   if (hasModifiers && change.editsPartiallyRemoved)
-    return `${rel} modified by: [${formatted.join(', ')}] (some of your edits were removed)`;
-  if (hasModifiers) return `${rel} modified by: [${formatted.join(', ')}]`;
-  if (change.editsGone) return `${rel}: your edits no longer present`;
+    return `${path} modified by: [${formatted.join(', ')}] (some of your edits were removed)`;
+  if (hasModifiers) return `${path} modified by: [${formatted.join(', ')}]`;
+  if (change.editsGone) return `${path}: your edits no longer present`;
   if (change.editsPartiallyRemoved)
-    return `${rel}: some of your edits were removed`;
+    return `${path}: some of your edits were removed`;
   return null;
 }
 
@@ -91,7 +79,6 @@ export function computeFileDiffChanges(
   previous: EnvironmentDiffSnapshot | null,
   current: EnvironmentDiffSnapshot,
   agentInstanceId: string,
-  workspacePath: string | null = null,
 ): string[] {
   if (!previous) return [];
 
@@ -170,7 +157,7 @@ export function computeFileDiffChanges(
 
   const changes: string[] = [];
   for (const [path, change] of fileChanges) {
-    const line = formatFileChange(path, change, agentInstanceId, workspacePath);
+    const line = formatFileChange(path, change, agentInstanceId);
     if (line) changes.push(line);
   }
 

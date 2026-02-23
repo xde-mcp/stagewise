@@ -2,13 +2,14 @@ import {
   type ReadFileToolInput,
   readFileToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { tool } from 'ai';
 import {
   rethrowCappedToolOutputError,
   capToolOutput,
   checkFileSize,
+  type MountedClientRuntimes,
 } from '../../utils';
+import { resolveMountedRelativePath } from '../../utils/path-mounting';
 
 /* Due to an issue in zod schema conversion in the ai sdk,
    the schema descriptions are not properly used for the prompts -
@@ -30,9 +31,11 @@ Behavior: Returns content with totalLines count. Output capped at 200KB (~50k to
  */
 export async function readFileToolExecute(
   params: ReadFileToolInput,
-  clientRuntime: ClientRuntimeNode,
+  mountedRuntimes: MountedClientRuntimes,
 ) {
-  const { relative_path, start_line, end_line } = params;
+  const { clientRuntime, relativePath: relative_path } =
+    resolveMountedRelativePath(mountedRuntimes, params.relative_path);
+  const { start_line, end_line } = params;
 
   // Validate line range when not reading entire file
   if (
@@ -127,11 +130,11 @@ export async function readFileToolExecute(
   }
 }
 
-export const readFileTool = (clientRuntime: ClientRuntimeNode) =>
+export const readFileTool = (mountedRuntimes: MountedClientRuntimes) =>
   tool({
     description: DESCRIPTION,
     inputSchema: readFileToolInputSchema,
     execute: async (args) => {
-      return readFileToolExecute(args, clientRuntime);
+      return readFileToolExecute(args, mountedRuntimes);
     },
   });

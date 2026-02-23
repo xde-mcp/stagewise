@@ -439,7 +439,7 @@ function MostVisitedCard({
         </span>
         {isRunning && (
           <div className="flex shrink-0 items-center gap-1 text-success-foreground text-xs">
-            <div className="size-1.5 rounded-full bg-success-solid" />
+            <div className="size-1.5 rounded-full bg-success-foreground" />
             Running
           </div>
         )}

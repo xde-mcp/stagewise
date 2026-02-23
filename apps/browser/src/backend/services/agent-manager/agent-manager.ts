@@ -112,7 +112,7 @@ export class AgentManagerService extends DisposableService {
         _callingClientId: string,
         initialInputState?: string,
         modelId?: ModelId,
-        workspacePath?: string,
+        workspacePaths?: string[],
       ) => {
         const agent = await this.createAgent(
           AgentTypes.CHAT,
@@ -122,11 +122,9 @@ export class AgentManagerService extends DisposableService {
           undefined,
           initialInputState,
         );
-        if (workspacePath) {
-          await this.toolbox.handleOpenWorkspace(
-            agent.instanceId,
-            workspacePath,
-          );
+        if (workspacePaths) {
+          for (const wp of workspacePaths)
+            await this.toolbox.handleMountWorkspace(agent.instanceId, wp);
         }
         return agent.instanceId;
       },

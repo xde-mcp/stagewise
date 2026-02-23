@@ -10,7 +10,8 @@ const finishToolOutputSchema = z.object({
 
 export class WorkspaceMdAgent extends BaseAgent<
   typeof finishToolOutputSchema,
-  { updateReason: string } | undefined
+  | { updateReason: string; mountPrefix: string; parentAgentInstanceId: string }
+  | undefined
 > {
   public static readonly agentType = AgentTypes.WORKSPACE_MD;
   public static readonly config = {
@@ -50,8 +51,27 @@ export class WorkspaceMdAgent extends BaseAgent<
 
   protected async onCreated(): Promise<void> {
     const reason = this.instanceConfig?.updateReason;
+    const parentMounts = this.toolbox.getMountedPathsForAgent(
+      this.instanceConfig?.parentAgentInstanceId ?? '',
+    );
+    const mountPrefix = this.instanceConfig?.mountPrefix;
+    const path = parentMounts.get(mountPrefix ?? '');
+    if (!path)
+      throw new Error(
+        `Mount ${mountPrefix} not found for agent ${this.instanceConfig?.parentAgentInstanceId ?? ''}`,
+      );
+    await this.toolbox.handleMountWorkspace(this.instanceId, path);
 
-    const workspaceMd = await this.toolbox.getWorkspaceMd(this.instanceId);
+    const workspaceMdEntries = await this.toolbox.getWorkspaceMd(
+      this.instanceId,
+    );
+
+    const workspaceMdParts = workspaceMdEntries
+      .map(
+        (e) =>
+          `<file path="${e.mountPrefix}/.stagewise/WORKSPACE.md">${e.content}</file>`,
+      )
+      .join('\n');
 
     await this.sendUserMessage({
       id: '',
@@ -60,9 +80,9 @@ export class WorkspaceMdAgent extends BaseAgent<
         {
           type: 'text',
           text: `
-${reason ? `Update the  file. You need to update because of the following reason: ${reason}` : 'Generate a new  file after analyzing the project.'}
+${reason ? `Update the file \`.stagewise/WORKSPACE.md\`. You need to update because of the following reason: ${reason}` : 'Generate a new file `.stagewise/WORKSPACE.md` after analyzing the project.'}
 
-${workspaceMd ? `<file path=".stagewise/">${workspaceMd}</file>` : ''}`.trim(),
+${workspaceMdParts}`.trim(),
         },
       ],
     });
@@ -76,7 +96,8 @@ ${workspaceMd ? `<file path=".stagewise/">${workspaceMd}</file>` : ''}`.trim(),
       listFilesTool: await box.getTool('listFilesTool', id),
       globTool: await box.getTool('globTool', id),
       grepSearchTool: await box.getTool('grepSearchTool', id),
-      writeWorkspaceMdTool: await box.getTool('writeWorkspaceMdTool', id),
+      overwriteFileTool: await box.getTool('overwriteFileTool', id),
+      multiEditTool: await box.getTool('multiEditTool', id),
     };
     // Filter out null tools that miss dependencies in the toolbox
     return Object.fromEntries(

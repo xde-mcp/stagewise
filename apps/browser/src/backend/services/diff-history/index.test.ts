@@ -19,12 +19,28 @@ function createMockKartonService() {
   const state: {
     toolbox: Record<
       string,
-      { pendingFileDiffs: FileDiff[]; editSummary: FileDiff[] }
+      {
+        pendingFileDiffs: FileDiff[];
+        editSummary: FileDiff[];
+        workspace: { mounts: { prefix: string; path: string }[] };
+      }
     >;
-    agents: { instances: Record<string, unknown> };
+    agents: {
+      instances: Record<string, unknown>;
+    };
   } = {
-    toolbox: {},
-    agents: { instances: { '1': {} } },
+    toolbox: {
+      '1': {
+        pendingFileDiffs: [],
+        editSummary: [],
+        workspace: { mounts: [] },
+      },
+    },
+    agents: {
+      instances: {
+        '1': {},
+      },
+    },
   };
 
   const procedureHandlers: Map<string, (...args: unknown[]) => unknown> =
@@ -200,10 +216,12 @@ describe('DiffHistoryService (E2E)', () => {
       );
 
       expect(mockKarton._getToolboxState('1')).toEqual({
+        workspace: { mounts: [] },
         pendingFileDiffs: [],
         editSummary: [],
       });
       expect(mockKarton._getToolboxState('2')).toEqual({
+        workspace: { mounts: [] },
         pendingFileDiffs: [],
         editSummary: [],
       });

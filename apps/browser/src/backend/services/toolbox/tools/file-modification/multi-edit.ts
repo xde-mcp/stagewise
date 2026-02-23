@@ -2,9 +2,12 @@ import {
   type MultiEditToolInput,
   multiEditToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { tool } from 'ai';
-import { rethrowCappedToolOutputError } from '../../utils';
+import {
+  type MountedClientRuntimes,
+  rethrowCappedToolOutputError,
+} from '../../utils';
+import { resolveMountedRelativePath } from '../../utils/path-mounting';
 
 /* Due to an issue in zod schema conversion in the ai sdk,
    the schema descriptions are not properly used for the prompts -
@@ -31,9 +34,11 @@ Behavior: Edits applied in array order. Edit 2 operates on results of edit 1, ed
  */
 export async function multiEditToolExecute(
   params: MultiEditToolInput,
-  clientRuntime: ClientRuntimeNode,
+  mountedRuntimes: MountedClientRuntimes,
 ) {
-  const { relative_path, edits } = params;
+  const { clientRuntime, relativePath: relative_path } =
+    resolveMountedRelativePath(mountedRuntimes, params.relative_path);
+  const { edits } = params;
 
   if (edits.length === 0)
     throw new Error(
@@ -115,11 +120,11 @@ export async function multiEditToolExecute(
   }
 }
 
-export const multiEditTool = (clientRuntime: ClientRuntimeNode) =>
+export const multiEditTool = (mountedRuntimes: MountedClientRuntimes) =>
   tool({
     description: DESCRIPTION,
     inputSchema: multiEditToolInputSchema,
     execute: async (args) => {
-      return multiEditToolExecute(args, clientRuntime);
+      return multiEditToolExecute(args, mountedRuntimes);
     },
   });
