@@ -11,12 +11,6 @@ if (started) {
   app.quit();
 }
 
-const singleInstanceLock = app.requestSingleInstanceLock();
-
-if (!singleInstanceLock) {
-  app.quit();
-}
-
 const appBaseName = (() => {
   switch (__APP_RELEASE_CHANNEL__) {
     case 'release':
@@ -78,6 +72,12 @@ protocol.registerSchemesAsPrivileged([
     },
   },
 ]);
+
+const singleInstanceLock = app.requestSingleInstanceLock();
+
+if (!singleInstanceLock) {
+  app.quit();
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

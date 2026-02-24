@@ -153,6 +153,7 @@ const config: ForgeConfig = {
     name: buildConstants.__APP_BASE_NAME__,
     executableName: buildConstants.__APP_BASE_NAME__,
     appBundleId: buildConstants.__APP_BUNDLE_ID__,
+    appVersion: buildConstants.__APP_VERSION__,
     appCategoryType: 'public.app-category.developer-tools',
     protocols: [
       {
