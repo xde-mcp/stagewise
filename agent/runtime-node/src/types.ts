@@ -107,6 +107,7 @@ export interface GlobOptions {
   absoluteSearchPath?: string;
   excludePatterns?: string[];
   respectGitignore?: boolean;
+  maxResults?: number;
 }
 
 /**

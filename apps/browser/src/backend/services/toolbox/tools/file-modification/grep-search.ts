@@ -22,6 +22,7 @@ Parameters:
 - include_file_pattern (string, OPTIONAL): Glob pattern for files to include. Examples: "*.ts", "**/*.tsx", "src/**/*.js".
 - exclude_file_pattern (string, OPTIONAL): Glob pattern for files to exclude. Examples: "**/test-*.js", "metadata/**".
 - max_matches (number, OPTIONAL): Maximum matches to return. Defaults to 15, maximum allowed is 50.
+- include_gitignored (boolean, OPTIONAL): If true, includes files from gitignored paths (e.g. node_modules, dist). Always use include_file_pattern to scope the search (e.g. "node_modules/lodash/**") to avoid excessive results. Defaults to false.
 
 Behavior: Searches recursively from current directory. Respects .gitignore by default. Returns matches with file paths, line numbers (1-indexed), and previews (max 500 chars each). Output capped at 50 matches and 40KB total. Binary files automatically skipped.`;
 
@@ -54,12 +55,12 @@ export async function grepSearchToolExecute(
 
     // Perform the grep search with max matches limit
     const grepResult = await clientRuntime.fileSystem.grep(query, {
-      recursive: true, // Always search recursively
+      recursive: true,
       caseSensitive: case_sensitive,
       filePattern: include_file_pattern,
       excludePatterns: excludePatterns,
-      maxDepth: undefined, // No depth limit
-      respectGitignore: true, // Respect .gitignore by default
+      maxDepth: undefined,
+      respectGitignore: !params.include_gitignored,
       maxMatches: max_matches,
     });
 

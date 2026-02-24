@@ -4,7 +4,7 @@ import type {
   GlobOptions,
 } from '../types.js';
 import { existsSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { getRipgrepPath } from '../vscode-ripgrep/get-path.js';
@@ -60,8 +60,10 @@ async function parseRipgrepGlobOutput(
   stdout: NodeJS.ReadableStream,
   workingDirectory: string,
   onError?: (error: Error) => void,
+  options?: { maxResults?: number; childProcess?: ChildProcess },
 ): Promise<GlobResult> {
   const paths: string[] = [];
+  let limitReached = false;
 
   return new Promise((resolve) => {
     const rl = createInterface({
@@ -70,11 +72,17 @@ async function parseRipgrepGlobOutput(
     });
 
     rl.on('line', (line: string) => {
-      if (!line.trim()) return;
+      if (limitReached || !line.trim()) return;
 
       try {
-        // Ripgrep returns paths relative to the cwd
         paths.push(line);
+
+        if (options?.maxResults && paths.length >= options.maxResults) {
+          limitReached = true;
+          rl.close();
+          options.childProcess?.kill();
+          return;
+        }
       } catch (error) {
         onError?.(new Error(`Failed to process ripgrep output line: ${error}`));
       }
@@ -153,11 +161,11 @@ export async function globWithRipgrep(
       onError?.(new Error(`Ripgrep process error: ${error}`));
     });
 
-    // Parse the output
     const result = await parseRipgrepGlobOutput(
       process.stdout,
       fileSystem.getCurrentWorkingDirectory(),
       onError,
+      { maxResults: options?.maxResults, childProcess: process },
     );
 
     return result;

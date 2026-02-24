@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import type { Readable } from 'node:stream';
 import { createInterface } from 'node:readline';
@@ -163,11 +163,12 @@ async function parseRipgrepGrepOutput(
   stdout: Readable,
   workingDirectory: string,
   onError?: (error: Error) => void,
+  options?: { maxMatches?: number; childProcess?: ChildProcess },
 ): Promise<GrepResult> {
   const matches: GrepMatch[] = [];
   const filesSearched = new Set<string>();
+  let limitReached = false;
 
-  // Track context lines for building previews
   const contextBuffer: Map<
     string,
     Array<{ lineNum: number; text: string }>
@@ -180,7 +181,8 @@ async function parseRipgrepGrepOutput(
     });
 
     rl.on('line', (line: string) => {
-      // Skip overly large lines to prevent memory issues
+      if (limitReached) return;
+
       if (line.length > MAX_LINE_SIZE) {
         onError?.(
           new Error(
@@ -194,7 +196,6 @@ async function parseRipgrepGrepOutput(
         const message = JSON.parse(line) as RipgrepMessage;
 
         if (message.type === 'context') {
-          // Store context lines for building previews
           const contextData = message.data;
           const filePath = contextData.path.text;
           if (!contextBuffer.has(filePath)) contextBuffer.set(filePath, []);
@@ -207,29 +208,29 @@ async function parseRipgrepGrepOutput(
           const matchData = message.data;
           filesSearched.add(matchData.path.text);
 
-          // For now, just use the line itself as preview
-          // Context will be added by ripgrep in the lines.text field when using context flags
           const preview = matchData.lines.text;
-
-          // Process each submatch in the line
           for (const submatch of matchData.submatches) {
             matches.push({
               relativePath: relative(workingDirectory, matchData.path.text),
               absolutePath: path.join(workingDirectory, matchData.path.text),
               line: matchData.line_number,
-              column: submatch.start + 1, // Convert 0-based to 1-based
+              column: submatch.start + 1,
               match: submatch.match.text,
               preview,
             });
           }
+
+          if (options?.maxMatches && matches.length >= options.maxMatches) {
+            limitReached = true;
+            rl.close();
+            options.childProcess?.kill();
+            return;
+          }
         } else if (message.type === 'begin') {
-          // Track file being searched
           filesSearched.add(message.data.path.text);
-          // Clear context buffer for new file
           contextBuffer.set(message.data.path.text, []);
         }
       } catch (error) {
-        // Skip invalid JSON lines (shouldn't happen with ripgrep --json)
         onError?.(new Error(`Failed to parse ripgrep JSON output: ${error}`));
       }
     });
@@ -306,11 +307,11 @@ export async function grepWithRipgrep(
       onError?.(new Error(`Ripgrep process error: ${error}`));
     });
 
-    // Parse the output (use searchPath for relative path calculation)
     const result = await parseRipgrepGrepOutput(
       process.stdout,
       searchPath,
       onError,
+      { maxMatches: options?.maxMatches, childProcess: process },
     );
 
     return result;

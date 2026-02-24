@@ -17,6 +17,7 @@ export const DESCRIPTION = `Find files and directories BY THEIR PATH/NAME using 
 
 Parameters:
 - pattern (string, REQUIRED): Glob pattern supporting standard syntax (*, **, ?, [abc]). Examples: '**/*.test.ts' for test files, 'src/**/config.json' for configs.
+- include_gitignored (boolean, OPTIONAL): If true, includes files from gitignored paths (e.g. node_modules, dist). Always use a scoped glob pattern (e.g. 'node_modules/lodash/**/*.js') to avoid excessive results. Defaults to false.
 
 Behavior: Respects .gitignore by default. Returns relative file paths sorted by modification time. Output capped at 50 results and 40KB total.`;
 
@@ -38,7 +39,8 @@ export async function globToolExecute(
   try {
     // Perform the glob search
     const globResult = await clientRuntime.fileSystem.glob(pattern, {
-      respectGitignore: true, // Respect .gitignore by default
+      respectGitignore: !params.include_gitignored,
+      maxResults: 50,
     });
 
     if (!globResult.success)

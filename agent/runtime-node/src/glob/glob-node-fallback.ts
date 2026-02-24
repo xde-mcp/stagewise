@@ -25,13 +25,15 @@ export async function globNodeFallback(
       excludeRes.some((re) => re !== false && re.test(rel));
 
     const walkQueue: string[] = [basePath];
+    const maxResults = options?.maxResults;
 
     while (walkQueue.length) {
+      if (maxResults && paths.length >= maxResults) break;
+
       const dir = walkQueue.pop()!;
       try {
         const dirHandle = await fs.opendir(dir);
 
-        // Collect all entries before processing to avoid handle lifecycle issues
         const entries: Array<{ dirent: Dirent; full: string; rel: string }> =
           [];
         for await (const dirent of dirHandle) {
@@ -42,10 +44,10 @@ export async function globNodeFallback(
           );
           entries.push({ dirent, full, rel });
         }
-        // Note: for await automatically closes the directory handle
 
-        // Now process entries after iteration completes
         for (const { dirent, full, rel } of entries) {
+          if (maxResults && paths.length >= maxResults) break;
+
           if (
             options?.respectGitignore !== false &&
             (await fileSystem.isIgnored(full))
@@ -53,12 +55,9 @@ export async function globNodeFallback(
             continue;
           if (shouldSkipRel(rel)) continue;
 
-          // Always match against relative path for pattern matching
           const matches = minimatch(rel, pattern);
 
-          // Only return files, not directories (matching ripgrep's behavior)
           if (matches && dirent.isFile()) {
-            // Only convert to absolute path for the results if requested
             const resultPath = options?.absoluteSearchPath ? full : rel;
             paths.push(resultPath);
           }

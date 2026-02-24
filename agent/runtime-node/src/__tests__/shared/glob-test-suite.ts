@@ -160,6 +160,27 @@ export function runGlobTestSuite(
 
       expect(result.success).toBe(true);
     });
+
+    it('should respect maxResults and return at most that many files', async () => {
+      const testDir = getTestDir();
+      const fileSystem = getFileSystem();
+      const tree: Record<string, string> = {};
+      for (let i = 0; i < 25; i++) {
+        tree[`file-${i}.ts`] = 'content';
+      }
+      createFileTree(testDir, tree);
+
+      const result = await fileSystem.glob('**/*.ts', {
+        maxResults: 5,
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.relativePaths.length).toBeLessThanOrEqual(5);
+        expect(result.relativePaths.length).toBeGreaterThan(0);
+        expect(result.totalMatches).toBeLessThanOrEqual(5);
+      }
+    });
   });
 
   describe('Monorepo Patterns', () => {

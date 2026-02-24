@@ -261,6 +261,23 @@ export function runGrepTestSuite(
       expect(result.totalMatches).toBeGreaterThan(0);
     });
 
+    it('should enforce global maxMatches across multiple files', async () => {
+      const testDir = getTestDir();
+      const fileSystem = getFileSystem();
+      for (let i = 0; i < 20; i++) {
+        createFile(testDir, `match-${i}.txt`, 'ERROR\nERROR\nERROR\n');
+      }
+
+      const result = await fileSystem.grep('ERROR', {
+        recursive: true,
+        maxMatches: 5,
+      });
+
+      expectGrepSuccess(result);
+      expect(result.totalMatches).toBeLessThanOrEqual(5);
+      expect(result.totalMatches).toBeGreaterThan(0);
+    });
+
     it('should skip binary files by default', async () => {
       const testDir = getTestDir();
       const fileSystem = getFileSystem();

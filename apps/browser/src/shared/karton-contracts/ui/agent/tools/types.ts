@@ -176,6 +176,12 @@ export const grepSearchToolInputSchema = z.object({
     .describe(
       'Maximum matches to return. Defaults to 15, maximum allowed is 50.',
     ),
+  include_gitignored: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true, includes files from gitignored paths (e.g. node_modules, dist). Use with specific patterns to avoid noise. Defaults to false.',
+    ),
 });
 
 export const grepSearchToolOutputSchema = z.object({
@@ -203,6 +209,12 @@ export const globToolInputSchema = z.object({
     .string()
     .describe(
       "Glob pattern supporting standard syntax (*, **, ?, [abc]). Examples: '**/*.test.ts' for test files, 'src/**/config.json' for configs.",
+    ),
+  include_gitignored: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true, includes files from gitignored paths (e.g. node_modules, dist). Use with specific patterns to avoid noise. Defaults to false.',
     ),
 });
 
