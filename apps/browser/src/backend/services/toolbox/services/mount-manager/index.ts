@@ -37,6 +37,7 @@ export class MountManagerService extends DisposableService {
   private readonly userExperienceService: UserExperienceService;
   private readonly uiKarton: KartonService;
   private readonly telemetryService: TelemetryService;
+  private onMountsChanged?: (agentInstanceId: string) => void;
 
   private agentMounts: Map<AgentInstanceId, Set<MountPrefix>> = new Map();
   private workspacePathsPerMount: Map<MountPrefix, WorkspacePath> = new Map();
@@ -82,6 +83,10 @@ export class MountManagerService extends DisposableService {
     );
     await instance.initialize();
     return instance;
+  }
+
+  public setOnMountsChanged(cb: (agentInstanceId: string) => void) {
+    this.onMountsChanged = cb;
   }
 
   private async initialize(): Promise<void> {
@@ -196,6 +201,8 @@ export class MountManagerService extends DisposableService {
         })),
       });
     });
+
+    this.onMountsChanged?.(agentInstanceId);
   }
 
   public async handleUnmountWorkspace(
@@ -227,6 +234,8 @@ export class MountManagerService extends DisposableService {
         agentInstanceId
       ].workspace.mounts.filter((m) => m.prefix !== mountPrefix);
     });
+
+    this.onMountsChanged?.(agentInstanceId);
   }
 
   public getMountedPathsWithRuntimes(agentInstanceId: string): Array<{

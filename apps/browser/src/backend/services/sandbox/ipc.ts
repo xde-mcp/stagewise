@@ -9,16 +9,20 @@ interface UtilityProcessHandle {
   on(event: string, handler: (...args: any[]) => void): this;
 }
 
+export interface MountDescriptor {
+  prefix: string;
+  absolutePath: string;
+}
+
 export type MainToWorkerMessage =
   | { type: 'create-context'; agentId: string }
   | { type: 'destroy-context'; agentId: string }
   | { type: 'execute'; id: string; agentId: string; code: string }
   | { type: 'cdp-result'; id: string; result?: unknown; error?: string }
   | {
-      type: 'write-file-result';
-      id: string;
-      result?: { success: true; bytesWritten: number };
-      error?: string;
+      type: 'update-mounts';
+      agentId: string;
+      mounts: MountDescriptor[];
     }
   | {
       type: 'get-attachment-result';
@@ -55,12 +59,13 @@ export type WorkerToMainMessage =
       }>;
     }
   | {
-      type: 'write-file';
-      id: string;
+      type: 'file-diff-notification';
       agentId: string;
-      relativePath: string;
-      content: string; // UTF-8 string or base64-encoded binary
-      isBase64: boolean; // true if content is base64-encoded Buffer
+      absolutePath: string;
+      before: string | null;
+      after: string | null;
+      isExternal: boolean;
+      bytesWritten: number;
     }
   | {
       type: 'get-attachment';

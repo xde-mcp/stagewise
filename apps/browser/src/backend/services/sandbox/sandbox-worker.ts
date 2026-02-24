@@ -1,5 +1,7 @@
 import vm from 'node:vm';
 import { createWorkerIPC } from './ipc';
+import type { MountDescriptor } from './ipc';
+import { createIsolatedFs } from './utils/isolated-fs';
 
 const contexts = new Map<string, vm.Context>();
 /** Per-agent cache of fetched ESM modules for dynamic import() resolution. */
@@ -7,13 +9,6 @@ const moduleCaches = new Map<string, Map<string, vm.Module>>();
 const pendingCdp = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
->();
-const pendingFileOps = new Map<
-  string,
-  {
-    resolve: (value: { success: true; bytesWritten: number }) => void;
-    reject: (reason: unknown) => void;
-  }
 >();
 const pendingAttachmentOps = new Map<
   string,
@@ -28,6 +23,15 @@ const pendingAttachmentOps = new Map<
   }
 >();
 const ipc = createWorkerIPC();
+
+/** Per-agent mount descriptors, updated via `update-mounts` IPC. */
+const agentMounts = new Map<string, MountDescriptor[]>();
+
+/** Per-agent isolated fs instances, recreated when mounts change. */
+const agentIsolatedFs = new Map<
+  string,
+  { fs: Record<string, any>; fsPromises: Record<string, any> }
+>();
 
 interface SandboxFileAttachment {
   id: string;
@@ -65,10 +69,14 @@ const ALLOWED_NODE_MODULES = new Set([
   'assert',
 ]);
 
+/**
+ * Modules that are provided as sandboxed/isolated versions rather than
+ * the real Node.js built-in. Resolved via `resolveIsolatedModule`.
+ */
+const SANDBOXED_NODE_MODULES = new Set(['fs', 'fs/promises']);
+
 /** Node.js built-in modules that must be blocked for sandbox security. */
 const BLOCKED_NODE_MODULES = new Set([
-  'fs',
-  'fs/promises',
   'net',
   'http',
   'https',
@@ -90,8 +98,50 @@ const BLOCKED_NODE_MODULES = new Set([
 ]);
 
 let cdpReqId = 0;
-let fileReqId = 0;
 let attachmentReqId = 0;
+
+/**
+ * Create or update the isolated fs instances for an agent based on its
+ * current mounts. Also invalidates the module cache entries for `node:fs`
+ * and `node:fs/promises` so the next import picks up the new mounts.
+ */
+function refreshIsolatedFs(agentId: string) {
+  const mounts = agentMounts.get(agentId) ?? [];
+
+  const notifyDiff = (
+    absolutePath: string,
+    before: string | null,
+    after: string | null,
+    isExternal: boolean,
+    bytesWritten: number,
+  ) => {
+    ipc.send({
+      type: 'file-diff-notification',
+      agentId,
+      absolutePath,
+      before,
+      after,
+      isExternal,
+      bytesWritten,
+    });
+  };
+
+  const { isolatedFs, isolatedFsPromises } = createIsolatedFs(
+    mounts,
+    notifyDiff,
+  );
+  agentIsolatedFs.set(agentId, {
+    fs: isolatedFs,
+    fsPromises: isolatedFsPromises,
+  });
+
+  // Invalidate cached synthetic modules so re-import picks up new mounts
+  const cache = moduleCaches.get(agentId);
+  if (cache) {
+    cache.delete('node:fs');
+    cache.delete('node:fs/promises');
+  }
+}
 
 function getSandboxAPI(agentId: string) {
   return {
@@ -100,26 +150,6 @@ function getSandboxAPI(agentId: string) {
       return new Promise((resolve, reject) => {
         pendingCdp.set(id, { resolve, reject });
         ipc.send({ type: 'cdp', id, tabId, method, params });
-      });
-    },
-    writeFile(
-      relativePath: string,
-      content: Buffer | string,
-    ): Promise<{ success: true; bytesWritten: number }> {
-      const id = `${fileReqId++}`;
-      const isBase64 = Buffer.isBuffer(content);
-      const contentStr = isBase64 ? content.toString('base64') : content;
-
-      return new Promise((resolve, reject) => {
-        pendingFileOps.set(id, { resolve, reject });
-        ipc.send({
-          type: 'write-file',
-          id,
-          agentId,
-          relativePath,
-          content: contentStr,
-          isBase64,
-        });
       });
     },
     getAttachment(attachmentId: string): Promise<{
@@ -235,6 +265,70 @@ function getContextGlobals() {
 }
 
 /**
+ * Resolve a sandboxed `node:fs` or `node:fs/promises` module by wrapping
+ * the agent's isolated fs instance as a vm.SyntheticModule.
+ */
+async function resolveIsolatedModule(
+  specifier: string,
+  agentId: string,
+  ctx: vm.Context,
+  cache: Map<string, vm.Module>,
+): Promise<vm.Module> {
+  const cached = cache.get(specifier);
+  if (cached) return cached;
+
+  const name = specifier.replace(/^node:/, '');
+  const isolated = agentIsolatedFs.get(agentId);
+
+  if (!isolated) {
+    throw new Error(
+      'No workspaces mounted. Mount a workspace before using fs.',
+    );
+  }
+
+  const moduleMap: Record<string, Record<string, any>> = {
+    fs: isolated.fs,
+    'fs/promises': isolated.fsPromises,
+  };
+  const moduleObj = moduleMap[name];
+  if (!moduleObj) {
+    throw new Error(
+      `No isolated implementation for "${specifier}". ` +
+        `Add it to the moduleMap in resolveIsolatedModule.`,
+    );
+  }
+
+  // Get the real module's export names so the synthetic module matches the
+  // expected shape (some packages check for specific named exports).
+  const realModule = await import(specifier);
+  const exportNames = Object.keys(realModule);
+
+  const synth = new vm.SyntheticModule(
+    exportNames,
+    function () {
+      for (const key of exportNames) {
+        this.setExport(
+          key,
+          key in moduleObj ? moduleObj[key] : realModule[key],
+        );
+      }
+    },
+    {
+      context: ctx,
+      identifier: specifier,
+    },
+  );
+
+  await synth.link(() => {
+    throw new Error('node: built-in modules should not have dependencies');
+  });
+  await synth.evaluate();
+
+  cache.set(specifier, synth);
+  return synth;
+}
+
+/**
  * Resolve a `node:` built-in module and wrap it as a vm.SyntheticModule
  * so it can be returned from the `importModuleDynamically` callback.
  *
@@ -244,6 +338,7 @@ function getContextGlobals() {
  */
 async function resolveNodeModule(
   specifier: string,
+  agentId: string,
   ctx: vm.Context,
   cache: Map<string, vm.Module>,
 ): Promise<vm.Module> {
@@ -251,6 +346,10 @@ async function resolveNodeModule(
   if (cached) return cached;
 
   const name = specifier.replace(/^node:/, '');
+
+  if (SANDBOXED_NODE_MODULES.has(name)) {
+    return resolveIsolatedModule(specifier, agentId, ctx, cache);
+  }
 
   if (BLOCKED_NODE_MODULES.has(name))
     throw new Error(
@@ -260,7 +359,7 @@ async function resolveNodeModule(
   if (!ALLOWED_NODE_MODULES.has(name))
     throw new Error(
       `"${specifier}" is not a recognised allowed Node.js module. ` +
-        `Allowed: ${[...ALLOWED_NODE_MODULES].map((m) => `node:${m}`).join(', ')}`,
+        `Allowed: ${[...ALLOWED_NODE_MODULES, ...SANDBOXED_NODE_MODULES].map((m) => `node:${m}`).join(', ')}`,
     );
 
   const hostModule = await import(specifier);
@@ -296,12 +395,13 @@ async function resolveNodeModule(
 async function resolveModule(
   specifier: string,
   referencingIdentifier: string | undefined,
+  agentId: string,
   ctx: vm.Context,
   cache: Map<string, vm.Module>,
 ): Promise<vm.Module> {
   // Handle node: built-in imports before URL resolution
   if (specifier.startsWith('node:')) {
-    return resolveNodeModule(specifier, ctx, cache);
+    return resolveNodeModule(specifier, agentId, ctx, cache);
   }
 
   const resolved = referencingIdentifier
@@ -329,11 +429,11 @@ async function resolveModule(
     context: ctx,
     identifier: resolved,
     importModuleDynamically: (spec: string) =>
-      resolveModule(spec, resolved, ctx, cache),
+      resolveModule(spec, resolved, agentId, ctx, cache),
   });
 
   await mod.link((importSpec: string) =>
-    resolveModule(importSpec, resolved, ctx, cache),
+    resolveModule(importSpec, resolved, agentId, ctx, cache),
   );
   await mod.evaluate();
 
@@ -355,6 +455,13 @@ ipc.onMessage(async (msg) => {
     case 'destroy-context': {
       contexts.delete(msg.agentId);
       moduleCaches.delete(msg.agentId);
+      agentMounts.delete(msg.agentId);
+      agentIsolatedFs.delete(msg.agentId);
+      break;
+    }
+    case 'update-mounts': {
+      agentMounts.set(msg.agentId, msg.mounts);
+      refreshIsolatedFs(msg.agentId);
       break;
     }
     case 'execute': {
@@ -376,7 +483,7 @@ ipc.onMessage(async (msg) => {
         const cache = moduleCaches.get(msg.agentId) ?? new Map();
         const script = new vm.Script(wrapped, {
           importModuleDynamically: (specifier: string) =>
-            resolveModule(specifier, undefined, ctx, cache),
+            resolveModule(specifier, undefined, msg.agentId, ctx, cache),
         });
         // Sync timeout (30s) catches infinite synchronous loops (e.g. while(true){}).
         scriptPromise = script.runInContext(ctx, { timeout: 30_000 });
@@ -431,13 +538,6 @@ ipc.onMessage(async (msg) => {
       if (!p) return;
       pendingCdp.delete(msg.id);
       msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
-      break;
-    }
-    case 'write-file-result': {
-      const p = pendingFileOps.get(msg.id);
-      if (!p) return;
-      pendingFileOps.delete(msg.id);
-      msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result!);
       break;
     }
     case 'get-attachment-result': {

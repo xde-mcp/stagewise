@@ -14,7 +14,7 @@ import type { TelemetryService } from '@/services/telemetry';
 import type { GlobalDataPathService } from '@/services/global-data-path';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import {
-  createSandboxFileWriter,
+  createFileDiffHandler,
   createAttachmentResolver,
 } from './utils/sandbox-callbacks';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
@@ -388,17 +388,37 @@ export class ToolboxService extends DisposableService {
     );
   }
 
-  public handleMountWorkspace(agentInstanceId: string, workspacePath: string) {
-    return this.mountManagerService?.handleMountWorkspace(
+  public async handleMountWorkspace(
+    agentInstanceId: string,
+    workspacePath: string,
+  ) {
+    await this.mountManagerService?.handleMountWorkspace(
       agentInstanceId,
       workspacePath,
     );
   }
 
-  public handleUnmountWorkspace(agentInstanceId: string, mountPrefix: string) {
-    return this.mountManagerService?.handleUnmountWorkspace(
+  public async handleUnmountWorkspace(
+    agentInstanceId: string,
+    mountPrefix: string,
+  ) {
+    await this.mountManagerService?.handleUnmountWorkspace(
       agentInstanceId,
       mountPrefix,
+    );
+  }
+
+  /**
+   * Push current mount configuration for an agent to the sandbox worker
+   * so the isolated fs stays in sync.
+   */
+  private pushMountsToSandbox(agentInstanceId: string) {
+    const mountsWithRt =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    if (!mountsWithRt || !this.sandboxService) return;
+    this.sandboxService.updateAgentMounts(
+      agentInstanceId,
+      mountsWithRt.map((m) => ({ prefix: m.prefix, absolutePath: m.path })),
     );
   }
 
@@ -691,12 +711,15 @@ export class ToolboxService extends DisposableService {
       this.telemetryService,
     );
 
-    const fileWriter = createSandboxFileWriter({
+    this.mountManagerService.setOnMountsChanged((agentInstanceId) => {
+      this.pushMountsToSandbox(agentInstanceId);
+    });
+
+    const fileDiffHandler = createFileDiffHandler({
       mountManager: this.mountManagerService,
       diffHistoryService: this.diffHistoryService,
       logger: this.logger,
       telemetryService: this.telemetryService,
-      tempDir: this.tempDir,
     });
 
     const attachmentResolver = createAttachmentResolver({
@@ -706,8 +729,17 @@ export class ToolboxService extends DisposableService {
     this.sandboxService = await SandboxService.create(
       this.windowLayoutService,
       this.logger,
-      fileWriter,
+      fileDiffHandler,
       attachmentResolver,
+      (agentId) => {
+        const mountsWithRt =
+          this.mountManagerService?.getMountedPathsWithRuntimes(agentId);
+        if (!mountsWithRt) return [];
+        return mountsWithRt.map((m) => ({
+          prefix: m.prefix,
+          absolutePath: m.path,
+        }));
+      },
     );
 
     // Use arrow function to preserve `this` binding when called as callback

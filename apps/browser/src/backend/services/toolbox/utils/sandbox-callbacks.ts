@@ -3,96 +3,74 @@ import type { DiffHistoryService } from '@/services/diff-history';
 import type { TelemetryService } from '@/services/telemetry';
 import type { KartonService } from '@/services/karton';
 import type { MountManagerService } from '../services/mount-manager';
-import type { SandboxFileWriter, AttachmentResolver } from '../../sandbox';
+import type { FileDiffHandler, AttachmentResolver } from '../../sandbox';
 import {
   MAX_IMAGE_SIZE,
   MAX_DOCUMENT_SIZE,
 } from '@shared/karton-contracts/ui/shared-types';
-import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
-import {
-  buildAgentFileEditContent,
-  captureFileState,
-  cleanupTempFile,
-} from '.';
-import path from 'node:path';
-import fs from 'node:fs/promises';
 
-interface FileWriterDeps {
+interface FileDiffHandlerDeps {
   mountManager: MountManagerService;
   diffHistoryService: DiffHistoryService;
   logger: Logger;
   telemetryService: TelemetryService;
-  tempDir: string;
 }
 
-export function createSandboxFileWriter(
-  deps: FileWriterDeps,
-): SandboxFileWriter {
-  return async (agentId, relativePath, content, toolCallId) => {
-    const mountsWithRt = deps.mountManager.getMountedPathsWithRuntimes(agentId);
-    if (!mountsWithRt || mountsWithRt.length === 0)
-      throw new Error('No mounted workspaces found');
-
-    const mountPrefixMatch = relativePath.match(/^(w\d+)\//);
-    let clientRuntime: ClientRuntimeNode | undefined;
-    let strippedPath = relativePath;
-
-    if (mountPrefixMatch) {
-      const prefix = mountPrefixMatch[1];
-      strippedPath = relativePath.slice(prefix.length + 1);
-      const mount = mountsWithRt.find((m) => m.prefix === prefix);
-      clientRuntime = mount?.clientRuntime;
-    } else if (mountsWithRt.length > 0) {
-      clientRuntime = mountsWithRt[0].clientRuntime;
-    }
-
-    if (!clientRuntime) throw new Error('No workspace connected');
-
-    const absolutePath = clientRuntime.fileSystem.resolvePath(strippedPath);
-    const workspaceRoot = clientRuntime.fileSystem.getCurrentWorkingDirectory();
-
-    if (!absolutePath.startsWith(workspaceRoot))
-      throw new Error('Path must be within workspace');
-
-    const beforeState = await captureFileState(absolutePath, deps.tempDir);
-
-    const parentDir = path.dirname(absolutePath);
-    await fs.mkdir(parentDir, { recursive: true });
+/**
+ * Creates a handler for file-diff-notification messages from the sandbox
+ * worker. The worker captures before/after state in-process and sends
+ * it via fire-and-forget IPC. This handler registers the edit with
+ * diff-history and syncs with LSP.
+ */
+export function createFileDiffHandler(
+  deps: FileDiffHandlerDeps,
+): FileDiffHandler {
+  return async (
+    agentId,
+    absolutePath,
+    before,
+    after,
+    isExternal,
+    _bytesWritten,
+    toolCallId,
+  ) => {
     deps.diffHistoryService.ignoreFileForWatcher(absolutePath);
-    await fs.writeFile(absolutePath, content);
-
-    const afterState = await captureFileState(absolutePath, deps.tempDir);
 
     try {
-      const { editContent, tempFilesToCleanup } =
-        await buildAgentFileEditContent(beforeState, afterState, deps.tempDir);
+      if (isExternal) {
+        await deps.diffHistoryService.registerAgentEdit({
+          agentInstanceId: agentId,
+          path: absolutePath,
+          toolCallId,
+          isExternal: true,
+          tempPathToBeforeContent: null,
+          tempPathToAfterContent: null,
+        });
+      } else {
+        // Sync with LSP for text content
+        if (after !== null) {
+          void deps.mountManager.syncFileWithLsp(agentId, absolutePath, after);
+        } else if (before !== null) {
+          void deps.mountManager.syncFileCloseWithLsp(agentId, absolutePath);
+        }
 
-      if (!editContent.isExternal && editContent.contentAfter !== null) {
-        void deps.mountManager.syncFileWithLsp(
-          agentId,
-          absolutePath,
-          editContent.contentAfter,
-        );
-      }
-
-      await deps.diffHistoryService.registerAgentEdit({
-        agentInstanceId: agentId,
-        path: absolutePath,
-        toolCallId,
-        ...editContent,
-      });
-
-      for (const tempFile of tempFilesToCleanup) {
-        void cleanupTempFile(tempFile);
+        await deps.diffHistoryService.registerAgentEdit({
+          agentInstanceId: agentId,
+          path: absolutePath,
+          toolCallId,
+          isExternal: false,
+          contentBefore: before,
+          contentAfter: after,
+        });
       }
     } catch (error) {
       deps.logger.error(
-        '[ToolboxService] Failed to register sandbox file write',
+        '[ToolboxService] Failed to register sandbox file diff',
         { error, path: absolutePath, toolCallId },
       );
       deps.telemetryService.captureException(error as Error, {
         service: 'toolbox',
-        operation: 'registerSandboxWrite',
+        operation: 'registerSandboxDiff',
         path: absolutePath,
         toolCallId,
       });
@@ -102,8 +80,6 @@ export function createSandboxFileWriter(
         500,
       );
     }
-
-    return { success: true as const, bytesWritten: content.length };
   };
 }
 

@@ -4,19 +4,34 @@ import type { WindowLayoutService } from '../window-layout';
 import { utilityProcess } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createMainIPC, type WorkerToMainMessage } from './ipc';
+import {
+  createMainIPC,
+  type MountDescriptor,
+  type WorkerToMainMessage,
+} from './ipc';
 
 /**
- * Callback type for writing files from the sandbox to the user's workspace.
- * Provided by ToolboxService to handle diff-history tracking.
- * Content is always provided as a Buffer (already decoded from IPC transport).
+ * Callback type for handling file diff notifications from the sandbox worker.
+ * The worker captures before/after state in-process and sends it via IPC.
+ * The main process registers the edit with diff-history and syncs with LSP.
  */
-export type SandboxFileWriter = (
+export type FileDiffHandler = (
   agentId: string,
-  relativePath: string,
-  content: Buffer,
+  absolutePath: string,
+  before: string | null,
+  after: string | null,
+  isExternal: boolean,
+  bytesWritten: number,
   toolCallId: string,
-) => Promise<{ success: true; bytesWritten: number }>;
+) => Promise<void>;
+
+/**
+ * Callback that resolves the current mount configuration for an agent.
+ * Called by SandboxService when lazily creating an agent context so the
+ * worker receives mounts immediately, even if the workspace was mounted
+ * before the agent's first sandbox execution.
+ */
+export type MountResolver = (agentId: string) => MountDescriptor[];
 
 /**
  * Callback type for resolving attachment data from user messages.
@@ -62,8 +77,9 @@ interface PendingRequest {
 export class SandboxService extends DisposableService {
   private readonly windowLayoutService: WindowLayoutService;
   private readonly logger: Logger;
-  private readonly fileWriter?: SandboxFileWriter;
+  private readonly fileDiffHandler?: FileDiffHandler;
   private readonly attachmentResolver?: AttachmentResolver;
+  private readonly mountResolver?: MountResolver;
   private workers: WorkerInfo[] = [];
   private agentToWorker = new Map<string, WorkerInfo>();
   private pendingRequests = new Map<string, PendingRequest>();
@@ -74,28 +90,32 @@ export class SandboxService extends DisposableService {
   constructor(
     windowLayoutService: WindowLayoutService,
     logger: Logger,
-    fileWriter?: SandboxFileWriter,
+    fileDiffHandler?: FileDiffHandler,
     attachmentResolver?: AttachmentResolver,
+    mountResolver?: MountResolver,
     private poolSize = 4,
   ) {
     super();
     this.windowLayoutService = windowLayoutService;
     this.logger = logger;
-    this.fileWriter = fileWriter;
+    this.fileDiffHandler = fileDiffHandler;
     this.attachmentResolver = attachmentResolver;
+    this.mountResolver = mountResolver;
   }
 
   public static async create(
     windowLayoutService: WindowLayoutService,
     logger: Logger,
-    fileWriter?: SandboxFileWriter,
+    fileDiffHandler?: FileDiffHandler,
     attachmentResolver?: AttachmentResolver,
+    mountResolver?: MountResolver,
   ): Promise<SandboxService> {
     const instance = new SandboxService(
       windowLayoutService,
       logger,
-      fileWriter,
+      fileDiffHandler,
       attachmentResolver,
+      mountResolver,
     );
     await instance.initialize();
     return instance;
@@ -125,6 +145,16 @@ export class SandboxService extends DisposableService {
     const count = this.fileWriteCountPerExecution.get(agentId) ?? 0;
     this.fileWriteCountPerExecution.delete(agentId);
     return count;
+  }
+
+  /**
+   * Push the current mount configuration to the sandbox worker for an agent.
+   * Called by ToolboxService when mounts change.
+   */
+  updateAgentMounts(agentId: string, mounts: MountDescriptor[]) {
+    const worker = this.agentToWorker.get(agentId);
+    if (!worker) return;
+    this.safeSend(worker, { type: 'update-mounts', agentId, mounts });
   }
 
   async initialize() {
@@ -168,6 +198,17 @@ export class SandboxService extends DisposableService {
     this.agentToWorker.set(agentId, worker);
 
     this.safeSend(worker, { type: 'create-context', agentId });
+
+    if (this.mountResolver) {
+      const mounts = this.mountResolver(agentId);
+      if (mounts.length > 0) {
+        this.safeSend(worker, {
+          type: 'update-mounts',
+          agentId,
+          mounts,
+        });
+      }
+    }
   }
 
   destroyAgent(agentId: string) {
@@ -261,52 +302,30 @@ export class SandboxService extends DisposableService {
         }
         break;
       }
-      case 'write-file': {
-        // Worker sandbox wants to write a file — delegate to fileWriter callback
+      case 'file-diff-notification': {
         const toolCallId = this.agentToolCallIds.get(msg.agentId);
-        if (!this.fileWriter) {
-          this.safeSend(worker, {
-            type: 'write-file-result',
-            id: msg.id,
-            error: 'File writing is not configured',
-          });
-          return;
-        }
-        if (!toolCallId) {
-          this.safeSend(worker, {
-            type: 'write-file-result',
-            id: msg.id,
-            error: 'No active tool call context for file write',
-          });
-          return;
-        }
-        try {
-          // Decode content from IPC transport format back to Buffer
-          const contentBuffer = msg.isBase64
-            ? Buffer.from(msg.content, 'base64')
-            : Buffer.from(msg.content, 'utf-8');
+        if (!this.fileDiffHandler || !toolCallId) return;
 
-          const result = await this.fileWriter(
+        this.fileWriteCountPerExecution.set(
+          msg.agentId,
+          (this.fileWriteCountPerExecution.get(msg.agentId) ?? 0) + 1,
+        );
+
+        try {
+          await this.fileDiffHandler(
             msg.agentId,
-            msg.relativePath,
-            contentBuffer,
+            msg.absolutePath,
+            msg.before,
+            msg.after,
+            msg.isExternal,
+            msg.bytesWritten,
             toolCallId,
           );
-          this.fileWriteCountPerExecution.set(
-            msg.agentId,
-            (this.fileWriteCountPerExecution.get(msg.agentId) ?? 0) + 1,
-          );
-          this.safeSend(worker, {
-            type: 'write-file-result',
-            id: msg.id,
-            result,
-          });
         } catch (err) {
-          this.safeSend(worker, {
-            type: 'write-file-result',
-            id: msg.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
+          this.logger.error(
+            '[SandboxService] Failed to handle file diff notification',
+            { error: err, path: msg.absolutePath },
+          );
         }
         break;
       }
@@ -372,6 +391,16 @@ export class SandboxService extends DisposableService {
       replacement.load++;
       this.agentToWorker.set(agentId, replacement);
       this.safeSend(replacement, { type: 'create-context', agentId });
+      if (this.mountResolver) {
+        const mounts = this.mountResolver(agentId);
+        if (mounts.length > 0) {
+          this.safeSend(replacement, {
+            type: 'update-mounts',
+            agentId,
+            mounts,
+          });
+        }
+      }
     }
   }
 

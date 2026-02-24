@@ -56,13 +56,24 @@ Domains that do NOT have an \`enable\` method (use their methods directly, never
 
 For event-based domains not listed above (e.g. \`Network\`, \`Overlay\`, \`Debugger\`, \`Fetch\`, \`DOMStorage\`, \`Performance\`, \`Profiler\`), call \`<Domain>.enable\` via sendCDP before using their methods or receiving their events.
 
+### Filesystem Access (\`node:fs\` / \`node:fs/promises\`)
+
+The sandbox provides a **sandboxed \`fs\` module** scoped to mounted workspaces. Import it via:
+\`\`\`js
+const fs = await import('node:fs');
+const fsp = await import('node:fs/promises');
+\`\`\`
+
+- All standard \`fs\` methods are available: \`readFile\`, \`writeFile\`, \`readdir\`, \`stat\`, \`mkdir\`, \`unlink\`, \`rename\`, \`copyFile\`, \`rm\`, \`createReadStream\`, \`createWriteStream\`, etc.
+- Both callback, sync (\`readFileSync\`, etc.), and promise (\`fs.promises.*\`) APIs work.
+- **Paths use mount prefixes**: \`w1/src/index.ts\`, \`w2/package.json\`. If only one workspace is mounted, the prefix is optional.
+- Paths are restricted to mounted workspaces — access outside them throws an error.
+- File writes are automatically tracked by the diff-history system.
+
 ### Sandbox API (\`API.*\`)
 
 #### \`API.sendCDP(tabId: string, method: string, params?: any): Promise<any>\`
 Send a CDP command to a specific tab debugger.
-
-#### \`API.writeFile(relativePath: string, content: Buffer | string)\`
-Write a file to the connected workspace. Use this instead of \`fs\`.
 
 #### \`API.output(data: any)\`
 Append data to the tool result. \`data\` is stringified (JSON if not already a string). Can be called multiple times; outputs appear in order. The script's \`return\` value is appended last.
@@ -107,7 +118,9 @@ Standard V8 globals:
 
 Allowed: buffer, crypto, events, path, querystring, stream, string_decoder, url, util, zlib, assert
 
-Blocked (security): fs, net, http, https, child_process, worker_threads, vm, and other I/O modules — these throw an error.
+Sandboxed (scoped to mounted workspaces): **fs**, **fs/promises** — full filesystem API, restricted to workspace paths.
+
+Blocked (security): net, http, https, child_process, worker_threads, vm, and other I/O modules — these throw an error.
 
 ### Dynamic imports
 
@@ -150,11 +163,27 @@ const { chunk, map } = await import('https://esm.sh/lodash-es?target=node');
 const lib = (await import('https://esm.sh/some-lib?target=node')).default;
 \`\`\`
 
+#### Read a file from the workspace
+\`\`\`js
+const fs = await import('node:fs/promises');
+const content = await fs.readFile('w1/src/index.ts', 'utf-8');
+API.output(\`File has \${content.split('\\n').length} lines\`);
+return content.slice(0, 500);
+\`\`\`
+
 #### Write attachment data to disk
 \`\`\`js
+const fs = await import('node:fs/promises');
 const img = await API.getAttachment("abc123");
-const result = await API.writeFile(\`assets/\${img.fileName}\`, img.content);
-return { saved: img.fileName, mediaType: img.mediaType, bytes: result.bytesWritten };
+await fs.writeFile(\`w1/assets/\${img.fileName}\`, img.content);
+return { saved: img.fileName, mediaType: img.mediaType, bytes: img.content.length };
+\`\`\`
+
+#### List files in a directory
+\`\`\`js
+const fs = await import('node:fs/promises');
+const files = await fs.readdir('w1/src', { recursive: true });
+return files.filter(f => f.endsWith('.ts'));
 \`\`\`
 
 #### Take a screenshot and inspect it as multimodal input

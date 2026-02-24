@@ -179,12 +179,11 @@ export function parseCDPCalls(script: string): ParsedCDPCall[] {
 
 /**
  * Parses a sandbox script to extract writeFile calls.
- * Matches patterns like: API.writeFile("path/to/file.json", ...)
+ * Matches fs.writeFile, fs.writeFileSync, fsp.writeFile, and legacy API.writeFile.
  */
 export function parseWriteFileCalls(script: string): ParsedWriteFileCall[] {
-  // Regex to match API.writeFile("relativePath", ...)
-  // Supports both single and double quotes
-  const regex = /API\.writeFile\s*\(\s*["']([^"']+)["']/g;
+  const regex =
+    /(?:API\.writeFile|fs\.writeFile(?:Sync)?|fsp\.writeFile)\s*\(\s*["'`]([^"'`]+)["'`]/g;
   const calls: ParsedWriteFileCall[] = [];
 
   let match = regex.exec(script);
