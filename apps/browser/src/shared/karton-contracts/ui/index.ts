@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ModelId } from '@shared/available-models';
-import type { UserMessageMetadata } from './agent/metadata';
+import type { UserMessageMetadata, MountPermission } from './agent/metadata';
 import type { ReactSelectedElementInfo } from '../../selected-elements/react';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import type { SelectedElement } from '../../selected-elements';
@@ -713,6 +713,7 @@ export type KartonContract = {
       mountWorkspace: (
         agentInstanceId: string,
         workspacePath?: string,
+        permissions?: MountPermission[],
       ) => Promise<void>;
       unmountWorkspace: (
         agentInstanceId: string,

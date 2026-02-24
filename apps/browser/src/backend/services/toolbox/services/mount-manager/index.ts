@@ -10,6 +10,7 @@ import type { KartonService } from '@/services/karton';
 import type { UserExperienceService } from '@/services/experience';
 import type { TelemetryService } from '@/services/telemetry';
 import type { WorkspaceSnapshot } from '../../types';
+import { FULL_PERMISSIONS, type MountPermission } from '@/services/sandbox/ipc';
 import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
 import { getSkills } from '@/agents/shared/prompts/utils/get-skills';
@@ -39,7 +40,10 @@ export class MountManagerService extends DisposableService {
   private readonly telemetryService: TelemetryService;
   private onMountsChanged?: (agentInstanceId: string) => void;
 
-  private agentMounts: Map<AgentInstanceId, Set<MountPrefix>> = new Map();
+  private agentMounts: Map<
+    AgentInstanceId,
+    Map<MountPrefix, MountPermission[]>
+  > = new Map();
   private workspacePathsPerMount: Map<MountPrefix, WorkspacePath> = new Map();
 
   private clientRuntimesPerPath: Map<string, ClientRuntimeNode> = new Map();
@@ -96,8 +100,13 @@ export class MountManagerService extends DisposableService {
         _callingClientId: string,
         agentInstanceId: string,
         workspacePath?: string,
+        permissions?: MountPermission[],
       ) => {
-        await this.handleMountWorkspace(agentInstanceId, workspacePath);
+        await this.handleMountWorkspace(
+          agentInstanceId,
+          workspacePath,
+          permissions,
+        );
       },
     );
 
@@ -116,7 +125,11 @@ export class MountManagerService extends DisposableService {
   public async handleMountWorkspace(
     agentInstanceId: string,
     workspacePath?: string,
+    permissions?: MountPermission[],
   ): Promise<void> {
+    const resolvedPermissions: MountPermission[] =
+      permissions ?? ([...FULL_PERMISSIONS] as MountPermission[]);
+
     let resolvedWorkspacePath: string | undefined;
     if (!workspacePath) {
       const filePickerResponses = await this.filePickerService.createRequest({
@@ -165,15 +178,17 @@ export class MountManagerService extends DisposableService {
       });
     }
 
-    const mounts = this.agentMounts.get(agentInstanceId) ?? new Set();
-    const alreadyMounted = [...mounts].some(
+    const mounts =
+      this.agentMounts.get(agentInstanceId) ??
+      new Map<MountPrefix, MountPermission[]>();
+    const alreadyMounted = [...mounts.keys()].some(
       (prefix) =>
         this.workspacePathsPerMount.get(prefix) === resolvedWorkspacePath,
     );
     if (alreadyMounted) return;
 
     const prefix = mountPrefixForPath(resolvedWorkspacePath);
-    mounts.add(prefix);
+    mounts.set(prefix, resolvedPermissions);
     this.agentMounts.set(agentInstanceId, mounts);
     this.workspacePathsPerMount.set(prefix, resolvedWorkspacePath);
 
@@ -213,7 +228,7 @@ export class MountManagerService extends DisposableService {
     if (!mounts || !mounts.has(mountPrefix)) return;
 
     const workspacePath = this.workspacePathsPerMount.get(mountPrefix);
-    mounts.delete(mountPrefix);
+    mounts.delete(mountPrefix); // Map.delete works the same as Set.delete
     this.workspacePathsPerMount.delete(mountPrefix);
 
     if (workspacePath) {
@@ -241,6 +256,7 @@ export class MountManagerService extends DisposableService {
   public getMountedPathsWithRuntimes(agentInstanceId: string): Array<{
     prefix: string;
     path: string;
+    permissions: MountPermission[];
     clientRuntime: ClientRuntimeNode;
   }> {
     const mounts = this.agentMounts.get(agentInstanceId);
@@ -248,13 +264,14 @@ export class MountManagerService extends DisposableService {
     const result: Array<{
       prefix: string;
       path: string;
+      permissions: MountPermission[];
       clientRuntime: ClientRuntimeNode;
     }> = [];
-    for (const prefix of mounts) {
+    for (const [prefix, permissions] of mounts) {
       const wsPath = this.workspacePathsPerMount.get(prefix);
       const rt = wsPath ? this.clientRuntimesPerPath.get(wsPath) : undefined;
       if (wsPath && rt) {
-        result.push({ prefix, path: wsPath, clientRuntime: rt });
+        result.push({ prefix, path: wsPath, permissions, clientRuntime: rt });
       }
     }
     return result;
@@ -266,7 +283,7 @@ export class MountManagerService extends DisposableService {
   ): string | undefined {
     const mounts = this.agentMounts.get(agentInstanceId);
     if (!mounts) return undefined;
-    for (const prefix of mounts) {
+    for (const prefix of mounts.keys()) {
       const wsPath = this.workspacePathsPerMount.get(prefix);
       if (wsPath && filePath.startsWith(wsPath)) return wsPath;
     }
@@ -280,7 +297,7 @@ export class MountManagerService extends DisposableService {
   public getMountedRuntimes(agentInstanceId: string): MountedClientRuntimes {
     const mounts = this.agentMounts.get(agentInstanceId);
     const result: MountedClientRuntimes = new Map();
-    for (const prefix of mounts ?? []) {
+    for (const prefix of mounts?.keys() ?? []) {
       const wsPath = this.workspacePathsPerMount.get(prefix);
       if (!wsPath) continue;
       const rt = this.clientRuntimesPerPath.get(wsPath);
@@ -292,7 +309,7 @@ export class MountManagerService extends DisposableService {
   public getMountedLspServices(agentInstanceId: string): MountedLspServices {
     const mounts = this.agentMounts.get(agentInstanceId);
     const result: MountedLspServices = new Map();
-    for (const prefix of mounts ?? []) {
+    for (const prefix of mounts?.keys() ?? []) {
       const wsPath = this.workspacePathsPerMount.get(prefix);
       if (!wsPath) continue;
       const lsp = this.lspServicesPerPath.get(wsPath);
@@ -332,10 +349,11 @@ export class MountManagerService extends DisposableService {
     if (!mounts || mounts.size === 0) return { mounts: [] };
 
     return {
-      mounts: [...mounts]
-        .map((prefix) => ({
+      mounts: [...mounts.entries()]
+        .map(([prefix, permissions]) => ({
           prefix,
           path: this.workspacePathsPerMount.get(prefix) ?? '',
+          permissions,
         }))
         .filter((m) => m.path !== ''),
     };

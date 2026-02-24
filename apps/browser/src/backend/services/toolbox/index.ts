@@ -3,6 +3,7 @@ import { MountManagerService } from './services/mount-manager';
 import type { FilePickerService } from '@/services/file-picker';
 import type { UserExperienceService } from '@/services/experience';
 import { SandboxService } from '../sandbox';
+import { APPEND_ONLY_PERMISSIONS, type MountDescriptor } from '../sandbox/ipc';
 import type { WorkspaceAgentSettings } from '@shared/karton-contracts/ui/shared-types';
 import type { KartonService } from '@/services/karton';
 import type { GlobalConfigService } from '@/services/global-config';
@@ -54,7 +55,10 @@ import {
   type StagewiseToolSet,
 } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { BrowserSnapshot, WorkspaceSnapshot } from './types';
-import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type {
+  EnvironmentSnapshot,
+  MountPermission,
+} from '@shared/karton-contracts/ui/agent/metadata';
 import { createEnvironmentDiffSnapshot } from '@/services/diff-history/utils/diff';
 import type { WorkspaceInfo } from '@/agents/shared/prompts/utils/workspace-info';
 import { getWorkspaceInfo as getWorkspaceInfoUtil } from '@/agents/shared/prompts/utils/workspace-info';
@@ -394,10 +398,12 @@ export class ToolboxService extends DisposableService {
   public async handleMountWorkspace(
     agentInstanceId: string,
     workspacePath: string,
+    permissions?: MountPermission[],
   ) {
     await this.mountManagerService?.handleMountWorkspace(
       agentInstanceId,
       workspacePath,
+      permissions,
     );
   }
 
@@ -415,15 +421,14 @@ export class ToolboxService extends DisposableService {
    * Push current mount configuration for an agent to the sandbox worker
    * so the isolated fs stays in sync.
    */
-  private getSandboxMounts(
-    agentInstanceId: string,
-  ): { prefix: string; absolutePath: string }[] {
+  private getSandboxMounts(agentInstanceId: string): MountDescriptor[] {
     const mountsWithRt =
       this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
-    const mounts =
+    const mounts: MountDescriptor[] =
       mountsWithRt?.map((m) => ({
         prefix: m.prefix,
         absolutePath: m.path,
+        permissions: m.permissions,
       })) ?? [];
 
     const attDir = getAgentBlobDir(
@@ -431,7 +436,11 @@ export class ToolboxService extends DisposableService {
       agentInstanceId,
     );
     mkdirSync(attDir, { recursive: true });
-    mounts.push({ prefix: 'att', absolutePath: attDir });
+    mounts.push({
+      prefix: 'att',
+      absolutePath: attDir,
+      permissions: APPEND_ONLY_PERMISSIONS,
+    });
 
     return mounts;
   }
@@ -509,6 +518,19 @@ export class ToolboxService extends DisposableService {
       this.mountManagerService?.getWorkspaceSnapshot(agentInstanceId);
     const toolboxState = this.uiKarton.state.toolbox[agentInstanceId];
 
+    const workspaceMounts = workspaceState?.mounts ?? [];
+    const allMounts = [
+      ...workspaceMounts,
+      {
+        prefix: 'att',
+        path: getAgentBlobDir(
+          this.globalDataPathService.globalDataPath,
+          agentInstanceId,
+        ),
+        permissions: [...APPEND_ONLY_PERMISSIONS] as MountPermission[],
+      },
+    ];
+
     const snapshot: EnvironmentSnapshot = {
       browser: {
         tabs: browserState.tabs.map((t) => ({
@@ -518,7 +540,7 @@ export class ToolboxService extends DisposableService {
         })),
         activeTabHandle: browserState.activeTab?.handle ?? null,
       },
-      workspace: workspaceState || { mounts: [] },
+      workspace: { mounts: allMounts },
       fileDiffs: toolboxState
         ? createEnvironmentDiffSnapshot(
             toolboxState.pendingFileDiffs,

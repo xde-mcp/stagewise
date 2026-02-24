@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { MountDescriptor } from '../ipc';
+import type { MountDescriptor, MountPermission } from '../ipc';
 
 const MAX_DIFF_TEXT_FILE_SIZE = 2 * 1024 * 1024; // 2MB — matches shared-types
 
@@ -12,6 +12,11 @@ type DiffNotifier = (
   bytesWritten: number,
 ) => void;
 
+interface ResolvedPath {
+  absolutePath: string;
+  mount: MountDescriptor;
+}
+
 /**
  * Resolve a sandbox-relative path (e.g. "w1/src/index.ts") to an absolute
  * filesystem path, validating that it stays within the mount root.
@@ -21,7 +26,7 @@ type DiffNotifier = (
 function resolveSandboxPath(
   sandboxPath: string | Buffer | URL,
   mounts: MountDescriptor[],
-): string {
+): ResolvedPath {
   const raw =
     typeof sandboxPath === 'string'
       ? sandboxPath
@@ -37,16 +42,16 @@ function resolveSandboxPath(
 
   const parts = raw.split('/');
   const prefixCandidate = parts[0];
-  const mount = mounts.find((m) => m.prefix === prefixCandidate);
+  const matchedMount = mounts.find((m) => m.prefix === prefixCandidate);
 
-  let mountRoot: string;
+  let mount: MountDescriptor;
   let relativePart: string;
 
-  if (mount) {
-    mountRoot = mount.absolutePath;
+  if (matchedMount) {
+    mount = matchedMount;
     relativePart = parts.slice(1).join('/');
   } else if (mounts.length === 1) {
-    mountRoot = mounts[0].absolutePath;
+    mount = mounts[0];
     relativePart = raw;
   } else {
     throw new Error(
@@ -55,28 +60,169 @@ function resolveSandboxPath(
   }
 
   const safePart = path.resolve('/', relativePart);
-  const absolute = path.join(mountRoot, safePart);
+  const absolute = path.join(mount.absolutePath, safePart);
 
-  if (!absolute.startsWith(mountRoot)) {
+  if (!absolute.startsWith(mount.absolutePath)) {
     throw new Error('Path escapes the mounted workspace.');
   }
 
-  // Symlink protection: if the target already exists, verify the real path
-  // stays within the mount. For new files (write/mkdir) this is skipped.
   try {
     const real = fs.realpathSync(absolute);
-    if (!real.startsWith(mountRoot)) {
+    if (!real.startsWith(mount.absolutePath)) {
       throw new Error(
         'Resolved path (via symlink) escapes the mounted workspace.',
       );
     }
-    return real;
+    return { absolutePath: real, mount };
   } catch (err: any) {
-    if (err.code === 'ENOENT') return absolute;
+    if (err.code === 'ENOENT') return { absolutePath: absolute, mount };
     if (err.message?.includes('escapes')) throw err;
-    return absolute;
+    return { absolutePath: absolute, mount };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Permission enforcement
+// ---------------------------------------------------------------------------
+
+const READ_METHODS = new Set([
+  'readFile',
+  'readFileSync',
+  'stat',
+  'statSync',
+  'statfs',
+  'statfsSync',
+  'lstat',
+  'lstatSync',
+  'access',
+  'accessSync',
+  'exists',
+  'existsSync',
+  'readlink',
+  'readlinkSync',
+  'realpath',
+  'realpathSync',
+  'open',
+  'openSync',
+  'createReadStream',
+  'watch',
+  'watchFile',
+  'unwatchFile',
+]);
+
+const LIST_METHODS = new Set([
+  'readdir',
+  'readdirSync',
+  'opendir',
+  'opendirSync',
+]);
+
+const DELETE_METHODS = new Set([
+  'unlink',
+  'unlinkSync',
+  'rm',
+  'rmSync',
+  'rmdir',
+  'rmdirSync',
+]);
+
+const EDIT_ONLY_METHODS = new Set([
+  'truncate',
+  'truncateSync',
+  'chmod',
+  'chmodSync',
+  'chown',
+  'chownSync',
+  'lchmod',
+  'lchmodSync',
+  'lchown',
+  'lchownSync',
+  'utimes',
+  'utimesSync',
+  'lutimes',
+  'lutimesSync',
+]);
+
+const CREATE_ONLY_METHODS = new Set([
+  'mkdir',
+  'mkdirSync',
+  'mkdtemp',
+  'mkdtempSync',
+]);
+
+/**
+ * For writeFile/appendFile/createWriteStream the required permission
+ * depends on whether the target already exists (edit) or not (create).
+ */
+const WRITE_OR_CREATE_METHODS = new Set([
+  'writeFile',
+  'writeFileSync',
+  'appendFile',
+  'appendFileSync',
+  'createWriteStream',
+]);
+
+function fileExistsSync(p: string): boolean {
+  try {
+    fs.accessSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Classify which permission a single-path method requires.
+ * For write-or-create methods, checks file existence to distinguish.
+ */
+function classifyPermission(
+  methodName: string,
+  absolutePath: string,
+): MountPermission | null {
+  if (READ_METHODS.has(methodName)) return 'read';
+  if (LIST_METHODS.has(methodName)) return 'list';
+  if (DELETE_METHODS.has(methodName)) return 'delete';
+  if (EDIT_ONLY_METHODS.has(methodName)) return 'edit';
+  if (CREATE_ONLY_METHODS.has(methodName)) return 'create';
+  if (WRITE_OR_CREATE_METHODS.has(methodName)) {
+    return fileExistsSync(absolutePath) ? 'edit' : 'create';
+  }
+  return null;
+}
+
+const PERMISSION_SUGGESTIONS: Record<
+  MountPermission,
+  Record<string, string>
+> = {
+  read: {},
+  list: {},
+  create: {
+    att: 'Attachment already exists. Write to a new ID instead.',
+  },
+  edit: {
+    att: 'Attachments are append-only. Write to a new ID instead of overwriting.',
+  },
+  delete: {
+    att: 'Attachments cannot be deleted.',
+  },
+};
+
+function enforcePermission(
+  mount: MountDescriptor,
+  required: MountPermission,
+  methodName: string,
+): void {
+  if (mount.permissions.includes(required)) return;
+  const suggestion =
+    PERMISSION_SUGGESTIONS[required]?.[mount.prefix] ??
+    (mount.permissions.length <= 2 ? 'This mount is read-only.' : '');
+  const msg = `Permission denied: '${methodName}' requires '${required}' access on mount '${mount.prefix}/' (current permissions: [${mount.permissions.join(', ')}]).${suggestion ? ` ${suggestion}` : ''}`;
+  throw new Error(msg);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function isFileBinarySync(buf: Buffer): boolean {
   if (buf.length === 0) return false;
@@ -87,11 +233,6 @@ function isFileBinarySync(buf: Buffer): boolean {
   return false;
 }
 
-/**
- * Capture file content for diff tracking. Returns the text content (string)
- * for small text files, or null for binary/large/nonexistent files with
- * an `isExternal` flag.
- */
 function captureState(absolutePath: string): {
   content: string | null;
   isExternal: boolean;
@@ -205,6 +346,33 @@ const MUTATION_METHODS = new Set([
   'lutimesSync',
 ]);
 
+/**
+ * For two-path methods, classify the required permissions for source
+ * and destination separately.
+ */
+function classifyTwoPathPermissions(
+  methodName: string,
+  dstAbsolutePath: string,
+): {
+  src: MountPermission;
+  dst: MountPermission;
+  srcExtra?: MountPermission;
+} {
+  const baseName = methodName.replace(/Sync$/, '');
+  const dstPerm: MountPermission = fileExistsSync(dstAbsolutePath)
+    ? 'edit'
+    : 'create';
+  switch (baseName) {
+    case 'rename':
+      return { src: 'read', dst: dstPerm, srcExtra: 'delete' };
+    case 'link':
+    case 'symlink':
+      return { src: 'read', dst: 'create' };
+    default:
+      return { src: 'read', dst: dstPerm };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Generic wrappers — one per argument signature pattern
 // ---------------------------------------------------------------------------
@@ -218,14 +386,16 @@ function wrapPathFn(
   methodName: string,
 ): AnyFn {
   return (p: any, ...args: any[]) => {
-    const resolved = resolveSandboxPath(p, mounts);
+    const { absolutePath, mount } = resolveSandboxPath(p, mounts);
+    const perm = classifyPermission(methodName, absolutePath);
+    if (perm) enforcePermission(mount, perm, methodName);
     if (notifyDiff && MUTATION_METHODS.has(methodName)) {
-      const before = captureState(resolved);
-      const result = fn(resolved, ...args);
-      const after = captureState(resolved);
+      const before = captureState(absolutePath);
+      const result = fn(absolutePath, ...args);
+      const after = captureState(absolutePath);
       const bytesWritten = after.content?.length ?? 0;
       notifyDiff(
-        resolved,
+        absolutePath,
         before.content,
         after.content,
         before.isExternal || after.isExternal,
@@ -233,7 +403,7 @@ function wrapPathFn(
       );
       return result;
     }
-    return fn(resolved, ...args);
+    return fn(absolutePath, ...args);
   };
 }
 
@@ -245,14 +415,16 @@ function wrapFileFn(
 ): AnyFn {
   return (file: any, ...args: any[]) => {
     if (typeof file === 'number') return fn(file, ...args);
-    const resolved = resolveSandboxPath(file, mounts);
+    const { absolutePath, mount } = resolveSandboxPath(file, mounts);
+    const perm = classifyPermission(methodName, absolutePath);
+    if (perm) enforcePermission(mount, perm, methodName);
     if (notifyDiff && MUTATION_METHODS.has(methodName)) {
-      const before = captureState(resolved);
-      const result = fn(resolved, ...args);
-      const after = captureState(resolved);
+      const before = captureState(absolutePath);
+      const result = fn(absolutePath, ...args);
+      const after = captureState(absolutePath);
       const bytesWritten = after.content?.length ?? 0;
       notifyDiff(
-        resolved,
+        absolutePath,
         before.content,
         after.content,
         before.isExternal || after.isExternal,
@@ -260,7 +432,7 @@ function wrapFileFn(
       );
       return result;
     }
-    return fn(resolved, ...args);
+    return fn(absolutePath, ...args);
   };
 }
 
@@ -271,27 +443,31 @@ function wrapTwoPathFn(
   methodName: string,
 ): AnyFn {
   return (p1: any, p2: any, ...args: any[]) => {
-    const r1 = resolveSandboxPath(p1, mounts);
-    const r2 = resolveSandboxPath(p2, mounts);
+    const src = resolveSandboxPath(p1, mounts);
+    const dst = resolveSandboxPath(p2, mounts);
+    const perms = classifyTwoPathPermissions(methodName, dst.absolutePath);
+    enforcePermission(src.mount, perms.src, methodName);
+    enforcePermission(dst.mount, perms.dst, methodName);
+    if (perms.srcExtra) {
+      enforcePermission(src.mount, perms.srcExtra, methodName);
+    }
     if (notifyDiff && MUTATION_METHODS.has(methodName)) {
-      const beforeSrc = captureState(r1);
-      const beforeDst = captureState(r2);
-      const result = fn(r1, r2, ...args);
-      const afterSrc = captureState(r1);
-      const afterDst = captureState(r2);
-      // Notify for source if changed (e.g. rename deletes source)
+      const beforeSrc = captureState(src.absolutePath);
+      const beforeDst = captureState(dst.absolutePath);
+      const result = fn(src.absolutePath, dst.absolutePath, ...args);
+      const afterSrc = captureState(src.absolutePath);
+      const afterDst = captureState(dst.absolutePath);
       if (beforeSrc.content !== afterSrc.content) {
         notifyDiff(
-          r1,
+          src.absolutePath,
           beforeSrc.content,
           afterSrc.content,
           beforeSrc.isExternal || afterSrc.isExternal,
           0,
         );
       }
-      // Notify for destination
       notifyDiff(
-        r2,
+        dst.absolutePath,
         beforeDst.content,
         afterDst.content,
         beforeDst.isExternal || afterDst.isExternal,
@@ -299,29 +475,37 @@ function wrapTwoPathFn(
       );
       return result;
     }
-    return fn(r1, r2, ...args);
+    return fn(src.absolutePath, dst.absolutePath, ...args);
   };
 }
 
-function wrapStringPathFn(fn: AnyFn, mounts: MountDescriptor[]): AnyFn {
+function wrapStringPathFn(
+  fn: AnyFn,
+  mounts: MountDescriptor[],
+  methodName: string,
+): AnyFn {
   return (prefix: any, ...args: any[]) => {
-    const resolved = resolveSandboxPath(
+    const { absolutePath, mount } = resolveSandboxPath(
       typeof prefix === 'string' ? prefix : String(prefix),
       mounts,
     );
-    return fn(resolved, ...args);
+    const perm = classifyPermission(methodName, absolutePath);
+    if (perm) enforcePermission(mount, perm, methodName);
+    return fn(absolutePath, ...args);
   };
 }
 
 function wrapRealpathFn(fn: AnyFn, mounts: MountDescriptor[]): AnyFn {
   const wrapped: any = (p: any, ...args: any[]) => {
-    const resolved = resolveSandboxPath(p, mounts);
-    return fn(resolved, ...args);
+    const { absolutePath, mount } = resolveSandboxPath(p, mounts);
+    enforcePermission(mount, 'read', 'realpath');
+    return fn(absolutePath, ...args);
   };
   if ((fn as any).native) {
     wrapped.native = (p: any, ...args: any[]) => {
-      const resolved = resolveSandboxPath(p, mounts);
-      return (fn as any).native(resolved, ...args);
+      const { absolutePath, mount } = resolveSandboxPath(p, mounts);
+      enforcePermission(mount, 'read', 'realpath');
+      return (fn as any).native(absolutePath, ...args);
     };
   }
   return wrapped;
@@ -339,13 +523,15 @@ function wrapAsyncPathFn(
   methodName: string,
 ): AnyFn {
   return async (p: any, ...args: any[]) => {
-    const resolved = resolveSandboxPath(p, mounts);
+    const { absolutePath, mount } = resolveSandboxPath(p, mounts);
+    const perm = classifyPermission(methodName, absolutePath);
+    if (perm) enforcePermission(mount, perm, methodName);
     if (notifyDiff && MUTATION_METHODS.has(methodName)) {
-      const before = captureState(resolved);
-      const result = await fn(resolved, ...args);
-      const after = captureState(resolved);
+      const before = captureState(absolutePath);
+      const result = await fn(absolutePath, ...args);
+      const after = captureState(absolutePath);
       notifyDiff(
-        resolved,
+        absolutePath,
         before.content,
         after.content,
         before.isExternal || after.isExternal,
@@ -353,7 +539,7 @@ function wrapAsyncPathFn(
       );
       return result;
     }
-    return fn(resolved, ...args);
+    return fn(absolutePath, ...args);
   };
 }
 
@@ -365,13 +551,15 @@ function wrapAsyncFileFn(
 ): AnyFn {
   return async (file: any, ...args: any[]) => {
     if (typeof file === 'number') return fn(file, ...args);
-    const resolved = resolveSandboxPath(file, mounts);
+    const { absolutePath, mount } = resolveSandboxPath(file, mounts);
+    const perm = classifyPermission(methodName, absolutePath);
+    if (perm) enforcePermission(mount, perm, methodName);
     if (notifyDiff && MUTATION_METHODS.has(methodName)) {
-      const before = captureState(resolved);
-      const result = await fn(resolved, ...args);
-      const after = captureState(resolved);
+      const before = captureState(absolutePath);
+      const result = await fn(absolutePath, ...args);
+      const after = captureState(absolutePath);
       notifyDiff(
-        resolved,
+        absolutePath,
         before.content,
         after.content,
         before.isExternal || after.isExternal,
@@ -379,7 +567,7 @@ function wrapAsyncFileFn(
       );
       return result;
     }
-    return fn(resolved, ...args);
+    return fn(absolutePath, ...args);
   };
 }
 
@@ -390,17 +578,23 @@ function wrapAsyncTwoPathFn(
   methodName: string,
 ): AnyFn {
   return async (p1: any, p2: any, ...args: any[]) => {
-    const r1 = resolveSandboxPath(p1, mounts);
-    const r2 = resolveSandboxPath(p2, mounts);
+    const src = resolveSandboxPath(p1, mounts);
+    const dst = resolveSandboxPath(p2, mounts);
+    const perms = classifyTwoPathPermissions(methodName, dst.absolutePath);
+    enforcePermission(src.mount, perms.src, methodName);
+    enforcePermission(dst.mount, perms.dst, methodName);
+    if (perms.srcExtra) {
+      enforcePermission(src.mount, perms.srcExtra, methodName);
+    }
     if (notifyDiff && MUTATION_METHODS.has(methodName)) {
-      const beforeSrc = captureState(r1);
-      const beforeDst = captureState(r2);
-      const result = await fn(r1, r2, ...args);
-      const afterSrc = captureState(r1);
-      const afterDst = captureState(r2);
+      const beforeSrc = captureState(src.absolutePath);
+      const beforeDst = captureState(dst.absolutePath);
+      const result = await fn(src.absolutePath, dst.absolutePath, ...args);
+      const afterSrc = captureState(src.absolutePath);
+      const afterDst = captureState(dst.absolutePath);
       if (beforeSrc.content !== afterSrc.content) {
         notifyDiff(
-          r1,
+          src.absolutePath,
           beforeSrc.content,
           afterSrc.content,
           beforeSrc.isExternal || afterSrc.isExternal,
@@ -408,7 +602,7 @@ function wrapAsyncTwoPathFn(
         );
       }
       notifyDiff(
-        r2,
+        dst.absolutePath,
         beforeDst.content,
         afterDst.content,
         beforeDst.isExternal || afterDst.isExternal,
@@ -416,24 +610,31 @@ function wrapAsyncTwoPathFn(
       );
       return result;
     }
-    return fn(r1, r2, ...args);
+    return fn(src.absolutePath, dst.absolutePath, ...args);
   };
 }
 
-function wrapAsyncStringPathFn(fn: AnyFn, mounts: MountDescriptor[]): AnyFn {
+function wrapAsyncStringPathFn(
+  fn: AnyFn,
+  mounts: MountDescriptor[],
+  methodName: string,
+): AnyFn {
   return (prefix: any, ...args: any[]) => {
-    const resolved = resolveSandboxPath(
+    const { absolutePath, mount } = resolveSandboxPath(
       typeof prefix === 'string' ? prefix : String(prefix),
       mounts,
     );
-    return fn(resolved, ...args);
+    const perm = classifyPermission(methodName, absolutePath);
+    if (perm) enforcePermission(mount, perm, methodName);
+    return fn(absolutePath, ...args);
   };
 }
 
 function wrapAsyncRealpathFn(fn: AnyFn, mounts: MountDescriptor[]): AnyFn {
   return (p: any, ...args: any[]) => {
-    const resolved = resolveSandboxPath(p, mounts);
-    return fn(resolved, ...args);
+    const { absolutePath, mount } = resolveSandboxPath(p, mounts);
+    enforcePermission(mount, 'read', 'realpath');
+    return fn(absolutePath, ...args);
   };
 }
 
@@ -443,6 +644,7 @@ function wrapAsyncRealpathFn(fn: AnyFn, mounts: MountDescriptor[]): AnyFn {
 
 /**
  * Create a restricted `fs` module scoped to the given mounts.
+ * Each mount's `permissions` array controls which operations are allowed.
  *
  * @param mounts - Currently active mount descriptors for this agent
  * @param notifyDiff - Fire-and-forget callback to report file mutations
@@ -537,16 +739,16 @@ export function createIsolatedFs(
   for (const name of STRING_PATH_FUNCTIONS) {
     const fn = (fs as any)[name];
     if (fn) {
-      wrapped[name] = wrapStringPathFn(fn, mounts);
+      wrapped[name] = wrapStringPathFn(fn, mounts, name);
     }
     const syncName = `${name}Sync`;
     const syncFn = (fs as any)[syncName];
     if (syncFn) {
-      wrapped[syncName] = wrapStringPathFn(syncFn, mounts);
+      wrapped[syncName] = wrapStringPathFn(syncFn, mounts, syncName);
     }
     const promiseFn = (fs.promises as any)[name];
     if (promiseFn) {
-      wrappedPromises[name] = wrapAsyncStringPathFn(promiseFn, mounts);
+      wrappedPromises[name] = wrapAsyncStringPathFn(promiseFn, mounts, name);
     }
   }
 

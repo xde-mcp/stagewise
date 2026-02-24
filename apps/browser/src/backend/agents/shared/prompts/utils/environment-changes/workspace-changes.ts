@@ -1,5 +1,10 @@
 import type { WorkspaceSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 
+function formatPermissions(permissions?: string[]): string {
+  if (!permissions || permissions.length === 0) return '';
+  return ` [${permissions.join(', ')}]`;
+}
+
 /**
  * Compares two workspace snapshots and produces human-readable
  * change descriptions. Detects mounts added, removed, or changed.
@@ -14,21 +19,33 @@ export function computeWorkspaceChanges(
 
   const changes: string[] = [];
 
-  const prevMap = new Map(previous.mounts.map((m) => [m.prefix, m.path]));
-  const currMap = new Map(current.mounts.map((m) => [m.prefix, m.path]));
+  const prevMap = new Map(previous.mounts.map((m) => [m.prefix, m]));
+  const currMap = new Map(current.mounts.map((m) => [m.prefix, m]));
 
-  for (const [prefix, path] of currMap) {
-    if (!prevMap.has(prefix))
-      changes.push(`workspace mounted: ${prefix} -> ${path}`);
-    else if (prevMap.get(prefix) !== path)
+  for (const [prefix, mount] of currMap) {
+    const prev = prevMap.get(prefix);
+    if (!prev) {
       changes.push(
-        `workspace ${prefix} changed: ${prevMap.get(prefix)} -> ${path}`,
+        `workspace mounted: ${prefix} -> ${mount.path}${formatPermissions(mount.permissions)}`,
       );
+    } else if (prev.path !== mount.path) {
+      changes.push(
+        `workspace ${prefix} changed: ${prev.path} -> ${mount.path}${formatPermissions(mount.permissions)}`,
+      );
+    } else {
+      const prevPerms = (prev.permissions ?? []).join(',');
+      const currPerms = (mount.permissions ?? []).join(',');
+      if (prevPerms !== currPerms) {
+        changes.push(
+          `workspace ${prefix} permissions changed: [${prevPerms}] -> [${currPerms}]`,
+        );
+      }
+    }
   }
 
-  for (const [prefix, path] of prevMap)
+  for (const [prefix, mount] of prevMap)
     if (!currMap.has(prefix))
-      changes.push(`workspace unmounted: ${prefix} (was ${path})`);
+      changes.push(`workspace unmounted: ${prefix} (was ${mount.path})`);
 
   return changes;
 }

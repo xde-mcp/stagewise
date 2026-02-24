@@ -49,9 +49,19 @@ export const browserSnapshotSchema = z.object({
 
 export type BrowserSnapshot = z.infer<typeof browserSnapshotSchema>;
 
+export const mountPermissionSchema = z.enum([
+  'read',
+  'list',
+  'create',
+  'edit',
+  'delete',
+]);
+export type MountPermission = z.infer<typeof mountPermissionSchema>;
+
 export const mountSchema = z.object({
   prefix: z.string(),
   path: z.string(),
+  permissions: z.array(mountPermissionSchema).optional(),
 });
 
 export type Mount = z.infer<typeof mountSchema>;

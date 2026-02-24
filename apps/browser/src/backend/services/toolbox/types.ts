@@ -1,4 +1,5 @@
 import type { ToolboxService } from '.';
+import type { MountPermission } from '@shared/karton-contracts/ui/agent/metadata';
 
 /**
  * Simplified snapshot of browser state for use in agents (e.g. system prompt building).
@@ -26,6 +27,7 @@ export type WorkspaceSnapshot = {
   mounts: Array<{
     prefix: string;
     path: string;
+    permissions?: MountPermission[];
   }>;
 };
 

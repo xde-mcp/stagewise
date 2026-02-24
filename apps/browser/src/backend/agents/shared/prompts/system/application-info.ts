@@ -69,6 +69,7 @@ const fsp = await import('node:fs/promises');
 - **Paths use mount prefixes**: \`w1/src/index.ts\`, \`w2/package.json\`. If only one workspace is mounted, the prefix is optional.
 - Paths are restricted to mounted workspaces — access outside them throws an error.
 - File writes are automatically tracked by the diff-history system.
+- **Mount permissions**: Each mount has a set of allowed operations (read, list, create, edit, delete). 
 
 #### Attachment directory (\`att/\`)
 
@@ -78,6 +79,7 @@ A special \`att/\` mount is always available, separate from workspace mounts. It
 - **Write output attachments**: \`fs.writeFile('att/{id}', buffer)\` — write binary content directly, then register metadata with \`API.outputAttachment()\`.
 - The \`att/\` directory is persistent for the lifetime of the agent.
 - Writes to \`att/\` are **not** tracked by the diff-history system.
+- The \`att/\` directory has **append-only** permissions: you can read existing attachments and create new ones, but **cannot overwrite or delete** existing attachments.
 
 ### Sandbox API (\`API.*\`)
 

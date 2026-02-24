@@ -9,9 +9,26 @@ interface UtilityProcessHandle {
   on(event: string, handler: (...args: any[]) => void): this;
 }
 
+export type MountPermission = 'read' | 'list' | 'create' | 'edit' | 'delete';
+
+export const FULL_PERMISSIONS: MountPermission[] = [
+  'read',
+  'list',
+  'create',
+  'edit',
+  'delete',
+];
+export const READ_ONLY_PERMISSIONS: MountPermission[] = ['read', 'list'];
+export const APPEND_ONLY_PERMISSIONS: MountPermission[] = [
+  'read',
+  'list',
+  'create',
+];
+
 export interface MountDescriptor {
   prefix: string;
   absolutePath: string;
+  permissions: MountPermission[];
 }
 
 export type MainToWorkerMessage =

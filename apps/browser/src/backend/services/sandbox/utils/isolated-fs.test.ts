@@ -4,14 +4,24 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createIsolatedFs } from './isolated-fs';
-import type { MountDescriptor } from '../ipc';
+import {
+  type MountDescriptor,
+  type MountPermission,
+  FULL_PERMISSIONS,
+  READ_ONLY_PERMISSIONS,
+  APPEND_ONLY_PERMISSIONS,
+} from '../ipc';
 
 let tmpRoot: string;
 let mountA: string;
 let mountB: string;
 
-function mount(prefix: string, absolutePath: string): MountDescriptor {
-  return { prefix, absolutePath };
+function mount(
+  prefix: string,
+  absolutePath: string,
+  permissions: MountPermission[] = FULL_PERMISSIONS,
+): MountDescriptor {
+  return { prefix, absolutePath, permissions };
 }
 
 beforeEach(async () => {
@@ -789,5 +799,273 @@ describe('non-string path inputs', () => {
     fs.writeFileSync(path.join(mountA, 'buf.txt'), 'buffer-path');
     const content = isolatedFs.readFileSync(Buffer.from('w1/buf.txt'), 'utf-8');
     expect(content).toBe('buffer-path');
+  });
+});
+
+// =============================================================================
+// Mount Permissions — Full
+// =============================================================================
+
+describe('full permissions mount', () => {
+  it('allows all operations', () => {
+    const mounts = [mount('w1', mountA, FULL_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    isolatedFs.writeFileSync('w1/full.txt', 'hello', 'utf-8');
+    expect(isolatedFs.readFileSync('w1/full.txt', 'utf-8')).toBe('hello');
+    isolatedFs.writeFileSync('w1/full.txt', 'updated', 'utf-8');
+    expect(isolatedFs.readdirSync('w1')).toContain('full.txt');
+    isolatedFs.unlinkSync('w1/full.txt');
+    expect(isolatedFs.existsSync('w1/full.txt')).toBe(false);
+  });
+});
+
+// =============================================================================
+// Mount Permissions — Append-Only
+// =============================================================================
+
+describe('append-only permissions mount', () => {
+  it('allows read on existing files', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'existing.txt'), 'data');
+    expect(isolatedFs.readFileSync('att/existing.txt', 'utf-8')).toBe('data');
+  });
+
+  it('allows list', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'a.txt'), '');
+    expect(isolatedFs.readdirSync('att')).toContain('a.txt');
+  });
+
+  it('allows creating new files', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    isolatedFs.writeFileSync('att/new-file.txt', 'created', 'utf-8');
+    expect(fs.readFileSync(path.join(mountA, 'new-file.txt'), 'utf-8')).toBe(
+      'created',
+    );
+  });
+
+  it('blocks overwriting existing files', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'locked.txt'), 'original');
+    expect(() =>
+      isolatedFs.writeFileSync('att/locked.txt', 'overwrite', 'utf-8'),
+    ).toThrow(/Permission denied.*'edit'/);
+  });
+
+  it('blocks deleting files', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'keep.txt'), 'keep');
+    expect(() => isolatedFs.unlinkSync('att/keep.txt')).toThrow(
+      /Permission denied.*'delete'/,
+    );
+  });
+
+  it('blocks rm', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'rm-target.txt'), 'data');
+    expect(() =>
+      isolatedFs.rmSync('att/rm-target.txt', { force: true }),
+    ).toThrow(/Permission denied.*'delete'/);
+  });
+
+  it('error message includes mount prefix and permission set', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'perm-msg.txt'), '');
+    try {
+      isolatedFs.unlinkSync('att/perm-msg.txt');
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e.message).toContain("mount 'att/'");
+      expect(e.message).toContain('read, list, create');
+    }
+  });
+
+  it('includes att-specific suggestion for edit denial', () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'overwrite-me.txt'), 'original');
+    try {
+      isolatedFs.writeFileSync('att/overwrite-me.txt', 'new', 'utf-8');
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e.message).toContain('Write to a new ID');
+    }
+  });
+
+  it('allows creating new files via async writeFile', async () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFsPromises } = createIsolatedFs(mounts, null);
+
+    await isolatedFsPromises.writeFile('att/async-new.txt', 'data');
+    expect(fs.readFileSync(path.join(mountA, 'async-new.txt'), 'utf-8')).toBe(
+      'data',
+    );
+  });
+
+  it('blocks async overwrite of existing files', async () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFsPromises } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'exists.txt'), 'original');
+    await expect(
+      isolatedFsPromises.writeFile('att/exists.txt', 'overwrite'),
+    ).rejects.toThrow(/Permission denied.*'edit'/);
+  });
+
+  it('blocks async unlink', async () => {
+    const mounts = [mount('att', mountA, APPEND_ONLY_PERMISSIONS)];
+    const { isolatedFsPromises } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'async-keep.txt'), 'keep');
+    await expect(
+      isolatedFsPromises.unlink('att/async-keep.txt'),
+    ).rejects.toThrow(/Permission denied.*'delete'/);
+  });
+});
+
+// =============================================================================
+// Mount Permissions — Read-Only
+// =============================================================================
+
+describe('read-only permissions mount', () => {
+  it('allows read', () => {
+    const mounts = [mount('ro', mountA, READ_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'readable.txt'), 'content');
+    expect(isolatedFs.readFileSync('ro/readable.txt', 'utf-8')).toBe('content');
+  });
+
+  it('allows list', () => {
+    const mounts = [mount('ro', mountA, READ_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'listed.txt'), '');
+    expect(isolatedFs.readdirSync('ro')).toContain('listed.txt');
+  });
+
+  it('blocks creating new files', () => {
+    const mounts = [mount('ro', mountA, READ_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    expect(() =>
+      isolatedFs.writeFileSync('ro/blocked.txt', 'nope', 'utf-8'),
+    ).toThrow(/Permission denied.*'create'/);
+  });
+
+  it('blocks editing existing files', () => {
+    const mounts = [mount('ro', mountA, READ_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'immutable.txt'), 'original');
+    expect(() =>
+      isolatedFs.writeFileSync('ro/immutable.txt', 'changed', 'utf-8'),
+    ).toThrow(/Permission denied.*'edit'/);
+  });
+
+  it('blocks deleting files', () => {
+    const mounts = [mount('ro', mountA, READ_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'nodelete.txt'), 'keep');
+    expect(() => isolatedFs.unlinkSync('ro/nodelete.txt')).toThrow(
+      /Permission denied.*'delete'/,
+    );
+  });
+
+  it('blocks mkdir', () => {
+    const mounts = [mount('ro', mountA, READ_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    expect(() => isolatedFs.mkdirSync('ro/newdir')).toThrow(
+      /Permission denied.*'create'/,
+    );
+  });
+
+  it('error mentions read-only hint', () => {
+    const mounts = [mount('ro', mountA, READ_ONLY_PERMISSIONS)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    try {
+      isolatedFs.writeFileSync('ro/fail.txt', 'nope', 'utf-8');
+      expect.unreachable('should have thrown');
+    } catch (e: any) {
+      expect(e.message).toContain('read-only');
+    }
+  });
+});
+
+// =============================================================================
+// Mount Permissions — Two-Path Operations
+// =============================================================================
+
+describe('two-path permission enforcement', () => {
+  it('copyFile from read-only src to full-perm dst works', () => {
+    const mounts = [
+      mount('ro', mountA, READ_ONLY_PERMISSIONS),
+      mount('w1', mountB, FULL_PERMISSIONS),
+    ];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'src.txt'), 'data');
+    isolatedFs.copyFileSync('ro/src.txt', 'w1/copy.txt');
+    expect(fs.readFileSync(path.join(mountB, 'copy.txt'), 'utf-8')).toBe(
+      'data',
+    );
+  });
+
+  it('copyFile to read-only dst is blocked', () => {
+    const mounts = [
+      mount('w1', mountA, FULL_PERMISSIONS),
+      mount('ro', mountB, READ_ONLY_PERMISSIONS),
+    ];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'src.txt'), 'data');
+    expect(() =>
+      isolatedFs.copyFileSync('w1/src.txt', 'ro/blocked.txt'),
+    ).toThrow(/Permission denied.*'create'/);
+  });
+
+  it('rename from append-only src is blocked (requires delete)', () => {
+    const mounts = [
+      mount('att', mountA, APPEND_ONLY_PERMISSIONS),
+      mount('w1', mountB, FULL_PERMISSIONS),
+    ];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'move-me.txt'), 'data');
+    expect(() =>
+      isolatedFs.renameSync('att/move-me.txt', 'w1/moved.txt'),
+    ).toThrow(/Permission denied.*'delete'/);
+  });
+
+  it('async copyFile respects permissions', async () => {
+    const mounts = [
+      mount('w1', mountA, FULL_PERMISSIONS),
+      mount('ro', mountB, READ_ONLY_PERMISSIONS),
+    ];
+    const { isolatedFsPromises } = createIsolatedFs(mounts, null);
+
+    fs.writeFileSync(path.join(mountA, 'async-src.txt'), 'data');
+    await expect(
+      isolatedFsPromises.copyFile('w1/async-src.txt', 'ro/blocked.txt'),
+    ).rejects.toThrow(/Permission denied.*'create'/);
   });
 });
