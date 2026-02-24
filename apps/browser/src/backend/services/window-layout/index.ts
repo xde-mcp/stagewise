@@ -1015,18 +1015,12 @@ export class WindowLayoutService extends DisposableService {
       // The contentFullscreenChanged handler will clean up state
     }
 
-    // Hide current tab and restore border radius (in case it was in fullscreen)
-    if (previousTabId && this.tabs[previousTabId]) {
-      this.tabs[previousTabId]!.setVisible(false);
-      this.tabs[previousTabId]!.setBorderRadiusForFullscreen(4);
-    }
-
     this.activeTabId = tabId;
     const newTab = this.tabs[tabId]!;
 
-    // Check if new tab is in content fullscreen
+    // Show new tab BEFORE hiding old tab to prevent flicker.
+    // Both tabs briefly overlap, but z-order update below resolves it.
     if (newTab.getState().isContentFullscreen) {
-      // Apply fullscreen bounds
       const windowBounds = this.baseWindow!.getContentBounds();
       newTab.setBorderRadiusForFullscreen(0);
       newTab.setBounds({
@@ -1045,6 +1039,12 @@ export class WindowLayoutService extends DisposableService {
     } else {
       // If no bounds set yet, keep invisible until layout update
       newTab.setVisible(false);
+    }
+
+    // Hide previous tab after new tab is visible
+    if (previousTabId && this.tabs[previousTabId]) {
+      this.tabs[previousTabId]!.setVisible(false);
+      this.tabs[previousTabId]!.setBorderRadiusForFullscreen(4);
     }
 
     this.updateZOrder();
