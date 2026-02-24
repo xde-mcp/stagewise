@@ -323,6 +323,15 @@ export abstract class BaseAgent<
   // Internal state
   private stepAbortController: AbortController | null = null;
 
+  /**
+   * Monotonically increasing counter that identifies the "current" step.
+   * Stream callbacks (onAbort, onFinish, onError) capture this value when
+   * the step starts and compare before modifying `isWorking`. This prevents
+   * stale callbacks from a previous (aborted) step from resetting isWorking
+   * after a new step has already started.
+   */
+  private _stepGeneration = 0;
+
   // Handler that get's called when the agent wants to spawn a child agent.
   private readonly spawnChildAgentHandler: <
     TAgentType extends keyof AgentTypeMap,
@@ -605,7 +614,10 @@ export abstract class BaseAgent<
    * @note DO NOT OVERRIDE
    */
   public async stop(): Promise<void> {
-    return await this.internalStop('user-stopped');
+    await this.internalStop('user-stopped');
+    this.state.set((draft) => {
+      draft.isWorking = false;
+    });
   }
 
   /**
@@ -1080,38 +1092,49 @@ export abstract class BaseAgent<
    * Execute once there's a good reason to update the title.
    */
   private async updateTitle(): Promise<void> {
-    // Check if a title update is needed
-    if (!this.config.generateTitles) {
-      return;
+    try {
+      // Check if a title update is needed
+      if (!this.config.generateTitles) {
+        return;
+      }
+
+      // We only update whenever the last message is a user message (prevent repeated title updates when the assistant is running in loops)
+      const lastMessage =
+        this.state.get().history[this.state.get().history.length - 1];
+      if (lastMessage.role !== 'user') {
+        return;
+      }
+
+      const modulo = Math.max(
+        0,
+        this.config.updateTitlesEveryNUserMessages ?? 0,
+      );
+      const userMsgCount = this.state
+        .get()
+        .history.filter((message) => message.role === 'user').length;
+      if (userMsgCount !== 1 && userMsgCount % modulo !== 0) {
+        return;
+      }
+
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Updating title for agent.`,
+      );
+
+      const newTitle = await this.generateTitle(this.state.get().history);
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] New title generated: ${newTitle}`,
+      );
+      this.state.set((draft) => {
+        draft.title = newTitle;
+      });
+      // We don't do persistence here, since that happens after a step is finished
+    } catch (e) {
+      const error = e as Error;
+      this.logger.error(
+        `[BaseAgent:${this.instanceId}] Title update failed silently: ${error.message}`,
+      );
+      this.report(error, 'updateTitle');
     }
-
-    // We only update whenever the last message is a user message (prevent repeated title updates when the assistant is running in loops)
-    const lastMessage =
-      this.state.get().history[this.state.get().history.length - 1];
-    if (lastMessage.role !== 'user') {
-      return;
-    }
-
-    const modulo = Math.max(0, this.config.updateTitlesEveryNUserMessages ?? 0);
-    const userMsgCount = this.state
-      .get()
-      .history.filter((message) => message.role === 'user').length;
-    if (userMsgCount !== 1 && userMsgCount % modulo !== 0) {
-      return;
-    }
-
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] Updating title for agent.`,
-    );
-
-    const newTitle = await this.generateTitle(this.state.get().history);
-    this.logger.debug(
-      `[BaseAgent:${this.instanceId}] New title generated: ${newTitle}`,
-    );
-    this.state.set((draft) => {
-      draft.title = newTitle;
-    });
-    // We don't do persistence here, since that happens after a step is finished
   }
 
   /**
@@ -1121,13 +1144,14 @@ export abstract class BaseAgent<
     // Check canRunStep BEFORE setting isWorking to avoid deadlock
     if (!this.canRunStep()) return;
 
+    // Increment step generation so stale callbacks from previous steps are
+    // ignored. Capture it in a local const for the closures below.
+    const stepGen = ++this._stepGeneration;
+
     this.state.set((draft) => {
       draft.isWorking = true;
       draft.error = undefined; // Reset error at the start of each step
-    });
-
-    // Flush the queue into the history
-    this.state.set((draft) => {
+      // Flush the queue into the history (single broadcast)
       draft.history.push(...draft.queuedMessages);
       draft.queuedMessages = [];
     });
@@ -1162,16 +1186,35 @@ export abstract class BaseAgent<
       return;
     }
 
-    const modelMessages = await this.generateContextForNewStep();
-
-    const tools = await this.getToolsForStep();
+    let modelMessages: Awaited<
+      ReturnType<typeof this.generateContextForNewStep>
+    >;
+    let tools: Awaited<ReturnType<typeof this.getToolsForStep>>;
+    let resolvedConfig: BaseAgentConfig<TFinishToolOutputSchema>;
+    try {
+      modelMessages = await this.generateContextForNewStep();
+      tools = await this.getToolsForStep();
+      resolvedConfig = {
+        ...this.config,
+        ...(await this.getModelSettings(this.messages)),
+      };
+    } catch (e) {
+      const error = e as Error;
+      this.logger.error(
+        `[BaseAgent:${this.instanceId}] Failed to prepare step context: ${error.message}, ${error.stack}`,
+      );
+      this.report(error, 'prepareStepContext');
+      this.state.set((draft) => {
+        draft.isWorking = false;
+        draft.error = {
+          message: `Internal error: ${error.message}`,
+          stack: error.stack,
+        };
+      });
+      return;
+    }
 
     this.logger.debug(`[BaseAgent:${this.instanceId}] Running step`);
-
-    const resolvedConfig = {
-      ...this.config,
-      ...(await this.getModelSettings(this.messages)),
-    };
 
     this.stepAbortController = new AbortController();
 
@@ -1190,25 +1233,52 @@ export abstract class BaseAgent<
       maxOutputTokens: resolvedConfig.maxOutputTokens ?? 5000,
       abortSignal: this.stepAbortController.signal,
       onAbort: () => {
+        // Guard: ignore if a newer step has started (e.g. queue flush)
+        if (this._stepGeneration !== stepGen) return;
         this.state.set((draft) => {
           draft.isWorking = false;
         });
       },
       onFinish: async (result) => {
-        const shouldContinue = await this.handlePostStep(result);
-        this.stepAbortController = null;
+        // Guard: ignore if a newer step has started (e.g. queue flush)
+        if (this._stepGeneration !== stepGen) return;
+        try {
+          const shouldContinue = await this.handlePostStep(result);
+          // Re-check after async work — internalStop may have been called
+          if (this._stepGeneration !== stepGen) return;
+          this.stepAbortController = null;
 
-        if (shouldContinue) {
-          // We use setTimeout to ensure the step is executed with a clean call stack to support infinite recursion.
-          setTimeout(() => void this.runStep(), 0);
-        } else {
-          this.state.set((draft) => {
-            draft.isWorking = false;
-          });
-          this.onIdle();
+          if (shouldContinue) {
+            // We use setTimeout to ensure the step is executed with a clean call stack to support infinite recursion.
+            setTimeout(() => void this.runStep(), 0);
+          } else {
+            this.state.set((draft) => {
+              draft.isWorking = false;
+            });
+            this.onIdle();
+          }
+        } catch (err) {
+          const error = err as Error;
+          this.logger.error(
+            `[BaseAgent:${this.instanceId}] Error in onFinish: ${error.message}, ${error.stack}`,
+          );
+          this.report(error, 'onFinish');
+          this.stepAbortController = null;
+          // Guard: only reset if this step is still current
+          if (this._stepGeneration === stepGen) {
+            this.state.set((draft) => {
+              draft.isWorking = false;
+              draft.error = {
+                message: `Internal error: ${error.message ?? 'Unknown error'}`,
+                stack: error.stack,
+              };
+            });
+          }
         }
       },
       onError: (ev) => {
+        // Guard: ignore if a newer step has started (e.g. queue flush)
+        if (this._stepGeneration !== stepGen) return;
         const error = ev.error as Error;
         this.logger.error(
           `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
@@ -1217,7 +1287,7 @@ export abstract class BaseAgent<
         this.state.set((draft) => {
           draft.isWorking = false;
           draft.error = {
-            message: `${error.name}: ${error.message}`,
+            message: `LLM provider error: ${error.message}`,
             stack: error.stack,
           };
         });
@@ -1281,10 +1351,17 @@ export abstract class BaseAgent<
         `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
       );
       this.report(error, 'runStep');
+      // Invalidate step generation so any pending onFinish callback won't
+      // start a new step after this error.
+      this._stepGeneration++;
+      try {
+        this.stepAbortController?.abort();
+      } catch {}
+      this.stepAbortController = null;
       this.state.set((draft) => {
         draft.isWorking = false;
         draft.error = {
-          message: error.message ?? 'Unknown error',
+          message: `Internal error: ${error.message ?? 'Unknown error'}`,
           stack: error.stack,
         };
       });
@@ -1292,52 +1369,65 @@ export abstract class BaseAgent<
   }
 
   private async compressHistoryInternal(): Promise<void> {
-    const state = this.state.get();
+    try {
+      const state = this.state.get();
 
-    const lastUncompactedMessageIndex =
-      state.history.length -
-      Math.max(5, this.config.minUncompressedMessages ?? 0);
-    const lastUncompactedMessageId =
-      state.history[lastUncompactedMessageIndex].id;
+      const lastUncompactedMessageIndex =
+        state.history.length -
+        Math.max(5, this.config.minUncompressedMessages ?? 0);
+      const lastUncompactedMessageId =
+        state.history[lastUncompactedMessageIndex].id;
 
-    if (lastUncompactedMessageIndex < 1) return;
+      if (lastUncompactedMessageIndex < 1) return;
 
-    // We fetch all the messages that should be compacted (everything up until the current messages - the amount of uncompacted messages to keep).
-    const messagesToCompact = state.history.slice(
-      0,
-      lastUncompactedMessageIndex,
-    );
-
-    // if the last message already includes a compacted chat history, we skip compaction
-    if (
-      state.history[lastUncompactedMessageIndex].metadata?.compressedHistory
-    ) {
-      return;
-    }
-
-    this.logger.debug(`[BaseAgent:${this.instanceId}] Compressing history...`);
-
-    const compressedHistory = await this.compressHistory(messagesToCompact);
-
-    this.state.set((draft) => {
-      // We fetch the correct message again here, because users could've undone/manipulate messages while we were busy compressing the history
-      const lastUncompactedMessage = draft.history.find(
-        (m) => m.id === lastUncompactedMessageId,
+      // We fetch all the messages that should be compacted (everything up until the current messages - the amount of uncompacted messages to keep).
+      const messagesToCompact = state.history.slice(
+        0,
+        lastUncompactedMessageIndex,
       );
 
-      if (lastUncompactedMessage?.metadata) {
-        this.logger.debug(
-          `[BaseAgent:${this.instanceId}] Stored compressed history in message ${lastUncompactedMessageId}`,
-        );
-        lastUncompactedMessage.metadata.compressedHistory = compressedHistory;
-      } else {
-        this.logger.warn(
-          `[BaseAgent:${this.instanceId}] Last uncompacted message not found in history after compressing history. Maybe the user undid/manipulated messages while we were busy compressing the history.`,
-        );
+      // if the last message already includes a compacted chat history, we skip compaction
+      if (
+        state.history[lastUncompactedMessageIndex].metadata?.compressedHistory
+      ) {
+        return;
       }
-    });
 
-    await this.saveState();
+      this.logger.debug(
+        `[BaseAgent:${this.instanceId}] Compressing history...`,
+      );
+
+      const compressedHistory = await this.compressHistory(messagesToCompact);
+
+      this.state.set((draft) => {
+        // We fetch the correct message again here, because users could've undone/manipulate messages while we were busy compressing the history
+        const lastUncompactedMessage = draft.history.find(
+          (m) => m.id === lastUncompactedMessageId,
+        );
+
+        if (lastUncompactedMessage?.metadata) {
+          this.logger.debug(
+            `[BaseAgent:${this.instanceId}] Stored compressed history in message ${lastUncompactedMessageId}`,
+          );
+          lastUncompactedMessage.metadata.compressedHistory = compressedHistory;
+        } else {
+          this.logger.warn(
+            `[BaseAgent:${this.instanceId}] Last uncompacted message not found in history after compressing history. Maybe the user undid/manipulated messages while we were busy compressing the history.`,
+          );
+        }
+      });
+
+      await this.saveState();
+    } catch (e) {
+      // Fail silently — compression is best-effort. The agent continues
+      // without compression until the context window is exhausted, at which
+      // point the normal model error handling will show an error in the chat.
+      const error = e as Error;
+      this.logger.error(
+        `[BaseAgent:${this.instanceId}] History compression failed silently: ${error.message}`,
+      );
+      this.report(error, 'compressHistory');
+    }
   }
 
   /**
@@ -1638,6 +1728,9 @@ export abstract class BaseAgent<
   private async internalStop(
     stopReason: 'user-stopped' | 'user-flushed-queue' = 'user-stopped',
   ): Promise<void> {
+    // Invalidate pending callbacks BEFORE firing abort — onAbort fires
+    // synchronously and must see the new generation to be ignored.
+    this._stepGeneration++;
     try {
       this.stepAbortController?.abort();
     } catch {}

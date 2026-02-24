@@ -627,18 +627,20 @@ export const ChatHistory = () => {
             style={{ paddingRight }}
           >
             <div ref={lastUserMessageRef}>{messageComponent}</div>
-            {/* Spacer element that receives minHeight to push user message to top */}
+            {/* Spacer element receives minHeight to fill viewport below user message.
+                Error card and loading indicator live INSIDE the spacer (same pattern
+                as the assistant branch) so they don't overflow the measured area. */}
             <div ref={lastAssistantMessageRef}>
               {showWorkingIndicator && <MessageLoading />}
+              {error && isLastMessage && openAgent && (
+                <MessageRuntimeError
+                  agentInstanceId={openAgent}
+                  error={error}
+                  canRetry={canRetry}
+                  onRetry={() => void retryLastUserMessage(openAgent)}
+                />
+              )}
             </div>
-            {error && isLastMessage && openAgent && (
-              <MessageRuntimeError
-                agentInstanceId={openAgent}
-                error={error}
-                canRetry={canRetry}
-                onRetry={() => void retryLastUserMessage(openAgent)}
-              />
-            )}
           </div>
         );
       }
