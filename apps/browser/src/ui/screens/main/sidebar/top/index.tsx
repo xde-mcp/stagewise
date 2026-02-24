@@ -2,6 +2,7 @@ import posthog from 'posthog-js';
 import { cn } from '@/utils';
 import { IconDotsFill18, IconPlusFill18 } from 'nucleo-ui-fill-18';
 import { IconGear2Outline24 } from 'nucleo-core-outline-24';
+import { IconSidebarLeftHideOutline18 } from 'nucleo-ui-outline-18';
 import {
   Tooltip,
   TooltipContent,
@@ -449,6 +450,24 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             showItemIndicator={false}
             customTrigger={menuTrigger}
           />
+          <div className="mx-0.5 h-3.5 w-px shrink-0 bg-border-subtle" />
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="app-no-drag shrink-0"
+                onClick={() =>
+                  window.dispatchEvent(new Event('sidebar-chat-panel-closed'))
+                }
+              >
+                <IconSidebarLeftHideOutline18 className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <span>Hide sidebar</span>
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>

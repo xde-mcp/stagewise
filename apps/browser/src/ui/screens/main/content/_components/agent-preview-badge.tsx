@@ -1,5 +1,5 @@
 import { Button } from '@stagewise/stage-ui/components/button';
-import { IconMessagesFillDuo18 } from 'nucleo-ui-fill-duo-18';
+import { IconSidebarLeftShowOutline18 } from 'nucleo-ui-outline-18';
 import {
   Tooltip,
   TooltipTrigger,
@@ -31,7 +31,7 @@ export function AgentPreviewBadge({ onClick }: AgentPreviewBadgeProps) {
             className="relative shrink-0"
             onClick={onClick}
           >
-            <IconMessagesFillDuo18
+            <IconSidebarLeftShowOutline18
               className={cn(
                 'size-4',
                 isWorking ? 'animate-icon-pulse text-primary' : '',
