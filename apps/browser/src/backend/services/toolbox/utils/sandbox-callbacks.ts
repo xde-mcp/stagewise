@@ -1,13 +1,8 @@
 import type { Logger } from '@/services/logger';
 import type { DiffHistoryService } from '@/services/diff-history';
 import type { TelemetryService } from '@/services/telemetry';
-import type { KartonService } from '@/services/karton';
 import type { MountManagerService } from '../services/mount-manager';
-import type { FileDiffHandler, AttachmentResolver } from '../../sandbox';
-import {
-  MAX_IMAGE_SIZE,
-  MAX_DOCUMENT_SIZE,
-} from '@shared/karton-contracts/ui/shared-types';
+import type { FileDiffHandler } from '../../sandbox';
 
 interface FileDiffHandlerDeps {
   mountManager: MountManagerService;
@@ -80,66 +75,5 @@ export function createFileDiffHandler(
         500,
       );
     }
-  };
-}
-
-interface AttachmentResolverDeps {
-  uiKarton: KartonService;
-}
-
-export function createAttachmentResolver(
-  deps: AttachmentResolverDeps,
-): AttachmentResolver {
-  return async (agentId, attachmentId) => {
-    const agentInstance = deps.uiKarton.state.agents.instances[agentId];
-    if (!agentInstance)
-      throw new Error('Agent not found or has no message history');
-
-    const history = agentInstance.state.history;
-    if (!history || history.length === 0)
-      throw new Error('Agent not found or has no message history');
-
-    for (const message of history) {
-      if (message.role !== 'user') continue;
-
-      const fileAttachments = message.metadata?.fileAttachments;
-      if (!fileAttachments) continue;
-
-      const attachment = fileAttachments.find((f) => f.id === attachmentId);
-      if (!attachment) continue;
-
-      if (attachment.validationError)
-        throw new Error(
-          `Attachment is not supported: ${attachment.validationError}`,
-        );
-
-      if (!attachment.url) throw new Error('Attachment has no data URL');
-
-      const dataUrlMatch = attachment.url.match(/^data:([^;]+);base64,(.+)$/);
-      if (!dataUrlMatch)
-        throw new Error('Attachment has invalid data URL format');
-
-      const content = Buffer.from(dataUrlMatch[2], 'base64');
-
-      const isImage = attachment.mediaType.startsWith('image/');
-      const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
-      const maxSizeLabel = isImage ? '5MB' : '20MB';
-
-      if (content.length > maxSize)
-        throw new Error(
-          `${isImage ? 'Image' : 'Document'} attachment exceeds ${maxSizeLabel} limit`,
-        );
-
-      return {
-        id: attachment.id,
-        fileName: attachment.fileName ?? 'attachment',
-        mediaType: attachment.mediaType,
-        content,
-      };
-    }
-
-    throw new Error(
-      `Attachment with ID "${attachmentId}" not found in conversation`,
-    );
   };
 }

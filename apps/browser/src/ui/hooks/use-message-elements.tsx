@@ -17,7 +17,7 @@ import type {
 interface MessageAttachmentsContext {
   /** Selected DOM elements */
   elements: SelectedElement[];
-  /** File/image attachments with URLs */
+  /** File/image attachment metadata (content stored on disk) */
   fileAttachments: FileAttachment[];
   /** Text clip attachments with content */
   textClipAttachments: TextClipAttachment[];

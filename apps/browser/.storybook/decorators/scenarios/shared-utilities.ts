@@ -716,8 +716,7 @@ export function createExecuteSandboxJsToolPart(
       id: string;
       mediaType: string;
       fileName?: string;
-      url: string;
-      validationError?: string;
+      sizeBytes: number;
     }>;
   },
 ): AgentToolUIPart {

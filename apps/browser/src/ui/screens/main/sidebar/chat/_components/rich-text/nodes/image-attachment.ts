@@ -12,22 +12,7 @@ export const ImageAttachment = createAttachmentNode<ImageAttachmentAttrs>({
   name: 'imageAttachment',
   dataTag: 'data-image-attachment',
   markdownProtocol: 'image',
-  additionalAttributes: {
-    url: {
-      default: null,
-      parseHTML: (element) => element.getAttribute('data-url'),
-      renderHTML: (attributes) => ({
-        'data-url': attributes.url,
-      }),
-    },
-    validationError: {
-      default: null,
-      parseHTML: (element) => element.getAttribute('data-validation-error'),
-      renderHTML: (attributes) => ({
-        'data-validation-error': attributes.validationError,
-      }),
-    },
-  },
+  additionalAttributes: {},
   NodeView: ImageAttachmentView,
   renderText: ({ node }) => {
     return getAttachmentAnchorText({

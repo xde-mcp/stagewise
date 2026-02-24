@@ -1,8 +1,5 @@
 import posthog from 'posthog-js';
-import {
-  fileAttachmentToFileUIPart,
-  selectedElementToAttachmentAttributes,
-} from '@/utils/attachment-conversions';
+import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import {
   enrichTipTapContent,
   markdownToTipTapContent,
@@ -11,7 +8,7 @@ import { cn, collectUserMessageMetadata } from '@/utils';
 import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
-import type { FileUIPart } from 'ai';
+
 import {
   useMemo,
   useCallback,
@@ -234,12 +231,6 @@ export const MessageUser = memo(
             ...selectedElementsFromEditor,
           ];
 
-          // Convert FileAttachments to FileUIParts (synchronous to keep
-          // everything before the optimistic event dispatch in one tick)
-          const fileParts: FileUIPart[] = editedFileAttachments
-            .map(fileAttachmentToFileUIPart)
-            .filter((part): part is FileUIPart => part !== null);
-
           // Collect metadata for selected elements
           // Note: textClipAttachments from extractTextClipsFromTiptapContent will have empty content
           // because the TipTap JSON only stores IDs (content is looked up from context at render time)
@@ -281,7 +272,6 @@ export const MessageUser = memo(
           const newMessage: AgentMessage & { role: 'user' } = {
             id: newMessageId,
             parts: [
-              ...fileParts,
               {
                 type: 'text' as const,
                 text: markdownText,

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { ImageIcon } from 'lucide-react';
 import type { ImageAttachmentAttrs, AttachmentNodeViewProps } from '../types';
 import {
@@ -8,46 +8,88 @@ import {
 } from '../view-utils';
 import { PreviewCardContent } from '@stagewise/stage-ui/components/preview-card';
 import { useMessageAttachments } from '@ui/hooks/use-message-elements';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
+
+const MAX_RETRIES = 8;
+const RETRY_DELAY_MS = 10;
+
+/**
+ * Tiny image thumbnail that retries loading when the blob isn't on
+ * disk yet (race between async store and first render).
+ * Shows an ImageIcon placeholder until the image successfully loads
+ * to avoid any broken-image flicker.
+ */
+function RetryingThumbnail({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string | undefined;
+}) {
+  const [retry, setRetry] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const handleError = useCallback(() => {
+    if (retry >= MAX_RETRIES) return;
+    timerRef.current = setTimeout(() => setRetry((r) => r + 1), RETRY_DELAY_MS);
+  }, [retry]);
+
+  const handleLoad = useCallback(() => setLoaded(true), []);
+
+  const gaveUp = retry >= MAX_RETRIES && !loaded;
+  const cacheBustedSrc = retry > 0 ? `${src}?r=${retry}` : src;
+
+  return (
+    <div className="relative size-3 shrink-0 overflow-hidden rounded">
+      {!loaded && <ImageIcon className="size-3 shrink-0" />}
+      {!gaveUp && (
+        <img
+          src={cacheBustedSrc}
+          alt={alt}
+          className={`absolute inset-0 size-full object-cover ${loaded ? '' : 'invisible'}`}
+          onError={handleError}
+          onLoad={handleLoad}
+        />
+      )}
+    </div>
+  );
+}
 
 /**
  * Custom NodeView for image attachments.
  * Displays a thumbnail icon and shows a larger preview on hover.
- * Looks up attachment data (URL, fileName) from context by ID.
+ * URL is derived from the sw-blob:// protocol using agentId + attachment ID.
  */
 export function ImageAttachmentView(props: AttachmentNodeViewProps) {
   const attrs = props.node.attrs as ImageAttachmentAttrs;
-
   const isEditable = !('viewOnly' in props);
+  const [openAgent] = useOpenAgent();
 
-  // Look up full attachment data from context
   const { fileAttachments } = useMessageAttachments();
   const attachment = useMemo(
     () => fileAttachments.find((f) => f.id === attrs.id),
     [fileAttachments, attrs.id],
   );
 
-  // Prefer context data (saved attachments), fall back to attrs (new attachments being composed)
-  const url = attachment?.url ?? attrs.url;
   const label = attachment?.fileName ?? attrs.label;
-  const hasError = !!attrs.validationError;
-  const hasUrl = !!url;
+
+  const url = openAgent ? `sw-blob://${openAgent}/${attrs.id}` : '';
 
   const displayLabel = useMemo(
     () => truncateLabel(label, attrs.id),
     [label, attrs.id],
   );
 
-  // Thumbnail icon - show image preview if URL exists, otherwise show placeholder
-  const icon = hasUrl ? (
-    <div className="relative size-3 shrink-0 overflow-hidden rounded">
-      <img src={url} alt={label} className="size-full object-cover" />
-    </div>
+  const icon = url ? (
+    <RetryingThumbnail src={url} alt={label} />
   ) : (
     <ImageIcon className="size-3 shrink-0" />
   );
 
-  // Preview card showing larger image on hover (only if URL exists)
-  const previewContent = hasUrl ? (
+  const previewContent = url ? (
     <PreviewCardContent className="flex max-w-64 flex-col items-stretch gap-2">
       <div className="flex min-h-24 w-full items-center justify-center overflow-hidden rounded-sm bg-background ring-1 ring-border-subtle">
         <img
@@ -64,14 +106,12 @@ export function ImageAttachmentView(props: AttachmentNodeViewProps) {
     <AttachmentBadgeWrapper
       viewOnly={!isEditable}
       previewContent={previewContent}
-      errorMessage={attrs.validationError}
     >
       <AttachmentBadge
         icon={icon}
         label={displayLabel}
         selected={props.selected}
         isEditable={isEditable}
-        hasError={hasError}
         onDelete={() =>
           'deleteNode' in props ? props.deleteNode() : undefined
         }

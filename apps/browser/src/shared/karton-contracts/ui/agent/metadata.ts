@@ -4,19 +4,16 @@ import { environmentDiffSnapshotSchema } from '../shared-types';
 
 /**
  * Schema for file attachments.
- * These are stored in metadata so the agent can correlate @{id} references
- * in the user message with the full file content. The backend will convert those to FileUIParts.
+ * Lightweight metadata only — binary content is stored on disk at
+ * `{globalDataPath}/attachment-blobs/{agentId}/{attachmentId}`.
+ * The backend reads blobs from disk when building LLM prompts.
+ * Agents access attachments via `fs.readFile('att/{id}')` in the sandbox.
  */
 export const fileAttachmentSchema = z.object({
-  // Those are stagewise-specific properties
   id: z.string(),
-  // Those are all FileUIPart properties
+  fileName: z.string(),
   mediaType: z.string(),
-  fileName: z.string().optional(),
-  url: z.string(),
-  providerMetadata: z.object().optional(),
-  /** Validation error message if file is unsupported (type or size) */
-  validationError: z.string().optional(),
+  sizeBytes: z.number(),
 });
 
 export type FileAttachment = z.infer<typeof fileAttachmentSchema>;
@@ -87,7 +84,7 @@ const metadataSchema = z.object({
   textClipAttachments: z.array(textClipAttachmentSchema).optional(),
   /** Compressed history of the agent in markdown format. Contains information about the whole previous conversation. */
   compressedHistory: z.string().optional(),
-  /** All file attachments for the message, containing data. We use this to fuly control how data get's attached in the final message. */
+  /** Lightweight file attachment metadata (content stored on disk). */
   fileAttachments: z.array(fileAttachmentSchema).optional(),
   /** Snapshot of browser, workspace, and file-diff state at message creation time. Used to compute environment change descriptions between agent turns. */
   environmentSnapshot: environmentSnapshotSchema.optional(),

@@ -19,7 +19,7 @@ import type {
 } from '@shared/karton-contracts/ui/agent';
 import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
-import type { ModelId } from '@shared/available-models';
+import { type ModelId, getModelCapabilities } from '@shared/available-models';
 import type { z } from 'zod';
 import type { AgentTypeMap } from '../../agents-map';
 import type { ToolboxService } from '@/services/toolbox';
@@ -32,6 +32,7 @@ import {
   generateSimpleTitle,
   generateSimpleCompressedHistory,
 } from './utils';
+import { readBlob } from '@/utils/attachment-blobs';
 import { randomUUID } from 'node:crypto';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
@@ -908,12 +909,23 @@ export abstract class BaseAgent<
     systemPrompt: string,
     liveSnapshot?: EnvironmentSnapshot,
   ): Promise<ModelMessage[]> {
+    const capabilities = getModelCapabilities(this.state.get().activeModelId);
+    const globalDataPath = this.toolbox.globalDataPath;
     return convertAgentMessagesToModelMessages(
       messages,
       systemPrompt,
       await this.getToolsForStep(),
       Math.max(this.config.minUncompressedMessages ?? 0, 5),
       this.instanceId,
+      (agentId, attachmentId) =>
+        readBlob(globalDataPath, agentId, attachmentId),
+      capabilities,
+      (err, ctx) => {
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.report(error, ctx.operation, {
+          attachmentId: ctx.attachmentId,
+        });
+      },
       liveSnapshot,
     );
   }

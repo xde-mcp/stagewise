@@ -167,9 +167,7 @@ export function enrichTipTapContent(
           ...node,
           attrs: {
             ...node.attrs,
-            url: file.url,
             label: file.fileName ?? node.attrs?.label,
-            validationError: file.validationError,
           },
         };
       }
@@ -183,7 +181,6 @@ export function enrichTipTapContent(
           attrs: {
             ...node.attrs,
             label: file.fileName ?? node.attrs?.label,
-            validationError: file.validationError,
           },
         };
       }

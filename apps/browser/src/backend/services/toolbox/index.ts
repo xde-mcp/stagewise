@@ -13,10 +13,9 @@ import type { AuthService } from '@/services/auth';
 import type { TelemetryService } from '@/services/telemetry';
 import type { GlobalDataPathService } from '@/services/global-data-path';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
-import {
-  createFileDiffHandler,
-  createAttachmentResolver,
-} from './utils/sandbox-callbacks';
+import { createFileDiffHandler } from './utils/sandbox-callbacks';
+import { deleteAgentBlobs, getAgentBlobDir } from '@/utils/attachment-blobs';
+import { mkdirSync } from 'node:fs';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import {
   deleteFileToolExecute,
@@ -93,6 +92,10 @@ export class ToolboxService extends DisposableService {
 
   /** Cached API client - recreated when auth changes */
   private apiClient: TRPCClient<AppRouter> | null = null;
+
+  public get globalDataPath(): string {
+    return this.globalDataPathService.globalDataPath;
+  }
 
   /** Temp directory for capturing file state (external/binary files) */
   private get tempDir(): string {
@@ -412,13 +415,32 @@ export class ToolboxService extends DisposableService {
    * Push current mount configuration for an agent to the sandbox worker
    * so the isolated fs stays in sync.
    */
-  private pushMountsToSandbox(agentInstanceId: string) {
+  private getSandboxMounts(
+    agentInstanceId: string,
+  ): { prefix: string; absolutePath: string }[] {
     const mountsWithRt =
       this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
-    if (!mountsWithRt || !this.sandboxService) return;
+    const mounts =
+      mountsWithRt?.map((m) => ({
+        prefix: m.prefix,
+        absolutePath: m.path,
+      })) ?? [];
+
+    const attDir = getAgentBlobDir(
+      this.globalDataPathService.globalDataPath,
+      agentInstanceId,
+    );
+    mkdirSync(attDir, { recursive: true });
+    mounts.push({ prefix: 'att', absolutePath: attDir });
+
+    return mounts;
+  }
+
+  private pushMountsToSandbox(agentInstanceId: string) {
+    if (!this.sandboxService) return;
     this.sandboxService.updateAgentMounts(
       agentInstanceId,
-      mountsWithRt.map((m) => ({ prefix: m.prefix, absolutePath: m.path })),
+      this.getSandboxMounts(agentInstanceId),
     );
   }
 
@@ -694,6 +716,10 @@ export class ToolboxService extends DisposableService {
   public clearAgentTracking(agentInstanceId: string): void {
     this.mountManagerService?.clearAgentMounts(agentInstanceId);
     this.sandboxService?.destroyAgent(agentInstanceId);
+    void deleteAgentBlobs(
+      this.globalDataPathService.globalDataPath,
+      agentInstanceId,
+    );
   }
 
   private async initialize(): Promise<void> {
@@ -722,24 +748,11 @@ export class ToolboxService extends DisposableService {
       telemetryService: this.telemetryService,
     });
 
-    const attachmentResolver = createAttachmentResolver({
-      uiKarton: this.uiKarton,
-    });
-
     this.sandboxService = await SandboxService.create(
       this.windowLayoutService,
       this.logger,
       fileDiffHandler,
-      attachmentResolver,
-      (agentId) => {
-        const mountsWithRt =
-          this.mountManagerService?.getMountedPathsWithRuntimes(agentId);
-        if (!mountsWithRt) return [];
-        return mountsWithRt.map((m) => ({
-          prefix: m.prefix,
-          absolutePath: m.path,
-        }));
-      },
+      (agentId) => this.getSandboxMounts(agentId),
     );
 
     // Use arrow function to preserve `this` binding when called as callback

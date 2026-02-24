@@ -44,4 +44,5 @@ export type ToolboxContextProvider = Pick<
   | 'getAgentsMd'
   | 'getWorkspaceMd'
   | 'getSkillsList'
+  | 'globalDataPath'
 >;

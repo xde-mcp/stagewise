@@ -11,10 +11,7 @@ import type {
   AgentMessage,
   AgentToolUIPart,
 } from '@shared/karton-contracts/ui/agent';
-import type {
-  FileAttachment,
-  EnvironmentSnapshot,
-} from '@shared/karton-contracts/ui/agent/metadata';
+import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import type { SelectedElement } from '@shared/selected-elements';
 import { computeAllEnvironmentChanges } from '../prompts/utils/environment-changes';
 import type { ModelProviderService } from '@/agents/model-provider';
@@ -25,6 +22,87 @@ import {
 import { textClipToContextSnippet } from '../prompts/utils/metadata-converter/text-clips';
 import xml from 'xml';
 import specialTokens from '../prompts/utils/special-tokens';
+import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
+
+export type BlobReader = (
+  agentId: string,
+  attachmentId: string,
+) => Promise<Buffer>;
+
+export type BlobErrorReporter = (
+  error: unknown,
+  context: { operation: string; attachmentId: string },
+) => void;
+
+/**
+ * Internal type for file attachments produced by the sandbox at runtime.
+ * The sandbox writes binary data directly to the `att/` mount; this type
+ * carries only metadata registered via `API.outputAttachment`.
+ */
+export interface SandboxFileAttachment {
+  id: string;
+  mediaType: string;
+  fileName: string;
+  sizeBytes: number;
+}
+
+import type { ModalityConstraint } from '@shared/karton-contracts/ui/shared-types';
+
+const DEFAULT_IMAGE_CONSTRAINT: ModalityConstraint = {
+  mimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+  maxBytes: 5_242_880, // 5 MB — conservative fallback
+};
+
+const DEFAULT_FILE_CONSTRAINT: ModalityConstraint = {
+  mimeTypes: ['application/pdf'],
+  maxBytes: 20_971_520, // 20 MB — conservative fallback
+};
+
+function matchesConstraint(
+  constraint: ModalityConstraint,
+  mime: string,
+  sizeBytes: number,
+): boolean {
+  return (
+    constraint.mimeTypes.includes(mime) && sizeBytes <= constraint.maxBytes
+  );
+}
+
+/**
+ * Runtime check: can the current model consume this attachment as an
+ * inline file part?  Uses per-model `inputConstraints` when available,
+ * otherwise falls back to conservative defaults for image/file.
+ * Video and audio require explicit constraints — no defaults.
+ */
+function canModelConsumeAttachment(
+  capabilities: ModelCapabilities | undefined,
+  mediaType: string,
+  sizeBytes: number,
+): boolean {
+  if (!capabilities) return false;
+  const mime = mediaType.toLowerCase();
+  const constraints = capabilities.inputConstraints;
+
+  if (capabilities.inputModalities.image) {
+    const c = constraints?.image ?? DEFAULT_IMAGE_CONSTRAINT;
+    if (matchesConstraint(c, mime, sizeBytes)) return true;
+  }
+
+  if (capabilities.inputModalities.file) {
+    const c = constraints?.file ?? DEFAULT_FILE_CONSTRAINT;
+    if (matchesConstraint(c, mime, sizeBytes)) return true;
+  }
+
+  if (capabilities.inputModalities.video && constraints?.video) {
+    if (matchesConstraint(constraints.video, mime, sizeBytes)) return true;
+  }
+
+  if (capabilities.inputModalities.audio && constraints?.audio) {
+    if (matchesConstraint(constraints.audio, mime, sizeBytes)) return true;
+  }
+
+  return false;
+}
 
 /**
  * Strip all underscore-prefixed properties from a tool output object.
@@ -45,8 +123,10 @@ function stripUnderscoreProperties(
  * sandbox during script execution that need to be injected as a
  * synthetic user message so the LLM can "see" them.
  */
-function collectCustomFileAttachments(message: AgentMessage): FileAttachment[] {
-  const attachments: FileAttachment[] = [];
+function collectCustomFileAttachments(
+  message: AgentMessage,
+): SandboxFileAttachment[] {
+  const attachments: SandboxFileAttachment[] = [];
   for (const part of message.parts) {
     if (
       (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
@@ -57,7 +137,7 @@ function collectCustomFileAttachments(message: AgentMessage): FileAttachment[] {
       const output = part.output as Record<string, unknown>;
       const custom = output._customFileAttachments;
       if (Array.isArray(custom))
-        attachments.push(...(custom as FileAttachment[]));
+        attachments.push(...(custom as SandboxFileAttachment[]));
     }
   }
   return attachments;
@@ -66,24 +146,33 @@ function collectCustomFileAttachments(message: AgentMessage): FileAttachment[] {
 /**
  * Build a synthetic `UserModelMessage` carrying multimodal file/image
  * parts for custom file attachments collected from sandbox tool outputs.
- * Follows the same validation-aware logic as normal user fileAttachments.
+ * Binary content is read from disk via the `att/` mount.
  */
-function buildSyntheticUserMessageForAttachments(
-  attachments: FileAttachment[],
-): UserModelMessage {
+async function buildSyntheticUserMessageForAttachments(
+  attachments: SandboxFileAttachment[],
+  agentInstanceId: string,
+  blobReader: BlobReader,
+  capabilities?: ModelCapabilities,
+  onBlobError?: BlobErrorReporter,
+): Promise<UserModelMessage> {
   const content: UserContent = [];
 
   for (const f of attachments) {
-    const hint = f.validationError
-      ? `This file could not be included: ${f.validationError}`
-      : 'This attachment was produced by the sandbox. See next attachment for its content.';
+    const canConsume = canModelConsumeAttachment(
+      capabilities,
+      f.mediaType,
+      f.sizeBytes,
+    );
+    const hint = canConsume
+      ? 'This attachment was produced by the sandbox. See next attachment for its content.'
+      : `The user attached this file. You can access its content via fs.readFile('att/${f.id}') in the sandbox.`;
 
     content.push({
       type: 'text',
       text: xml({
         [specialTokens.userMsgAttachmentXmlTag]: {
           _attr: {
-            type: f.validationError ? 'unsupported-file' : 'file',
+            type: 'file',
             filename: f.fileName,
             id: f.id,
             hint,
@@ -92,13 +181,23 @@ function buildSyntheticUserMessageForAttachments(
       }),
     });
 
-    if (!f.validationError) {
-      content.push({
-        type: 'file',
-        data: f.url,
-        mediaType: f.mediaType,
-        filename: f.fileName,
-      });
+    if (canConsume) {
+      try {
+        const buf = await blobReader(agentInstanceId, f.id);
+        const base64 = buf.toString('base64');
+        const dataUrl = `data:${f.mediaType};base64,${base64}`;
+        content.push({
+          type: 'file',
+          data: dataUrl,
+          mediaType: f.mediaType,
+          filename: f.fileName,
+        });
+      } catch (err) {
+        onBlobError?.(err, {
+          operation: 'readSandboxAttachmentBlob',
+          attachmentId: f.id,
+        });
+      }
     }
   }
 
@@ -134,6 +233,9 @@ export function buildSyntheticEnvironmentChangeMessage(
  * @param tools The tools to use for the conversation.
  * @param minUncompressedCount The minimum number of uncompacted messages to keep in the conversation.
  * @param agentInstanceId The agent instance ID, used for computing environment change descriptions.
+ * @param blobReader Reads attachment content from disk by agent+attachment ID.
+ * @param modelCapabilities Current model's input capabilities for deciding file inclusion.
+ * @param onBlobError Optional reporter for non-fatal blob read/write errors (telemetry).
  * @param liveSnapshot Optional live environment snapshot captured at the start of the current step.
  *        Compared against the last message's snapshot to inject a tail env-change without 1-step delay.
  *
@@ -145,6 +247,9 @@ export const convertAgentMessagesToModelMessages = async (
   tools: ToolSet,
   minUncompressedCount: number,
   agentInstanceId: string,
+  blobReader: BlobReader,
+  modelCapabilities?: ModelCapabilities,
+  onBlobError?: BlobErrorReporter,
   liveSnapshot?: EnvironmentSnapshot,
 ): Promise<ModelMessage[]> => {
   // We work backwards first because this makes it easier to apply compacted conversation later on.
@@ -186,7 +291,13 @@ export const convertAgentMessagesToModelMessages = async (
       // .reverse() the final order will be: assistant -> synthetic user).
       if (customAttachments.length > 0)
         revertedModelMessageChunks.push([
-          buildSyntheticUserMessageForAttachments(customAttachments),
+          await buildSyntheticUserMessageForAttachments(
+            customAttachments,
+            agentInstanceId,
+            blobReader,
+            modelCapabilities,
+            onBlobError,
+          ),
         ]);
 
       revertedModelMessageChunks.push(
@@ -206,18 +317,22 @@ export const convertAgentMessagesToModelMessages = async (
       });
 
       if ((message.metadata?.fileAttachments?.length || 0) > 0) {
-        message.metadata?.fileAttachments?.forEach((f) => {
-          // Determine hint based on whether file is supported
-          const hint = f.validationError
-            ? `This file could not be included: ${f.validationError}`
-            : 'This attachment contains metadata about the file attachment. See next attachment for its content.';
+        for (const f of message.metadata!.fileAttachments!) {
+          const canConsume = canModelConsumeAttachment(
+            modelCapabilities,
+            f.mediaType,
+            f.sizeBytes,
+          );
+          const hint = canConsume
+            ? 'This attachment contains metadata about the file attachment. See next attachment for its content.'
+            : `The user attached this file. You can access its content via fs.readFile('att/${f.id}') in the sandbox.`;
 
           parts.push({
             type: 'text',
             text: xml({
               [specialTokens.userMsgAttachmentXmlTag]: {
                 _attr: {
-                  type: f.validationError ? 'unsupported-file' : 'file',
+                  type: 'file',
                   filename: f.fileName,
                   id: f.id,
                   hint,
@@ -226,16 +341,25 @@ export const convertAgentMessagesToModelMessages = async (
             }),
           });
 
-          // Only create FileUIPart if file is supported (no validation error)
-          if (!f.validationError) {
-            parts.push({
-              type: 'file',
-              url: f.url,
-              mediaType: f.mediaType,
-              filename: f.fileName,
-            });
+          if (canConsume) {
+            try {
+              const content = await blobReader(agentInstanceId, f.id);
+              const base64 = content.toString('base64');
+              const dataUrl = `data:${f.mediaType};base64,${base64}`;
+              parts.push({
+                type: 'file',
+                url: dataUrl,
+                mediaType: f.mediaType,
+                filename: f.fileName,
+              });
+            } catch (err) {
+              onBlobError?.(err, {
+                operation: 'readAttachmentBlob',
+                attachmentId: f.id,
+              });
+            }
           }
-        });
+        }
       }
       // convert file parts and text to model messages (without metadata) to ensure correct mapping of ui parts to model content
       const convertedMessage = (

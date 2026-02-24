@@ -19,24 +19,13 @@ export interface BaseAttachmentAttrs {
 /**
  * Attributes for file attachments (non-image files).
  */
-export interface FileAttachmentAttrs extends BaseAttachmentAttrs {
-  /** Validation error message if file is unsupported */
-  validationError?: string;
-}
+export interface FileAttachmentAttrs extends BaseAttachmentAttrs {}
 
 /**
  * Attributes for image attachments.
+ * URL is derived at render time from `sw-blob://{agentId}/{id}`.
  */
-export interface ImageAttachmentAttrs extends BaseAttachmentAttrs {
-  /**
-   * Data URL or blob URL for the image.
-   * Optional in stored content (stripped to avoid duplication), required at runtime.
-   * When rendering/editing, look up from fileAttachments if not present.
-   */
-  url?: string;
-  /** Validation error message if file is unsupported */
-  validationError?: string;
-}
+export interface ImageAttachmentAttrs extends BaseAttachmentAttrs {}
 
 /**
  * Attributes for selected element attachments.

@@ -53,7 +53,7 @@ app.applicationMenu = null;
 app.setPath('userData', path.join(app.getPath('appData'), appBaseName));
 app.setPath('sessionData', path.join(app.getPath('userData'), 'session'));
 
-// reigster the "stagewise" protocol as privileged
+// Register custom protocols as privileged (must happen before app.ready)
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'stagewise',
@@ -62,6 +62,16 @@ protocol.registerSchemesAsPrivileged([
       secure: true,
       allowServiceWorkers: true,
       codeCache: true,
+      stream: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+  {
+    scheme: 'sw-blob',
+    privileges: {
+      standard: true,
+      secure: true,
       stream: true,
       supportFetchAPI: true,
       corsEnabled: true,

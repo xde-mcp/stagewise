@@ -134,6 +134,7 @@ export function ChatPanelFooter() {
     setFileAttachments,
   } = useFileAttachments({
     chatInputRef: chatInputRef as RefObject<ChatInputHandle>,
+    agentId: openAgent,
   });
 
   const { activeEditMessageId, setMainDropHandler } = useMessageEditState();

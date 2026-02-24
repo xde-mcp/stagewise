@@ -18,6 +18,7 @@ import { AgentPersistenceDB } from './persistence/db';
 import type { GlobalDataPathService } from '../global-data-path';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
 import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import { writeBlob } from '@/utils/attachment-blobs';
 
 /**
  * @note Due to the complex type inference for all this stuff, we sometimes explicitly define types here to avoid errors.
@@ -274,6 +275,45 @@ export class AgentManagerService extends DisposableService {
       'agents.retryLastUserMessage',
       async (_callingClientId: string, instanceId: string) => {
         await this.retryLastUserMessage(instanceId);
+      },
+    );
+    this.karton.registerServerProcedureHandler(
+      'agents.storeAttachment',
+      async (
+        _callingClientId: string,
+        agentId: string,
+        attachmentId: string,
+        _mediaType: string,
+        _fileName: string,
+        _sizeBytes: number,
+        data: string,
+      ) => {
+        const buffer = Buffer.from(data, 'base64');
+        await writeBlob(
+          this.globalDataPathService.globalDataPath,
+          agentId,
+          attachmentId,
+          buffer,
+        );
+      },
+    );
+    this.karton.registerServerProcedureHandler(
+      'agents.storeAttachmentByPath',
+      async (
+        _callingClientId: string,
+        agentId: string,
+        attachmentId: string,
+        _mediaType: string,
+        _fileName: string,
+        _sizeBytes: number,
+        filePath: string,
+      ) => {
+        await writeBlob(
+          this.globalDataPathService.globalDataPath,
+          agentId,
+          attachmentId,
+          filePath,
+        );
       },
     );
     this.karton.registerServerProcedureHandler(

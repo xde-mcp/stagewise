@@ -23,17 +23,6 @@ export type MainToWorkerMessage =
       type: 'update-mounts';
       agentId: string;
       mounts: MountDescriptor[];
-    }
-  | {
-      type: 'get-attachment-result';
-      id: string;
-      result?: {
-        id: string;
-        fileName: string;
-        mediaType: string;
-        content: string; // base64-encoded Buffer
-      };
-      error?: string;
     };
 
 export type WorkerToMainMessage =
@@ -55,7 +44,7 @@ export type WorkerToMainMessage =
         id: string;
         mediaType: string;
         fileName?: string;
-        url: string;
+        sizeBytes: number;
       }>;
     }
   | {
@@ -66,12 +55,6 @@ export type WorkerToMainMessage =
       after: string | null;
       isExternal: boolean;
       bytesWritten: number;
-    }
-  | {
-      type: 'get-attachment';
-      id: string;
-      agentId: string;
-      attachmentId: string;
     };
 
 /** Main-side: typed send + onMessage for a UtilityProcess child */

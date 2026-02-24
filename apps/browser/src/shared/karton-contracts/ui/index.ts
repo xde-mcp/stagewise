@@ -690,6 +690,22 @@ export type KartonContract = {
       ) => Promise<string>;
       retryLastUserMessage: (agentId: string) => Promise<void>;
       setActiveModelId: (agentId: string, modelId: ModelId) => Promise<void>;
+      storeAttachment: (
+        agentId: string,
+        attachmentId: string,
+        mediaType: string,
+        fileName: string,
+        sizeBytes: number,
+        data: string,
+      ) => Promise<void>;
+      storeAttachmentByPath: (
+        agentId: string,
+        attachmentId: string,
+        mediaType: string,
+        fileName: string,
+        sizeBytes: number,
+        filePath: string,
+      ) => Promise<void>;
     };
     toolbox: {
       acceptHunks: (hunkIds: string[]) => Promise<void>;

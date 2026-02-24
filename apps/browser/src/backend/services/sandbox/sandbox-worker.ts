@@ -10,18 +10,6 @@ const pendingCdp = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
 >();
-const pendingAttachmentOps = new Map<
-  string,
-  {
-    resolve: (value: {
-      id: string;
-      fileName: string;
-      mediaType: string;
-      content: Buffer;
-    }) => void;
-    reject: (reason: unknown) => void;
-  }
->();
 const ipc = createWorkerIPC();
 
 /** Per-agent mount descriptors, updated via `update-mounts` IPC. */
@@ -37,7 +25,7 @@ interface SandboxFileAttachment {
   id: string;
   mediaType: string;
   fileName?: string;
-  url: string;
+  sizeBytes: number;
 }
 
 /**
@@ -98,7 +86,6 @@ const BLOCKED_NODE_MODULES = new Set([
 ]);
 
 let cdpReqId = 0;
-let attachmentReqId = 0;
 
 /**
  * Create or update the isolated fs instances for an agent based on its
@@ -107,6 +94,7 @@ let attachmentReqId = 0;
  */
 function refreshIsolatedFs(agentId: string) {
   const mounts = agentMounts.get(agentId) ?? [];
+  const attMount = mounts.find((m) => m.prefix === 'att');
 
   const notifyDiff = (
     absolutePath: string,
@@ -115,6 +103,7 @@ function refreshIsolatedFs(agentId: string) {
     isExternal: boolean,
     bytesWritten: number,
   ) => {
+    if (attMount && absolutePath.startsWith(attMount.absolutePath)) return;
     ipc.send({
       type: 'file-diff-notification',
       agentId,
@@ -152,23 +141,6 @@ function getSandboxAPI(agentId: string) {
         ipc.send({ type: 'cdp', id, tabId, method, params });
       });
     },
-    getAttachment(attachmentId: string): Promise<{
-      id: string;
-      fileName: string;
-      mediaType: string;
-      content: Buffer;
-    }> {
-      const id = `${attachmentReqId++}`;
-      return new Promise((resolve, reject) => {
-        pendingAttachmentOps.set(id, { resolve, reject });
-        ipc.send({
-          type: 'get-attachment',
-          id,
-          agentId,
-          attachmentId,
-        });
-      });
-    },
     output(data: any): void {
       const str = typeof data === 'string' ? data : JSON.stringify(data);
       const outputs = pendingOutputs.get(agentId);
@@ -178,16 +150,16 @@ function getSandboxAPI(agentId: string) {
       id: string;
       mediaType: string;
       fileName?: string;
-      url: string;
+      sizeBytes: number;
     }): void {
       if (
         !attachment ||
         typeof attachment.id !== 'string' ||
         typeof attachment.mediaType !== 'string' ||
-        typeof attachment.url !== 'string'
+        typeof attachment.sizeBytes !== 'number'
       ) {
         throw new Error(
-          'outputAttachment requires { id: string, mediaType: string, url: string, fileName?: string }',
+          'outputAttachment requires { id: string, mediaType: string, sizeBytes: number, fileName?: string }',
         );
       }
       const collection = pendingMultimodalAttachments.get(agentId);
@@ -196,7 +168,7 @@ function getSandboxAPI(agentId: string) {
           id: attachment.id,
           mediaType: attachment.mediaType,
           fileName: attachment.fileName,
-          url: attachment.url,
+          sizeBytes: attachment.sizeBytes,
         });
       }
     },
@@ -538,22 +510,6 @@ ipc.onMessage(async (msg) => {
       if (!p) return;
       pendingCdp.delete(msg.id);
       msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
-      break;
-    }
-    case 'get-attachment-result': {
-      const p = pendingAttachmentOps.get(msg.id);
-      if (!p) return;
-      pendingAttachmentOps.delete(msg.id);
-      if (msg.error) p.reject(new Error(msg.error));
-      else if (msg.result) {
-        // Decode base64 content back to Buffer
-        p.resolve({
-          id: msg.result.id,
-          fileName: msg.result.fileName,
-          mediaType: msg.result.mediaType,
-          content: Buffer.from(msg.result.content, 'base64'),
-        });
-      }
       break;
     }
   }

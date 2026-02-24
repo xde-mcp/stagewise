@@ -34,20 +34,6 @@ export type FileDiffHandler = (
 export type MountResolver = (agentId: string) => MountDescriptor[];
 
 /**
- * Callback type for resolving attachment data from user messages.
- * Provided by ToolboxService to look up attachments by ID from agent history.
- */
-export type AttachmentResolver = (
-  agentId: string,
-  attachmentId: string,
-) => Promise<{
-  id: string;
-  fileName: string;
-  mediaType: string;
-  content: Buffer;
-}>;
-
-/**
  * Resolve the path to the compiled sandbox worker script.
  * The worker is built as a separate CJS entry by Vite (see vite.sandbox-worker.config.ts)
  * and lives alongside main.js in .vite/build/.
@@ -78,7 +64,6 @@ export class SandboxService extends DisposableService {
   private readonly windowLayoutService: WindowLayoutService;
   private readonly logger: Logger;
   private readonly fileDiffHandler?: FileDiffHandler;
-  private readonly attachmentResolver?: AttachmentResolver;
   private readonly mountResolver?: MountResolver;
   private workers: WorkerInfo[] = [];
   private agentToWorker = new Map<string, WorkerInfo>();
@@ -91,7 +76,6 @@ export class SandboxService extends DisposableService {
     windowLayoutService: WindowLayoutService,
     logger: Logger,
     fileDiffHandler?: FileDiffHandler,
-    attachmentResolver?: AttachmentResolver,
     mountResolver?: MountResolver,
     private poolSize = 4,
   ) {
@@ -99,7 +83,6 @@ export class SandboxService extends DisposableService {
     this.windowLayoutService = windowLayoutService;
     this.logger = logger;
     this.fileDiffHandler = fileDiffHandler;
-    this.attachmentResolver = attachmentResolver;
     this.mountResolver = mountResolver;
   }
 
@@ -107,14 +90,12 @@ export class SandboxService extends DisposableService {
     windowLayoutService: WindowLayoutService,
     logger: Logger,
     fileDiffHandler?: FileDiffHandler,
-    attachmentResolver?: AttachmentResolver,
     mountResolver?: MountResolver,
   ): Promise<SandboxService> {
     const instance = new SandboxService(
       windowLayoutService,
       logger,
       fileDiffHandler,
-      attachmentResolver,
       mountResolver,
     );
     await instance.initialize();
@@ -234,7 +215,7 @@ export class SandboxService extends DisposableService {
       id: string;
       mediaType: string;
       fileName?: string;
-      url: string;
+      sizeBytes: number;
     }>;
   }> {
     // Lazily create agent context on first execution
@@ -326,41 +307,6 @@ export class SandboxService extends DisposableService {
             '[SandboxService] Failed to handle file diff notification',
             { error: err, path: msg.absolutePath },
           );
-        }
-        break;
-      }
-      case 'get-attachment': {
-        // Worker sandbox wants to retrieve an attachment — delegate to resolver
-        if (!this.attachmentResolver) {
-          this.safeSend(worker, {
-            type: 'get-attachment-result',
-            id: msg.id,
-            error: 'Attachment resolver is not configured',
-          });
-          return;
-        }
-        try {
-          const result = await this.attachmentResolver(
-            msg.agentId,
-            msg.attachmentId,
-          );
-          // Encode content as base64 for IPC transport
-          this.safeSend(worker, {
-            type: 'get-attachment-result',
-            id: msg.id,
-            result: {
-              id: result.id,
-              fileName: result.fileName,
-              mediaType: result.mediaType,
-              content: result.content.toString('base64'),
-            },
-          });
-        } catch (err) {
-          this.safeSend(worker, {
-            type: 'get-attachment-result',
-            id: msg.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
         }
         break;
       }

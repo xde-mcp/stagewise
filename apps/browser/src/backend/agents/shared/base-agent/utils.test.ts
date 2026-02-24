@@ -85,6 +85,8 @@ describe('buildSyntheticEnvironmentChangeMessage', () => {
   });
 });
 
+const noopBlobReader = async () => Buffer.alloc(0);
+
 describe('convertAgentMessagesToModelMessages – env-change injection', () => {
   const agentId = 'agent-1';
 
@@ -101,6 +103,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
     );
 
     const envChangeMessages = result.filter(
@@ -137,6 +140,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
     );
 
     const envChangeMessages = result.filter(
@@ -179,6 +183,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
     );
 
     const envChangeMessages = result.filter(
@@ -229,6 +234,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
     );
 
     const envChangeMessages = result.filter(
@@ -264,6 +270,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
     );
 
     const envChangeMessages = result.filter(
@@ -299,6 +306,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
     );
 
     const envChangeIdx = result.findIndex(
@@ -352,6 +360,7 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
     );
 
     const envChangeMessages = result.filter(
@@ -387,6 +396,9 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
+      undefined,
+      undefined,
       liveSnap,
     );
 
@@ -426,6 +438,9 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
       {},
       0,
       agentId,
+      noopBlobReader,
+      undefined,
+      undefined,
       snap,
     );
 

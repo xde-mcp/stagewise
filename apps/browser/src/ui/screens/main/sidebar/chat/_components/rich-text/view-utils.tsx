@@ -1,6 +1,6 @@
 import { NodeViewWrapper } from '@tiptap/react';
 import { PreviewCard as PreviewCardBase } from '@base-ui/react/preview-card';
-import { XIcon, AlertTriangleIcon } from 'lucide-react';
+import { XIcon } from 'lucide-react';
 import { useCallback, forwardRef } from 'react';
 import { cn } from '@/utils';
 import { PreviewCard } from '@stagewise/stage-ui/components/preview-card';
@@ -82,8 +82,6 @@ export interface AttachmentBadgeProps
   isEditable: boolean;
   /** Callback when delete button is clicked */
   onDelete: () => void;
-  /** Whether the attachment has a validation error (unsupported type/size) */
-  hasError?: boolean;
 }
 
 /**
@@ -95,16 +93,7 @@ export const AttachmentBadge = forwardRef<
   HTMLSpanElement,
   AttachmentBadgeProps
 >(function AttachmentBadge(
-  {
-    icon,
-    label,
-    selected,
-    isEditable,
-    onDelete,
-    hasError,
-    className,
-    ...props
-  },
+  { icon, label, selected, isEditable, onDelete, className, ...props },
   ref,
 ) {
   const handleDelete = useCallback(
@@ -116,44 +105,33 @@ export const AttachmentBadge = forwardRef<
     [onDelete],
   );
 
-  // Show warning icon when there's a validation error
-  const displayIcon = hasError ? (
-    <AlertTriangleIcon className="size-3 shrink-0 text-warning-foreground" />
-  ) : (
-    icon
-  );
-
   return (
     <BadgeContainer
       ref={ref}
       selected={selected}
-      className={cn('text-foreground', hasError && 'opacity-50', className)}
+      className={cn('text-foreground', className)}
       {...props}
     >
-      {/* Icon container - shows type icon normally, X on hover when editable */}
       {isEditable ? (
         <span
           role="button"
           tabIndex={-1}
           onClick={handleDelete}
-          onMouseDown={(e) => e.preventDefault()} // Prevent editor blur
+          onMouseDown={(e) => e.preventDefault()}
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon-xs' }),
             'relative size-3 shrink-0 overflow-hidden',
           )}
         >
-          {/* Normal icon - hidden on hover */}
           <span className="text-foreground transition-opacity group-hover/badge:opacity-0">
-            {displayIcon}
+            {icon}
           </span>
-          {/* X icon - shown on hover */}
           <XIcon className="absolute inset-0 size-3 opacity-0 transition-opacity group-hover/badge:opacity-100" />
         </span>
       ) : (
-        <span className="text-foreground">{displayIcon}</span>
+        <span className="text-foreground">{icon}</span>
       )}
 
-      {/* Label */}
       <span className="max-w-24 truncate font-medium text-xs leading-none">
         {label}
       </span>
@@ -168,10 +146,8 @@ export interface AttachmentBadgeWrapperProps {
   previewContent?: React.ReactNode;
   /** Optional tooltip content shown on hover, only shown if previewContent is not provided */
   tooltipContent?: React.ReactNode;
-  /** Optional viw-only mode, will return a span instead of a NodeViewWrapper */
+  /** Optional view-only mode, will return a span instead of a NodeViewWrapper */
   viewOnly?: boolean;
-  /** Error message to display (overrides previewContent/tooltipContent when set) */
-  errorMessage?: string;
 }
 
 function Wrapper({
@@ -200,22 +176,7 @@ export function AttachmentBadgeWrapper({
   previewContent,
   tooltipContent,
   viewOnly,
-  errorMessage,
 }: AttachmentBadgeWrapperProps) {
-  // Error message takes priority - show as tooltip
-  if (errorMessage) {
-    return (
-      <Wrapper viewOnly={viewOnly ?? false}>
-        <Tooltip>
-          <TooltipTrigger render={children} />
-          <TooltipContent>
-            <span className="text-warning-foreground">{errorMessage}</span>
-          </TooltipContent>
-        </Tooltip>
-      </Wrapper>
-    );
-  }
-
   return (
     <Wrapper viewOnly={viewOnly ?? false}>
       {previewContent ? (

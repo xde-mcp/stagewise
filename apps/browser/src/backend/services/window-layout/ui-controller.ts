@@ -1,4 +1,4 @@
-import { WebContentsView, shell, session, app } from 'electron';
+import { WebContentsView, shell, session, app, net } from 'electron';
 import { domCodeToElectronKeyCode } from '../../utils/dom-code-to-electron-key-code';
 import path from 'node:path';
 import contextMenu from 'electron-context-menu';
@@ -10,14 +10,64 @@ import type { SerializableKeyboardEvent } from '@shared/karton-contracts/web-con
 import type { ColorScheme } from '@shared/karton-contracts/ui';
 import type { PageTransition } from '@shared/karton-contracts/pages-api/types';
 import type { SelectedElement } from '@shared/selected-elements';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { canBrowserHandleUrl } from './protocol-utils';
 import {
   default as installExtension,
   REACT_DEVELOPER_TOOLS,
 } from 'electron-devtools-installer';
+import { getBlobPath, blobExists } from '@/utils/attachment-blobs';
+import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 
 const UI_SESSION_PARTITION = 'persist:stagewise-ui';
+
+/**
+ * Search user message metadata for a matching file attachment.
+ * Returns the mediaType if found, undefined otherwise.
+ */
+function findMediaTypeInUserAttachments(
+  history: AgentMessage[],
+  attachmentId: string,
+): string | undefined {
+  for (const msg of history) {
+    const att = msg.metadata?.fileAttachments?.find(
+      (f) => f.id === attachmentId,
+    );
+    if (att) return att.mediaType;
+  }
+  return undefined;
+}
+
+/**
+ * Search sandbox tool outputs (`_customFileAttachments`) for a matching
+ * attachment. Returns the mediaType if found, undefined otherwise.
+ */
+function findMediaTypeInSandboxOutputs(
+  history: AgentMessage[],
+  attachmentId: string,
+): string | undefined {
+  for (const msg of history) {
+    if (msg.role === 'user') continue;
+    for (const part of msg.parts) {
+      if (!('output' in part) || !part.output) continue;
+      if (typeof part.output !== 'object') continue;
+
+      const customs = (part.output as Record<string, unknown>)
+        ._customFileAttachments;
+      if (!Array.isArray(customs)) continue;
+
+      const found = customs.find(
+        (c: unknown): c is { id: string; mediaType: string } =>
+          typeof c === 'object' &&
+          c !== null &&
+          'id' in c &&
+          (c as { id: unknown }).id === attachmentId,
+      );
+      if (found) return found.mediaType;
+    }
+  }
+  return undefined;
+}
 
 /**
  * Installs React DevTools extension on the UI session.
@@ -149,6 +199,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
   private telemetryService: TelemetryService | null;
   private crashCount = 0;
   public readonly uiKarton: KartonService;
+  private globalDataPath: string;
   private checkFrameValidityHandler?: (
     tabId: string,
     frameId: string,
@@ -168,25 +219,105 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
   public static async create(
     logger: Logger,
     telemetryService?: TelemetryService,
+    globalDataPath?: string,
   ): Promise<UIController> {
     // Install React DevTools on the UI session BEFORE creating the WebContentsView
     await installReactDevToolsOnUISession(logger);
-    return new UIController(logger, telemetryService);
+    return new UIController(logger, telemetryService, globalDataPath);
   }
 
   /**
    * Creates a new UIController instance.
    * Use the static `create()` method instead of calling this directly.
    */
-  private constructor(logger: Logger, telemetryService?: TelemetryService) {
+  private constructor(
+    logger: Logger,
+    telemetryService?: TelemetryService,
+    globalDataPath?: string,
+  ) {
     super();
     this.logger = logger;
     this.telemetryService = telemetryService ?? null;
+    this.globalDataPath = globalDataPath ?? app.getPath('userData');
     this.uiKarton = new KartonService(logger);
 
+    this.registerBlobProtocol();
     this.view = this.createView();
     this.loadApp();
     this.registerKartonProcedures();
+  }
+
+  /**
+   * Register the sw-blob:// protocol handler on the UI session so
+   * renderer components can display attachment blobs via simple URLs.
+   * URL format: sw-blob://{agentId}/{attachmentId}
+   */
+  private registerBlobProtocol(): void {
+    const uiSession = session.fromPartition(UI_SESSION_PARTITION);
+    uiSession.protocol.handle('sw-blob', async (request) => {
+      try {
+        const url = new URL(request.url);
+        const agentId = url.hostname;
+        const attachmentId = url.pathname.replace(/^\//, '');
+
+        if (!agentId || !attachmentId) {
+          return new Response('Invalid blob URL', { status: 400 });
+        }
+
+        const exists = await blobExists(
+          this.globalDataPath,
+          agentId,
+          attachmentId,
+        );
+        if (!exists) {
+          return new Response('Blob not found', { status: 404 });
+        }
+
+        const mediaType = this.resolveAttachmentMediaType(
+          agentId,
+          attachmentId,
+        );
+
+        const filePath = getBlobPath(
+          this.globalDataPath,
+          agentId,
+          attachmentId,
+        );
+        const fileUrl = pathToFileURL(filePath).href;
+        const fileResponse = await net.fetch(fileUrl);
+
+        return new Response(fileResponse.body, {
+          status: 200,
+          headers: { 'Content-Type': mediaType },
+        });
+      } catch (err) {
+        this.logger.error('[UIController] sw-blob protocol error', {
+          error: err,
+          url: request.url,
+        });
+        return new Response('Internal error', { status: 500 });
+      }
+    });
+  }
+
+  /**
+   * Resolve the MIME type for an attachment by searching the agent's
+   * chat history. Checks user-uploaded attachments first, then
+   * sandbox-produced tool output attachments.
+   */
+  private resolveAttachmentMediaType(
+    agentId: string,
+    attachmentId: string,
+  ): string {
+    const history =
+      this.uiKarton.state.agents.instances[agentId]?.state.history;
+    if (!history) return 'application/octet-stream';
+
+    return (
+      findMediaTypeInUserAttachments(history, attachmentId) ??
+      findMediaTypeInSandboxOutputs(history, attachmentId) ??
+      'application/octet-stream'
+    );
   }
 
   /**

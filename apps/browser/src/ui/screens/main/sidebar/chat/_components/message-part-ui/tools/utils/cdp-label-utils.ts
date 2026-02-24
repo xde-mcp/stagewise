@@ -16,9 +16,9 @@ export interface ParsedWriteFileCall {
 }
 
 /**
- * Represents a parsed getAttachment call extracted from a sandbox script.
+ * Represents a parsed attachment read via `fs.readFile('att/...')`.
  */
-export interface ParsedGetAttachmentCall {
+export interface ParsedReadAttachmentCall {
   attachmentId: string;
 }
 
@@ -198,22 +198,18 @@ export function parseWriteFileCalls(script: string): ParsedWriteFileCall[] {
 }
 
 /**
- * Parses a sandbox script to extract getAttachment calls.
- * Matches patterns like: API.getAttachment("abc123")
+ * Parses a sandbox script to extract attachment reads via `fs.readFile('att/...')`.
+ * Matches patterns like: fs.readFile('att/abc123'), fsp.readFile("att/abc123")
  */
-export function parseGetAttachmentCalls(
+export function parseReadAttachmentCalls(
   script: string,
-): ParsedGetAttachmentCall[] {
-  // Regex to match API.getAttachment("attachmentId")
-  // Supports both single and double quotes
-  const regex = /API\.getAttachment\s*\(\s*["']([^"']+)["']/g;
-  const calls: ParsedGetAttachmentCall[] = [];
+): ParsedReadAttachmentCall[] {
+  const regex = /(?:fs|fsp)\.readFile\s*\(\s*["'`]att\/([^"'`]+)["'`]/g;
+  const calls: ParsedReadAttachmentCall[] = [];
 
   let match = regex.exec(script);
   while (match !== null) {
-    calls.push({
-      attachmentId: match[1],
-    });
+    calls.push({ attachmentId: match[1] });
     match = regex.exec(script);
   }
 
@@ -299,7 +295,7 @@ export function resolveTabHostname(
 
 /**
  * Generates a contextual label for a sandbox script based on its CDP calls,
- * file writes, and attachment reads.
+ * file writes, and attachment reads (via `fs.readFile('att/...')`).
  *
  * @param script - The sandbox script content
  * @param activeTabs - Current browser tabs from state
@@ -315,14 +311,14 @@ export function getSandboxLabel(
 
   const cdpCalls = parseCDPCalls(script);
   const writeFileCalls = parseWriteFileCalls(script);
-  const getAttachmentCalls = parseGetAttachmentCalls(script);
+  const readAttCalls = parseReadAttachmentCalls(script);
   const multimodalAttachmentCalls = parseOutputAttachmentCalls(script);
 
   // No API calls found
   if (
     cdpCalls.length === 0 &&
     writeFileCalls.length === 0 &&
-    getAttachmentCalls.length === 0 &&
+    readAttCalls.length === 0 &&
     multimodalAttachmentCalls.length === 0
   )
     return isInProgress ? 'Running a script...' : 'Ran a script';
@@ -331,7 +327,7 @@ export function getSandboxLabel(
   if (
     cdpCalls.length === 0 &&
     writeFileCalls.length === 0 &&
-    getAttachmentCalls.length === 0 &&
+    readAttCalls.length === 0 &&
     multimodalAttachmentCalls.length > 0
   ) {
     if (multimodalAttachmentCalls.length === 1)
@@ -346,21 +342,21 @@ export function getSandboxLabel(
   if (
     cdpCalls.length === 0 &&
     writeFileCalls.length === 0 &&
-    getAttachmentCalls.length > 0
+    readAttCalls.length > 0
   ) {
-    if (getAttachmentCalls.length === 1)
+    if (readAttCalls.length === 1)
       return isInProgress ? 'Reading attachment...' : 'Read attachment';
 
     return isInProgress
-      ? `Reading ${getAttachmentCalls.length} attachments...`
-      : `Read ${getAttachmentCalls.length} attachments`;
+      ? `Reading ${readAttCalls.length} attachments...`
+      : `Read ${readAttCalls.length} attachments`;
   }
 
   // Only file writes (possibly with attachment reads), no CDP calls
   if (cdpCalls.length === 0 && writeFileCalls.length > 0) {
     const attachmentSuffix =
-      getAttachmentCalls.length > 0
-        ? ` from ${getAttachmentCalls.length === 1 ? 'attachment' : `${getAttachmentCalls.length} attachments`}`
+      readAttCalls.length > 0
+        ? ` from ${readAttCalls.length === 1 ? 'attachment' : `${readAttCalls.length} attachments`}`
         : '';
 
     if (writeFileCalls.length === 1) {

@@ -21,8 +21,9 @@ import { cn } from '@/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import { useKartonState } from '@/hooks/use-karton';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
-import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
+
 import { getSandboxLabel } from './utils/cdp-label-utils';
+import { useOpenAgent } from '@/hooks/use-open-chat';
 
 export const ExecuteSandboxJsToolPart = ({
   part,
@@ -89,7 +90,7 @@ export const ExecuteSandboxJsToolPart = ({
     const raw = (part.output as Record<string, unknown> | undefined)
       ?._customFileAttachments;
     if (!Array.isArray(raw) || raw.length === 0) return null;
-    return raw as FileAttachment[];
+    return raw as SandboxAttachment[];
   }, [part.output]);
 
   const hasResultContent = !!formattedResult || !!customAttachments;
@@ -353,36 +354,45 @@ const getFileIcon = (mediaType: string, hasError: boolean) => {
   return <FileIcon className="size-8 text-muted-foreground" />;
 };
 
+interface SandboxAttachment {
+  id: string;
+  mediaType: string;
+  fileName?: string;
+  sizeBytes?: number;
+}
+
 const AttachmentPreviewCards = ({
   attachments,
 }: {
-  attachments: FileAttachment[];
+  attachments: SandboxAttachment[];
 }) => {
+  const [openAgentId] = useOpenAgent();
   return (
-    <div className="flex flex-row gap-2 overflow-x-auto px-1 py-2">
+    <div className="scrollbar-hover-only flex flex-row gap-2 overflow-x-auto px-1 py-2">
       {attachments.map((att) => {
-        const isImage =
-          att.mediaType.startsWith('image/') && !att.validationError;
+        const isImage = att.mediaType.startsWith('image/');
+        const blobUrl = openAgentId
+          ? `sw-blob://${openAgentId}/${att.id}`
+          : undefined;
         return (
           <div
             key={att.id}
             className={cn(
               'flex shrink-0 flex-col overflow-hidden rounded-lg',
               'border border-border-subtle bg-surface-1',
-              att.validationError && 'border-destructive/30',
             )}
           >
-            {isImage ? (
+            {isImage && blobUrl ? (
               <div className="flex min-h-24 items-center justify-center bg-background p-1.5">
                 <img
-                  src={att.url}
+                  src={blobUrl}
                   alt={att.fileName ?? att.id}
                   className="max-h-38 max-w-52 rounded object-contain"
                 />
               </div>
             ) : (
               <div className="flex size-24 items-center justify-center bg-background">
-                {getFileIcon(att.mediaType, !!att.validationError)}
+                {getFileIcon(att.mediaType, false)}
               </div>
             )}
             <div className="border-border-subtle border-t px-2.5 py-1">

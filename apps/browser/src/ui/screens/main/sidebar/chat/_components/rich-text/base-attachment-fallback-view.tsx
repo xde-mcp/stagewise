@@ -22,18 +22,14 @@ import { useMessageAttachments } from '@ui/hooks/use-message-elements';
  */
 export function AttachmentNodeView(props: AttachmentNodeViewProps) {
   const attrs = props.node.attrs as FileAttachmentAttrs;
-
   const isEditable = !('viewOnly' in props);
-  const hasError = !!attrs.validationError;
 
-  // Look up full attachment data from context (same pattern as image-attachment-view)
   const { fileAttachments } = useMessageAttachments();
   const attachment = useMemo(
     () => fileAttachments.find((f) => f.id === attrs.id),
     [fileAttachments, attrs.id],
   );
 
-  // Prefer context data (saved attachments), fall back to attrs (new attachments being composed)
   const label = attachment?.fileName ?? attrs.label;
 
   const displayLabel = useMemo(
@@ -41,10 +37,8 @@ export function AttachmentNodeView(props: AttachmentNodeViewProps) {
     [label, attrs.id],
   );
 
-  // Default: file icon
   const typeIcon = <FileIcon className="size-3 shrink-0" />;
 
-  // Render preview card content based on attachment type
   const previewContent = useMemo(() => {
     return <span>{label}</span>;
   }, [label]);
@@ -53,14 +47,12 @@ export function AttachmentNodeView(props: AttachmentNodeViewProps) {
     <AttachmentBadgeWrapper
       viewOnly={!isEditable}
       tooltipContent={previewContent}
-      errorMessage={attrs.validationError}
     >
       <AttachmentBadge
         icon={typeIcon}
         label={displayLabel}
         selected={props.selected}
         isEditable={isEditable}
-        hasError={hasError}
         onDelete={() =>
           'deleteNode' in props ? props.deleteNode() : undefined
         }

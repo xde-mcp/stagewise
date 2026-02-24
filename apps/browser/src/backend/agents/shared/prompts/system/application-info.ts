@@ -70,6 +70,15 @@ const fsp = await import('node:fs/promises');
 - Paths are restricted to mounted workspaces — access outside them throws an error.
 - File writes are automatically tracked by the diff-history system.
 
+#### Attachment directory (\`att/\`)
+
+A special \`att/\` mount is always available, separate from workspace mounts. It provides direct filesystem access to the agent's attachment blob directory.
+
+- **Read user-uploaded attachments**: \`fs.readFile('att/{attachmentId}')\` — the attachment ID comes from the message metadata.
+- **Write output attachments**: \`fs.writeFile('att/{id}', buffer)\` — write binary content directly, then register metadata with \`API.outputAttachment()\`.
+- The \`att/\` directory is persistent for the lifetime of the agent.
+- Writes to \`att/\` are **not** tracked by the diff-history system.
+
 ### Sandbox API (\`API.*\`)
 
 #### \`API.sendCDP(tabId: string, method: string, params?: any): Promise<any>\`
@@ -78,26 +87,24 @@ Send a CDP command to a specific tab debugger.
 #### \`API.output(data: any)\`
 Append data to the tool result. \`data\` is stringified (JSON if not already a string). Can be called multiple times; outputs appear in order. The script's \`return\` value is appended last.
 
-#### \`API.getAttachment(attachmentId: string)\`
-Retrieve a user-provided conversation attachment and store into var.
-Returns: \`{ id, fileName, mediaType, content: Buffer }\`
-
 #### \`API.outputAttachment(attachment)\`
 Register a file attachment so the LLM can **see** it as multimodal input on the next turn.
+The binary data must already be written to disk via \`fs.writeFile('att/{id}', buffer)\` before calling this.
 The script's text output (\`API.output\` / \`return\`) is unaffected — the attachment is delivered separately.
+
+**Two-step pattern:**
+1. Write the binary content: \`await fs.writeFile('att/' + id, buffer)\`
+2. Register metadata: \`API.outputAttachment({ id, mediaType, sizeBytes, fileName })\`
 
 **Attachment schema:**
 \`\`\`
 {
-  id: string,          // unique identifier
-  mediaType: string,   // MIME type (see allowed types below)
-  fileName?: string,   // optional display name
-  url: string          // data URL, e.g. "data:image/png;base64,..."
+  id: string,          // unique identifier (must match the filename written to att/)
+  mediaType: string,   // MIME type, e.g. "image/png"
+  sizeBytes: number,   // size of the written file in bytes
+  fileName?: string    // optional display name
 }
 \`\`\`
-
-**Allowed MIME types:** \`image/jpeg\`, \`image/png\`, \`image/gif\`, \`image/webp\`, \`application/pdf\`, \`text/plain\`
-**Size limits:** images ≤ 5 MB, documents ≤ 20 MB (decoded size). Oversized or unsupported files are rejected with a validation error.
 
 ### Available Runtime
 
@@ -171,12 +178,13 @@ API.output(\`File has \${content.split('\\n').length} lines\`);
 return content.slice(0, 500);
 \`\`\`
 
-#### Write attachment data to disk
+#### Read a user-uploaded attachment
 \`\`\`js
 const fs = await import('node:fs/promises');
-const img = await API.getAttachment("abc123");
-await fs.writeFile(\`w1/assets/\${img.fileName}\`, img.content);
-return { saved: img.fileName, mediaType: img.mediaType, bytes: img.content.length };
+const content = await fs.readFile('att/abc123');
+API.output(\`Attachment size: \${content.length} bytes\`);
+await fs.writeFile('w1/assets/uploaded-image.png', content);
+return "Copied attachment to workspace.";
 \`\`\`
 
 #### List files in a directory
@@ -188,13 +196,17 @@ return files.filter(f => f.endsWith('.ts'));
 
 #### Take a screenshot and inspect it as multimodal input
 \`\`\`js
+const fs = await import('node:fs/promises');
 const tabId = "<active-tab-id>";
 const { data } = await API.sendCDP(tabId, "Page.captureScreenshot", { format: "png" });
+const buf = Buffer.from(data, "base64");
+const id = crypto.randomUUID();
+await fs.writeFile('att/' + id, buf);
 API.outputAttachment({
-  id: crypto.randomUUID(),
+  id,
   mediaType: "image/png",
+  sizeBytes: buf.length,
   fileName: "screenshot.png",
-  url: \`data:image/png;base64,\${data}\`,
 });
 return "Screenshot captured — see attached image.";
 \`\`\`

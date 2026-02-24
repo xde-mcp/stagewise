@@ -397,27 +397,16 @@ export const ImageAttachmentLink = ({
   id,
   metadata,
 }: AttachmentLinkBaseProps) => {
-  // Extract url, label, and validationError from FileAttachment metadata
-  const { url, label, validationError } = useMemo(() => {
-    if (!metadata || !('url' in metadata)) {
-      return { url: '', label: 'image', validationError: undefined };
-    }
-    return {
-      url: metadata.url,
-      label:
-        'fileName' in metadata && metadata.fileName
-          ? metadata.fileName
-          : 'image',
-      validationError:
-        'validationError' in metadata ? metadata.validationError : undefined,
-    };
+  const label = useMemo(() => {
+    if (!metadata || !('fileName' in metadata)) return 'image';
+    return metadata.fileName || 'image';
   }, [metadata]);
 
   return (
     <ImageAttachmentView
       viewOnly
       selected={false}
-      node={{ attrs: { id, label, url, validationError } }}
+      node={{ attrs: { id, label } }}
     />
   );
 };
@@ -430,39 +419,37 @@ export const ExpandedImageAttachmentLink = ({
   id,
   metadata,
 }: AttachmentLinkBaseProps) => {
-  const { url, label } = useMemo(() => {
-    if (!metadata || !('url' in metadata)) return { url: '', label: 'image' };
-    return {
-      url: metadata.url,
-      label:
-        'fileName' in metadata && metadata.fileName
-          ? metadata.fileName
-          : 'image',
-    };
+  const [openAgent] = useOpenAgent();
+
+  const label = useMemo(() => {
+    if (!metadata || !('fileName' in metadata)) return 'image';
+    return metadata.fileName || 'image';
   }, [metadata]);
+
+  const url = openAgent ? `sw-blob://${openAgent}/${id}` : '';
 
   if (!url) return <ImageAttachmentLink id={id} metadata={metadata} />;
 
   return (
-    <div
+    <span
       className={cn(
         'my-1 inline-flex shrink-0 flex-col overflow-hidden rounded-lg',
         'border border-border-subtle bg-surface-1',
       )}
     >
-      <div className="flex min-h-24 items-center justify-center bg-background p-1.5">
+      <span className="flex min-h-24 items-center justify-center bg-background p-1.5">
         <img
           src={url}
           alt={label}
           className="max-h-38 max-w-52 rounded object-contain"
         />
-      </div>
-      <div className="border-border-subtle border-t px-2.5 py-1.5">
+      </span>
+      <span className="block border-border-subtle border-t px-2.5 py-1.5">
         <span className="max-w-48 truncate font-medium text-foreground text-xs">
           {label}
         </span>
-      </div>
-    </div>
+      </span>
+    </span>
   );
 };
 
@@ -473,23 +460,18 @@ export const FileAttachmentLink = ({
   id,
   metadata,
 }: AttachmentLinkBaseProps) => {
-  const { label, validationError } = useMemo(() => {
-    if (!metadata) return { label: 'file', validationError: undefined };
-    return {
-      label:
-        'fileName' in metadata && metadata.fileName
-          ? metadata.fileName
-          : 'file',
-      validationError:
-        'validationError' in metadata ? metadata.validationError : undefined,
-    };
+  const label = useMemo(() => {
+    if (!metadata) return 'file';
+    return 'fileName' in metadata && metadata.fileName
+      ? metadata.fileName
+      : 'file';
   }, [metadata]);
 
   return (
     <AttachmentNodeView
       viewOnly
       selected={false}
-      node={{ attrs: { id, label, validationError } }}
+      node={{ attrs: { id, label } }}
     />
   );
 };

@@ -100,6 +100,13 @@ export const customEndpointSchema = z.object({
 });
 export type CustomEndpoint = z.infer<typeof customEndpointSchema>;
 
+/** Per-modality constraint: accepted MIME types and max inline size */
+const modalityConstraintSchema = z.object({
+  mimeTypes: z.array(z.string()),
+  maxBytes: z.number(),
+});
+export type ModalityConstraint = z.infer<typeof modalityConstraintSchema>;
+
 /** Capabilities that describe what a model can do */
 export const modelCapabilitiesSchema = z.object({
   inputModalities: z
@@ -132,6 +139,14 @@ export const modelCapabilitiesSchema = z.object({
       video: false,
       file: false,
     }),
+  inputConstraints: z
+    .object({
+      image: modalityConstraintSchema.optional(),
+      file: modalityConstraintSchema.optional(),
+      video: modalityConstraintSchema.optional(),
+      audio: modalityConstraintSchema.optional(),
+    })
+    .optional(),
   toolCalling: z.boolean().default(true),
   intelligence: z
     .object({
@@ -222,6 +237,12 @@ type BaseSettings = {
       image: boolean;
       video: boolean;
       file: boolean;
+    };
+    inputConstraints?: {
+      image?: ModalityConstraint;
+      file?: ModalityConstraint;
+      video?: ModalityConstraint;
+      audio?: ModalityConstraint;
     };
     toolCalling: boolean;
     intelligence: {
@@ -829,49 +850,3 @@ export type ExternalFileResult = {
 export type FileResult = TextFileResult | ExternalFileResult;
 
 export const MAX_DIFF_TEXT_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-
-// Attachment size limits (for multimodal LLM input and sandbox access)
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images (Claude API limit)
-export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20MB for documents
-
-export const SUPPORTED_ATTACHMENT_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'application/pdf',
-  'text/plain',
-]);
-
-export function isSupportedAttachmentMimeType(mimeType: string): boolean {
-  return SUPPORTED_ATTACHMENT_MIME_TYPES.has(mimeType.toLowerCase());
-}
-
-/**
- * Validate a data-URL-based file attachment for multimodal LLM input.
- * Checks MIME type support, data URL format, and decoded size limits.
- */
-export function validateAttachmentDataUrl(
-  mediaType: string,
-  dataUrl: string,
-): { valid: true } | { valid: false; error: string } {
-  if (!isSupportedAttachmentMimeType(mediaType))
-    return { valid: false, error: 'Unsupported file type' };
-
-  const dataUrlMatch = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (!dataUrlMatch) return { valid: false, error: 'Invalid data URL format' };
-
-  const rawBytes = Math.ceil((dataUrlMatch[2].length * 3) / 4);
-  const isImage = mediaType.startsWith('image/');
-  const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
-  const maxSizeLabel = isImage ? '5MB' : '20MB';
-
-  if (rawBytes > maxSize) {
-    return {
-      valid: false,
-      error: `${isImage ? 'Image' : 'Document'} exceeds ${maxSizeLabel} limit`,
-    };
-  }
-
-  return { valid: true };
-}

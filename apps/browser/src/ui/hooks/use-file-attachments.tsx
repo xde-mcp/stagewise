@@ -5,16 +5,42 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
-import { fileToDataUrl, generateId, validateFileBeforeUpload } from '@/utils';
+import { generateId } from '@/utils';
 import { fileAttachmentToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
 import type { ChatInputHandle } from '@/screens/main/sidebar/chat/_components/chat-input';
+import { useKartonProcedure } from '@/hooks/use-karton';
+import posthog from 'posthog-js';
+
+/**
+ * Electron enriches File objects from drag-and-drop / file input
+ * with an absolute filesystem path. Clipboard pastes and
+ * programmatically constructed Files do not have this property.
+ */
+interface ElectronFile extends File {
+  path?: string;
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const commaIdx = dataUrl.indexOf(',');
+      resolve(commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export interface UseFileAttachmentsOptions {
   /** Reference to the chat input for inserting attachments */
   chatInputRef?: RefObject<ChatInputHandle>;
   /** Whether to automatically insert attachments into the editor (default: true) */
   insertIntoEditor?: boolean;
+  /** Agent instance ID — required for storing blobs on disk */
+  agentId?: string | null;
 }
 
 export interface UseFileAttachmentsReturn {
@@ -34,49 +60,89 @@ export interface UseFileAttachmentsReturn {
  * Hook for managing file attachment state.
  * Each consumer gets their own independent state instance.
  *
- * Features:
- * - Data URL storage for file attachments
- * - Optional automatic insertion into TipTap editor
- * - Early validation before data URL conversion to prevent memory waste
+ * File content is stored on disk via the `agents.storeAttachment` procedure.
+ * Only lightweight metadata is kept in React state and Karton state.
  */
 export function useFileAttachments(
   options: UseFileAttachmentsOptions = {},
 ): UseFileAttachmentsReturn {
-  const { chatInputRef, insertIntoEditor = true } = options;
+  const { chatInputRef, insertIntoEditor = true, agentId } = options;
 
   const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
+  const storeAttachment = useKartonProcedure((p) => p.agents.storeAttachment);
+  const storeAttachmentByPath = useKartonProcedure(
+    (p) => p.agents.storeAttachmentByPath,
+  );
 
   const addFileAttachment = useCallback(
     async (file: File): Promise<FileAttachment> => {
       const id = generateId();
-      const mediaType = file.type;
-
-      // Validate BEFORE converting to data URL to avoid memory waste
-      const validation = validateFileBeforeUpload(file);
-
-      // Only convert to data URL if the file is supported
-      // For unsupported files, store empty URL to save memory
-      const url = validation.supported ? await fileToDataUrl(file) : '';
+      const mediaType = file.type || 'application/octet-stream';
+      const fileName = file.name || `file-${id}`;
+      const sizeBytes = file.size;
 
       const attachment: FileAttachment = {
         id,
+        fileName,
         mediaType,
-        fileName: file.name,
-        url,
-        validationError: validation.supported ? undefined : validation.reason,
+        sizeBytes,
       };
 
       setFileAttachments((prev) => [...prev, attachment]);
 
-      // Optionally insert into editor
       if (insertIntoEditor && chatInputRef?.current) {
         const attrs = fileAttachmentToAttachmentAttributes(attachment);
         chatInputRef.current.insertAttachment(attrs);
       }
 
+      if (agentId) {
+        const filePath = (file as ElectronFile).path;
+        const storePromise = filePath
+          ? storeAttachmentByPath(
+              agentId,
+              id,
+              mediaType,
+              fileName,
+              sizeBytes,
+              filePath,
+            )
+          : fileToBase64(file).then((base64) =>
+              storeAttachment(
+                agentId,
+                id,
+                mediaType,
+                fileName,
+                sizeBytes,
+                base64,
+              ),
+            );
+
+        storePromise.catch((err: unknown) => {
+          console.error(
+            '[useFileAttachments] Failed to store attachment blob:',
+            err,
+          );
+          posthog.captureException(
+            err instanceof Error ? err : new Error(String(err)),
+            {
+              source: 'renderer',
+              operation: 'storeAttachmentBlob',
+              attachmentId: id,
+              agentId,
+            },
+          );
+        });
+      }
+
       return attachment;
     },
-    [chatInputRef, insertIntoEditor],
+    [
+      chatInputRef,
+      insertIntoEditor,
+      agentId,
+      storeAttachment,
+      storeAttachmentByPath,
+    ],
   );
 
   const removeFileAttachment = useCallback((id: string) => {

@@ -9,7 +9,51 @@ const openaiHeaders = {};
 
 const googleHeaders = {};
 
-// TODO: ADD MODEL CAPABILITIES GLENN!!!!!
+import type { ModalityConstraint } from '@shared/karton-contracts/ui/shared-types';
+
+type InputConstraints = {
+  image?: ModalityConstraint;
+  file?: ModalityConstraint;
+  video?: ModalityConstraint;
+  audio?: ModalityConstraint;
+};
+
+const ANTHROPIC_INPUT_CONSTRAINTS: InputConstraints = {
+  image: {
+    mimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    maxBytes: 5_242_880, // 5 MB per image
+  },
+  file: {
+    mimeTypes: ['application/pdf'],
+    maxBytes: 32_000_000, // 32 MB request limit
+  },
+};
+
+const OPENAI_INPUT_CONSTRAINTS: InputConstraints = {
+  image: {
+    mimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    maxBytes: 20_971_520, // 20 MB
+  },
+  file: {
+    mimeTypes: ['application/pdf'],
+    maxBytes: 20_971_520, // 20 MB
+  },
+};
+
+const GOOGLE_INPUT_CONSTRAINTS: InputConstraints = {
+  image: {
+    mimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    maxBytes: 104_857_600, // 100 MB inline
+  },
+  file: {
+    mimeTypes: ['application/pdf'],
+    maxBytes: 104_857_600, // 100 MB inline
+  },
+  video: {
+    mimeTypes: ['video/mp4', 'video/webm', 'video/quicktime'],
+    maxBytes: 104_857_600, // 100 MB inline
+  },
+};
 
 export const availableModels = [
   // Anthropic Models
@@ -26,11 +70,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -38,6 +81,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -60,11 +104,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -72,6 +115,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -101,11 +145,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -113,6 +156,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: OPENAI_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -140,11 +184,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
-        video: false,
-        file: false,
+        image: true,
+        video: true,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -152,6 +195,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: GOOGLE_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -174,11 +218,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -186,6 +229,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -213,11 +257,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -225,6 +268,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: OPENAI_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -252,11 +296,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -264,6 +307,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: OPENAI_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -286,11 +330,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -298,6 +341,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -320,11 +364,10 @@ export const availableModels = [
       inputModalities: {
         text: true,
         audio: false,
-        image: false,
+        image: true,
         video: false,
-        file: false,
+        file: true,
       },
-
       outputModalities: {
         text: true,
         audio: false,
@@ -332,6 +375,7 @@ export const availableModels = [
         video: false,
         file: false,
       },
+      inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
       intelligence: {
         canPlan: true,
@@ -343,3 +387,38 @@ export const availableModels = [
 
 export type BuiltInModelId = (typeof availableModels)[number]['modelId'];
 export type ModelId = BuiltInModelId | (string & {});
+
+/**
+ * Look up a model's capabilities by ID.
+ * Falls back to text-only when the model is unknown (e.g. custom model
+ * without capabilities defined).
+ */
+export function getModelCapabilities(
+  modelId: ModelId,
+): ModelSettings['capabilities'] {
+  const model = availableModels.find((m) => m.modelId === modelId);
+  if (model) return model.capabilities;
+
+  return {
+    inputModalities: {
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      file: false,
+    },
+    outputModalities: {
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      file: false,
+    },
+    inputConstraints: undefined,
+    toolCalling: true,
+    intelligence: {
+      canPlan: true,
+      canCode: true,
+    },
+  };
+}

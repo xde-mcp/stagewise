@@ -161,6 +161,7 @@ export class WindowLayoutService extends DisposableService {
     this.uiController = await UIController.create(
       this.logger,
       this.telemetryService ?? undefined,
+      this.globalDataPathService.globalDataPath,
     );
     this.uiController.setCheckFrameValidityHandler(
       this.handleCheckFrameValidity.bind(this),

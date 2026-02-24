@@ -10,15 +10,7 @@ export const FileAttachment = createAttachmentNode<FileAttachmentAttrs>({
   name: 'fileAttachment',
   dataTag: 'data-file-attachment',
   markdownProtocol: 'file',
-  additionalAttributes: {
-    validationError: {
-      default: null,
-      parseHTML: (element) => element.getAttribute('data-validation-error'),
-      renderHTML: (attributes) => ({
-        'data-validation-error': attributes.validationError,
-      }),
-    },
-  },
+  additionalAttributes: {},
   renderText: ({ node }) => {
     return getAttachmentAnchorText({
       type: 'file',

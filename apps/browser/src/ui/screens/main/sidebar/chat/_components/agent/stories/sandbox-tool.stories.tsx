@@ -53,18 +53,6 @@ const meta: Meta<typeof ChatHistory> = {
 export default meta;
 type Story = StoryObj<typeof ChatHistory>;
 
-// 1x1 transparent PNG (smallest valid PNG)
-const TINY_PNG =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
-// 1x1 red PNG
-const TINY_RED_PNG =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==';
-
-// Minimal SVG
-const TINY_SVG =
-  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxIiBoZWlnaHQ9IjEiLz4=';
-
 /**
  * Sandbox Basic JSON Result
  *
@@ -249,13 +237,13 @@ return JSON.stringify({ headerCaptured: true, footerCaptured: true });`,
                     id: 'header-screenshot',
                     mediaType: 'image/png',
                     fileName: 'header.png',
-                    url: TINY_PNG,
+                    sizeBytes: 1024,
                   },
                   {
                     id: 'footer-screenshot',
                     mediaType: 'image/png',
                     fileName: 'footer.png',
-                    url: TINY_RED_PNG,
+                    sizeBytes: 1024,
                   },
                 ],
               },
@@ -352,19 +340,19 @@ return JSON.stringify({
                     id: 'hero-screenshot',
                     mediaType: 'image/png',
                     fileName: 'hero-section.png',
-                    url: TINY_PNG,
+                    sizeBytes: 1024,
                   },
                   {
                     id: 'hero-logo-svg',
                     mediaType: 'image/svg+xml',
                     fileName: 'hero-logo.svg',
-                    url: TINY_SVG,
+                    sizeBytes: 512,
                   },
                   {
                     id: 'hero-html',
                     mediaType: 'text/html',
                     fileName: 'hero-section.html',
-                    url: 'data:text/html;base64,PGRpdiBjbGFzcz0iaGVyby1zZWN0aW9uIj5IZWxsbzwvZGl2Pg==',
+                    sizeBytes: 256,
                   },
                 ],
               },
@@ -380,13 +368,13 @@ return JSON.stringify({
 };
 
 /**
- * Sandbox Attachments With Validation Error
+ * Sandbox Attachments Mixed Types
  *
- * Script with 2 outputAttachment calls where one has a validationError.
- * Tests how the UI handles partially invalid attachments.
+ * Script with 2 outputAttachment calls with different media types.
+ * Tests how the UI handles mixed attachment types.
  */
 export const SandboxAttachmentsWithValidationError: Story = {
-  name: 'Sandbox/Attachments-With-Validation-Error',
+  name: 'Sandbox/Attachments-Mixed-Types',
   parameters: {
     mockKartonState: createStoryState([
       createUserMessage(
@@ -438,15 +426,13 @@ return JSON.stringify({ screenshotCaptured: true, videoExtracted: true });`,
                     id: 'page-screenshot',
                     mediaType: 'image/png',
                     fileName: 'page.png',
-                    url: TINY_PNG,
+                    sizeBytes: 1024,
                   },
                   {
                     id: 'video-source',
                     mediaType: 'video/mp4',
                     fileName: 'background-video.mp4',
-                    url: 'https://example.com/video.mp4',
-                    validationError:
-                      'Unsupported attachment: video/mp4 files are not supported. Only image files (PNG, JPEG, GIF, WebP, SVG) are accepted.',
+                    sizeBytes: 10240,
                   },
                 ],
               },

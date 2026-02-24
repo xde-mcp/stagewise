@@ -6,10 +6,7 @@ import { extractTextClipsFromTiptapContent } from '@ui/screens/main/sidebar/chat
 import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
-import type {
-  FileAttachment,
-  Mount,
-} from '@shared/karton-contracts/ui/agent/metadata';
+import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import type { Content } from '@tiptap/core';
 import { getCurrentPlatform } from '@shared/hotkeys';
 
@@ -105,70 +102,6 @@ export const getDataUriForData = (data: string) => {
     );
     return '';
   }
-};
-
-import {
-  MAX_IMAGE_SIZE,
-  MAX_DOCUMENT_SIZE,
-  isSupportedAttachmentMimeType,
-} from '@shared/karton-contracts/ui/shared-types';
-
-export { MAX_IMAGE_SIZE, MAX_DOCUMENT_SIZE, isSupportedAttachmentMimeType };
-
-/**
- * Validate a raw File object BEFORE converting to data URL.
- * This prevents memory waste by checking type/size early.
- *
- * @param file - The raw File object to validate
- * @returns Validation result with supported flag and optional reason
- */
-export const validateFileBeforeUpload = (
-  file: File,
-): { supported: boolean; reason?: string } => {
-  if (!isSupportedAttachmentMimeType(file.type)) {
-    return {
-      supported: false,
-      reason: 'Unsupported file type',
-    };
-  }
-
-  const isImage = file.type.startsWith('image/');
-  const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
-  const maxSizeLabel = isImage ? '5MB' : '20MB';
-
-  if (file.size > maxSize) {
-    const sizeMB = Math.round(file.size / (1024 * 1024));
-    return {
-      supported: false,
-      reason: `File too large (${sizeMB}MB). Maximum size for ${isImage ? 'images' : 'documents'} is ${maxSizeLabel}`,
-    };
-  }
-
-  return { supported: true };
-};
-
-/**
- * Validate a FileAttachment object (after data URL conversion).
- * @deprecated Use validateFileBeforeUpload for better performance
- */
-export const validateFileAttachmentBeforeUpload = (
-  fileAttachment: FileAttachment,
-): { supported: boolean; reason?: string } => {
-  if (fileAttachment.validationError) {
-    return {
-      supported: false,
-      reason: fileAttachment.validationError,
-    };
-  }
-
-  if (!isSupportedAttachmentMimeType(fileAttachment.mediaType)) {
-    return {
-      supported: false,
-      reason: 'Unsupported file type',
-    };
-  }
-
-  return { supported: true };
 };
 
 export const openFileUrl = async (url: string, filename?: string) => {
