@@ -15,7 +15,7 @@ function SidebarNavItem({ to, icon, children }: SidebarNavItemProps) {
       to={to}
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'md' }),
-        'w-full justify-start gap-3 bg-app-background font-normal',
+        'w-full justify-start gap-3 bg-base-100 font-normal dark:bg-base-900',
         'not-data-[active=true]:hover:bg-hover-derived data-[active=true]:bg-background data-[active=true]:text-foreground',
       )}
       activeProps={{

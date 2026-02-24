@@ -26,7 +26,7 @@ export const Route = createFileRoute('/_internal-app')({
 
 function RouteComponent() {
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-app-background p-3">
+    <div className="flex h-screen w-screen items-center justify-center bg-base-100 p-3 dark:bg-base-900">
       <div className="flex h-full w-full flex-row items-start justify-start gap-6">
         <Sidebar />
         <OverlayScrollbar
@@ -77,7 +77,7 @@ function Sidebar() {
               Account
             </SidebarNav.Item>
           </SidebarNav.Group>
-          <hr className="ml-1 border-derived-strong bg-app-background" />
+          <hr className="ml-1 border-derived-strong bg-base-100 dark:bg-base-900" />
           <SidebarNav.Group label="Browsing data">
             <SidebarNav.Item
               to="/history"
@@ -98,7 +98,7 @@ function Sidebar() {
               Clear data
             </SidebarNav.Item>
           </SidebarNav.Group>
-          <hr className="ml-1 border-derived-strong bg-app-background" />
+          <hr className="ml-1 border-derived-strong bg-base-100 dark:bg-base-900" />
           <SidebarNav.Item
             to="/about"
             icon={<IconCircleInfoFillDuo18 className="size-5" />}
