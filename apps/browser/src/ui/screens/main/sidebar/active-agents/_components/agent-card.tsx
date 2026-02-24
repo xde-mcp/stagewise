@@ -27,6 +27,15 @@ export interface AgentCardProps {
   onDelete: (id: string) => void;
 }
 
+export function AgentCardSkeleton() {
+  return (
+    <div className="flex min-w-0 shrink-0 flex-col gap-0.5 rounded-md bg-surface-2 px-2 py-1.5 ring-2 ring-derived-subtle ring-inset">
+      <div className="h-4 w-3/5 animate-pulse rounded bg-surface-3" />
+      <div className="h-4 w-2/5 animate-pulse rounded bg-surface-3" />
+    </div>
+  );
+}
+
 export const AgentCard = memo(function AgentCard({
   id,
   title,

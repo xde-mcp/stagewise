@@ -8,7 +8,7 @@ import {
 
 type OpenAgentState = [string | null, Dispatch<SetStateAction<string | null>>];
 
-const OpenAgentContext = createContext<OpenAgentState>([null, () => {}]);
+export const OpenAgentContext = createContext<OpenAgentState>([null, () => {}]);
 
 export const useOpenAgent = () => {
   const context = useContext(OpenAgentContext);

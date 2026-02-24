@@ -1,19 +1,27 @@
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useDeferredValue,
+} from 'react';
 import { ChatHistory } from './chat-history';
 import { ChatPanelFooter } from './panel-footer';
-import {
-  useComparingSelector,
-  useKartonConnected,
-  useKartonState,
-} from '@/hooks/use-karton';
+import { useKartonState } from '@/hooks/use-karton';
 import { cn } from '@/utils';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent, OpenAgentContext } from '@/hooks/use-open-chat';
 
 export function ChatPanel() {
   const { forwardDropEvent } = useMessageEditState();
   const [openAgent, setOpenAgent] = useOpenAgent();
   const agents = useKartonState((s) => s.agents.instances);
+
+  // Defer heavy chat rendering so the sidebar updates instantly while the
+  // chat area stays empty during the transition.
+  const deferredAgent = useDeferredValue(openAgent);
+  const isTransitioning = openAgent !== deferredAgent;
 
   useEffect(() => {
     if (openAgent === null && Object.keys(agents).length > 0) {
@@ -21,30 +29,6 @@ export function ChatPanel() {
       setOpenAgent(firstAgent);
     }
   }, [agents, openAgent]);
-
-  const isWorking = useKartonState(
-    useComparingSelector((s) =>
-      openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
-    ),
-  );
-  const isConnected = useKartonConnected();
-
-  const enableInputField = useMemo(() => {
-    // Disable input if agent is not connected
-    if (!isConnected) return false;
-
-    return !isWorking;
-  }, [isWorking, isConnected]);
-
-  /* If the user clicks on prompt creation mode, we force-focus the input field all the time. */
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  // Start prompt creation mode when chat panel opens
-  useEffect(() => {
-    if (enableInputField) {
-      inputRef.current?.focus();
-    }
-  }, []);
 
   // Track drag-over state for visual feedback
   const [isDragOver, setIsDragOver] = useState(false);
@@ -92,6 +76,16 @@ export function ChatPanel() {
     [forwardDropEvent],
   );
 
+  // Context override: ChatHistory reads openAgent from context, so we provide
+  // the deferred value so React can schedule the heavy render as interruptible.
+  const deferredContext: [
+    string | null,
+    React.Dispatch<React.SetStateAction<string | null>>,
+  ] = useMemo(
+    () => [deferredAgent, setOpenAgent],
+    [deferredAgent, setOpenAgent],
+  );
+
   if (openAgent === null || openAgent === undefined || !agents[openAgent])
     return (
       <div className="flex size-full items-center justify-center text-muted-foreground">
@@ -112,7 +106,9 @@ export function ChatPanel() {
       role="region"
       aria-label="Chat panel drop zone"
     >
-      <ChatHistory />
+      <OpenAgentContext.Provider value={deferredContext}>
+        {isTransitioning ? <div className="flex-1" /> : <ChatHistory />}
+      </OpenAgentContext.Provider>
       <ChatPanelFooter key={openAgent} />
     </div>
   );

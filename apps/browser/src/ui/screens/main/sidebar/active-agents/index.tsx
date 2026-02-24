@@ -9,7 +9,7 @@ import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { IconPlusFill18 } from 'nucleo-ui-fill-18';
 import { extractTipTapText, firstWords } from '@/utils/text-utils';
-import { AgentCard } from './_components/agent-card';
+import { AgentCard, AgentCardSkeleton } from './_components/agent-card';
 import { getToolActivityLabel } from './_utils/tool-label';
 
 type ActiveAgentCardData = {
@@ -111,12 +111,10 @@ export function ActiveAgentsGrid() {
   const resumeAgent = useKartonProcedure((p) => p.agents.resume);
   const deleteAgent = useKartonProcedure((p) => p.agents.delete);
 
-  const handleCreateAgent = useCallback(() => {
-    void createAgent().then((id) => {
-      setOpenAgent(id);
-      window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-    });
-  }, [createAgent, setOpenAgent]);
+  // Optimistic creation: show a skeleton card immediately while the backend
+  // creates the agent. Cleared once the new agent appears in the real list.
+  const [pendingCreate, setPendingCreate] = useState(false);
+  const agentCountAtCreateRef = useRef(0);
 
   const agents = useKartonState(
     useComparingSelector(
@@ -150,12 +148,39 @@ export function ActiveAgentsGrid() {
     ),
   );
 
+  // Hide skeleton as soon as agents list grows (same render cycle), rather
+  // than waiting for the promise callback which lags 1-2 frames behind.
+  const showCreateSkeleton =
+    pendingCreate && agents.length <= agentCountAtCreateRef.current;
+
+  const handleCreateAgent = useCallback(() => {
+    agentCountAtCreateRef.current = agents.length;
+    setPendingCreate(true);
+    window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
+    void createAgent().then((id) => {
+      setOpenAgent(id);
+      setPendingCreate(false);
+    });
+  }, [createAgent, setOpenAgent, agents.length]);
+
+  // Tracks agents that finished working but the user hasn't clicked on yet.
+  // Agents are added when isWorking transitions false, removed on click.
+  const [unacknowledged, setUnacknowledged] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  // Optimistic deletion: cards are hidden immediately while the backend processes.
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   // Stable ordering: agents keep their position in the list. New agents
   // (created or resumed) are appended at the end. Removed agents are pruned.
   // Uses a ref so the order persists across renders without causing re-renders.
   const orderRef = useRef<string[]>([]);
   const orderedAgents = useMemo(() => {
     const currentIds = new Set(agents.map((a) => a.id));
+
     // Prune removed agents
     const kept = orderRef.current.filter((id) => currentIds.has(id));
     const keptSet = new Set(kept);
@@ -166,14 +191,37 @@ export function ActiveAgentsGrid() {
     orderRef.current = kept;
 
     const byId = new Map(agents.map((a) => [a.id, a]));
-    return kept.map((id) => byId.get(id)!);
-  }, [agents]);
+    // Exclude agents that are being optimistically deleted
+    return kept
+      .filter((id) => !pendingDeletes.has(id))
+      .map((id) => byId.get(id)!);
+  }, [agents, pendingDeletes]);
 
-  // Tracks agents that finished working but the user hasn't clicked on yet.
-  // Agents are added when isWorking transitions false, removed on click.
-  const [unacknowledged, setUnacknowledged] = useState<Set<string>>(
-    () => new Set(),
-  );
+  // Clean up pending deletes once the backend has confirmed removal.
+  // The memo already filters them from the rendered list, so this is
+  // purely housekeeping — no visual artifact from the effect timing.
+  useEffect(() => {
+    if (pendingDeletes.size === 0) return;
+    const currentIds = new Set(agents.map((a) => a.id));
+    const pendingArr = Array.from(pendingDeletes);
+    if (pendingArr.some((id) => !currentIds.has(id))) {
+      setPendingDeletes(new Set(pendingArr.filter((id) => currentIds.has(id))));
+    }
+  }, [agents, pendingDeletes]);
+
+  // When the open agent is optimistically deleted, switch to the first
+  // remaining one. Separated from handleDelete to avoid capturing
+  // openAgent/agents/pendingDeletes in the callback (which would break
+  // AgentCard's memo by changing onDelete identity every render).
+  useEffect(() => {
+    if (
+      openAgent &&
+      pendingDeletes.has(openAgent) &&
+      orderedAgents.length > 0
+    ) {
+      setOpenAgent(orderedAgents[0].id);
+    }
+  }, [openAgent, pendingDeletes, orderedAgents, setOpenAgent]);
 
   const handleClick = useCallback(
     (id: string) => {
@@ -183,15 +231,16 @@ export function ActiveAgentsGrid() {
         next.delete(id);
         return next;
       });
-      void resumeAgent(id).then(() => {
-        setOpenAgent(id);
-      });
+      // Optimistic: update the open agent immediately, don't wait for the RPC.
+      setOpenAgent(id);
+      void resumeAgent(id);
     },
     [resumeAgent, setOpenAgent],
   );
 
   const handleDelete = useCallback(
     (id: string) => {
+      setPendingDeletes((prev) => new Set(prev).add(id));
       void deleteAgent(id);
     },
     [deleteAgent],
@@ -255,8 +304,9 @@ export function ActiveAgentsGrid() {
     prevWorkingRef.current = nowWorking;
   }, [agents, scrollCardIntoView]);
 
-  // Only show when enabled and 2+ active CHAT agents
-  if (!showActiveAgents || agents.length < 2) return null;
+  // Only show when enabled and 2+ visible CHAT agents (or 1 agent + pending create)
+  const visibleCount = orderedAgents.length + (showCreateSkeleton ? 1 : 0);
+  if (!showActiveAgents || visibleCount < 2) return null;
 
   return (
     <div className="flex shrink-0 flex-col border-border-subtle border-b pt-2 pl-2 group-data-[collapsed=true]:hidden">
@@ -304,6 +354,7 @@ export function ActiveAgentsGrid() {
             />
           );
         })}
+        {showCreateSkeleton && <AgentCardSkeleton />}
       </div>
     </div>
   );
