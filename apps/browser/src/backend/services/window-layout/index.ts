@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import type { KartonService } from '../karton';
 import type { Logger } from '../logger';
+import type { TelemetryService } from '../telemetry';
 import type { GlobalDataPathService } from '../global-data-path';
 import type { HistoryService } from '../history';
 import type { FaviconService } from '../favicon';
@@ -53,6 +54,7 @@ export class WindowLayoutService extends DisposableService {
   private readonly thumbnailService: ThumbnailService | null;
   private readonly pagesService: PagesService;
   private readonly preferencesService: PreferencesService;
+  private readonly telemetryService: TelemetryService | null;
 
   private baseWindow: BaseWindow | null = null;
   private uiController: UIController | null = null;
@@ -104,6 +106,7 @@ export class WindowLayoutService extends DisposableService {
     pagesService: PagesService,
     preferencesService: PreferencesService,
     thumbnailService?: ThumbnailService,
+    telemetryService?: TelemetryService,
   ) {
     super();
     this.logger = logger;
@@ -113,6 +116,7 @@ export class WindowLayoutService extends DisposableService {
     this.thumbnailService = thumbnailService ?? null;
     this.pagesService = pagesService;
     this.preferencesService = preferencesService;
+    this.telemetryService = telemetryService ?? null;
   }
 
   public static async create(
@@ -123,6 +127,7 @@ export class WindowLayoutService extends DisposableService {
     pagesService: PagesService,
     preferencesService: PreferencesService,
     thumbnailService?: ThumbnailService,
+    telemetryService?: TelemetryService,
   ): Promise<WindowLayoutService> {
     const instance = new WindowLayoutService(
       logger,
@@ -132,6 +137,7 @@ export class WindowLayoutService extends DisposableService {
       pagesService,
       preferencesService,
       thumbnailService,
+      telemetryService,
     );
     await instance.initialize();
     return instance;
@@ -152,7 +158,10 @@ export class WindowLayoutService extends DisposableService {
     // so all tabs appear as a regular Chrome browser
     this.setupBrowserSessionStealth();
 
-    this.uiController = await UIController.create(this.logger);
+    this.uiController = await UIController.create(
+      this.logger,
+      this.telemetryService ?? undefined,
+    );
     this.uiController.setCheckFrameValidityHandler(
       this.handleCheckFrameValidity.bind(this),
     );
@@ -230,6 +239,7 @@ export class WindowLayoutService extends DisposableService {
 
     this.setupKartonConnectionListener();
     this.setupUIControllerListeners();
+    this.setupUIViewRecreatedListener();
     this.setupPagesServiceHandlers();
 
     this.handleMainWindowResize();
@@ -658,6 +668,46 @@ export class WindowLayoutService extends DisposableService {
       this.handleSubmitAuthCredentials,
     );
     this.uiController.on('cancelAuth', this.handleCancelAuth);
+  }
+
+  /**
+   * Handles UI renderer crash recovery by swapping the old (crashed)
+   * WebContentsView with a fresh one in the BaseWindow hierarchy,
+   * preserving correct z-order.
+   */
+  private setupUIViewRecreatedListener() {
+    if (!this.uiController) return;
+
+    this.uiController.on('viewRecreated', (oldView, newView) => {
+      if (!this.baseWindow || this.baseWindow.isDestroyed()) return;
+
+      this.logger.info(
+        '[WindowLayoutService] Swapping crashed UI view with fresh instance',
+      );
+
+      // Remove the old crashed view from the hierarchy
+      try {
+        this.baseWindow.contentView.removeChildView(oldView);
+      } catch {
+        // Old view may already be in a bad state — ignore removal errors
+      }
+
+      // Add the new view and restore proper z-order.
+      // addChildView places it on top; updateZOrder will fix layering.
+      this.baseWindow.contentView.addChildView(newView);
+
+      // Ensure new view fills the full window content area
+      const bounds = this.baseWindow.getContentBounds();
+      newView.setBounds({
+        x: 0,
+        y: 0,
+        width: bounds.width,
+        height: bounds.height,
+      });
+
+      // Restore correct z-layering (UI on top of tabs or vice versa)
+      this.updateZOrder();
+    });
   }
 
   private setupPagesServiceHandlers() {

@@ -149,6 +149,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     pagesService,
     preferencesService,
     thumbnailService,
+    telemetryService,
   );
   const uiKarton = windowLayoutService.uiKarton;
 

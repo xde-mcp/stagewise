@@ -3,6 +3,7 @@ import { domCodeToElectronKeyCode } from '../../utils/dom-code-to-electron-key-c
 import path from 'node:path';
 import contextMenu from 'electron-context-menu';
 import type { Logger } from '../logger';
+import type { TelemetryService } from '../telemetry';
 import { EventEmitter } from 'node:events';
 import { KartonService } from '../karton';
 import type { SerializableKeyboardEvent } from '@shared/karton-contracts/web-contents-preload';
@@ -70,6 +71,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 export interface UIControllerEventMap {
   uiReady: [];
+  viewRecreated: [oldView: WebContentsView, newView: WebContentsView];
   createTab: [url?: string, setActive?: boolean];
   closeTab: [tabId: string];
   switchTab: [tabId: string];
@@ -144,6 +146,8 @@ export interface UIControllerEventMap {
 export class UIController extends EventEmitter<UIControllerEventMap> {
   private view: WebContentsView;
   private logger: Logger;
+  private telemetryService: TelemetryService | null;
+  private crashCount = 0;
   public readonly uiKarton: KartonService;
   private checkFrameValidityHandler?: (
     tabId: string,
@@ -161,22 +165,36 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
    * This must be used instead of the constructor to ensure DevTools are loaded
    * on the session before the WebContentsView is created.
    */
-  public static async create(logger: Logger): Promise<UIController> {
+  public static async create(
+    logger: Logger,
+    telemetryService?: TelemetryService,
+  ): Promise<UIController> {
     // Install React DevTools on the UI session BEFORE creating the WebContentsView
     await installReactDevToolsOnUISession(logger);
-    return new UIController(logger);
+    return new UIController(logger, telemetryService);
   }
 
   /**
    * Creates a new UIController instance.
    * Use the static `create()` method instead of calling this directly.
    */
-  private constructor(logger: Logger) {
+  private constructor(logger: Logger, telemetryService?: TelemetryService) {
     super();
     this.logger = logger;
+    this.telemetryService = telemetryService ?? null;
     this.uiKarton = new KartonService(logger);
 
-    this.view = new WebContentsView({
+    this.view = this.createView();
+    this.loadApp();
+    this.registerKartonProcedures();
+  }
+
+  /**
+   * Creates a new WebContentsView for the UI with all event handlers attached.
+   * Used both during initial construction and crash recovery.
+   */
+  private createView(): WebContentsView {
+    const view = new WebContentsView({
       webPreferences: {
         preload: path.join(
           path.dirname(fileURLToPath(import.meta.url)),
@@ -186,10 +204,10 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
       },
     });
 
-    this.view.setBackgroundColor('#00000000');
+    view.setBackgroundColor('#00000000');
 
     // Intercept non-http navigations in the UI frame (e.g. stagewise://reveal-file/)
-    this.view.webContents.on('will-navigate', (event, url) => {
+    view.webContents.on('will-navigate', (event, url) => {
       if (url.startsWith('stagewise://reveal-file/')) {
         event.preventDefault();
         const filePath = url
@@ -202,7 +220,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
       }
     });
 
-    this.view.webContents.setWindowOpenHandler((details) => {
+    view.webContents.setWindowOpenHandler((details) => {
       // Intercept stagewise://reveal-file/ to show file in native file manager
       if (details.url.startsWith('stagewise://reveal-file/')) {
         const filePath = details.url
@@ -245,15 +263,15 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
       showServices: false,
       showLookUpSelection: false,
       showInspectElement: false,
-      window: this.view.webContents,
+      window: view.webContents,
     });
 
     if (process.env.NODE_ENV === 'development') {
-      this.view.webContents.openDevTools();
+      view.webContents.openDevTools();
     }
 
     // Listen for the UI finishing load to ensure proper rendering
-    this.view.webContents.once('did-finish-load', () => {
+    view.webContents.once('did-finish-load', () => {
       this.logger.debug(
         '[UIController] UI finished loading, invalidating view',
       );
@@ -264,27 +282,78 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
       this.emit('uiReady');
     });
 
-    // Auto-recover from renderer crashes
-    this.view.webContents.on('render-process-gone', (_event, details) => {
+    // Auto-recover from renderer crashes by replacing the entire WebContentsView.
+    // Reloading a crashed WebContentsView fails with "Observers can only be added once!"
+    // because Chromium's internal state is corrupted after a crash.
+    view.webContents.on('render-process-gone', (_event, details) => {
+      this.crashCount++;
+
+      // Collect diagnostic info while webContents may still be queryable
+      const diagnostics = {
+        reason: details.reason,
+        exitCode: details.exitCode,
+        crashCount: this.crashCount,
+        webContentsId: view.webContents.id,
+        isDestroyed: view.webContents.isDestroyed(),
+        processId: view.webContents.getOSProcessId(),
+        url: (() => {
+          try {
+            return view.webContents.getURL();
+          } catch {
+            return '<unavailable>';
+          }
+        })(),
+      };
+
       this.logger.error(
-        `[UIController] UI renderer process gone: reason=${details.reason}, exitCode=${details.exitCode}`,
+        `[UIController] UI renderer process gone: ${JSON.stringify(diagnostics)}`,
       );
+
+      // Report to PostHog for tracking
+      if (this.telemetryService) {
+        this.telemetryService.captureException(
+          new Error(
+            `UI renderer process gone: reason=${details.reason}, exitCode=${details.exitCode}`,
+          ),
+          {
+            service: 'UIController',
+            operation: 'render-process-gone',
+            ...diagnostics,
+          },
+        );
+      }
+
       // Don't attempt recovery if the process was intentionally killed (e.g. app closing)
       if (details.reason === 'clean-exit') return;
 
-      this.logger.info('[UIController] Attempting to reload UI...');
-      // Re-listen for did-finish-load to re-emit uiReady
-      this.view.webContents.once('did-finish-load', () => {
-        this.logger.info('[UIController] UI recovered after crash');
-        const bounds = this.view.getBounds();
-        this.view.setBounds({ ...bounds });
-        this.emit('uiReady');
-      });
+      // Prevent infinite crash loops — if the UI crashes too many times in a row,
+      // stop attempting recovery
+      if (this.crashCount > 5) {
+        this.logger.error(
+          '[UIController] Too many consecutive crashes, giving up on recovery',
+        );
+        return;
+      }
+
+      this.logger.info(
+        '[UIController] Recovering from crash by replacing WebContentsView...',
+      );
+      const oldView = this.view;
+      const bounds = oldView.getBounds();
+
+      // Create a fresh view (all event handlers are re-attached inside createView)
+      const newView = this.createView();
+      newView.setBounds(bounds);
+      this.view = newView;
+
+      // Notify WindowLayoutService to swap the views in the BaseWindow hierarchy
+      this.emit('viewRecreated', oldView, newView);
+
+      // Load the app on the new view
       this.loadApp();
     });
 
-    this.loadApp();
-    this.registerKartonProcedures();
+    return view;
   }
 
   private loadApp() {
