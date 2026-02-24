@@ -366,6 +366,13 @@ export const userPreferencesSchema = z.object({
       originSettings: {},
       lastUsedOrigin: null,
     }),
+  /** Sidebar display preferences */
+  sidebar: z
+    .object({
+      /** Whether to show the active agents grid in the sidebar */
+      showActiveAgents: z.boolean().default(true),
+    })
+    .default({ showActiveAgents: true }),
   /** Per-workspace agent settings (keyed by workspace absolute path) */
   agent: z
     .object({
@@ -457,6 +464,7 @@ export const defaultUserPreferences: UserPreferences = {
   },
   permissions: defaultPermissionsForUserPrefs,
   devToolbar: defaultDevToolbarForUserPrefs,
+  sidebar: { showActiveAgents: true },
   agent: { workspaceSettings: {} },
   providerConfigs: {
     anthropic: { mode: 'stagewise' },

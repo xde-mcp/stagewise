@@ -4,6 +4,7 @@ import {
   type ImperativePanelHandle,
 } from '@stagewise/stage-ui/components/resizable';
 import { SidebarTopSection } from './top';
+import { ActiveAgentsGrid } from './active-agents';
 import { useRef, useCallback, useState } from 'react';
 import { useEventListener } from '@/hooks/use-event-listener';
 import { ChatDraftProvider } from '@/hooks/use-chat-draft';
@@ -83,6 +84,7 @@ export function Sidebar() {
       <OpenAgentProvider>
         <ChatDraftProvider>
           <SidebarTopSection isCollapsed={isCollapsed} />
+          <ActiveAgentsGrid />
           {/* Chat area */}
           <SidebarChatSection />
         </ChatDraftProvider>

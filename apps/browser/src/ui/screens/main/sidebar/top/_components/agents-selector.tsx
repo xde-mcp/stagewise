@@ -16,9 +16,11 @@ import {
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { Switch } from '@stagewise/stage-ui/components/switch';
 import { IconHistoryFill18 } from 'nucleo-ui-fill-18';
 import { IconTrash2Outline24 } from 'nucleo-core-outline-24';
 import { cn } from '@/utils';
+import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import type React from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TimeAgo from 'react-timeago';
@@ -145,6 +147,23 @@ export const AgentsSelector = memo(function AgentsSelector({
     if (!open) setInputValue('');
   }, []);
 
+  const showActiveAgents = useKartonState(
+    (s) => s.preferences.sidebar?.showActiveAgents ?? true,
+  );
+  const preferencesUpdate = useKartonProcedure((p) => p.preferences.update);
+  const handleToggleActiveAgents = useCallback(
+    (checked: boolean) => {
+      void preferencesUpdate([
+        {
+          op: 'replace' as const,
+          path: ['sidebar', 'showActiveAgents'],
+          value: checked,
+        },
+      ]);
+    },
+    [preferencesUpdate],
+  );
+
   return (
     <Combobox
       value={value}
@@ -255,6 +274,21 @@ export const AgentsSelector = memo(function AgentsSelector({
         </div>
 
         {!hasResults && <ComboboxEmpty />}
+
+        <div className="flex items-center justify-between border-border-subtle border-t py-1.5 pr-1.5 pl-2.5">
+          <label
+            htmlFor="show-active-agents"
+            className="cursor-pointer text-muted-foreground text-xs"
+          >
+            Show active in sidebar
+          </label>
+          <Switch
+            size="xs"
+            id="show-active-agents"
+            checked={showActiveAgents}
+            onCheckedChange={handleToggleActiveAgents}
+          />
+        </div>
       </ComboboxContent>
     </Combobox>
   );

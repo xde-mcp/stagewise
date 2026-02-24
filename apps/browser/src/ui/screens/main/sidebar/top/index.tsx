@@ -113,6 +113,9 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   );
   const platform = useKartonState((s) => s.appInfo.platform);
   const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
+  const showActiveAgentsPref = useKartonState(
+    (s) => s.preferences.sidebar?.showActiveAgents ?? true,
+  );
   const [openAgent, setOpenAgent] = useOpenAgent();
 
   // Narrow selector: only re-renders when the open agent's model changes.
@@ -258,7 +261,11 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   }, [openAgent]);
 
   const showChatListButton = agentsList.length > 0 || activeAgentIdSet.size > 1;
-  const showNewChatButton = openAgent !== null;
+  // Hide the new-chat button when the ActiveAgentsGrid is visible
+  // (preference on AND 2+ CHAT agents), since it has its own "New agent" button.
+  const showNewChatButton =
+    openAgent !== null &&
+    (!showActiveAgentsPref || activeAgentsList.length < 2);
 
   // Sort history separately — O(n log n) only recomputes when data actually changes,
   // NOT on every timeTick (which only affects grouping labels).
