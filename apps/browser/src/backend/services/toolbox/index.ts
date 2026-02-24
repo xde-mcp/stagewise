@@ -655,6 +655,7 @@ export class ToolboxService extends DisposableService {
    * Call this when the auth token is refreshed.
    */
   public refreshApiClient(): void {
+    this.apiClient = null;
     this.apiClient = this.getOrCreateApiClient();
   }
 
