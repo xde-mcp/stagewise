@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.0.0-alpha.4 (2026-02-24)
+
+### Features
+
+* add button to show/hide sidebar (125f26d)
+* add a (hideable) active agents section to the sidebar (257d2c2)
+* support attachment-render-registry per mimetype (f4e902c)
+* add permission-sets to mounted workspaces (a17f680)
+* store attachments as files and mount into agent workspaces (5b21a2f)
+* add isolated fs access to sandbox (replaces API.writeFile) (794423b)
+* support multiple mounted paths per agent (28c610b)
+
+### Bug Fixes
+
+* reduce flicker on window tab change (6f6db5b)
+* make ide-default-logo inherit its bg color (9f5338c)
+* fix token-refresh for api clients in toolbox (3856b72)
+* add 'include_gitignored' param to grep and glob (ccb1164)
+* prevent invalid agent state and show nice errors for internal issues (ba31708)
+* let user control workspace-md generation (7f030a2)
+* add working recovery from render process crashes (7477bfe)
+* move away from deprecated model for validation (6cfd349)
+* accept all pending edits on agent-deletion (1cd20d9)
+* fix env-message error with 'reverted' changes (64f8cae)
+* auto-focus input on workspace change (198615b)
+
+### Other Changes
+
+* use optimistic updates for agent creation/switch/deletion (597354b)
+* move backend-wiring and state sync between pages- and main-app (a0f3449)
+
 ## 1.0.0-alpha.3 (2026-02-22)
 
 ### Features
