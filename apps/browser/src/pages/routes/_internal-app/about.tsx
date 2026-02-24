@@ -1,5 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import {
+  RadioGroup,
+  Radio,
+  RadioLabel,
+} from '@stagewise/stage-ui/components/radio';
+import { produceWithPatches, enablePatches } from 'immer';
+import type { UpdateChannel } from '@shared/karton-contracts/ui/shared-types';
+
+enablePatches();
 
 export const Route = createFileRoute('/_internal-app/about')({
   component: Page,
@@ -11,6 +20,62 @@ export const Route = createFileRoute('/_internal-app/about')({
     ],
   }),
 });
+
+function UpdateChannelSetting() {
+  const preferences = useKartonState((s) => s.preferences);
+  const appInfo = useKartonState((s) => s.appInfo);
+  const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
+
+  // Infer the default channel from the version string
+  const inferredChannel: UpdateChannel = appInfo.version.includes('-alpha')
+    ? 'alpha'
+    : 'beta';
+
+  const currentChannel = preferences.updateChannel ?? inferredChannel;
+
+  const handleChannelChange = async (value: string) => {
+    const channel = value as UpdateChannel;
+    const [, patches] = produceWithPatches(preferences, (draft) => {
+      draft.updateChannel = channel;
+    });
+    await updatePreferences(patches);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="font-medium text-base text-foreground">
+          Update Channel
+        </h3>
+        <p className="text-muted-foreground text-sm">
+          Choose which pre-release channel to receive updates from.
+        </p>
+      </div>
+
+      <RadioGroup value={currentChannel} onValueChange={handleChannelChange}>
+        <RadioLabel>
+          <Radio value="beta" />
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">Beta</span>
+            <span className="text-muted-foreground text-xs">
+              More stable pre-release updates
+            </span>
+          </div>
+        </RadioLabel>
+
+        <RadioLabel>
+          <Radio value="alpha" />
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">Alpha</span>
+            <span className="text-muted-foreground text-xs">
+              Bleeding-edge updates including alpha and beta releases
+            </span>
+          </div>
+        </RadioLabel>
+      </RadioGroup>
+    </div>
+  );
+}
 
 function Page() {
   const appInfo = useKartonState((s) => s.appInfo);
@@ -44,6 +109,14 @@ function Page() {
 
           {/* Divider */}
           <hr className="border-border/30" />
+
+          {/* Update Channel Setting (only for prerelease builds) */}
+          {appInfo.releaseChannel === 'prerelease' && (
+            <>
+              <UpdateChannelSetting />
+              <hr className="border-border/30" />
+            </>
+          )}
 
           {/* Details Section */}
           <div className="flex flex-col gap-4">

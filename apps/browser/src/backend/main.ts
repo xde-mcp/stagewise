@@ -191,6 +191,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
     notificationService,
     telemetryService,
+    preferencesService,
   );
 
   const globalConfigService = await GlobalConfigService.create(

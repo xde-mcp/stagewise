@@ -321,6 +321,10 @@ export type WorkspaceAgentSettings = z.infer<
   typeof workspaceAgentSettingsSchema
 >;
 
+/** Update channel for prerelease builds ('alpha' or 'beta') */
+export const updateChannelSchema = z.enum(['alpha', 'beta']);
+export type UpdateChannel = z.infer<typeof updateChannelSchema>;
+
 export const userPreferencesSchema = z.object({
   privacy: z
     .object({
@@ -391,6 +395,8 @@ export const userPreferencesSchema = z.object({
   customEndpoints: z.array(customEndpointSchema).default([]),
   /** User-defined models */
   customModels: z.array(customModelSchema).default([]),
+  /** Preferred update channel for prerelease builds (alpha or beta). If not set, inferred from the installed version. */
+  updateChannel: updateChannelSchema.optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

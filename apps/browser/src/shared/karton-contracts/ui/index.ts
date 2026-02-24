@@ -118,6 +118,9 @@ export type {
 } from './shared-types';
 export { apiSpecSchema } from './shared-types';
 
+// Update channel types
+export type { UpdateChannel } from './shared-types';
+
 /**
  * Lightweight chat metadata for the chat history list.
  * Does not include messages - those are loaded on demand.

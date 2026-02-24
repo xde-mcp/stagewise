@@ -15,6 +15,8 @@ import { DisposableService } from './disposable';
 import type { Logger } from './logger';
 import type { NotificationService } from './notification';
 import type { TelemetryService } from './telemetry';
+import type { PreferencesService } from './preferences';
+import type { UpdateChannel } from '@shared/karton-contracts/ui/shared-types';
 
 declare const __APP_RELEASE_CHANNEL__: 'dev' | 'prerelease' | 'release';
 declare const __APP_VERSION__: string;
@@ -25,6 +27,7 @@ export class AutoUpdateService extends DisposableService {
   private readonly logger: Logger;
   private readonly notificationService: NotificationService;
   private readonly telemetryService: TelemetryService;
+  private readonly preferencesService: PreferencesService;
   private updateDownloaded = false;
   private updateInfo: {
     releaseName?: string;
@@ -41,11 +44,13 @@ export class AutoUpdateService extends DisposableService {
     logger: Logger,
     notificationService: NotificationService,
     telemetryService: TelemetryService,
+    preferencesService: PreferencesService,
   ) {
     super();
     this.logger = logger;
     this.notificationService = notificationService;
     this.telemetryService = telemetryService;
+    this.preferencesService = preferencesService;
   }
 
   private report(
@@ -64,11 +69,13 @@ export class AutoUpdateService extends DisposableService {
     logger: Logger,
     notificationService: NotificationService,
     telemetryService: TelemetryService,
+    preferencesService: PreferencesService,
   ): Promise<AutoUpdateService> {
     const instance = new AutoUpdateService(
       logger,
       notificationService,
       telemetryService,
+      preferencesService,
     );
     await instance.initialize();
     return instance;
@@ -127,12 +134,49 @@ export class AutoUpdateService extends DisposableService {
           this.checkForUpdates();
         }
       }, this.UPDATE_CHECK_INTERVAL_MS);
+
+      // Listen for preference changes to update the feed URL when channel changes
+      this.preferencesService.addListener((newPrefs, oldPrefs) => {
+        if (newPrefs.updateChannel !== oldPrefs.updateChannel) {
+          this.onUpdateChannelChanged();
+        }
+      });
     } catch (error) {
       this.logger.error(
         '[AutoUpdateService] Failed to initialize auto-updater',
         error,
       );
       this.report(error as Error, 'initialize');
+    }
+  }
+
+  /**
+   * Called when the user changes the update channel preference.
+   * Re-configures the feed URL and triggers an immediate update check.
+   */
+  private onUpdateChannelChanged(): void {
+    const feedURL = this.buildFeedURL();
+    if (!feedURL) {
+      this.logger.warn(
+        '[AutoUpdateService] Could not build feed URL after channel change',
+      );
+      return;
+    }
+
+    this.logger.debug(
+      `[AutoUpdateService] Update channel changed, new feed URL: ${feedURL}`,
+    );
+
+    try {
+      autoUpdater.setFeedURL({ url: feedURL });
+      // Trigger an immediate check with the new channel
+      this.checkForUpdates();
+    } catch (error) {
+      this.logger.error(
+        '[AutoUpdateService] Failed to reconfigure feed URL after channel change',
+        error,
+      );
+      this.report(error as Error, 'onUpdateChannelChanged');
     }
   }
 
@@ -148,13 +192,32 @@ export class AutoUpdateService extends DisposableService {
     return arch === 'arm64' ? 'arm64' : 'x64';
   }
 
+  /**
+   * Infer the default update channel from the installed version string.
+   * e.g. "1.0.0-alpha.3" → 'alpha', "1.0.0-beta.1" → 'beta'
+   */
+  private inferChannelFromVersion(): UpdateChannel {
+    const version = __APP_VERSION__;
+    if (version.includes('-alpha')) {
+      return 'alpha';
+    }
+    // Default to beta for any other prerelease version
+    return 'beta';
+  }
+
+  /**
+   * Get the effective update channel for the update server.
+   * For release builds, always use 'release'.
+   * For prerelease builds, use the user's configured channel or infer from version.
+   */
   private getReleaseChannel(): string {
-    // Map internal channel names to update server channel names
     switch (__APP_RELEASE_CHANNEL__) {
       case 'release':
         return 'release';
-      case 'prerelease':
-        return 'beta';
+      case 'prerelease': {
+        const prefs = this.preferencesService.get();
+        return prefs.updateChannel ?? this.inferChannelFromVersion();
+      }
       default:
         return 'alpha';
     }
