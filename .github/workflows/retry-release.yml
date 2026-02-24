@@ -122,6 +122,7 @@ jobs:
       VITE_STAGEWISE_CONSOLE_URL: ${{ vars.VITE_STAGEWISE_CONSOLE_URL }}
       LLM_PROXY_URL: ${{ vars.LLM_PROXY_URL }}
       VITE_DISABLE_TELEMETRY: ${{ vars.VITE_DISABLE_TELEMETRY }}
+      UPDATE_SERVER_ORIGIN: ${{ vars.UPDATE_SERVER_ORIGIN }}
 
     steps:
       - name: Checkout Code
