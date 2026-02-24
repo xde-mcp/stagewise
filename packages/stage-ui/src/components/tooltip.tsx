@@ -25,7 +25,7 @@ type TooltipTriggerProps = ComponentProps<typeof BaseTooltip.Trigger> & {
 
 export const TooltipTrigger = ({
   children,
-  delay = 100,
+  delay = 300,
   ...props
 }: TooltipTriggerProps) => {
   return (

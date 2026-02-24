@@ -22,7 +22,7 @@ export type ToggleButtonProps = {
 export function ToggleButton(props: ToggleButtonProps) {
   return (
     <Tooltip>
-      <TooltipTrigger delay={10} closeDelay={10}>
+      <TooltipTrigger>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -43,7 +43,7 @@ export function ToggleButton(props: ToggleButtonProps) {
           {props.icon}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="left" sideOffset={0}>
+      <TooltipContent side="top" sideOffset={0}>
         {props.tooltipContent ?? props.ariaLabel}
       </TooltipContent>
     </Tooltip>
