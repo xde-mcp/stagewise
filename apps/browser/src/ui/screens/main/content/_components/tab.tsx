@@ -118,8 +118,8 @@ export function Tab({
           isActive
             ? 'relative h-8'
             : cn(
-                'mb-0.75 flex h-7.25 items-center gap-2 self-start rounded-[8.5px] py-1 transition-colors hover:bg-surface-2 dark:hover:bg-base-850 [[data-state="active"]+[data-state="inactive"]_&]:rounded-bl-md [[data-state="inactive"]:has(+_[data-state="active"])_&]:rounded-br-md',
-                isDragging && 'bg-surface-2 dark:bg-base-850',
+                'mb-0.75 flex h-7.25 items-center gap-2 self-start rounded-[8.5px] py-1 transition-colors hover:bg-base-200 dark:hover:bg-base-850 [[data-state="active"]+[data-state="inactive"]_&]:rounded-bl-md [[data-state="inactive"]:has(+_[data-state="active"])_&]:rounded-br-md',
+                isDragging && 'bg-base-200 dark:bg-base-850',
                 shouldShowRightSeparator &&
                   'after:-right-[2px] after:absolute after:h-4 after:border-surface-2 after:border-r after:content-[""]',
               ),

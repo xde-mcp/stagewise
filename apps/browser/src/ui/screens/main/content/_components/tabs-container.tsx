@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AgentPreviewBadge } from './agent-preview-badge';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { IconBrush2FillDuo18 } from 'nucleo-ui-fill-duo-18';
+import { IconBrush2Outline18 } from 'nucleo-ui-outline-18';
 import {
   Tooltip,
   TooltipContent,
@@ -350,7 +350,7 @@ export function TabsContainer({
         <Button
           variant="ghost"
           size="xs"
-          className="group -ml-1.25 h-7.25 shrink-0 self-start rounded-[8.5px] rounded-bl-md text-muted-foreground transition-all duration-150 ease-out hover:bg-surface-2 dark:hover:bg-base-850"
+          className="group -ml-1.25 h-7.25 shrink-0 self-start rounded-[8.5px] rounded-bl-md text-muted-foreground transition-all duration-150 ease-out hover:bg-base-200 dark:hover:bg-base-850"
           onClick={onAddTab}
         >
           <IconPlus className="size-3" />
@@ -368,14 +368,14 @@ export function TabsContainer({
                 className={cn(
                   'group h-7.25 shrink-0 self-start rounded-[8.5px] text-muted-foreground transition-all duration-150 ease-out',
                   platform !== 'darwin' ? 'mr-32' : 'mr-0',
-                  'hover:bg-surface-2 dark:hover:bg-base-850',
+                  'hover:bg-base-200 dark:hover:bg-base-850',
                 )}
                 onClick={onCleanAllTabs}
               >
                 <span className="mr-1 text-muted-foreground text-xs opacity-0 group-hover:opacity-100">
                   ⌘ ↑ W
                 </span>
-                <IconBrush2FillDuo18 className="size-3.5" />
+                <IconBrush2Outline18 className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
