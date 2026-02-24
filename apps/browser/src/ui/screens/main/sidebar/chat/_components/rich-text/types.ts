@@ -17,15 +17,12 @@ export interface BaseAttachmentAttrs {
 }
 
 /**
- * Attributes for file attachments (non-image files).
+ * Attributes for file attachments (unified node).
+ * mediaType drives renderer selection via the attachment registry.
  */
-export interface FileAttachmentAttrs extends BaseAttachmentAttrs {}
-
-/**
- * Attributes for image attachments.
- * URL is derived at render time from `sw-blob://{agentId}/{id}`.
- */
-export interface ImageAttachmentAttrs extends BaseAttachmentAttrs {}
+export interface AttachmentAttrs extends BaseAttachmentAttrs {
+  mediaType: string;
+}
 
 /**
  * Attributes for selected element attachments.
@@ -49,8 +46,7 @@ export interface TextClipAttachmentAttrs extends BaseAttachmentAttrs {
  * Used for type-safe handling of different attachment types.
  */
 export type AttachmentAttributes =
-  | (FileAttachmentAttrs & { type: 'file' })
-  | (ImageAttachmentAttrs & { type: 'image' })
+  | (AttachmentAttrs & { type: 'attachment' })
   | (ElementAttachmentAttrs & { type: 'element' })
   | (TextClipAttachmentAttrs & { type: 'textClip' });
 
@@ -61,8 +57,7 @@ export type AttachmentType = AttachmentAttributes['type'];
  * Maps from the attachment type to the node name.
  */
 export const ATTACHMENT_NODE_NAMES = {
-  file: 'fileAttachment',
-  image: 'imageAttachment',
+  attachment: 'attachment',
   element: 'elementAttachment',
   textClip: 'textClipAttachment',
 } as const;
@@ -77,8 +72,7 @@ export type AttachmentNodeName =
  * Reverse mapping from node name to attachment type.
  */
 export const NODE_NAME_TO_TYPE: Record<AttachmentNodeName, AttachmentType> = {
-  fileAttachment: 'file',
-  imageAttachment: 'image',
+  attachment: 'attachment',
   elementAttachment: 'element',
   textClipAttachment: 'textClip',
 };

@@ -210,7 +210,7 @@ API.outputAttachment({
   sizeBytes: buf.length,
   fileName: "screenshot.png",
 });
-return "Screenshot captured — see attached image.";
+return "Screenshot captured — see [](att:" + id + "?display=expanded)";
 \`\`\`
 
 #### Multi-step output

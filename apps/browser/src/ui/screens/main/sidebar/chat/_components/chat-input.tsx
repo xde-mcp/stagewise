@@ -427,16 +427,11 @@ export const ChatInput = ({
             // Breathing room around inline attachment nodes (all types)
             // These pseudo-elements provide visual spacing for cursor positioning
             // Height constraint (h-[1em]) prevents taller cursor when no text follows the attachment
-            '[&_.react-renderer.node-fileAttachment]:before:content-[""] [&_.react-renderer.node-fileAttachment]:after:content-[""]',
-            '[&_.react-renderer.node-fileAttachment]:before:inline-block [&_.react-renderer.node-fileAttachment]:after:inline-block',
-            '[&_.react-renderer.node-fileAttachment]:before:w-0.5 [&_.react-renderer.node-fileAttachment]:after:w-0.5',
-            '[&_.react-renderer.node-fileAttachment]:before:h-[1em] [&_.react-renderer.node-fileAttachment]:after:h-[1em]',
-            '[&_.react-renderer.node-fileAttachment]:before:align-middle [&_.react-renderer.node-fileAttachment]:after:align-middle',
-            '[&_.react-renderer.node-imageAttachment]:before:content-[""] [&_.react-renderer.node-imageAttachment]:after:content-[""]',
-            '[&_.react-renderer.node-imageAttachment]:before:inline-block [&_.react-renderer.node-imageAttachment]:after:inline-block',
-            '[&_.react-renderer.node-imageAttachment]:before:w-0.5 [&_.react-renderer.node-imageAttachment]:after:w-0.5',
-            '[&_.react-renderer.node-imageAttachment]:before:h-[1em] [&_.react-renderer.node-imageAttachment]:after:h-[1em]',
-            '[&_.react-renderer.node-imageAttachment]:before:align-middle [&_.react-renderer.node-imageAttachment]:after:align-middle',
+            '[&_.react-renderer.node-attachment]:before:content-[""] [&_.react-renderer.node-attachment]:after:content-[""]',
+            '[&_.react-renderer.node-attachment]:before:inline-block [&_.react-renderer.node-attachment]:after:inline-block',
+            '[&_.react-renderer.node-attachment]:before:w-0.5 [&_.react-renderer.node-attachment]:after:w-0.5',
+            '[&_.react-renderer.node-attachment]:before:h-[1em] [&_.react-renderer.node-attachment]:after:h-[1em]',
+            '[&_.react-renderer.node-attachment]:before:align-middle [&_.react-renderer.node-attachment]:after:align-middle',
             '[&_.react-renderer.node-elementAttachment]:before:content-[""] [&_.react-renderer.node-elementAttachment]:after:content-[""]',
             '[&_.react-renderer.node-elementAttachment]:before:inline-block [&_.react-renderer.node-elementAttachment]:after:inline-block',
             '[&_.react-renderer.node-elementAttachment]:before:w-0.5 [&_.react-renderer.node-elementAttachment]:after:w-0.5',

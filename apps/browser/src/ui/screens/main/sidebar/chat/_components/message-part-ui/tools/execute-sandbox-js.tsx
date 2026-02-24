@@ -1,12 +1,4 @@
-import {
-  ChevronDownIcon,
-  FileIcon,
-  FileTextIcon,
-  FileWarningIcon,
-  ImageIcon,
-  Loader2Icon,
-  XIcon,
-} from 'lucide-react';
+import { ChevronDownIcon, Loader2Icon, XIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconWindowPointerOutline18 } from 'nucleo-ui-outline-18';
 import {
@@ -24,6 +16,12 @@ import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 import { getSandboxLabel } from './utils/cdp-label-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
+import {
+  getRenderer,
+  type RendererProps,
+} from '@ui/components/attachment-renderers';
+import { Suspense } from 'react';
+import { ExpandedShell } from '@ui/components/attachment-renderers/shared/expanded-shell';
 
 export const ExecuteSandboxJsToolPart = ({
   part,
@@ -341,19 +339,6 @@ export const ExecuteSandboxJsToolPart = ({
   );
 };
 
-const getFileIcon = (mediaType: string, hasError: boolean) => {
-  if (hasError) return <FileWarningIcon className="size-8 text-destructive" />;
-  if (mediaType.startsWith('image/'))
-    return <ImageIcon className="size-8 text-muted-foreground" />;
-  if (
-    mediaType.startsWith('text/') ||
-    mediaType === 'application/json' ||
-    mediaType === 'application/pdf'
-  )
-    return <FileTextIcon className="size-8 text-muted-foreground" />;
-  return <FileIcon className="size-8 text-muted-foreground" />;
-};
-
 interface SandboxAttachment {
   id: string;
   mediaType: string;
@@ -368,40 +353,37 @@ const AttachmentPreviewCards = ({
 }) => {
   const [openAgentId] = useOpenAgent();
   return (
-    <div className="scrollbar-hover-only flex flex-row gap-2 overflow-x-auto px-1 py-2">
+    <div className="scrollbar-hover-only flex flex-row gap-2 overflow-x-auto px-1 py-2 [&_embed]:max-h-38 [&_img]:max-h-38 [&_video]:max-h-38">
       {attachments.map((att) => {
-        const isImage = att.mediaType.startsWith('image/');
-        const blobUrl = openAgentId
-          ? `sw-blob://${openAgentId}/${att.id}`
-          : undefined;
-        return (
-          <div
-            key={att.id}
-            className={cn(
-              'flex shrink-0 flex-col overflow-hidden rounded-lg',
-              'border border-border-subtle bg-surface-1',
-            )}
-          >
-            {isImage && blobUrl ? (
-              <div className="flex min-h-24 items-center justify-center bg-background p-1.5">
-                <img
-                  src={blobUrl}
-                  alt={att.fileName ?? att.id}
-                  className="max-h-38 max-w-52 rounded object-contain"
-                />
-              </div>
-            ) : (
-              <div className="flex size-24 items-center justify-center bg-background">
-                {getFileIcon(att.mediaType, false)}
-              </div>
-            )}
-            <div className="border-border-subtle border-t px-2.5 py-1">
-              <span className="max-w-48 truncate font-medium text-foreground text-xs">
-                {att.fileName ?? att.id}
-              </span>
-            </div>
-          </div>
-        );
+        const renderer = getRenderer(att.mediaType);
+        const blobUrl = openAgentId ? `sw-blob://${openAgentId}/${att.id}` : '';
+        const rendererProps: RendererProps = {
+          attachmentId: att.id,
+          mediaType: att.mediaType,
+          fileName: att.fileName ?? att.id,
+          sizeBytes: att.sizeBytes ?? 0,
+          blobUrl,
+          params: {},
+        };
+
+        if (renderer.Expanded) {
+          return (
+            <Suspense
+              key={att.id}
+              fallback={
+                <ExpandedShell fileName={rendererProps.fileName}>
+                  <span className="text-muted-foreground text-xs">
+                    Loading...
+                  </span>
+                </ExpandedShell>
+              }
+            >
+              <renderer.Expanded {...rendererProps} />
+            </Suspense>
+          );
+        }
+
+        return <renderer.Badge key={att.id} {...rendererProps} viewOnly />;
       })}
     </div>
   );

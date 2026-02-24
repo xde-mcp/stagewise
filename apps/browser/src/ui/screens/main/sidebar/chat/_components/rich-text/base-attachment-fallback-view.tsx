@@ -5,7 +5,7 @@ import {
   AttachmentBadge,
   AttachmentBadgeWrapper,
 } from './view-utils';
-import type { AttachmentNodeViewProps, FileAttachmentAttrs } from './types';
+import type { AttachmentNodeViewProps, BaseAttachmentAttrs } from './types';
 import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 
 /**
@@ -21,7 +21,7 @@ import { useMessageAttachments } from '@ui/hooks/use-message-elements';
  * in base-attachment-node.ts, not here. This component is purely presentational.
  */
 export function AttachmentNodeView(props: AttachmentNodeViewProps) {
-  const attrs = props.node.attrs as FileAttachmentAttrs;
+  const attrs = props.node.attrs as BaseAttachmentAttrs;
   const isEditable = !('viewOnly' in props);
 
   const { fileAttachments } = useMessageAttachments();

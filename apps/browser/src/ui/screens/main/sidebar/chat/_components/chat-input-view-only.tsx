@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react';
 import { cn } from '@/utils';
 import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
 import {
-  AttachmentNodeView,
+  AttachmentRegistryNodeView,
   ElementAttachmentView,
-  ImageAttachmentView,
   TextClipAttachmentView,
 } from './rich-text';
 import type { Content } from '@tiptap/core';
@@ -140,22 +139,17 @@ function RenderNode({ node }: { node: TiptapNode }): React.ReactNode {
         />
       );
 
-    case 'imageAttachment':
-      // ImageAttachmentView looks up URL from context
+    case 'attachment':
       return (
-        <ImageAttachmentView
+        <AttachmentRegistryNodeView
           viewOnly
           selected={false}
-          node={{ attrs: node.attrs ?? {} }}
-        />
-      );
-
-    case 'fileAttachment':
-      return (
-        <AttachmentNodeView
-          viewOnly
-          selected={false}
-          node={{ attrs: node.attrs ?? {} }}
+          node={{
+            attrs: {
+              mediaType: 'application/octet-stream',
+              ...node.attrs,
+            },
+          }}
         />
       );
 

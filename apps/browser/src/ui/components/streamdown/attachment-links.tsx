@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, type ReactNode } from 'react';
+import { useMemo, useState, useRef, Suspense, type ReactNode } from 'react';
 import { ExternalLinkIcon } from 'lucide-react';
 import {
   cn,
@@ -23,23 +23,19 @@ import {
 import { MessageAttachmentsProvider } from '@ui/hooks/use-message-elements';
 import {
   ElementAttachmentView,
-  ImageAttachmentView,
-  AttachmentNodeView,
   TextClipAttachmentView,
 } from '@ui/screens/main/sidebar/chat/_components/rich-text';
+import {
+  getRenderer,
+  type RendererProps,
+} from '@ui/components/attachment-renderers';
 import type { SelectedElement } from '@shared/selected-elements';
 
 interface ColorBadgeProps {
-  /** The CSS color value */
   color: string;
-  /** Optional label to display (defaults to color value) */
   children?: ReactNode;
 }
 
-/**
- * Inline color badge with color swatch and copy-to-clipboard functionality.
- * Used by both inline code detection and explicit color: links.
- */
 export const ColorBadge = ({ color, children }: ColorBadgeProps) => {
   const [hasCopied, setHasCopied] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
@@ -49,19 +45,16 @@ export const ColorBadge = ({ color, children }: ColorBadgeProps) => {
     navigator.clipboard.writeText(color);
     setHasCopied(true);
     setTooltipOpen(true);
-    // Briefly prevent the click-triggered close, but allow hover-out to work
     ignoreCloseRef.current = true;
     setTimeout(() => {
       ignoreCloseRef.current = false;
-    }, 50); // Short delay to ignore only the click-triggered close
-    // Reset "Copied" text after 2 seconds
+    }, 50);
     setTimeout(() => {
       setHasCopied(false);
     }, 2000);
   };
 
   const handleOpenChange = (open: boolean) => {
-    // Ignore the immediate close triggered by clicking, but allow hover-out
     if (!open && ignoreCloseRef.current) return;
     setTooltipOpen(open);
   };
@@ -97,13 +90,13 @@ export const ColorBadge = ({ color, children }: ColorBadgeProps) => {
     </Tooltip>
   );
 };
+
 /**
  * Parsed attachment link data - discriminated union for type safety.
  */
 export type AttachmentLinkData =
   | { type: 'element'; id: string }
-  | { type: 'image'; id: string; displayHint?: 'expanded' }
-  | { type: 'file'; id: string }
+  | { type: 'att'; id: string; params: Record<string, string> }
   | { type: 'textClip'; id: string }
   | { type: 'color'; color: string }
   | {
@@ -113,31 +106,30 @@ export type AttachmentLinkData =
       incomplete?: boolean;
     };
 
-/**
- * Pattern definitions for attachment link parsing.
- * Each pattern maps a URL prefix to a parser function.
- */
 const ATTACHMENT_LINK_PATTERNS: Array<{
   prefix: string;
   parse: (rest: string) => AttachmentLinkData;
 }> = [
   { prefix: 'element:', parse: (rest) => ({ type: 'element', id: rest }) },
   {
-    prefix: 'image:',
+    prefix: 'att:',
     parse: (rest) => {
-      const [id, fragment] = rest.split('#', 2);
-      return {
-        type: 'image',
-        id,
-        displayHint: fragment === 'expanded' ? 'expanded' : undefined,
-      };
+      const qIdx = rest.indexOf('?');
+      const id = qIdx >= 0 ? rest.slice(0, qIdx) : rest;
+      const params: Record<string, string> = {};
+      if (qIdx >= 0) {
+        for (const pair of rest.slice(qIdx + 1).split('&')) {
+          const eqIdx = pair.indexOf('=');
+          if (eqIdx >= 0) params[pair.slice(0, eqIdx)] = pair.slice(eqIdx + 1);
+          else params[pair] = 'true';
+        }
+      }
+      return { type: 'att', id, params };
     },
   },
-  { prefix: 'file:', parse: (rest) => ({ type: 'file', id: rest }) },
   { prefix: 'text-clip:', parse: (rest) => ({ type: 'textClip', id: rest }) },
   {
     prefix: 'color:',
-    // Decode URL-encoded color values (encoded in preprocessMarkdown to handle parens)
     parse: (rest) => ({ type: 'color', color: decodeURIComponent(rest) }),
   },
   {
@@ -146,7 +138,6 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
       const incomplete = rest.startsWith('incomplete:');
       const path = incomplete ? rest.slice('incomplete:'.length) : rest;
       const colonIndex = path.lastIndexOf(':');
-      // Check if there's a line number (colon followed by digits)
       const hasLineNumber =
         colonIndex > 0 && /^\d+$/.test(path.slice(colonIndex + 1));
       const filePath = hasLineNumber ? path.slice(0, colonIndex) : path;
@@ -156,13 +147,6 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
   },
 ];
 
-/**
- * Parse an href to detect attachment link types.
- * Returns structured data if the href matches a known pattern, null otherwise.
- *
- * @param href - The href attribute from an anchor element
- * @returns Parsed attachment data or null for regular links
- */
 export function parseAttachmentLink(
   href: string | undefined,
 ): AttachmentLinkData | null {
@@ -180,19 +164,9 @@ export type MessageSegment =
   | { kind: 'text'; content: string }
   | { kind: 'attachment'; linkData: AttachmentLinkData };
 
-/**
- * Parse markdown text into alternating text and attachment-link segments.
- * Extracts markdown links whose href matches a known attachment prefix
- * (element:, image:, file:, text-clip:, color:, wsfile:) and returns them
- * as structured segments alongside plain text.
- *
- * Uses balanced-parenthesis matching so color values like
- * `rgba(0, 0, 0)` are handled correctly.
- */
 export function parseMessageSegments(text: string): MessageSegment[] {
   const segments: MessageSegment[] = [];
   const linkStartRegex = /\[(?:[^\]]*)\]\(/g;
-  // Derive prefixes from the single source of truth
   const prefixes = ATTACHMENT_LINK_PATTERNS.map((p) => p.prefix);
   let lastEnd = 0;
   let match = linkStartRegex.exec(text);
@@ -206,7 +180,6 @@ export function parseMessageSegments(text: string): MessageSegment[] {
       continue;
     }
 
-    // Use balanced parentheses to find the closing )
     let depth = 1;
     let i = 0;
     for (; i < rest.length; i++) {
@@ -245,12 +218,10 @@ export function parseMessageSegments(text: string): MessageSegment[] {
   return segments;
 }
 
-/** Get a stable React key from attachment link data. */
 export function getAttachmentKey(linkData: AttachmentLinkData): string {
   switch (linkData.type) {
     case 'element':
-    case 'image':
-    case 'file':
+    case 'att':
     case 'textClip':
       return `${linkData.type}-${linkData.id}`;
     case 'wsfile':
@@ -266,10 +237,6 @@ interface WorkspaceFileLinkProps {
   incomplete?: boolean;
 }
 
-/**
- * Renders a workspace file link that opens in the configured IDE.
- * Handles both complete and incomplete (streaming) file paths.
- */
 export const WorkspaceFileLink = ({
   filePath,
   lineNumber,
@@ -358,19 +325,10 @@ interface AttachmentLinkBaseProps {
   metadata: AttachmentMetadata | undefined;
 }
 
-/**
- * Element attachment link - reuses ElementAttachmentView in view-only mode.
- * Wraps with MessageAttachmentsProvider so the view can look up element data.
- */
-export const ElementAttachmentLink = ({
-  id,
-  metadata,
-}: AttachmentLinkBaseProps) => {
-  // Check if metadata is a SelectedElement
+const ElementAttachmentLink = ({ id, metadata }: AttachmentLinkBaseProps) => {
   const element: SelectedElement | null =
     metadata && 'tagName' in metadata ? (metadata as SelectedElement) : null;
 
-  // Build label from element data
   const label = useMemo(() => {
     if (!element) return `@${id.slice(0, 8)}`;
     const tagName = element.tagName.toLowerCase();
@@ -378,7 +336,6 @@ export const ElementAttachmentLink = ({
     return `${tagName}${domId}`;
   }, [id, element]);
 
-  // Provide element via context so ElementAttachmentView can find it
   return (
     <MessageAttachmentsProvider elements={element ? [element] : []}>
       <ElementAttachmentView
@@ -390,99 +347,7 @@ export const ElementAttachmentLink = ({
   );
 };
 
-/**
- * Image attachment link - reuses ImageAttachmentView in view-only mode.
- */
-export const ImageAttachmentLink = ({
-  id,
-  metadata,
-}: AttachmentLinkBaseProps) => {
-  const label = useMemo(() => {
-    if (!metadata || !('fileName' in metadata)) return 'image';
-    return metadata.fileName || 'image';
-  }, [metadata]);
-
-  return (
-    <ImageAttachmentView
-      viewOnly
-      selected={false}
-      node={{ attrs: { id, label } }}
-    />
-  );
-};
-
-/**
- * Expanded image attachment link - renders as a large inline preview card.
- * Used when the agent specifies `#expanded` on an image link.
- */
-export const ExpandedImageAttachmentLink = ({
-  id,
-  metadata,
-}: AttachmentLinkBaseProps) => {
-  const [openAgent] = useOpenAgent();
-
-  const label = useMemo(() => {
-    if (!metadata || !('fileName' in metadata)) return 'image';
-    return metadata.fileName || 'image';
-  }, [metadata]);
-
-  const url = openAgent ? `sw-blob://${openAgent}/${id}` : '';
-
-  if (!url) return <ImageAttachmentLink id={id} metadata={metadata} />;
-
-  return (
-    <span
-      className={cn(
-        'my-1 inline-flex shrink-0 flex-col overflow-hidden rounded-lg',
-        'border border-border-subtle bg-surface-1',
-      )}
-    >
-      <span className="flex min-h-24 items-center justify-center bg-background p-1.5">
-        <img
-          src={url}
-          alt={label}
-          className="max-h-38 max-w-52 rounded object-contain"
-        />
-      </span>
-      <span className="block border-border-subtle border-t px-2.5 py-1.5">
-        <span className="max-w-48 truncate font-medium text-foreground text-xs">
-          {label}
-        </span>
-      </span>
-    </span>
-  );
-};
-
-/**
- * File attachment link - reuses AttachmentNodeView (fallback) in view-only mode.
- */
-export const FileAttachmentLink = ({
-  id,
-  metadata,
-}: AttachmentLinkBaseProps) => {
-  const label = useMemo(() => {
-    if (!metadata) return 'file';
-    return 'fileName' in metadata && metadata.fileName
-      ? metadata.fileName
-      : 'file';
-  }, [metadata]);
-
-  return (
-    <AttachmentNodeView
-      viewOnly
-      selected={false}
-      node={{ attrs: { id, label } }}
-    />
-  );
-};
-
-/**
- * Text clip attachment link - reuses TextClipAttachmentView in view-only mode.
- */
-export const TextClipAttachmentLink = ({
-  id,
-  metadata,
-}: AttachmentLinkBaseProps) => {
+const TextClipAttachmentLink = ({ id, metadata }: AttachmentLinkBaseProps) => {
   const { label, content } = useMemo(() => {
     if (!metadata || !('content' in metadata)) {
       return { label: 'text', content: '' };
@@ -502,14 +367,46 @@ export const TextClipAttachmentLink = ({
   );
 };
 
+const AttachmentRendererLink = ({
+  id,
+  params,
+}: {
+  id: string;
+  params: Record<string, string>;
+}) => {
+  const [openAgent] = useOpenAgent();
+  const attachments = useAttachmentMetadata();
+  const metadata = attachments[id];
+  const mediaType =
+    metadata && 'mediaType' in metadata
+      ? metadata.mediaType
+      : 'application/octet-stream';
+  const renderer = getRenderer(mediaType);
+  const blobUrl = openAgent ? `sw-blob://${openAgent}/${id}` : '';
+  const isExpanded = params.display === 'expanded';
+  const rendererProps: RendererProps = {
+    attachmentId: id,
+    mediaType,
+    blobUrl,
+    params,
+    fileName: metadata && 'fileName' in metadata ? metadata.fileName : 'file',
+    sizeBytes: metadata && 'sizeBytes' in metadata ? metadata.sizeBytes : 0,
+  };
+
+  if (isExpanded && renderer.Expanded) {
+    return (
+      <Suspense fallback={<renderer.Badge {...rendererProps} viewOnly />}>
+        <renderer.Expanded {...rendererProps} />
+      </Suspense>
+    );
+  }
+  return <renderer.Badge {...rendererProps} viewOnly />;
+};
+
 interface AttachmentLinkRouterProps {
   linkData: AttachmentLinkData;
 }
 
-/**
- * Routes parsed attachment link data to the appropriate component.
- * Uses the attachment metadata context for context-dependent links.
- */
 export const AttachmentLinkRouter = ({
   linkData,
 }: AttachmentLinkRouterProps) => {
@@ -523,27 +420,9 @@ export const AttachmentLinkRouter = ({
           metadata={attachments[linkData.id]}
         />
       );
-    case 'image':
-      if (linkData.displayHint === 'expanded') {
-        return (
-          <ExpandedImageAttachmentLink
-            id={linkData.id}
-            metadata={attachments[linkData.id]}
-          />
-        );
-      }
+    case 'att':
       return (
-        <ImageAttachmentLink
-          id={linkData.id}
-          metadata={attachments[linkData.id]}
-        />
-      );
-    case 'file':
-      return (
-        <FileAttachmentLink
-          id={linkData.id}
-          metadata={attachments[linkData.id]}
-        />
+        <AttachmentRendererLink id={linkData.id} params={linkData.params} />
       );
     case 'textClip':
       return (
@@ -561,7 +440,6 @@ export const AttachmentLinkRouter = ({
         />
       );
     case 'color':
-      // Render color badge (same component used by inline code detection)
       return <ColorBadge color={linkData.color} />;
   }
 };

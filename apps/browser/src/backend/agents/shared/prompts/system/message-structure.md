@@ -35,9 +35,8 @@ Use these when referencing attachments or rendering enhanced UI elements.
 |----------|---------|----------|
 | color | [](color:rgb(200,100,0)) | Render and display a color preview. Required whenever presenting colors outside code blocks. |
 | element | [](element:{ID}) | Reference a selected DOM element attachment. |
-| image | [](image:{ID}) or [](image:{ID}#expanded) | Reference an attached image (default: inline badge). Append `#expanded` to render as preview card. |
+| att | [](att:{ID}) or [](att:{ID}?display=expanded) | Reference any file attachment. Use `?display=expanded` for inline preview. |
 | text-clip | [](text-clip:{ID}) | Reference copied text attachment. |
-| file | [](file:{ID}) | Reference an attached file. |
 | wsfile | [](wsfile:{filepath}:{optional_line}) | Reference a workspace file. |
 
 #### Color Rule (Strict)

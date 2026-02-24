@@ -27,16 +27,15 @@ import type { SelectedElement } from '@shared/selected-elements';
 
 /**
  * Regex matching attachment link syntax: [optional label](protocol:id)
- * Protocols: image, file, element, text-clip
+ * Protocols: att, element, text-clip
  * The label in brackets is optional — empty brackets [] are fine.
+ * For att: protocol, the id may contain query params (e.g. att:id?display=expanded).
  */
-const ATTACHMENT_LINK_RE =
-  /\[([^\]]*)\]\((image|file|element|text-clip):([^)]+)\)/g;
+const ATTACHMENT_LINK_RE = /\[([^\]]*)\]\((att|element|text-clip):([^)]+)\)/g;
 
 /** Maps attachment link protocol to TipTap node type */
 const PROTOCOL_TO_NODE: Record<string, string> = {
-  image: 'imageAttachment',
-  file: 'fileAttachment',
+  att: 'attachment',
   element: 'elementAttachment',
   'text-clip': 'textClipAttachment',
 };
@@ -60,11 +59,11 @@ function parseLineToInlineContent(line: string): JSONContent[] {
       });
     }
 
-    // Attachment node — bracket text is accepted but ignored;
-    // the actual label is resolved later via enrichTipTapContent
-    const [, , protocol, id] = match;
+    const [, , protocol, rawId] = match;
     const nodeType = PROTOCOL_TO_NODE[protocol!];
     if (nodeType) {
+      const qIdx = rawId!.indexOf('?');
+      const id = qIdx >= 0 ? rawId!.slice(0, qIdx) : rawId;
       nodes.push({ type: nodeType, attrs: { id, label: id } });
     }
 
@@ -160,7 +159,7 @@ export function enrichTipTapContent(
   function walk(node: JSONContent): JSONContent {
     const id = node.attrs?.id as string | undefined;
 
-    if (node.type === 'imageAttachment' && id) {
+    if (node.type === 'attachment' && id) {
       const file = fileMap.get(id);
       if (file) {
         return {
@@ -168,19 +167,7 @@ export function enrichTipTapContent(
           attrs: {
             ...node.attrs,
             label: file.fileName ?? node.attrs?.label,
-          },
-        };
-      }
-    }
-
-    if (node.type === 'fileAttachment' && id) {
-      const file = fileMap.get(id);
-      if (file) {
-        return {
-          ...node,
-          attrs: {
-            ...node.attrs,
-            label: file.fileName ?? node.attrs?.label,
+            mediaType: file.mediaType,
           },
         };
       }

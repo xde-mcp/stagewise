@@ -9,20 +9,11 @@ import type { AttachmentAttributes } from '@/screens/main/sidebar/chat/_componen
 export function fileAttachmentToAttachmentAttributes(
   attachment: FileAttachment,
 ): AttachmentAttributes {
-  const isImage = attachment.mediaType.startsWith('image/');
-
-  if (isImage) {
-    return {
-      id: attachment.id,
-      type: 'image',
-      label: attachment.fileName ?? 'Image',
-    };
-  }
-
   return {
     id: attachment.id,
-    type: 'file',
+    type: 'attachment',
     label: attachment.fileName ?? 'File',
+    mediaType: attachment.mediaType,
   };
 }
 

@@ -31,7 +31,7 @@ export interface CreateAttachmentNodeConfig<TAttrs extends object = object> {
   name: string;
   /** The data attribute used to identify this node type in HTML (e.g., 'data-file-attachment') */
   dataTag: string;
-  /** The markdown protocol prefix (e.g., 'image', 'file', 'element', 'text-clip') */
+  /** The markdown protocol prefix (e.g., 'att', 'element', 'text-clip') */
   markdownProtocol: string;
   /** Additional attributes specific to this attachment type */
   additionalAttributes?: {

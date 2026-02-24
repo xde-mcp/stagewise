@@ -302,7 +302,7 @@ export const MessageUser = memo(
           // This prevents race conditions where the component unmounts between
           // revert and send operations
           // Note: We no longer store tipTapContent - the text part contains markdown
-          // with attachment links (e.g., [](image:abc123))
+          // with attachment links (e.g., [](att:abc123))
           await replaceUserMessage(
             openAgent,
             msg.id,
@@ -361,7 +361,7 @@ export const MessageUser = memo(
 
     const handleRemoveAttachment = useCallback(
       (id: string, type: AttachmentType) => {
-        if (type === 'file') {
+        if (type === 'attachment') {
           removeFileAttachment(id);
         } else if (type === 'element') {
           removeSelectedElement(id);
