@@ -1714,12 +1714,11 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private async captureScreenshot(): Promise<void> {
     const wc = this.webContentsView.webContents;
 
-    // Don't capture if webContents is destroyed, loading, showing an error, or internal page
+    // Don't capture if webContents is destroyed, loading, or showing an error
     if (
       wc.isDestroyed() ||
       wc.isLoading() ||
-      this.currentState.error !== null ||
-      this.currentState.url.startsWith('stagewise://internal/')
+      this.currentState.error !== null
     ) {
       return;
     }

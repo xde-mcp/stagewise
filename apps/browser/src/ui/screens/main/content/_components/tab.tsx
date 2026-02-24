@@ -49,13 +49,25 @@ export function Tab({
   const togglePanelKeyboardFocus = useKartonProcedure(
     (p) => p.browser.layout.togglePanelKeyboardFocus,
   );
-  const { tabUiState } = useTabUIState();
+  const closeTab = useKartonProcedure((p) => p.browser.closeTab);
+  const { tabUiState, removeTabUiState } = useTabUIState();
 
   const handleClick = async () => {
     if (isActive) return;
     const focus = tabUiState[tabState.id]?.focusedPanel ?? 'stagewise-ui';
     await switchTab(tabState.id);
     void togglePanelKeyboardFocus(focus);
+  };
+
+  const handleAuxClick = (e: React.MouseEvent) => {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    const isOnlyTab = Object.keys(tabs).length === 1;
+    const isInternalPage =
+      tabState.url?.startsWith('stagewise://internal/') ?? false;
+    if (isOnlyTab && isInternalPage) return;
+    closeTab(tabState.id);
+    removeTabUiState(tabState.id);
   };
 
   // Calculate if this tab should show right separator
@@ -113,6 +125,7 @@ export function Tab({
               ),
         )}
         onClick={isActive ? undefined : handleClick}
+        onAuxClick={handleAuxClick}
       >
         {/* SVG definitions and background mask for active tab */}
         {isActive && (
