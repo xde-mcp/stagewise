@@ -1,6 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Switch } from '@stagewise/stage-ui/components/switch';
-import { IconFileContentFillDuo18 } from 'nucleo-ui-fill-duo-18';
+import {
+  IconFileContentFillDuo18,
+  IconPenDrawSparkleFillDuo18,
+} from 'nucleo-ui-fill-duo-18';
 import { SearchableSelect } from '@stagewise/stage-ui/components/searchable-select';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import {
@@ -53,12 +56,15 @@ import { Input } from '@stagewise/stage-ui/components/input';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { produceWithPatches, enablePatches } from 'immer';
 import { IconChevronRightOutline18 } from 'nucleo-ui-outline-18';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, Loader2Icon, RefreshCwIcon } from 'lucide-react';
 
 enablePatches();
 
 export const Route = createFileRoute('/_internal-app/agent-settings/')({
   component: Page,
+  validateSearch: (search: Record<string, unknown>) => ({
+    workspace: (search.workspace as string) || '',
+  }),
   head: () => ({
     meta: [
       {
@@ -154,6 +160,8 @@ function ScrollFadeCodeBlock({
 // =============================================================================
 
 function WorkspaceSettingsSection() {
+  const { workspace: targetWorkspace } = Route.useSearch();
+  const workspaceMounts = useKartonState((s) => s.workspaceMounts);
   const getContextFiles = useKartonProcedure((s) => s.getContextFiles);
   const getContextFilesRef = useRef(getContextFiles);
   getContextFilesRef.current = getContextFiles;
@@ -161,33 +169,38 @@ function WorkspaceSettingsSection() {
   const [contextFiles, setContextFiles] = useState<ContextFilesResult | null>(
     null,
   );
-  const [isLoading, setIsLoading] = useState(true);
+
+  const workspaceMdGenerating = useKartonState((s) => s.workspaceMdGenerating);
+  const prevGeneratingRef = useRef<Record<string, boolean>>({});
+
+  // Fetch file content whenever the set of mounted paths changes
+  const mountPathsKey = useMemo(
+    () => workspaceMounts.map((m) => m.path).join('\0'),
+    [workspaceMounts],
+  );
 
   useEffect(() => {
-    void getContextFilesRef
-      .current()
-      .then((files) => {
-        setContextFiles(files);
-      })
-      .catch((error) => {
-        console.error('Failed to load context files:', error);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+    void getContextFilesRef.current().then((files) => {
+      setContextFiles(files);
+    });
+  }, [mountPathsKey]);
 
-  if (isLoading) {
-    return (
-      <div className="text-muted-foreground text-sm">
-        Loading workspace settings...
-      </div>
+  // Re-fetch content when any workspace finishes generating
+  useEffect(() => {
+    const prev = prevGeneratingRef.current;
+    const justFinished = Object.keys(prev).some(
+      (path) => prev[path] && !workspaceMdGenerating[path],
     );
-  }
+    prevGeneratingRef.current = { ...workspaceMdGenerating };
 
-  const entries = contextFiles ? Object.entries(contextFiles) : [];
+    if (justFinished) {
+      void getContextFilesRef.current().then((files) => {
+        setContextFiles(files);
+      });
+    }
+  }, [workspaceMdGenerating]);
 
-  if (entries.length === 0) {
+  if (workspaceMounts.length === 0) {
     return (
       <div className="rounded-lg border border-derived p-4">
         <p className="text-muted-foreground text-sm">
@@ -200,13 +213,26 @@ function WorkspaceSettingsSection() {
 
   return (
     <div className="space-y-3">
-      {entries.map(([wsPath, files]) => (
+      {workspaceMounts.map((mount) => (
         <WorkspaceContextSection
-          key={wsPath}
-          workspacePath={wsPath}
-          workspaceMd={files.workspaceMd}
-          agentsMd={files.agentsMd}
-          defaultOpen={entries.length === 1}
+          key={mount.path}
+          workspacePath={mount.path}
+          workspaceMd={
+            contextFiles?.[mount.path]?.workspaceMd ?? {
+              exists: mount.hasWorkspaceMd,
+              path: null,
+              content: null,
+            }
+          }
+          agentsMd={
+            contextFiles?.[mount.path]?.agentsMd ?? {
+              exists: mount.hasAgentsMd,
+              path: null,
+              content: null,
+            }
+          }
+          defaultOpen={workspaceMounts.length === 1}
+          targetWorkspace={targetWorkspace}
         />
       ))}
     </div>
@@ -218,15 +244,32 @@ function WorkspaceContextSection({
   workspaceMd,
   agentsMd,
   defaultOpen,
+  targetWorkspace,
 }: {
   workspacePath: string;
   workspaceMd: ContextFilesResult[string]['workspaceMd'];
   agentsMd: ContextFilesResult[string]['agentsMd'];
   defaultOpen: boolean;
+  targetWorkspace: string;
 }) {
   const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
+  const generateWorkspaceMd = useKartonProcedure((s) => s.generateWorkspaceMd);
   const preferences = useKartonState((s) => s.preferences);
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const isGenerating = useKartonState(
+    (s) => !!s.workspaceMdGenerating[workspacePath],
+  );
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isTarget = targetWorkspace === workspacePath;
+  const [isOpen, setIsOpen] = useState(defaultOpen || isTarget);
+
+  useEffect(() => {
+    if (isTarget && sectionRef.current) {
+      sectionRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  }, [isTarget]);
 
   const folderName = useMemo(
     () =>
@@ -241,6 +284,10 @@ function WorkspaceContextSection({
   const respectAgentsMd =
     preferences?.agent?.workspaceSettings?.[workspacePath]?.respectAgentsMd ??
     false;
+
+  const handleGenerate = useCallback(async () => {
+    await generateWorkspaceMd(workspacePath);
+  }, [generateWorkspaceMd, workspacePath]);
 
   const handleToggleAgentsMd = useCallback(
     async (checked: boolean) => {
@@ -280,7 +327,7 @@ function WorkspaceContextSection({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="rounded-lg border border-derived">
+      <div ref={sectionRef} className="rounded-lg border border-derived">
         <CollapsibleTrigger size="default" className="px-4">
           <div className="flex min-w-0 flex-col items-start">
             <span className="font-medium text-foreground text-sm">
@@ -335,12 +382,65 @@ function WorkspaceContextSection({
               </div>
             </div>
 
+            {/* Empty state: no WORKSPACE.md yet */}
+            {!workspaceMd.exists && (
+              <div className="flex flex-col items-center gap-3 rounded-lg border border-derived p-6 text-center">
+                <IconPenDrawSparkleFillDuo18 className="size-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium text-foreground text-sm">
+                    Generate workspace context
+                  </p>
+                  <p className="mx-auto max-w-80 text-muted-foreground text-xs leading-relaxed">
+                    This will automatically analyze your project and create a
+                    WORKSPACE.md file to improve agent performance.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className="mt-1"
+                >
+                  {isGenerating && (
+                    <Loader2Icon className="size-3 animate-spin" />
+                  )}
+                  {isGenerating ? 'Generating…' : 'Generate WORKSPACE.md'}
+                </Button>
+              </div>
+            )}
+
             {/* Context files viewer */}
             {hasAnyContextFile && (
               <div className="space-y-2">
-                <h3 className="font-medium text-foreground text-sm">
-                  Context files
-                </h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-medium text-foreground text-sm">
+                    Context files
+                  </h3>
+                  {workspaceMd.exists && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={handleGenerate}
+                          disabled={isGenerating}
+                        >
+                          {isGenerating ? (
+                            <Loader2Icon className="size-3 animate-spin" />
+                          ) : (
+                            <RefreshCwIcon className="size-3" />
+                          )}
+                          {isGenerating ? 'Updating…' : 'Update WORKSPACE.md'}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Re-analyze your project and update the WORKSPACE.md
+                        context file.
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 <Tabs defaultValue={defaultTab} className="w-full">
                   <TabsList className="max-w-96">
                     {workspaceMd.exists && (
@@ -767,7 +867,7 @@ function Page() {
       </div>
 
       {/* Content */}
-      <OverlayScrollbar className="flex-1" contentClassName="p-6">
+      <OverlayScrollbar className="flex-1" contentClassName="px-6 pt-6 pb-24">
         <div className="mx-auto max-w-4xl space-y-8">
           {/* Editor Section */}
           <section className="space-y-6">

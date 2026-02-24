@@ -3,16 +3,29 @@ import type { Logger } from '@/services/logger';
 import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { LspService } from '../lsp';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import type { FilePickerService } from '@/services/file-picker';
 import type { GlobalDataPathService } from '@/services/global-data-path';
 import type { KartonService } from '@/services/karton';
 import type { UserExperienceService } from '@/services/experience';
 import type { TelemetryService } from '@/services/telemetry';
 import type { WorkspaceSnapshot } from '../../types';
+import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
+import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
+import { getSkills } from '@/agents/shared/prompts/utils/get-skills';
+import { isGitRepo } from '@/utils/git-tools';
 
 type AgentInstanceId = string;
 type MountPrefix = string;
 type WorkspacePath = string;
+
+function mountPrefixForPath(workspacePath: string): MountPrefix {
+  const hash = createHash('sha256')
+    .update(workspacePath)
+    .digest('hex')
+    .slice(0, 4);
+  return `w${hash}`;
+}
 
 export type MountedClientRuntimes = Map<MountPrefix, ClientRuntimeNode>;
 export type MountedLspServices = Map<MountPrefix, LspService>;
@@ -154,15 +167,33 @@ export class MountManagerService extends DisposableService {
     );
     if (alreadyMounted) return;
 
-    const prefix = `w${mounts.size + 1}`;
+    const prefix = mountPrefixForPath(resolvedWorkspacePath);
     mounts.add(prefix);
     this.agentMounts.set(agentInstanceId, mounts);
     this.workspacePathsPerMount.set(prefix, resolvedWorkspacePath);
+
+    const clientRuntime = this.clientRuntimesPerPath.get(
+      resolvedWorkspacePath,
+    )!;
+
+    const [workspaceMdContent, agentsMdContent, skills] = await Promise.all([
+      readWorkspaceMd(resolvedWorkspacePath),
+      readAgentsMd(clientRuntime),
+      getSkills(clientRuntime),
+    ]);
+    const gitRepo = isGitRepo(resolvedWorkspacePath);
 
     this.uiKarton.setState((draft) => {
       draft.toolbox[agentInstanceId].workspace.mounts.push({
         prefix,
         path: resolvedWorkspacePath,
+        hasWorkspaceMd: workspaceMdContent !== null,
+        hasAgentsMd: agentsMdContent !== null,
+        isGitRepo: gitRepo,
+        skills: skills.map((s) => ({
+          name: s.name,
+          description: s.description,
+        })),
       });
     });
   }
@@ -263,6 +294,22 @@ export class MountManagerService extends DisposableService {
 
   public clearAgentMounts(agentInstanceId: string): void {
     this.agentMounts.delete(agentInstanceId);
+  }
+
+  public setWorkspaceMdExistsByPath(
+    workspacePath: string,
+    exists: boolean,
+  ): void {
+    this.uiKarton.setState((draft) => {
+      for (const agentId in draft.toolbox) {
+        const mounts = draft.toolbox[agentId].workspace.mounts;
+        for (const mount of mounts) {
+          if (mount.path === workspacePath) {
+            mount.hasWorkspaceMd = exists;
+          }
+        }
+      }
+    });
   }
 
   public getClientRuntimeForPath(

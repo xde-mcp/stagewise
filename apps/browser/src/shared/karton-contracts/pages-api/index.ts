@@ -31,6 +31,14 @@ import type { ApiKeyValidationResult, AuthStatus } from '../ui';
 import type { FileDiff } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
 
+export type WorkspaceMountInfo = {
+  path: string;
+  hasWorkspaceMd: boolean;
+  hasAgentsMd: boolean;
+  isGitRepo: boolean;
+  skills: Array<{ name: string; description: string }>;
+};
+
 export type PagesApiState = {
   /** Active downloads currently in progress, keyed by download ID */
   activeDownloads: Record<number, ActiveDownloadInfo>;
@@ -61,6 +69,10 @@ export type PagesApiState = {
       expiresAt?: string;
     };
   };
+  /** Currently mounted workspaces, deduplicated across all agents */
+  workspaceMounts: WorkspaceMountInfo[];
+  /** Workspace paths where a WORKSPACE.md agent is currently running */
+  workspaceMdGenerating: Record<string, boolean>;
   // Current stagewise app runtime information
   appInfo: {
     baseName: string; // Base name (e.g., 'stagewise-dev', 'stagewise-prerelease', 'stagewise').
@@ -151,6 +163,8 @@ export type PagesApiContract = {
      * Returns null if no workspace is loaded.
      */
     getContextFiles: () => Promise<ContextFilesResult>;
+    /** Trigger WORKSPACE.md generation for a workspace path */
+    generateWorkspaceMd: (workspacePath: string) => Promise<void>;
     /** Set an encrypted API key for a provider (encrypted via safeStorage on backend) */
     setProviderApiKey: (
       provider: ModelProvider,
@@ -204,6 +218,8 @@ export const defaultState: PagesApiState = {
     status: 'unauthenticated',
   },
   searchEngines: [],
+  workspaceMounts: [],
+  workspaceMdGenerating: {},
   homePage: {
     storedExperienceData: {
       recentlyOpenedWorkspaces: [],

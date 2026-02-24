@@ -8,10 +8,14 @@ const finishToolOutputSchema = z.object({
   message: z.string(),
 });
 
+export type WorkspaceMdInstanceConfig =
+  | { updateReason: string; mountPrefix: string; parentAgentInstanceId: string }
+  | { workspacePath: string }
+  | undefined;
+
 export class WorkspaceMdAgent extends BaseAgent<
   typeof finishToolOutputSchema,
-  | { updateReason: string; mountPrefix: string; parentAgentInstanceId: string }
-  | undefined
+  WorkspaceMdInstanceConfig
 > {
   public static readonly agentType = AgentTypes.WORKSPACE_MD;
   public static readonly config = {
@@ -50,17 +54,26 @@ export class WorkspaceMdAgent extends BaseAgent<
   };
 
   protected async onCreated(): Promise<void> {
-    const reason = this.instanceConfig?.updateReason;
-    const parentMounts = this.toolbox.getMountedPathsForAgent(
-      this.instanceConfig?.parentAgentInstanceId ?? '',
-    );
-    const mountPrefix = this.instanceConfig?.mountPrefix;
-    const path = parentMounts.get(mountPrefix ?? '');
-    if (!path)
-      throw new Error(
-        `Mount ${mountPrefix} not found for agent ${this.instanceConfig?.parentAgentInstanceId ?? ''}`,
+    let reason: string | undefined;
+    let workspacePath: string;
+
+    if (this.instanceConfig && 'workspacePath' in this.instanceConfig) {
+      workspacePath = this.instanceConfig.workspacePath;
+      await this.toolbox.handleMountWorkspace(this.instanceId, workspacePath);
+    } else {
+      reason = this.instanceConfig?.updateReason;
+      const parentMounts = this.toolbox.getMountedPathsForAgent(
+        this.instanceConfig?.parentAgentInstanceId ?? '',
       );
-    await this.toolbox.handleMountWorkspace(this.instanceId, path);
+      const mountPrefix = this.instanceConfig?.mountPrefix;
+      const path = parentMounts.get(mountPrefix ?? '');
+      if (!path)
+        throw new Error(
+          `Mount ${mountPrefix} not found for agent ${this.instanceConfig?.parentAgentInstanceId ?? ''}`,
+        );
+      workspacePath = path;
+      await this.toolbox.handleMountWorkspace(this.instanceId, path);
+    }
 
     const workspaceMdEntries = await this.toolbox.getWorkspaceMd(
       this.instanceId,

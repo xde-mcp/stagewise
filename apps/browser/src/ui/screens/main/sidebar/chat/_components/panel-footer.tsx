@@ -31,6 +31,7 @@ import {
 import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/rich-text';
 import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { useChatDraft } from '@/hooks/use-chat-draft';
 import type { Content } from '@tiptap/core';
@@ -42,8 +43,6 @@ import {
 // Stable empty arrays to avoid new-reference re-renders
 const EMPTY_HISTORY: AgentMessage[] = [];
 const EMPTY_QUEUE: (AgentMessage & { role: 'user' })[] = [];
-const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
-
 export function ChatPanelFooter() {
   const chatInputRef = useRef<ChatInputHandle>(null);
   const { registerDraftGetter } = useChatDraft();

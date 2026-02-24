@@ -1,6 +1,6 @@
 import { Select, type SelectItem } from '@stagewise/stage-ui/components/select';
 import { IconPlusFill18, IconXmarkFill18 } from 'nucleo-ui-fill-18';
-import { IconFolderContent2FillDuo18 } from 'nucleo-ui-fill-duo-18';
+import { IconFolder5Outline18 } from 'nucleo-ui-outline-18';
 import {
   Tooltip,
   TooltipTrigger,
@@ -9,12 +9,11 @@ import {
 import { cn } from '@stagewise/stage-ui/lib/utils';
 
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { useMemo, useCallback } from 'react';
 import TimeAgo from 'react-timeago';
 import buildFormatter from 'react-timeago/lib/formatters/buildFormatter';
-
-const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
 
 interface WorkspaceSelectProps {
   onWorkspaceChange?: () => void;
@@ -104,7 +103,7 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
       label: (
         <span className="flex items-center gap-1.5 text-muted-foreground group-hover/item:text-foreground">
           <IconPlusFill18 className="size-3.5" />
-          <span>Mount a new workspace</span>
+          <span>Connect new workspace</span>
         </span>
       ),
       group: 'Recent workspaces',
@@ -160,12 +159,12 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
               </span>
             </div>
           </TooltipTrigger>
-          <TooltipContent>Mount {name}</TooltipContent>
+          <TooltipContent>Connect {name}</TooltipContent>
         </Tooltip>
       );
     }
 
-    // "Mount a new workspace" item
+    // "Connect a new workspace" item
     return (
       <div className="flex w-full cursor-pointer flex-col">
         <div className="flex min-w-0 flex-row items-center gap-2 text-xs">
@@ -194,7 +193,7 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
 
   return (
     <>
-      {/* Mounted workspace badges */}
+      {/* Connected workspace badges */}
       {allMounts.map((mount) => {
         const name = mount.path.split('/').pop() || mount.path;
         return (
@@ -202,18 +201,20 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
             key={mount.prefix}
             className={cn(
               'group/badge inline-flex items-center gap-1',
-              'rounded-md border border-derived-subtle px-1.5 py-0.5',
+              'rounded-md border border-derived-subtle px-1.5 py-0.5 text-muted-foreground',
               'text-xs transition-colors duration-100',
-              'hover:bg-hover-derived',
+              'hover:bg-hover-derived hover:text-foreground',
+              'hover:has-[[data-unmount]:hover]:text-muted-foreground',
             )}
           >
-            <IconFolderContent2FillDuo18 className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="max-w-32 truncate text-foreground">{name}</span>
+            <IconFolder5Outline18 className="size-3 shrink-0 " />
+            <span className="max-w-32 truncate ">{name}</span>
             <Tooltip>
               <TooltipTrigger>
                 <span
                   role="button"
                   tabIndex={-1}
+                  data-unmount
                   onClick={() => handleUnmount(mount.prefix)}
                   className={cn(
                     'flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded',
@@ -224,13 +225,13 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
                   <IconXmarkFill18 className="size-2.5" />
                 </span>
               </TooltipTrigger>
-              <TooltipContent>Unmount {name}</TooltipContent>
+              <TooltipContent>Disconnect {name}</TooltipContent>
             </Tooltip>
           </div>
         );
       })}
 
-      {/* Mount button — opens the Select popover with recents */}
+      {/* Connect button — opens the Select popover with recents */}
       <Select
         items={menuItems}
         value={null}
@@ -253,10 +254,10 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
                     'mr-1 inline-flex cursor-pointer items-center gap-0.5',
                     'rounded-md border border-derived-subtle px-1.5 py-0.5',
                     'text-muted-foreground transition-colors duration-100',
-                    'hover:bg-hover-derived hover:text-foreground',
+                    'h-5.5 hover:bg-hover-derived hover:text-foreground',
                   )}
                 >
-                  <IconFolderContent2FillDuo18 className="size-3.5" />
+                  <IconFolder5Outline18 className="size-3" />
                   <IconPlusFill18 className="size-2.5" />
                 </button>
               </TooltipTrigger>
@@ -276,8 +277,8 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
                     'hover:bg-hover-derived hover:text-foreground',
                   )}
                 >
-                  <IconFolderContent2FillDuo18 className="size-3.5" />
-                  <span>Mount a workspace</span>
+                  <IconFolder5Outline18 className="size-3" />
+                  <span>Connect workspace</span>
                   <IconPlusFill18 className="size-3" />
                 </button>
               </TooltipTrigger>

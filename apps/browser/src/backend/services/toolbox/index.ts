@@ -402,6 +402,13 @@ export class ToolboxService extends DisposableService {
     );
   }
 
+  public setWorkspaceMdExistsByPath(
+    workspacePath: string,
+    exists: boolean,
+  ): void {
+    this.mountManagerService?.setWorkspaceMdExistsByPath(workspacePath, exists);
+  }
+
   public async getWorkspaceInfo(
     agentInstanceId: string,
   ): Promise<WorkspaceInfo[]> {

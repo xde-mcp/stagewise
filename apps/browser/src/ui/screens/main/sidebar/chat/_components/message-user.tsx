@@ -10,6 +10,7 @@ import {
 import { cn, collectUserMessageMetadata } from '@/utils';
 import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import type { FileUIPart } from 'ai';
 import {
   useMemo,
@@ -51,8 +52,6 @@ import type { Content } from '@tiptap/core';
 import { IconMagicWandSparkle } from 'nucleo-micro-bold';
 
 type UserMessage = AgentMessage & { role: 'user' };
-
-const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
 
 export const MessageUser = memo(
   function MessageUser({

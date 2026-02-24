@@ -276,6 +276,21 @@ export class AgentManagerService extends DisposableService {
         await this.retryLastUserMessage(instanceId);
       },
     );
+    this.karton.registerServerProcedureHandler(
+      'toolbox.generateWorkspaceMd',
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+        mountPrefix: string,
+      ) => {
+        const mounts =
+          this.karton.state.toolbox[agentInstanceId]?.workspace?.mounts;
+        const mount = mounts?.find((m) => m.prefix === mountPrefix);
+        if (!mount) throw new Error(`Mount ${mountPrefix} not found`);
+
+        await this.generateWorkspaceMdForPath(mount.path);
+      },
+    );
   }
 
   protected async onTeardown(): Promise<void> {
@@ -283,6 +298,42 @@ export class AgentManagerService extends DisposableService {
       await agent.onTeardown();
     }
     this.activeAgents.clear();
+  }
+
+  /**
+   * Trigger WORKSPACE.md generation for a specific workspace path.
+   * Finds a parent chat agent that has this path mounted and spawns
+   * a workspace-md agent under it.
+   */
+  public async generateWorkspaceMdForPath(
+    workspacePath: string,
+  ): Promise<void> {
+    let parentAgentId: string | undefined;
+    for (const [agentId, toolboxState] of Object.entries(
+      this.karton.state.toolbox,
+    )) {
+      if (toolboxState.workspace.mounts.some((m) => m.path === workspacePath)) {
+        parentAgentId = agentId;
+        break;
+      }
+    }
+
+    await this.createAgent(
+      AgentTypes.WORKSPACE_MD,
+      { workspacePath },
+      {
+        parentInstanceId: parentAgentId ?? '',
+        onFinish: () => {
+          this.toolbox.setWorkspaceMdExistsByPath(workspacePath, true);
+        },
+        onError: (error) => {
+          this.report(error, 'workspaceMdGenerationFailed');
+          this.logger.error('[AgentManager] WorkspaceMd generation failed', {
+            error,
+          });
+        },
+      },
+    );
   }
 
   // Create a new agent. Should be called when the user creates a new agent.

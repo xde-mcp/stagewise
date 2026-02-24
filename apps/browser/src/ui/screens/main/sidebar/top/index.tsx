@@ -26,6 +26,7 @@ import {
   AgentTypes,
   type AgentHistoryEntry,
 } from '@shared/karton-contracts/ui/agent';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { AgentsSelector, type AgentGroup } from './_components/agents-selector';
 
 // Static menu items — no component state captured, safe at module scope.
@@ -102,8 +103,6 @@ function activeAgentListEqual(
   }
   return true;
 }
-
-const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
 
 export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const createAgent = useKartonProcedure((p) => p.agents.create);

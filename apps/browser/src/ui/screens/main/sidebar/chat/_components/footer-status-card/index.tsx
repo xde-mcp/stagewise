@@ -1,9 +1,14 @@
-import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import {
+  useKartonState,
+  useKartonProcedure,
+  useComparingSelector,
+} from '@/hooks/use-karton';
 import {
   AgentTypes,
   type AgentMessage,
 } from '@shared/karton-contracts/ui/agent';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import {
   type StatusCardSection,
@@ -20,11 +25,33 @@ import {
 // Stable empty arrays to avoid infinite loop with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];
 const EMPTY_QUEUE: (AgentMessage & { role: 'user' })[] = [];
-const EMPTY_MOUNTS: Array<{ prefix: string; path: string }> = [];
+
+type WorkspaceMdAgentEntry = {
+  agentId: string;
+  workspacePath: string;
+  isWorking: boolean;
+  error?: { code?: number; message: string; stack?: string };
+};
+
+function compareAgentEntries(
+  a: WorkspaceMdAgentEntry[],
+  b: WorkspaceMdAgentEntry[],
+): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (
+      a[i].agentId !== b[i].agentId ||
+      a[i].workspacePath !== b[i].workspacePath ||
+      a[i].isWorking !== b[i].isWorking ||
+      a[i].error !== b[i].error
+    )
+      return false;
+  }
+  return true;
+}
 
 export function StatusCard() {
   const cardRef = useRef<HTMLDivElement>(null);
-  // Use ref to persist previousHeight across effect re-runs (fixes flickering)
   const previousHeightRef = useRef(0);
   const [openAgentId] = useOpenAgent();
   const pendingDiffs = useKartonState((s) =>
@@ -48,93 +75,110 @@ export function StatusCard() {
       : EMPTY_QUEUE,
   );
 
-  // Find the workspace-md agent instance, preferring a working one over a stale one
-  const workspaceMdAgentId = useKartonState((s) => {
-    const instances = s.agents.instances;
-    let fallbackId: string | null = null;
-    for (const agentId in instances) {
-      if (instances[agentId].type !== AgentTypes.WORKSPACE_MD) continue;
-      if (instances[agentId].state.isWorking) return agentId;
-      fallbackId ??= agentId;
-    }
-    return fallbackId;
-  });
-
-  const isWorkspaceMdRunning = useKartonState((s) =>
-    workspaceMdAgentId
-      ? s.agents.instances[workspaceMdAgentId]?.state.isWorking === true
-      : false,
-  );
-
-  const workspaceMdError = useKartonState((s) =>
-    workspaceMdAgentId
-      ? (s.agents.instances[workspaceMdAgentId]?.state.error ?? null)
-      : null,
-  );
-
-  // Get agent history for status updates
-  const workspaceMdHistory = useKartonState((s): AgentMessage[] =>
-    workspaceMdAgentId
-      ? (s.agents.instances[workspaceMdAgentId]?.state.history ?? EMPTY_HISTORY)
-      : EMPTY_HISTORY,
-  );
-
   const workspaceMounts = useKartonState((s) =>
     openAgentId
       ? (s.toolbox[openAgentId]?.workspace?.mounts ?? EMPTY_MOUNTS)
       : EMPTY_MOUNTS,
   );
-  const workspaceConnected = workspaceMounts.length > 0;
 
-  // Track WorkspaceMd status with completion/error state
-  const [workspaceMdStatus, setWorkspaceMdStatus] =
-    useState<WorkspaceMdStatus>('hidden');
-  const [workspaceMdErrorMessage, setWorkspaceMdErrorMessage] = useState<
-    string | null
-  >(null);
-  const prevRunningRef = useRef(false);
-  const runningAgentIdRef = useRef<string | null>(null);
+  const generateWorkspaceMd = useKartonProcedure(
+    (p) => p.toolbox.generateWorkspaceMd,
+  );
+  const stopAgent = useKartonProcedure((p) => p.agents.stop);
 
-  useEffect(() => {
-    if (isWorkspaceMdRunning && !prevRunningRef.current) {
-      setWorkspaceMdStatus('running');
-      setWorkspaceMdErrorMessage(null);
-      runningAgentIdRef.current = workspaceMdAgentId;
-    } else if (!isWorkspaceMdRunning && prevRunningRef.current) {
-      // Only trust the error if it belongs to the agent that was actually running,
-      // not a stale error from a previous agent instance.
-      const errorFromRunningAgent =
-        workspaceMdAgentId === runningAgentIdRef.current && workspaceMdError;
-      if (errorFromRunningAgent) {
-        setWorkspaceMdStatus('error');
-        setWorkspaceMdErrorMessage(workspaceMdError.message);
-      } else if (!workspaceConnected) {
-        setWorkspaceMdStatus('error');
-        setWorkspaceMdErrorMessage('Workspace disconnected during generation');
-      } else {
-        setWorkspaceMdStatus('completed');
-        setWorkspaceMdErrorMessage(null);
+  // All workspace-md agent instances with their workspace paths
+  const workspaceMdAgents = useKartonState(
+    useComparingSelector((s): WorkspaceMdAgentEntry[] => {
+      const entries: WorkspaceMdAgentEntry[] = [];
+      for (const agentId in s.agents.instances) {
+        const inst = s.agents.instances[agentId];
+        if (inst.type !== AgentTypes.WORKSPACE_MD) continue;
+        const path = s.toolbox[agentId]?.workspace?.mounts?.[0]?.path;
+        if (!path) continue;
+        entries.push({
+          agentId,
+          workspacePath: path,
+          isWorking: inst.state.isWorking,
+          error: inst.state.error,
+        });
       }
-      runningAgentIdRef.current = null;
+      return entries;
+    }, compareAgentEntries),
+  );
+
+  // Histories for workspace-md agents (selected as frozen subtree refs)
+  const workspaceMdHistoriesByAgentId = useKartonState(
+    useComparingSelector((s) => {
+      const map: Record<string, AgentMessage[]> = {};
+      for (const agentId in s.agents.instances) {
+        const inst = s.agents.instances[agentId];
+        if (inst.type !== AgentTypes.WORKSPACE_MD) continue;
+        map[agentId] = inst.state.history;
+      }
+      return map;
+    }),
+  );
+
+  // Per-workspace-path local state for lifecycle tracking
+  const [dismissedPaths, setDismissedPaths] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [completedPaths, setCompletedPaths] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [errorsByPath, setErrorsByPath] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  const prevAgentStatesRef = useRef<Map<string, boolean>>(new Map());
+  const stoppedByUserRef = useRef<Set<string>>(new Set());
+
+  // Detect running→stopped transitions per agent and update local state
+  useEffect(() => {
+    const prev = prevAgentStatesRef.current;
+    const next = new Map<string, boolean>();
+
+    for (const agent of workspaceMdAgents) {
+      next.set(agent.agentId, agent.isWorking);
+      const wasWorking = prev.get(agent.agentId) ?? false;
+
+      if (wasWorking && !agent.isWorking) {
+        const userStopped = stoppedByUserRef.current.has(agent.agentId);
+        stoppedByUserRef.current.delete(agent.agentId);
+
+        if (agent.error) {
+          setErrorsByPath((m) => {
+            const copy = new Map(m);
+            copy.set(agent.workspacePath, agent.error!.message);
+            return copy;
+          });
+        } else if (!userStopped) {
+          const mount = workspaceMounts.find(
+            (m) => m.path === agent.workspacePath,
+          );
+          if (mount?.hasWorkspaceMd) {
+            setCompletedPaths((s) => {
+              const copy = new Set(s);
+              copy.add(agent.workspacePath);
+              return copy;
+            });
+          }
+        }
+      }
     }
-    prevRunningRef.current = isWorkspaceMdRunning;
-  }, [
-    isWorkspaceMdRunning,
-    workspaceMdError,
-    workspaceConnected,
-    workspaceMdAgentId,
-  ]);
 
-  // Dismiss callback for project-md completion/error
-  const handleWorkspaceMdDismiss = useCallback(() => {
-    setWorkspaceMdStatus('hidden');
-    setWorkspaceMdErrorMessage(null);
-  }, []);
+    prevAgentStatesRef.current = next;
+  }, [workspaceMdAgents, workspaceMounts]);
 
-  // Show file callback - navigates to agent settings context files section
-  const handleWorkspaceMdShowFile = useCallback(() => {
-    void createTab('stagewise://internal/agent-settings#context-files', true);
-  }, [createTab]);
+  // Show file callback - navigates to agent settings, optionally targeting a specific workspace
+  const handleShowFile = useCallback(
+    (workspacePath?: string) => {
+      const params = workspacePath
+        ? `?workspace=${encodeURIComponent(workspacePath)}`
+        : '';
+      void createTab(`stagewise://internal/agent-settings${params}`, true);
+    },
+    [createTab],
+  );
 
   // Procedure to remove a queued message
   const deleteQueuedMessage = useKartonProcedure(
@@ -170,20 +214,114 @@ export function StatusCard() {
     return edits;
   }, [diffSummary]);
 
+  // Build workspace-md sections — one per mount
+  const workspaceMdSections = useMemo(() => {
+    const sections: StatusCardSection[] = [];
+
+    // Build lookup: workspacePath → agent entry
+    const agentByPath = new Map<string, WorkspaceMdAgentEntry>();
+    for (const agent of workspaceMdAgents) {
+      const existing = agentByPath.get(agent.workspacePath);
+      if (!existing || agent.isWorking) {
+        agentByPath.set(agent.workspacePath, agent);
+      }
+    }
+
+    for (const mount of workspaceMounts) {
+      const agent = agentByPath.get(mount.path);
+      const folderName = mount.path.split('/').pop() || mount.path;
+
+      let status: WorkspaceMdStatus;
+      let errorMessage: string | null = null;
+      let history: AgentMessage[] = EMPTY_HISTORY;
+
+      if (agent?.isWorking) {
+        status = 'running';
+        history = workspaceMdHistoriesByAgentId[agent.agentId] ?? EMPTY_HISTORY;
+      } else if (completedPaths.has(mount.path)) {
+        status = 'completed';
+      } else if (errorsByPath.has(mount.path)) {
+        status = 'error';
+        errorMessage = errorsByPath.get(mount.path) ?? null;
+      } else if (!mount.hasWorkspaceMd && !dismissedPaths.has(mount.path)) {
+        status = 'prompt';
+      } else {
+        continue;
+      }
+
+      const mountPath = mount.path;
+      const mountPrefix = mount.prefix;
+      const agentId = agent?.agentId;
+
+      const section = WorkspaceMdStatusSection({
+        status,
+        sectionKey: `workspace-md-${mountPath}`,
+        workspaceName: folderName,
+        history,
+        errorMessage,
+        onDismiss: () => {
+          if (status === 'prompt') {
+            setDismissedPaths((s) => {
+              const copy = new Set(s);
+              copy.add(mountPath);
+              return copy;
+            });
+          }
+          setCompletedPaths((s) => {
+            if (!s.has(mountPath)) return s;
+            const copy = new Set(s);
+            copy.delete(mountPath);
+            return copy;
+          });
+          setErrorsByPath((m) => {
+            if (!m.has(mountPath)) return m;
+            const copy = new Map(m);
+            copy.delete(mountPath);
+            return copy;
+          });
+        },
+        onShowFile: () => handleShowFile(mountPath),
+        onGenerate: () => {
+          if (!openAgentId) return;
+          setErrorsByPath((m) => {
+            if (!m.has(mountPath)) return m;
+            const copy = new Map(m);
+            copy.delete(mountPath);
+            return copy;
+          });
+          void generateWorkspaceMd(openAgentId, mountPrefix);
+        },
+        onStop: agentId
+          ? () => {
+              stoppedByUserRef.current.add(agentId);
+              void stopAgent(agentId);
+            }
+          : undefined,
+      });
+      if (section) sections.push(section);
+    }
+
+    return sections;
+  }, [
+    workspaceMounts,
+    workspaceMdAgents,
+    workspaceMdHistoriesByAgentId,
+    dismissedPaths,
+    completedPaths,
+    errorsByPath,
+    handleShowFile,
+    openAgentId,
+    generateWorkspaceMd,
+    stopAgent,
+  ]);
+
   // Create status card items
   const items = useMemo(() => {
     const result: StatusCardSection[] = [];
 
-    // Add WorkspaceMd status indicator if running or just completed
-    const workspaceMdSection = WorkspaceMdStatusSection({
-      status: workspaceMdStatus,
-      history: workspaceMdHistory,
-      workspaceMounts,
-      errorMessage: workspaceMdErrorMessage,
-      onDismiss: handleWorkspaceMdDismiss,
-      onShowFile: handleWorkspaceMdShowFile,
-    });
-    if (workspaceMdSection) result.push(workspaceMdSection);
+    for (const section of workspaceMdSections) {
+      result.push(section);
+    }
 
     const messageQueueSection = MessageQueueSection({
       queuedMessages: messageQueue ?? [],
@@ -209,12 +347,7 @@ export function StatusCard() {
 
     return result;
   }, [
-    workspaceMdStatus,
-    workspaceMdHistory,
-    workspaceMounts,
-    workspaceMdErrorMessage,
-    handleWorkspaceMdDismiss,
-    handleWorkspaceMdShowFile,
+    workspaceMdSections,
     messageQueue,
     openAgentId,
     deleteQueuedMessage,

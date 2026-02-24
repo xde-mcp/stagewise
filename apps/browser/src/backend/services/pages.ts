@@ -12,6 +12,7 @@ import {
 import {
   type PagesApiContract,
   defaultState,
+  type WorkspaceMountInfo,
 } from '@shared/karton-contracts/pages-api';
 import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import type {
@@ -108,6 +109,7 @@ export class PagesService extends DisposableService {
   ) => Promise<void>;
   private setGlobalConfigHandler?: (config: GlobalConfig) => Promise<void>;
   private getContextFilesHandler?: () => Promise<ContextFilesResult>;
+  private generateWorkspaceMdHandler?: (workspacePath: string) => Promise<void>;
   private getExternalFileContentHandler?: (
     oid: string,
   ) => Promise<ExternalFileContentResult | null>;
@@ -1099,6 +1101,19 @@ export class PagesService extends DisposableService {
     );
 
     this.kartonServer.registerServerProcedureHandler(
+      'generateWorkspaceMd',
+      async (
+        _callingClientId: string,
+        workspacePath: string,
+      ): Promise<void> => {
+        if (!this.generateWorkspaceMdHandler) {
+          throw new Error('[PagesService] generateWorkspaceMd handler not set');
+        }
+        await this.generateWorkspaceMdHandler(workspacePath);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
       'scanLocalPorts',
       async (_callingClientId: string): Promise<void> => {
         if (!this.scanLocalPortsHandler) {
@@ -1429,6 +1444,26 @@ export class PagesService extends DisposableService {
     this.getContextFilesHandler = handler;
   }
 
+  public setGenerateWorkspaceMdHandler(
+    handler: (workspacePath: string) => Promise<void>,
+  ): void {
+    this.generateWorkspaceMdHandler = handler;
+  }
+
+  public syncWorkspaceMdGeneratingState(
+    generatingByPath: Record<string, boolean>,
+  ): void {
+    this.kartonServer.setState((draft) => {
+      draft.workspaceMdGenerating = generatingByPath;
+    });
+  }
+
+  public syncWorkspaceMountsState(mounts: WorkspaceMountInfo[]): void {
+    this.kartonServer.setState((draft) => {
+      draft.workspaceMounts = mounts;
+    });
+  }
+
   /**
    * Sync global config state to the Pages API Karton state.
    * Called by main.ts when global config changes.
@@ -1612,6 +1647,7 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('trustCertificateAndReload');
     this.kartonServer.removeServerProcedureHandler('setGlobalConfig');
     this.kartonServer.removeServerProcedureHandler('getContextFiles');
+    this.kartonServer.removeServerProcedureHandler('generateWorkspaceMd');
     this.kartonServer.removeServerProcedureHandler('setProviderApiKey');
     this.kartonServer.removeServerProcedureHandler('clearProviderApiKey');
     this.kartonServer.removeServerProcedureHandler('setCustomEndpointApiKey');
@@ -1638,6 +1674,7 @@ export class PagesService extends DisposableService {
     this.userExperienceService = undefined;
     this.trustCertificateAndReloadHandler = undefined;
     this.getContextFilesHandler = undefined;
+    this.generateWorkspaceMdHandler = undefined;
     this.getExternalFileContentHandler = undefined;
     this.scanLocalPortsHandler = undefined;
     this.sendOtpHandler = undefined;

@@ -28,20 +28,19 @@ function createMockToolMessage(
 interface WorkspaceMdSectionStoryProps {
   status: WorkspaceMdStatus;
   history: AgentMessage[];
-  workspaceMounts?: { prefix: string; path: string }[];
   errorMessage?: string | null;
 }
 
 function WorkspaceMdSectionStory({
   status,
   history,
-  workspaceMounts,
   errorMessage,
 }: WorkspaceMdSectionStoryProps) {
   const section = WorkspaceMdStatusSection({
     status,
+    sectionKey: 'storybook-workspace-md',
+    workspaceName: 'my-project',
     history,
-    workspaceMounts,
     errorMessage,
     onDismiss: () => console.log('[Storybook] onDismiss called'),
     onShowFile: () =>
@@ -231,7 +230,6 @@ export const RunningAbsolutePathNoMounts: Story = {
   name: 'Running / Absolute Path (no mounts)',
   args: {
     status: 'running',
-    workspaceMounts: [],
     history: [
       createMockToolMessage('tool-listFilesTool', {
         relative_path: '/Users/user/projects/my-app/src/components',
@@ -251,7 +249,6 @@ export const RunningAbsolutePathWithMounts: Story = {
   name: 'Running / Absolute Path (with mounts)',
   args: {
     status: 'running',
-    workspaceMounts: [{ prefix: 'w1', path: '/Users/user/projects/my-app' }],
     history: [
       createMockToolMessage('tool-listFilesTool', {
         relative_path: '/Users/user/projects/my-app/src/components',

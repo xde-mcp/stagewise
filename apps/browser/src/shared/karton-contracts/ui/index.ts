@@ -488,6 +488,17 @@ export type OmniboxSuggestions = {
   }[];
 };
 
+export type MountEntry = {
+  prefix: string;
+  path: string;
+  hasWorkspaceMd: boolean;
+  hasAgentsMd: boolean;
+  isGitRepo: boolean;
+  skills: Array<{ name: string; description: string }>;
+};
+
+export const EMPTY_MOUNTS: MountEntry[] = [];
+
 export type AppState = {
   internalData: {
     posthog?: {
@@ -510,7 +521,7 @@ export type AppState = {
   toolbox: {
     [agentInstanceId: string]: {
       workspace: {
-        mounts: Array<{ prefix: string; path: string }>;
+        mounts: MountEntry[];
       };
       pendingFileDiffs: FileDiff[];
       editSummary: FileDiff[];
@@ -688,6 +699,10 @@ export type KartonContract = {
         workspacePath?: string,
       ) => Promise<void>;
       unmountWorkspace: (
+        agentInstanceId: string,
+        mountPrefix: string,
+      ) => Promise<void>;
+      generateWorkspaceMd: (
         agentInstanceId: string,
         mountPrefix: string,
       ) => Promise<void>;

@@ -33,6 +33,7 @@ import {
   type DownloadSpeedDataPoint,
 } from '@shared/karton-contracts/pages-api/types';
 import type { DownloadSummary } from '@shared/karton-contracts/ui';
+import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import { OmniboxSuggestionsService } from './services/omnibox-suggestions';
 import { ensureRipgrepInstalled } from '@stagewise/agent-runtime-node';
 import { shell } from 'electron';
@@ -589,6 +590,51 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   };
   uiKarton.registerStateChangeCallback(pendingEditsSyncCallback);
 
+  let previousWsMdGeneratingSnapshot = '';
+  const wsMdGeneratingSyncCallback = (state: typeof uiKarton.state) => {
+    const generating: Record<string, boolean> = {};
+    for (const agentId in state.agents.instances) {
+      const inst = state.agents.instances[agentId];
+      if (inst.type !== AgentTypes.WORKSPACE_MD) continue;
+      if (!inst.state.isWorking) continue;
+      const path = state.toolbox[agentId]?.workspace?.mounts?.[0]?.path;
+      if (path) generating[path] = true;
+    }
+    const snapshot = JSON.stringify(generating);
+    if (snapshot !== previousWsMdGeneratingSnapshot) {
+      previousWsMdGeneratingSnapshot = snapshot;
+      pagesService.syncWorkspaceMdGeneratingState(generating);
+    }
+  };
+  uiKarton.registerStateChangeCallback(wsMdGeneratingSyncCallback);
+
+  let previousMountsSnapshot = '';
+  const workspaceMountsSyncCallback = (state: typeof uiKarton.state) => {
+    const seen = new Map<
+      string,
+      (typeof state.toolbox)[string]['workspace']['mounts'][number]
+    >();
+    for (const agentId in state.toolbox) {
+      const mounts = state.toolbox[agentId]?.workspace?.mounts;
+      if (!mounts) continue;
+      for (const mount of mounts)
+        if (!seen.has(mount.path)) seen.set(mount.path, mount);
+    }
+    const mountsList = [...seen.values()].map((m) => ({
+      path: m.path,
+      hasWorkspaceMd: m.hasWorkspaceMd,
+      hasAgentsMd: m.hasAgentsMd,
+      isGitRepo: m.isGitRepo,
+      skills: m.skills,
+    }));
+    const snapshot = JSON.stringify(mountsList);
+    if (snapshot !== previousMountsSnapshot) {
+      previousMountsSnapshot = snapshot;
+      pagesService.syncWorkspaceMountsState(mountsList);
+    }
+  };
+  uiKarton.registerStateChangeCallback(workspaceMountsSyncCallback);
+
   // Trigger initial load of downloads state (loads recent finished downloads)
   void updateUIDownloadsState([]);
 
@@ -727,7 +773,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     preferencesService,
   );
 
-  const _agentManagerService = new AgentManagerService(
+  const agentManagerService = new AgentManagerService(
     uiKarton,
     globalDataPathService,
     telemetryService,
@@ -735,6 +781,11 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
     modelProviderService,
   );
+
+  // Wire workspace-md generation handler for agent settings page
+  pagesService.setGenerateWorkspaceMdHandler(async (workspacePath) => {
+    await agentManagerService.generateWorkspaceMdForPath(workspacePath);
+  });
 
   // No need to unregister this callback, as it will be destroyed when the main app shuts down
   authService.registerAuthStateChangeCallback((newAuthState) => {

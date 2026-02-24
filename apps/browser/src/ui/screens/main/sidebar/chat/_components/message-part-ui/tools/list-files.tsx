@@ -13,21 +13,21 @@ export const ListFilesToolPart = ({
   minimal?: boolean;
 }) => {
   const pathWithoutPrefix = stripMountPrefix(part.input?.relative_path ?? '');
-  const streamingText = part.input?.includeDirectories
-    ? 'Listing directories...'
-    : 'Listing files...';
+  const isRoot =
+    !pathWithoutPrefix ||
+    pathWithoutPrefix === '/' ||
+    pathWithoutPrefix === '.';
+  const verb = part.input?.includeDirectories ? 'directories' : 'files';
+  const streamingText = isRoot
+    ? `Listing ${verb}...`
+    : `Listing ${verb} in ${getTruncatedFileUrl(pathWithoutPrefix)}...`;
   const finishedText =
     part.state === 'output-available' ? (
       <span className="flex min-w-0 gap-1">
         <span className="shrink-0 truncate font-medium">Listed </span>
         <span className="truncate font-normal opacity-75">
-          {part.output?.result?.totalFiles}{' '}
-          {part.input?.includeDirectories ? 'directories' : 'files'}
-          {part.input?.relative_path &&
-            pathWithoutPrefix !== '/' &&
-            pathWithoutPrefix !== '' && (
-              <> in {getTruncatedFileUrl(pathWithoutPrefix)}</>
-            )}
+          {part.output?.result?.totalFiles} {verb}
+          {!isRoot && <> in {getTruncatedFileUrl(pathWithoutPrefix)}</>}
         </span>
       </span>
     ) : undefined;

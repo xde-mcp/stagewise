@@ -1,4 +1,6 @@
 import { Button } from '@stagewise/stage-ui/components/button';
+import { IconMediaStopFill18 } from 'nucleo-ui-fill-18';
+import { IconMagicWandSparkleFill18 } from 'nucleo-ui-fill-18';
 import { stripMountPrefix } from '@/utils';
 import { Loader2Icon, XIcon } from 'lucide-react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
@@ -7,44 +9,33 @@ import type { MouseEvent } from 'react';
 import { FileIcon } from '@/components/file-icon';
 import {
   Tooltip,
-  TooltipContent,
   TooltipTrigger,
+  TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
-export type WorkspaceMdStatus = 'hidden' | 'running' | 'completed' | 'error';
-
-interface MountEntry {
-  prefix: string;
-  path: string;
-}
+export type WorkspaceMdStatus =
+  | 'hidden'
+  | 'prompt'
+  | 'running'
+  | 'completed'
+  | 'error';
 
 export interface WorkspaceMdStatusSectionProps {
   status: WorkspaceMdStatus;
+  sectionKey: string;
+  workspaceName?: string;
   history: AgentMessage[];
-  workspaceMounts?: MountEntry[];
   errorMessage?: string | null;
   onDismiss: () => void;
-  onShowFile: () => void;
+  onShowFile: (workspacePath?: string) => void;
+  onGenerate?: () => void;
+  onStop?: () => void;
 }
 
-function relativizePath(
-  filePath: string | undefined,
-  mounts: MountEntry[] | undefined,
-): string | undefined {
-  if (!filePath || !mounts || mounts.length === 0) return filePath;
-
-  const normalizedPath = stripMountPrefix(filePath);
-  for (const mount of mounts) {
-    const normalizedMount = mount.path.replace(/\/+$/, '');
-    if (normalizedPath.startsWith(normalizedMount)) {
-      const rel = normalizedPath
-        .slice(normalizedMount.length)
-        .replace(/^\/+/, '');
-      return rel || '.';
-    }
-  }
-  return filePath;
+function relativizePath(filePath: string | undefined): string | undefined {
+  if (!filePath) return filePath;
+  return stripMountPrefix(filePath) || filePath;
 }
 
 /**
@@ -52,10 +43,7 @@ function relativizePath(
  * Searches through ALL assistant messages (in reverse order) to find the
  * most recent tool part with a valid state, not just the last message.
  */
-function getStatusText(
-  history: AgentMessage[],
-  mounts: MountEntry[] | undefined,
-): string {
+function getStatusText(history: AgentMessage[]): string {
   const INITIALIZING_TEXT = 'Initializing .stagewise/WORKSPACE.md...';
   const ANALYZING_TEXT = 'Analyzing workspace...';
 
@@ -82,18 +70,14 @@ function getStatusText(
 
   switch (lastToolPart?.type) {
     case 'tool-readFileTool': {
-      const rawPath = lastToolPart.input?.relative_path;
-      const relativePath = relativizePath(rawPath, mounts);
-      const fileName = relativePath?.split('/').pop();
+      const stripped = relativizePath(lastToolPart.input?.relative_path);
+      const fileName = stripped?.split('/').pop();
       return fileName ? `Reading ${fileName}...` : 'Reading file...';
     }
     case 'tool-listFilesTool': {
-      const rawPath = lastToolPart.input?.relative_path;
-      const p = relativizePath(rawPath, mounts);
-      const relativePath = p === '' ? '/' : p === '.' ? '. ' : p;
-      return relativePath
-        ? `Listing files in ${relativePath}...`
-        : 'Listing files...';
+      const stripped = relativizePath(lastToolPart.input?.relative_path);
+      const isRoot = !stripped || stripped === '/' || stripped === '.';
+      return isRoot ? 'Listing files...' : `Listing files in ${stripped}...`;
     }
     case 'tool-globTool': {
       const pattern = lastToolPart.input?.pattern;
@@ -127,137 +111,206 @@ function getStatusText(
 function TooltipWrapper({
   children,
   showTooltip,
+  content,
 }: {
   children: React.ReactElement;
   showTooltip: boolean;
+  content: string;
 }) {
   if (!showTooltip) return children;
   return (
     <Tooltip>
       <TooltipTrigger>{children}</TooltipTrigger>
-      <TooltipContent>
-        Initializing .stagewise/WORKSPACE.md for frontend-aware workspace
-        context.
-      </TooltipContent>
+      <TooltipContent>{content}</TooltipContent>
     </Tooltip>
   );
 }
 
 export function WorkspaceMdStatusSection({
   status,
+  sectionKey,
+  workspaceName,
   history,
-  workspaceMounts,
   errorMessage,
   onDismiss,
   onShowFile,
+  onGenerate,
+  onStop,
 }: WorkspaceMdStatusSectionProps): StatusCardSection | null {
   if (status === 'hidden') return null;
 
+  const isPrompt = status === 'prompt';
   const isRunning = status === 'running';
   const isError = status === 'error';
-  const statusText = getStatusText(history, workspaceMounts);
+  const statusText = getStatusText(history);
   return {
-    key: 'project-md-status',
+    key: sectionKey,
     defaultOpen: true,
     trigger: () => (
-      <TooltipWrapper showTooltip={isRunning}>
-        <div className="flex h-6 w-full flex-row items-center justify-between gap-2 pl-1.5 text-muted-foreground text-xs hover:text-foreground has-[button:hover]:text-muted-foreground">
-          {isRunning ? (
-            <div className="flex flex-row items-center gap-1">
-              <div className="relative flex size-5 shrink-0 items-center justify-center">
-                <Loader2Icon className="size-3 animate-spin text-primary-foreground" />
-              </div>
-              <span className="shimmer-text-primary truncate font-normal">
-                Generating workspace context
-              </span>
-            </div>
-          ) : isError ? (
-            <div className="flex w-full cursor-default flex-row items-center justify-between gap-1 truncate">
-              <div className="flex size-5 shrink-0 flex-row items-center justify-center">
-                <XIcon className="size-3 shrink-0 text-foreground" />
-              </div>
-              <Tooltip>
-                <TooltipTrigger>
-                  <span className="truncate font-normal text-muted-foreground">
-                    Context initialization failed:{' '}
-                    {errorMessage ||
-                      'Failed to generate .stagewise/WORKSPACE.md'}
+      <div className="flex h-6 w-full flex-row items-center justify-between gap-2 pl-1.5 text-muted-foreground text-xs hover:text-foreground has-[button:hover]:text-muted-foreground">
+        {isPrompt ? (
+          <>
+            <Tooltip>
+              <TooltipTrigger>
+                <div className="flex shrink cursor-default flex-row items-center gap-1 truncate">
+                  <IconMagicWandSparkleFill18 className="size-3 shrink-0 text-foreground" />
+                  <span className="truncate font-normal text-foreground">
+                    {workspaceName
+                      ? `Improve context for ${workspaceName}?`
+                      : 'Improve context for the agent?'}
                   </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {errorMessage || 'Failed to generate .stagewise/WORKSPACE.md'}
-                </TooltipContent>
-              </Tooltip>
-              <div className="ml-auto flex shrink-0 flex-row items-center justify-start gap-1 pl-3">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  className="shrink-0 cursor-pointer"
-                  onClick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    onDismiss();
-                  }}
-                >
-                  Dismiss
-                </Button>
-              </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="break-word max-w-80">
+                  This will automatically generate a WORKSPACE.md file to
+                  improve agent performance.
+                </div>
+              </TooltipContent>
+            </Tooltip>
+            <div className="ml-auto flex shrink-0 flex-row items-center justify-start gap-1">
+              <Button
+                variant="ghost"
+                size="xs"
+                className="shrink-0 cursor-pointer"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  onDismiss();
+                }}
+              >
+                Dismiss
+              </Button>
+              <Button
+                variant="primary"
+                size="xs"
+                className="shrink-0 cursor-pointer"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  onGenerate?.();
+                }}
+              >
+                Generate Context
+              </Button>
             </div>
-          ) : (
-            <>
-              <div className="flex flex-row items-center gap-1 truncate">
-                <FileIcon
-                  filePath=".stagewise/WORKSPACE.md"
-                  className="size-5 shrink-0"
-                />
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="text-foreground text-xs leading-none">
-                      WORKSPACE.md
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>.stagewise/WORKSPACE.md</TooltipContent>
-                </Tooltip>
-                <span className="font-normal text-muted-foreground">
-                  generated
+          </>
+        ) : isRunning ? (
+          <div className="flex w-full shrink cursor-default flex-row items-center gap-1">
+            <TooltipWrapper showTooltip={isRunning} content={statusText}>
+              <div className="-ml-1 flex shrink flex-row items-center gap-1">
+                <div className="relative flex size-5 shrink-0 items-center justify-center">
+                  <Loader2Icon className="size-3 animate-spin text-primary-foreground" />
+                </div>
+                <span className="shimmer-text-primary truncate font-normal">
+                  Generating context for {workspaceName}...
                 </span>
               </div>
-              <div className="ml-auto flex flex-row items-center justify-start gap-1">
+            </TooltipWrapper>
+            <Tooltip>
+              <TooltipTrigger>
                 <Button
                   variant="ghost"
                   size="xs"
-                  className="shrink-0 cursor-pointer"
+                  className="ml-auto shrink-0 cursor-pointer"
                   onClick={(e: MouseEvent) => {
                     e.stopPropagation();
-                    onDismiss();
+                    onStop?.();
                   }}
                 >
-                  Done
+                  Stop
+                  <IconMediaStopFill18 className="size-2.5 shrink-0" />
                 </Button>
-                <Button
-                  variant="primary"
-                  size="xs"
-                  className="shrink-0 cursor-pointer"
-                  onClick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    onShowFile();
-                  }}
-                >
-                  Show file
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </TooltipWrapper>
+              </TooltipTrigger>
+              <TooltipContent>Stop the context generation</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : isError ? (
+          <div className="flex w-full cursor-default flex-row items-center justify-between gap-1 truncate">
+            <div className="flex size-5 shrink-0 flex-row items-center justify-center">
+              <XIcon className="size-3 shrink-0 text-foreground" />
+            </div>
+            <Tooltip>
+              <TooltipTrigger>
+                <span className="truncate font-normal text-muted-foreground">
+                  Context generation failed:{' '}
+                  {errorMessage || 'Failed to generate .stagewise/WORKSPACE.md'}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {errorMessage || 'Failed to generate .stagewise/WORKSPACE.md'}
+              </TooltipContent>
+            </Tooltip>
+            <div className="ml-auto flex shrink-0 flex-row items-center justify-start gap-1 pl-3">
+              <Button
+                variant="ghost"
+                size="xs"
+                className="shrink-0 cursor-pointer"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  onDismiss();
+                }}
+              >
+                Dismiss
+              </Button>
+              <Button
+                variant="secondary"
+                size="xs"
+                className="shrink-0 cursor-pointer"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  onGenerate?.();
+                }}
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex shrink flex-row items-center gap-1 truncate">
+              <FileIcon
+                filePath=".stagewise/WORKSPACE.md"
+                className="size-5 shrink-0"
+              />
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="text-foreground text-xs leading-none">
+                    WORKSPACE.md
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>.stagewise/WORKSPACE.md</TooltipContent>
+              </Tooltip>
+              <span className="font-normal text-muted-foreground">
+                generated
+              </span>
+            </div>
+            <div className="ml-auto flex flex-row items-center justify-start gap-1">
+              <Button
+                variant="ghost"
+                size="xs"
+                className="shrink-0 cursor-pointer"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  onDismiss();
+                }}
+              >
+                Done
+              </Button>
+              <Button
+                variant="primary"
+                size="xs"
+                className="shrink-0 cursor-pointer"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  onShowFile();
+                }}
+              >
+                Show file
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
     ),
-    contentClassName: 'px-1.5 pb-1 pt-1.5',
-    content:
-      status === 'running' ? (
-        <div className="flex flex-row items-center justify-start gap-1">
-          <span className="font-normal text-muted-foreground text-xs leading-none">
-            {statusText}
-          </span>
-        </div>
-      ) : undefined,
+    content: undefined,
   };
 }

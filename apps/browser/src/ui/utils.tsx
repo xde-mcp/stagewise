@@ -221,10 +221,10 @@ export const openFileUrl = async (url: string, filename?: string) => {
   }
 };
 
-const MOUNT_PREFIX_RE = /^w\d+\//;
+const MOUNT_PREFIX_RE = /^w[a-f0-9]+\//;
 
 /**
- * Strip a mount prefix (e.g. "w1/") from a workspace-relative path
+ * Strip a mount prefix (e.g. "w1a2b/" or "w1/") from a workspace-relative path
  * so it can be displayed without the internal addressing scheme.
  */
 export function stripMountPrefix(path: string): string {
