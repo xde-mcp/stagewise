@@ -9,6 +9,7 @@ import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { IconPlusFill18 } from 'nucleo-ui-fill-18';
 import { extractTipTapText, firstWords } from '@/utils/text-utils';
+import { useEmptyAgentId } from '@/hooks/use-empty-agent';
 import { AgentCard, AgentCardSkeleton } from './_components/agent-card';
 import { getToolActivityLabel } from './_utils/tool-label';
 
@@ -106,10 +107,12 @@ export function ActiveAgentsGrid() {
   const showActiveAgents = useKartonState(
     (s) => s.preferences.sidebar?.showActiveAgents ?? true,
   );
-  const [openAgent, setOpenAgent] = useOpenAgent();
+  const [openAgent, setOpenAgent, removeFromHistory] = useOpenAgent();
   const createAgent = useKartonProcedure((p) => p.agents.create);
   const resumeAgent = useKartonProcedure((p) => p.agents.resume);
   const deleteAgent = useKartonProcedure((p) => p.agents.delete);
+
+  const [, emptyAgentIdRef] = useEmptyAgentId();
 
   // Optimistic creation: show a skeleton card immediately while the backend
   // creates the agent. Cleared once the new agent appears in the real list.
@@ -154,6 +157,15 @@ export function ActiveAgentsGrid() {
     pendingCreate && agents.length <= agentCountAtCreateRef.current;
 
   const handleCreateAgent = useCallback(() => {
+    // Reuse an existing empty agent instead of creating a new one.
+    // Uses refs so this callback isn't recreated when pendingDeletes changes.
+    const existingEmpty = emptyAgentIdRef.current;
+    if (existingEmpty && !pendingDeletesRef.current.has(existingEmpty)) {
+      setOpenAgent(existingEmpty);
+      window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
+      return;
+    }
+
     agentCountAtCreateRef.current = agents.length;
     setPendingCreate(true);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
@@ -173,6 +185,8 @@ export function ActiveAgentsGrid() {
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(
     () => new Set(),
   );
+  const pendingDeletesRef = useRef(pendingDeletes);
+  pendingDeletesRef.current = pendingDeletes;
 
   // Stable ordering: agents keep their position in the list. New agents
   // (created or resumed) are appended at the end. Removed agents are pruned.
@@ -209,19 +223,16 @@ export function ActiveAgentsGrid() {
     }
   }, [agents, pendingDeletes]);
 
-  // When the open agent is optimistically deleted, switch to the first
-  // remaining one. Separated from handleDelete to avoid capturing
-  // openAgent/agents/pendingDeletes in the callback (which would break
-  // AgentCard's memo by changing onDelete identity every render).
+  // When the open agent is optimistically deleted, pop it from the history
+  // stack so we fall back to the previously viewed agent. Separated from
+  // handleDelete to avoid capturing openAgent/agents/pendingDeletes in the
+  // callback (which would break AgentCard's memo by changing onDelete identity
+  // every render).
   useEffect(() => {
-    if (
-      openAgent &&
-      pendingDeletes.has(openAgent) &&
-      orderedAgents.length > 0
-    ) {
-      setOpenAgent(orderedAgents[0].id);
+    if (openAgent && pendingDeletes.has(openAgent)) {
+      removeFromHistory(openAgent);
     }
-  }, [openAgent, pendingDeletes, orderedAgents, setOpenAgent]);
+  }, [openAgent, pendingDeletes, removeFromHistory]);
 
   const handleClick = useCallback(
     (id: string) => {

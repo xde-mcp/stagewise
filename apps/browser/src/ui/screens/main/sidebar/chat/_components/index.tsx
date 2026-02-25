@@ -15,7 +15,7 @@ import { useOpenAgent, OpenAgentContext } from '@/hooks/use-open-chat';
 
 export function ChatPanel() {
   const { forwardDropEvent } = useMessageEditState();
-  const [openAgent, setOpenAgent] = useOpenAgent();
+  const [openAgent, setOpenAgent, removeFromHistory] = useOpenAgent();
   const agents = useKartonState((s) => s.agents.instances);
 
   // Defer heavy chat rendering so the sidebar updates instantly while the
@@ -80,10 +80,11 @@ export function ChatPanel() {
   // the deferred value so React can schedule the heavy render as interruptible.
   const deferredContext: [
     string | null,
-    React.Dispatch<React.SetStateAction<string | null>>,
+    (id: string | null) => void,
+    (id: string) => void,
   ] = useMemo(
-    () => [deferredAgent, setOpenAgent],
-    [deferredAgent, setOpenAgent],
+    () => [deferredAgent, setOpenAgent, removeFromHistory],
+    [deferredAgent, setOpenAgent, removeFromHistory],
   );
 
   if (openAgent === null || openAgent === undefined || !agents[openAgent])
@@ -107,7 +108,17 @@ export function ChatPanel() {
       aria-label="Chat panel drop zone"
     >
       <OpenAgentContext.Provider value={deferredContext}>
-        {isTransitioning ? <div className="flex-1" /> : <ChatHistory />}
+        {isTransitioning ? (
+          <div
+            className={
+              agents[deferredAgent ?? '']?.state.history?.length
+                ? 'flex-1'
+                : 'h-0'
+            }
+          />
+        ) : (
+          <ChatHistory />
+        )}
       </OpenAgentContext.Provider>
       <ChatPanelFooter key={openAgent} />
     </div>

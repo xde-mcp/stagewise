@@ -28,6 +28,7 @@ import {
   type AgentHistoryEntry,
 } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
+import { useEmptyAgentId } from '@/hooks/use-empty-agent';
 import { AgentsSelector, type AgentGroup } from './_components/agents-selector';
 
 // Static menu items — no component state captured, safe at module scope.
@@ -117,7 +118,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   const showActiveAgentsPref = useKartonState(
     (s) => s.preferences.sidebar?.showActiveAgents ?? true,
   );
-  const [openAgent, setOpenAgent] = useOpenAgent();
+  const [openAgent, setOpenAgent, removeFromHistory] = useOpenAgent();
 
   // Narrow selector: only re-renders when the open agent's model changes.
   // Used by createAgentAndFocus (via ref) to seed the new chat with the same model.
@@ -131,6 +132,14 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     openAgent
       ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
       : EMPTY_MOUNTS,
+  );
+
+  // Whether the currently open agent has any history messages.
+  // Used (via ref) to decide whether to forward the draft input to a new agent.
+  const openAgentHasHistory = useKartonState((s) =>
+    openAgent
+      ? (s.agents.instances[openAgent]?.state.history.length ?? 0) > 0
+      : false,
   );
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
@@ -224,12 +233,24 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     });
   }, [activeAgentIds]);
 
-  // If the open agent isn't active anymore, we need to update the open agent to the first active agent.
+  // If the open agent was removed, pop it from the history stack. The
+  // fallback parameter ensures that when the stack is empty, we jump
+  // straight to the first active agent in one render instead of going
+  // through null → pick.
+  // On initial load (openAgent === null), pick the first active agent.
   useEffect(() => {
-    if (!openAgent || !activeAgentIdSet.has(openAgent)) {
+    if (openAgent && !activeAgentIdSet.has(openAgent)) {
+      removeFromHistory(openAgent, activeAgentIds[0] ?? null);
+    } else if (!openAgent && activeAgentIds.length > 0) {
       setOpenAgent(activeAgentIds[0]);
     }
-  }, [openAgent, activeAgentIdSet, activeAgentIds]);
+  }, [
+    openAgent,
+    activeAgentIdSet,
+    activeAgentIds,
+    removeFromHistory,
+    setOpenAgent,
+  ]);
 
   // FIX 1: Defer markChatAsViewed to avoid triggering a re-render cascade during chat switch.
   // Uses requestIdleCallback (with setTimeout fallback) so the lastViewedChats state update
@@ -310,6 +331,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     ];
   }, [sortedHistory, activeAgentsList, timeTick]);
 
+  const [, emptyAgentIdRef] = useEmptyAgentId();
+
   // Get draft getter from context (provided by panel-footer)
   const { getDraft } = useChatDraft();
 
@@ -324,6 +347,8 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   openAgentModelIdRef.current = openAgentModelId;
   const currentMountPathsRef = useRef(currentMounts.map((m) => m.path));
   currentMountPathsRef.current = currentMounts.map((m) => m.path);
+  const openAgentHasHistoryRef = useRef(openAgentHasHistory);
+  openAgentHasHistoryRef.current = openAgentHasHistory;
 
   // Load more history entries when the user scrolls to the bottom of the list.
   const loadMoreHistory = useCallback(() => {
@@ -354,7 +379,20 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   // openAgentModelId is read via ref — it's only needed at invocation time
   // and should NOT cause this callback to be recreated on model changes.
   const createAgentAndFocus = useCallback(async () => {
-    const currentInputState = getDraft();
+    // Reuse an existing empty agent instead of creating a new one.
+    const existingEmpty = emptyAgentIdRef.current;
+    if (existingEmpty) {
+      setOpenAgent(existingEmpty);
+      window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
+      return;
+    }
+
+    // Only forward the draft input if the current agent has history;
+    // an agent with no history means the user never sent a message, so
+    // the new agent should start clean.
+    const currentInputState = openAgentHasHistoryRef.current
+      ? getDraft()
+      : undefined;
     const currentModelId = openAgentModelIdRef.current ?? undefined;
     const paths = currentMountPathsRef.current;
     const newAgent = await createAgent(
