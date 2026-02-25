@@ -159,7 +159,7 @@ function ScrollFadeCodeBlock({
 // Workspace Settings Section
 // =============================================================================
 
-function WorkspaceSettingsSection() {
+function WorkspaceSettingsSection({ scrollReady }: { scrollReady: boolean }) {
   const { workspace: targetWorkspace } = Route.useSearch();
   const workspaceMounts = useKartonState((s) => s.workspaceMounts);
   const getContextFiles = useKartonProcedure((s) => s.getContextFiles);
@@ -233,6 +233,7 @@ function WorkspaceSettingsSection() {
           }
           defaultOpen={workspaceMounts.length === 1}
           targetWorkspace={targetWorkspace}
+          scrollReady={scrollReady}
         />
       ))}
     </div>
@@ -245,12 +246,14 @@ function WorkspaceContextSection({
   agentsMd,
   defaultOpen,
   targetWorkspace,
+  scrollReady,
 }: {
   workspacePath: string;
   workspaceMd: ContextFilesResult[string]['workspaceMd'];
   agentsMd: ContextFilesResult[string]['agentsMd'];
   defaultOpen: boolean;
   targetWorkspace: string;
+  scrollReady: boolean;
 }) {
   const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
   const generateWorkspaceMd = useKartonProcedure((s) => s.generateWorkspaceMd);
@@ -263,13 +266,13 @@ function WorkspaceContextSection({
   const [isOpen, setIsOpen] = useState(defaultOpen || isTarget);
 
   useEffect(() => {
-    if (isTarget && sectionRef.current) {
+    if (isTarget && scrollReady && sectionRef.current) {
       sectionRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       });
     }
-  }, [isTarget]);
+  }, [isTarget, scrollReady]);
 
   const folderName = useMemo(
     () =>
@@ -854,6 +857,7 @@ function ModelProvidersSection() {
 
 function Page() {
   const navigate = useNavigate();
+  const [scrollReady, setScrollReady] = useState(false);
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -867,7 +871,11 @@ function Page() {
       </div>
 
       {/* Content */}
-      <OverlayScrollbar className="flex-1" contentClassName="px-6 pt-6 pb-24">
+      <OverlayScrollbar
+        className="flex-1"
+        contentClassName="px-6 pt-6 pb-24"
+        onInitialized={() => setScrollReady(true)}
+      >
         <div className="mx-auto max-w-4xl space-y-8">
           {/* Editor Section */}
           <section className="space-y-6">
@@ -935,7 +943,7 @@ function Page() {
               </p>
             </div>
 
-            <WorkspaceSettingsSection />
+            <WorkspaceSettingsSection scrollReady={scrollReady} />
           </section>
         </div>
       </OverlayScrollbar>
