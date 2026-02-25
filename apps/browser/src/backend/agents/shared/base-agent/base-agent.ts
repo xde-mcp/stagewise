@@ -1826,12 +1826,25 @@ export abstract class BaseAgent<
     operation: string,
     extra?: Record<string, unknown>,
   ) {
+    const errAny = error as unknown as Record<string, unknown>;
+    const apiErrorContext: Record<string, unknown> = {};
+    if (errAny.statusCode !== undefined)
+      apiErrorContext.statusCode = errAny.statusCode;
+    if (errAny.url !== undefined) apiErrorContext.url = errAny.url;
+    if (errAny.isRetryable !== undefined)
+      apiErrorContext.isRetryable = errAny.isRetryable;
+    if (typeof errAny.responseBody === 'string')
+      apiErrorContext.responseBody = errAny.responseBody.slice(0, 4000);
+    if (errAny.cause instanceof Error)
+      apiErrorContext.causeMessage = errAny.cause.message;
+
     this.telemetryService.captureException(error, {
       service: 'base-agent',
       operation,
       modelId: this.state.get().activeModelId,
       agentType: this.agentType,
       instanceId: this.instanceId,
+      ...apiErrorContext,
       ...extra,
     });
   }
