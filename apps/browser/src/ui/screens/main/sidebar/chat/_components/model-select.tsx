@@ -1,7 +1,6 @@
 import { Combobox as ComboboxBase } from '@base-ui/react/combobox';
 import {
   Combobox,
-  ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
   ComboboxInput,
@@ -24,6 +23,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/utils';
+import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 
 // ============================================================================
 // Types
@@ -130,6 +130,29 @@ export const ModelSelect = memo(function ModelSelect({
     return groups;
   }, [modelOptions]);
 
+  // Search / filter state
+  const [query, setQuery] = useState('');
+
+  const filteredGroupedModels = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q === '') return groupedModels;
+
+    return groupedModels
+      .map(({ label, models }) => ({
+        label,
+        models: models.filter(
+          (m) =>
+            m.displayName.toLowerCase().includes(q) ||
+            m.modelId.toLowerCase().includes(q),
+        ),
+      }))
+      .filter(({ models }) => models.length > 0);
+  }, [groupedModels, query]);
+
+  const hasFilteredResults = filteredGroupedModels.some(
+    (g) => g.models.length > 0,
+  );
+
   // Display label for the trigger
   const selectedDisplayName = useMemo(() => {
     if (!selectedModel) return 'Select model';
@@ -142,6 +165,12 @@ export const ModelSelect = memo(function ModelSelect({
   const [hoveredModel, setHoveredModel] = useState<ModelOption | null>(null);
   const [itemCenterY, setItemCenterY] = useState(0);
   const [sidePanelOffset, setSidePanelOffset] = useState(0);
+
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const { maskStyle: listMaskStyle } = useScrollFadeMask(listScrollRef, {
+    axis: 'vertical',
+    fadeDistance: 16,
+  });
 
   useLayoutEffect(() => {
     if (!hoveredModel || !sidePanelRef.current || !containerRef.current) return;
@@ -184,7 +213,10 @@ export const ModelSelect = memo(function ModelSelect({
   );
 
   const handleOpenChange = useCallback((open: boolean) => {
-    if (!open) setHoveredModel(null);
+    if (!open) {
+      setHoveredModel(null);
+      setQuery('');
+    }
   }, []);
 
   return (
@@ -192,6 +224,7 @@ export const ModelSelect = memo(function ModelSelect({
       value={selectedModel}
       onValueChange={handleValueChange}
       onOpenChange={handleOpenChange}
+      filter={null}
     >
       <ComboboxBase.Trigger
         className={cn(
@@ -231,12 +264,21 @@ export const ModelSelect = memo(function ModelSelect({
               )}
             >
               <div className="mb-1 rounded-md">
-                <ComboboxInput size="xs" placeholder="Search…" />
+                <ComboboxInput
+                  size="xs"
+                  placeholder="Search…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
               </div>
 
-              <div className="scrollbar-subtle max-h-48 overflow-y-auto">
+              <div
+                ref={listScrollRef}
+                className="mask-alpha scrollbar-subtle max-h-48 overflow-y-auto"
+                style={listMaskStyle}
+              >
                 <ComboboxList>
-                  {groupedModels.map(({ label, models }) =>
+                  {filteredGroupedModels.map(({ label, models }) =>
                     label ? (
                       <ComboboxGroup key={label}>
                         <ComboboxGroupLabel>{label}</ComboboxGroupLabel>
@@ -261,7 +303,11 @@ export const ModelSelect = memo(function ModelSelect({
                 </ComboboxList>
               </div>
 
-              <ComboboxEmpty />
+              {!hasFilteredResults && (
+                <div className="px-2 py-1.5 text-muted-foreground text-xs">
+                  No results
+                </div>
+              )}
             </ComboboxBase.Popup>
 
             {/* Animated side panel for model details */}
