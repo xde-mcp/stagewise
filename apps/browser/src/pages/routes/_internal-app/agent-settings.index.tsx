@@ -217,6 +217,7 @@ function WorkspaceSettingsSection({ scrollReady }: { scrollReady: boolean }) {
         <WorkspaceContextSection
           key={mount.path}
           workspacePath={mount.path}
+          skills={mount.skills}
           workspaceMd={
             contextFiles?.[mount.path]?.workspaceMd ?? {
               exists: mount.workspaceMdContent !== null,
@@ -242,6 +243,7 @@ function WorkspaceSettingsSection({ scrollReady }: { scrollReady: boolean }) {
 
 function WorkspaceContextSection({
   workspacePath,
+  skills,
   workspaceMd,
   agentsMd,
   defaultOpen,
@@ -249,6 +251,7 @@ function WorkspaceContextSection({
   scrollReady,
 }: {
   workspacePath: string;
+  skills: Array<{ name: string; description: string }>;
   workspaceMd: ContextFilesResult[string]['workspaceMd'];
   agentsMd: ContextFilesResult[string]['agentsMd'];
   defaultOpen: boolean;
@@ -288,6 +291,13 @@ function WorkspaceContextSection({
     preferences?.agent?.workspaceSettings?.[workspacePath]?.respectAgentsMd ??
     false;
 
+  const disabledSkills = useMemo(
+    () =>
+      preferences?.agent?.workspaceSettings?.[workspacePath]?.disabledSkills ??
+      [],
+    [preferences, workspacePath],
+  );
+
   const handleGenerate = useCallback(async () => {
     await generateWorkspaceMd(workspacePath);
   }, [generateWorkspaceMd, workspacePath]);
@@ -321,6 +331,46 @@ function WorkspaceContextSection({
       await updatePreferences(patches);
     },
     [workspacePath, preferences, updatePreferences],
+  );
+
+  const handleToggleSkill = useCallback(
+    async (skillName: string, enabled: boolean) => {
+      const currentSettings =
+        preferences?.agent?.workspaceSettings?.[workspacePath];
+      const current = currentSettings?.disabledSkills ?? [];
+      const next = enabled
+        ? current.filter((s) => s !== skillName)
+        : [...current, skillName];
+
+      const patches: Patch[] = currentSettings
+        ? [
+            {
+              op: 'replace' as const,
+              path: [
+                'agent',
+                'workspaceSettings',
+                workspacePath,
+                'disabledSkills',
+              ],
+              value: next,
+            },
+          ]
+        : [
+            {
+              op: 'add' as const,
+              path: ['agent', 'workspaceSettings', workspacePath],
+              value: { respectAgentsMd: false, disabledSkills: next },
+            },
+          ];
+
+      await updatePreferences(patches);
+    },
+    [workspacePath, preferences, updatePreferences],
+  );
+
+  const sortedSkills = useMemo(
+    () => [...skills].sort((a, b) => a.name.localeCompare(b.name)),
+    [skills],
   );
 
   const showAgentsMd = respectAgentsMd && agentsMd.exists;
@@ -361,28 +411,61 @@ function WorkspaceContextSection({
         </CollapsibleTrigger>
         <CollapsibleContent className="px-4 pb-4">
           <div className="space-y-4">
-            {/* AGENTS.md toggle */}
-            <div
-              className="flex cursor-pointer items-center gap-4 rounded-lg border border-derived p-3"
-              onClick={() => handleToggleAgentsMd(!respectAgentsMd)}
-            >
-              <IconFileContentFillDuo18 className="size-5 shrink-0 text-muted-foreground" />
-              <div className="flex-1">
-                <h3 className="font-medium text-foreground text-sm">
-                  Include AGENTS.md
-                </h3>
+            {/* Skills */}
+            <div className="space-y-2">
+              <h3 className="font-medium text-foreground text-sm">Skills</h3>
+              {sortedSkills.length > 0 ? (
+                <div className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-derived">
+                  {sortedSkills.map((skill) => {
+                    const isEnabled = !disabledSkills.includes(skill.name);
+                    return (
+                      <div
+                        key={skill.name}
+                        className="flex cursor-pointer items-center gap-4 p-3"
+                        onClick={() =>
+                          handleToggleSkill(skill.name, !isEnabled)
+                        }
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={cn(
+                              'font-medium text-sm',
+                              isEnabled
+                                ? 'text-foreground'
+                                : 'text-muted-foreground',
+                            )}
+                          >
+                            {skill.name}
+                          </p>
+                          <p
+                            className={cn(
+                              'text-xs',
+                              isEnabled
+                                ? 'text-muted-foreground'
+                                : 'text-subtle-foreground',
+                            )}
+                          >
+                            {skill.description}
+                          </p>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={(checked) =>
+                              handleToggleSkill(skill.name, checked)
+                            }
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
                 <p className="text-muted-foreground text-xs">
-                  Usually not needed — stagewise manages project context
-                  automatically.
+                  No skills detected in this workspace.
                 </p>
-              </div>
-              <div onClick={(e) => e.stopPropagation()}>
-                <Switch
-                  checked={respectAgentsMd}
-                  onCheckedChange={handleToggleAgentsMd}
-                  size="sm"
-                />
-              </div>
+              )}
             </div>
 
             {/* Empty state: no WORKSPACE.md yet */}
@@ -413,37 +496,62 @@ function WorkspaceContextSection({
               </div>
             )}
 
-            {/* Context files viewer */}
-            {hasAnyContextFile && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
+            {/* Context files */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-medium text-foreground text-sm">
+                  Context files
+                </h3>
+                {workspaceMd.exists && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleGenerate}
+                        disabled={isGenerating}
+                      >
+                        {isGenerating ? (
+                          <Loader2Icon className="size-3 animate-spin" />
+                        ) : (
+                          <RefreshCwIcon className="size-3" />
+                        )}
+                        {isGenerating ? 'Updating…' : 'Update WORKSPACE.md'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Re-analyze your project and update the WORKSPACE.md
+                      context file.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+
+              {/* AGENTS.md toggle */}
+              <div
+                className="flex cursor-pointer items-center gap-4 rounded-lg border border-derived p-3"
+                onClick={() => handleToggleAgentsMd(!respectAgentsMd)}
+              >
+                <IconFileContentFillDuo18 className="size-5 shrink-0 text-muted-foreground" />
+                <div className="flex-1">
                   <h3 className="font-medium text-foreground text-sm">
-                    Context files
+                    Include AGENTS.md
                   </h3>
-                  {workspaceMd.exists && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={handleGenerate}
-                          disabled={isGenerating}
-                        >
-                          {isGenerating ? (
-                            <Loader2Icon className="size-3 animate-spin" />
-                          ) : (
-                            <RefreshCwIcon className="size-3" />
-                          )}
-                          {isGenerating ? 'Updating…' : 'Update WORKSPACE.md'}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Re-analyze your project and update the WORKSPACE.md
-                        context file.
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+                  <p className="text-muted-foreground text-xs">
+                    Usually not needed — stagewise manages project context
+                    automatically.
+                  </p>
                 </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Switch
+                    checked={respectAgentsMd}
+                    onCheckedChange={handleToggleAgentsMd}
+                    size="sm"
+                  />
+                </div>
+              </div>
+
+              {hasAnyContextFile && (
                 <Tabs defaultValue={defaultTab} className="w-full">
                   <TabsList className="max-w-96">
                     {workspaceMd.exists && (
@@ -494,8 +602,8 @@ function WorkspaceContextSection({
                     </TabsContent>
                   )}
                 </Tabs>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </CollapsibleContent>
       </div>
