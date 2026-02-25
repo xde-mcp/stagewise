@@ -12,13 +12,19 @@ import type { ChatInputHandle } from '@/screens/main/sidebar/chat/_components/ch
 import { useKartonProcedure } from '@/hooks/use-karton';
 import posthog from 'posthog-js';
 
+const MAX_BASE64_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+
 /**
- * Electron enriches File objects from drag-and-drop / file input
- * with an absolute filesystem path. Clipboard pastes and
- * programmatically constructed Files do not have this property.
+ * Resolve the absolute filesystem path for a File object.
+ * Uses Electron's webUtils.getPathForFile() exposed via the preload bridge.
+ * Returns an empty string for clipboard-pasted or programmatically constructed Files.
  */
-interface ElectronFile extends File {
-  path?: string;
+function getFilePath(file: File): string {
+  try {
+    return (window as any).electron?.getPathForFile?.(file) ?? '';
+  } catch {
+    return '';
+  }
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -96,26 +102,36 @@ export function useFileAttachments(
       }
 
       if (agentId) {
-        const filePath = (file as ElectronFile).path;
-        const storePromise = filePath
-          ? storeAttachmentByPath(
+        const filePath = getFilePath(file);
+        let storePromise: Promise<void>;
+        if (filePath) {
+          storePromise = storeAttachmentByPath(
+            agentId,
+            id,
+            mediaType,
+            fileName,
+            sizeBytes,
+            filePath,
+          );
+        } else if (sizeBytes > MAX_BASE64_FILE_SIZE) {
+          storePromise = Promise.reject(
+            new Error(
+              `File "${fileName}" (${(sizeBytes / 1024 / 1024).toFixed(0)} MB) is too large for in-memory transfer. ` +
+                'Drop the file from Finder to use zero-copy transfer.',
+            ),
+          );
+        } else {
+          storePromise = fileToBase64(file).then((base64) =>
+            storeAttachment(
               agentId,
               id,
               mediaType,
               fileName,
               sizeBytes,
-              filePath,
-            )
-          : fileToBase64(file).then((base64) =>
-              storeAttachment(
-                agentId,
-                id,
-                mediaType,
-                fileName,
-                sizeBytes,
-                base64,
-              ),
-            );
+              base64,
+            ),
+          );
+        }
 
         storePromise.catch((err: unknown) => {
           console.error(

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { MessagePortProxy } from '@stagewise/karton/client';
 import type { KartonMessage } from '@stagewise/karton/shared';
 
@@ -200,5 +200,16 @@ contextBridge.exposeInMainWorld('electron', {
    */
   syncThemeColors: (colors: { isDark: boolean; theme: ThemeColorPayload }) => {
     ipcRenderer.send('sync-theme-colors', colors);
+  },
+  /**
+   * Get the absolute filesystem path for a File object from drag-and-drop or file input.
+   * Returns an empty string for clipboard-pasted or programmatically constructed Files.
+   */
+  getPathForFile: (file: File): string => {
+    try {
+      return webUtils.getPathForFile(file);
+    } catch {
+      return '';
+    }
   },
 });
