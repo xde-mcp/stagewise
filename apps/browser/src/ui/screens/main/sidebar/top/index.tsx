@@ -331,7 +331,12 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     ];
   }, [sortedHistory, activeAgentsList, timeTick]);
 
-  const [, emptyAgentIdRef] = useEmptyAgentId();
+  const [emptyAgentId, emptyAgentIdRef] = useEmptyAgentId();
+
+  // The button is only enabled when creating/switching would actually do
+  // something: disabled when the open agent is already the empty agent
+  // (clicking would be a no-op since createAgentAndFocus just refocuses it).
+  const canCreateAgent = openAgent !== null && emptyAgentId !== openAgent;
 
   // Get draft getter from context (provided by panel-footer)
   const { getDraft } = useChatDraft();
@@ -409,9 +414,12 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     void createAgentAndFocus();
   }, [createAgentAndFocus]);
 
-  // Hotkey: CTRL+N to create new agent chat (disabled when agent is working)
+  // Hotkey: CTRL+N to create new agent chat (works regardless of which section
+  // shows the "Add agent" button — top section or active agents grid).
+  // Disabled when the open agent is already empty (nothing to create).
   useHotKeyListener(() => {
-    if (showNewChatButton) void createAgentAndFocus();
+    if (openAgent !== null && emptyAgentIdRef.current !== openAgent)
+      void createAgentAndFocus();
   }, HotkeyActions.NEW_CHAT);
 
   const resumeAgentRef = useRef(resumeAgent);
@@ -454,6 +462,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
                   variant="ghost"
                   size="icon-xs"
                   className="shrink-0"
+                  disabled={!canCreateAgent}
                   onClick={handleCreateAgent}
                 >
                   <IconPlusFill18 className="size-4" />
