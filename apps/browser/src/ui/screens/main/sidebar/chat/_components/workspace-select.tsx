@@ -3,6 +3,7 @@ import { IconPlusFill18, IconXmarkFill18 } from 'nucleo-ui-fill-18';
 import {
   IconFolder5Outline18,
   IconPenDrawSparkleOutline18,
+  IconCodeBranchOutline18,
 } from 'nucleo-ui-outline-18';
 import {
   Tooltip,
@@ -17,7 +18,7 @@ import {
 import { Switch } from '@stagewise/stage-ui/components/switch';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { cn } from '@stagewise/stage-ui/lib/utils';
-import { CheckIcon, XIcon, GitBranchIcon, Loader2Icon } from 'lucide-react';
+import { CheckIcon, XIcon, Loader2Icon } from 'lucide-react';
 
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
@@ -481,7 +482,7 @@ function WorkspacePreviewCardContent({
             {name}
           </span>
           {mount.isGitRepo && (
-            <GitBranchIcon className="size-3 shrink-0 text-muted-foreground" />
+            <IconCodeBranchOutline18 className="size-3 shrink-0 text-muted-foreground" />
           )}
         </div>
         <span
