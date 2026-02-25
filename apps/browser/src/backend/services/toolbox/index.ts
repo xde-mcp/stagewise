@@ -553,24 +553,31 @@ export class ToolboxService extends DisposableService {
   }
 
   public async getSkillsList(agentInstanceId: string): Promise<Skill[]> {
-    const mountsWithRt =
-      this.mountManagerService?.getMountedRuntimes(agentInstanceId);
-    if (!mountsWithRt) return [];
-    if (mountsWithRt.size === 0) return [];
-
-    const allSkills = await Promise.all(
-      [...mountsWithRt.values()].map((m) => getSkills(m)),
-    );
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    if (!mounts) return [];
+    if (mounts.length === 0) return [];
 
     const seen = new Set<string>();
     const result: Skill[] = [];
-    for (const skills of allSkills) {
+
+    for (const mount of mounts) {
+      const settings = this.uiKarton.state.preferences?.agent
+        ?.workspaceSettings?.[mount.path] ?? {
+        respectAgentsMd: false,
+        disabledSkills: [],
+      };
+      const disabled = new Set(settings.disabledSkills);
+      const skills = await getSkills(mount.clientRuntime);
+
       for (const skill of skills) {
         if (seen.has(skill.name)) continue;
         seen.add(skill.name);
+        if (disabled.has(skill.name)) continue;
         result.push(skill);
       }
     }
+
     return result;
   }
 
@@ -585,7 +592,7 @@ export class ToolboxService extends DisposableService {
         mount.prefix,
         this.uiKarton.state.preferences?.agent?.workspaceSettings?.[
           mount.path
-        ] ?? { respectAgentsMd: false },
+        ] ?? { respectAgentsMd: false, disabledSkills: [] },
       );
     }
     return result;
@@ -601,7 +608,10 @@ export class ToolboxService extends DisposableService {
     const results: Array<{ mountPrefix: string; content: string }> = [];
     for (const mount of mounts) {
       const settings = this.uiKarton.state.preferences?.agent
-        ?.workspaceSettings?.[mount.path] ?? { respectAgentsMd: false };
+        ?.workspaceSettings?.[mount.path] ?? {
+        respectAgentsMd: false,
+        disabledSkills: [],
+      };
       if (!settings.respectAgentsMd) continue;
       const content = await readAgentsMd(mount.clientRuntime);
       if (content) results.push({ mountPrefix: mount.prefix, content });

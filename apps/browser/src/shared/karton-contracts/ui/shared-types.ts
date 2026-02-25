@@ -315,6 +315,8 @@ export type PageSetting = z.infer<typeof pageSettingSchema>;
 export const workspaceAgentSettingsSchema = z.object({
   /** Whether the AGENTS.md file is included in the agent's system prompt */
   respectAgentsMd: z.boolean().default(false),
+  /** Skill names that have been disabled by the user */
+  disabledSkills: z.array(z.string()).default([]),
 });
 
 export type WorkspaceAgentSettings = z.infer<
