@@ -36,6 +36,7 @@ export interface AgentEntry {
   lastMessageAt: Date;
   messageCount: number;
   isWorking?: boolean;
+  unread?: boolean;
 }
 
 export interface AgentGroup {
@@ -49,7 +50,6 @@ export interface AgentsSelectorProps {
   onValueChange: (id: string) => void;
   onDelete: (id: string) => void;
   onEndReached?: () => void;
-  lastViewedChats: Record<string, number>;
 }
 
 // ============================================================================
@@ -89,7 +89,6 @@ export const AgentsSelector = memo(function AgentsSelector({
   onValueChange,
   onDelete,
   onEndReached,
-  lastViewedChats,
 }: AgentsSelectorProps) {
   const [inputValue, setInputValue] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -211,18 +210,8 @@ export const AgentsSelector = memo(function AgentsSelector({
               <ComboboxGroup key={label}>
                 <ComboboxGroupLabel>{label}</ComboboxGroupLabel>
                 {agents.map((agent) => {
-                  const lastViewedAt = lastViewedChats[agent.id] ?? 0;
-                  const hasTracking = agent.id in lastViewedChats;
-                  const lastMsgTime = new Date(agent.lastMessageAt).getTime();
-                  const dayAgo = Date.now() - 86_400_000;
                   const isOpen = agent.id === value;
-                  const hasUnseen =
-                    hasTracking &&
-                    !agent.isWorking &&
-                    !isOpen &&
-                    agent.messageCount > 0 &&
-                    lastMsgTime > lastViewedAt &&
-                    lastMsgTime > dayAgo;
+                  const hasUnseen = !isOpen && !!agent.unread;
 
                   return (
                     <ComboboxItem

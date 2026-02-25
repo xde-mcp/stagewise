@@ -25,6 +25,7 @@ export type AgentState = {
   inputState: string; // Serialized input state - may be simple text or some stringified object if our input field needs that.
   usedTokens: number;
   error?: { code?: number; message: string; stack?: string }; // Current error state (not persisted, only available during runtime for UI display)
+  unread?: boolean; // Whether the agent has unseen output (not persisted, set on finish/error, cleared by markAsRead)
 };
 
 export type ToolboxState = {

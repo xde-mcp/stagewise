@@ -1266,6 +1266,9 @@ export abstract class BaseAgent<
           } else {
             this.state.set((draft) => {
               draft.isWorking = false;
+              if (draft.history.some((m) => m.role === 'assistant')) {
+                draft.unread = true;
+              }
             });
             this.onIdle();
           }
@@ -1280,6 +1283,7 @@ export abstract class BaseAgent<
           if (this._stepGeneration === stepGen) {
             this.state.set((draft) => {
               draft.isWorking = false;
+              draft.unread = true;
               draft.error = {
                 message: `Internal error: ${error.message ?? 'Unknown error'}`,
                 stack: error.stack,
@@ -1298,6 +1302,7 @@ export abstract class BaseAgent<
         this.report(error, 'streamText');
         this.state.set((draft) => {
           draft.isWorking = false;
+          draft.unread = true;
           draft.error = {
             message: `LLM provider error: ${error.message}`,
             stack: error.stack,
@@ -1372,6 +1377,7 @@ export abstract class BaseAgent<
       this.stepAbortController = null;
       this.state.set((draft) => {
         draft.isWorking = false;
+        draft.unread = true;
         draft.error = {
           message: `Internal error: ${error.message ?? 'Unknown error'}`,
           stack: error.stack,

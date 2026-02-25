@@ -694,6 +694,7 @@ export type KartonContract = {
         undoToolCalls: boolean,
       ) => Promise<string>;
       retryLastUserMessage: (agentId: string) => Promise<void>;
+      markAsRead: (agentId: string) => Promise<void>;
       setActiveModelId: (agentId: string, modelId: ModelId) => Promise<void>;
       storeAttachment: (
         agentId: string,
@@ -756,7 +757,6 @@ export type KartonContract = {
           } | null,
         ) => Promise<void>;
       };
-      markChatAsViewed: (agentId: string) => Promise<void>;
       setHasSeenOnboardingFlow: (
         value: boolean,
         suggestion?: { id: string; url: string; prompt: string },

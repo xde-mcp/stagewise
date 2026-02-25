@@ -242,6 +242,18 @@ export class AgentManagerService extends DisposableService {
       },
     );
     this.karton.registerServerProcedureHandler(
+      'agents.markAsRead',
+      async (_callingClientId: string, instanceId: string) => {
+        if (this.karton.state.agents.instances[instanceId]) {
+          this.karton.setState((draft) => {
+            if (draft.agents.instances[instanceId]) {
+              draft.agents.instances[instanceId].state.unread = false;
+            }
+          });
+        }
+      },
+    );
+    this.karton.registerServerProcedureHandler(
       'agents.setActiveModelId',
       async (
         _callingClientId: string,

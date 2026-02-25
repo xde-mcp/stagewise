@@ -74,6 +74,7 @@ type ActiveAgentSummary = {
   messageCount: number;
   parentAgentInstanceId: string | null;
   isWorking: boolean;
+  unread: boolean;
 };
 
 /**
@@ -97,6 +98,7 @@ function activeAgentListEqual(
       ai.title !== bi.title ||
       ai.messageCount !== bi.messageCount ||
       ai.isWorking !== bi.isWorking ||
+      ai.unread !== bi.unread ||
       ai.parentAgentInstanceId !== bi.parentAgentInstanceId ||
       ai.createdAt.getTime() !== bi.createdAt.getTime() ||
       ai.lastMessageAt.getTime() !== bi.lastMessageAt.getTime()
@@ -143,16 +145,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
   );
 
   const createTab = useKartonProcedure((p) => p.browser.createTab);
-  const markChatAsViewed = useKartonProcedure(
-    (p) => p.userExperience.markChatAsViewed,
-  );
-  // shallow compare: Record<string, number> — prevents re-renders when
-  // unrelated storedExperienceData fields change.
-  const lastViewedChats = useKartonState(
-    useComparingSelector(
-      (s) => s.userExperience.storedExperienceData.lastViewedChats,
-    ),
-  );
+  const markAsRead = useKartonProcedure((p) => p.agents.markAsRead);
 
   // Tick every 5 minutes to refresh time-ago labels and groupings.
   // The labels (Today, Yesterday, 2 days ago…) don't change meaningfully every minute,
@@ -188,6 +181,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
             messageCount: agent.state.history.length,
             parentAgentInstanceId: agent.parentAgentInstanceId,
             isWorking: agent.state.isWorking,
+            unread: !!agent.state.unread,
           }))
           .sort(
             (a, b) =>
@@ -252,35 +246,19 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     setOpenAgent,
   ]);
 
-  // FIX 1: Defer markChatAsViewed to avoid triggering a re-render cascade during chat switch.
-  // Uses requestIdleCallback (with setTimeout fallback) so the lastViewedChats state update
-  // happens after the browser has finished painting the new chat, not during the switch.
+  // Mark the open agent as read when the user switches to it.
   useEffect(() => {
-    if (!openAgent) return;
-    const schedule =
-      typeof requestIdleCallback === 'function'
-        ? requestIdleCallback
-        : (cb: () => void) => setTimeout(cb, 150);
-    const cancel =
-      typeof cancelIdleCallback === 'function'
-        ? cancelIdleCallback
-        : clearTimeout;
-    const id = schedule(() => {
-      void markChatAsViewed(openAgent);
-    });
-    return () => {
-      cancel(id as number);
-      // Still mark on cleanup (when leaving chat) but deferred
-      if (openAgent) {
-        const cleanupId = schedule(() => {
-          void markChatAsViewed(openAgent);
-        });
-        // Can't cancel cleanup from here, but it's fire-and-forget
-        void cleanupId;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when openAgent changes, not when procedure reference changes
-  }, [openAgent]);
+    if (openAgent) void markAsRead(openAgent);
+  }, [openAgent, markAsRead]);
+
+  // Reactive clear: if the agent finishes while the user is already looking
+  // at it, immediately mark it as read so the pulse never appears.
+  const openAgentUnread = useKartonState((s) =>
+    openAgent ? !!s.agents.instances[openAgent]?.state.unread : false,
+  );
+  useEffect(() => {
+    if (openAgent && openAgentUnread) void markAsRead(openAgent);
+  }, [openAgent, openAgentUnread, markAsRead]);
 
   const showChatListButton = agentsList.length > 0 || activeAgentIdSet.size > 1;
   // Hide the new-chat button when the ActiveAgentsGrid is visible
@@ -314,12 +292,14 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
       lastMessageAt: Date;
       messageCount: number;
       isWorking?: boolean;
+      unread?: boolean;
     }) => ({
       id: a.id,
       title: a.title,
       lastMessageAt: a.lastMessageAt,
       messageCount: a.messageCount,
       isWorking: a.isWorking,
+      unread: a.unread,
     });
 
     return [
@@ -483,7 +463,6 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
               onValueChange={handleAgentSelect}
               onDelete={handleDeleteAgent}
               onEndReached={loadMoreHistory}
-              lastViewedChats={lastViewedChats}
             />
           )}
           <Select

@@ -9,7 +9,6 @@
 import {
   recentlyOpenedWorkspacesArraySchema,
   onboardingStateSchema,
-  lastViewedChatsSchema,
   type StoredExperienceData,
   type RecentlyOpenedWorkspace,
   type InspirationWebsite,
@@ -53,11 +52,6 @@ export class UserExperienceService extends DisposableService {
 
   // Track last synced storedExperienceData to prevent infinite loops
   private lastSyncedStoredExperienceData: string | null = null;
-
-  // Serialize markChatAsViewed calls to prevent read-modify-write race conditions.
-  // Without this, concurrent calls can read the same file snapshot, each add their
-  // own entry to a local copy, then the second write overwrites the first's additions.
-  private markChatAsViewedQueue: Promise<void> = Promise.resolve();
 
   // Flag to prevent re-entrant initialization
   private isLoadingStoredExperienceData = false;
@@ -157,12 +151,6 @@ export class UserExperienceService extends DisposableService {
           draft.userExperience.devAppPreview.isFullScreen =
             !draft.userExperience.devAppPreview.isFullScreen;
         });
-      },
-    );
-    this.uiKarton.registerServerProcedureHandler(
-      'userExperience.markChatAsViewed',
-      async (_callingClientId: string, agentId: string) => {
-        await this.markChatAsViewed(agentId);
       },
     );
     this.uiKarton.registerServerProcedureHandler(
@@ -384,26 +372,6 @@ export class UserExperienceService extends DisposableService {
     });
   }
 
-  /**
-   * Read the last viewed chats from persisted data.
-   */
-  private async readLastViewedChats(): Promise<Record<string, number>> {
-    return readPersistedData('last-viewed-chats', lastViewedChatsSchema, {});
-  }
-
-  /**
-   * Write the last viewed chats to persisted data.
-   */
-  private async writeLastViewedChats(
-    lastViewedChats: Record<string, number>,
-  ): Promise<void> {
-    await writePersistedData(
-      'last-viewed-chats',
-      lastViewedChatsSchema,
-      lastViewedChats,
-    );
-  }
-
   public async saveRecentlyOpenedWorkspace({
     path: workspacePath,
     name,
@@ -456,19 +424,16 @@ export class UserExperienceService extends DisposableService {
 
   /**
    * Get combined stored experience data from separate files.
-   * This combines data from recently-opened-workspaces.json, onboarding-state.json, and last-viewed-chats.json.
+   * This combines data from recently-opened-workspaces.json and onboarding-state.json.
    */
   public async getStoredExperienceData(): Promise<StoredExperienceData> {
-    const [recentlyOpenedWorkspaces, hasSeenOnboardingFlow, lastViewedChats] =
-      await Promise.all([
-        this.readRecentlyOpenedWorkspaces(),
-        this.readOnboardingState(),
-        this.readLastViewedChats(),
-      ]);
+    const [recentlyOpenedWorkspaces, hasSeenOnboardingFlow] = await Promise.all(
+      [this.readRecentlyOpenedWorkspaces(), this.readOnboardingState()],
+    );
     return {
       recentlyOpenedWorkspaces,
       hasSeenOnboardingFlow,
-      lastViewedChats,
+      lastViewedChats: {},
     };
   }
 
@@ -494,42 +459,6 @@ export class UserExperienceService extends DisposableService {
         `[UserExperienceService] Failed to save hasSeenOnboardingFlow. Error: ${error}`,
       );
       this.report(error as Error, 'saveOnboardingState');
-    }
-  }
-
-  /**
-   * Mark a chat as viewed by the user.
-   * Updates the lastViewedChats record with the current timestamp.
-   */
-  public async markChatAsViewed(agentId: string) {
-    // Enqueue to serialize file I/O and prevent read-modify-write races
-    this.markChatAsViewedQueue = this.markChatAsViewedQueue.then(
-      () => this._markChatAsViewedImpl(agentId),
-      () => this._markChatAsViewedImpl(agentId),
-    );
-    return this.markChatAsViewedQueue;
-  }
-
-  private async _markChatAsViewedImpl(agentId: string) {
-    try {
-      const lastViewedChats = await this.readLastViewedChats();
-      lastViewedChats[agentId] = Date.now();
-      await this.writeLastViewedChats(lastViewedChats);
-      // Update UI state with combined data
-      const storedData = await this.getStoredExperienceData();
-      this.uiKarton.setState((draft) => {
-        draft.userExperience.storedExperienceData = storedData;
-      });
-      // Sync to pages API
-      this.syncHomePageStateToPagesService();
-      this.logger.debug(
-        `[UserExperienceService] Marked chat as viewed: ${agentId}`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `[UserExperienceService] Failed to mark chat as viewed. Error: ${error}`,
-      );
-      this.report(error as Error, 'markChatAsViewed');
     }
   }
 

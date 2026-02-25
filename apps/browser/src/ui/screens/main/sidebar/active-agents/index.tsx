@@ -22,6 +22,7 @@ type ActiveAgentCardData = {
   hasError: boolean;
   lastMessageAt: number;
   messageCount: number;
+  unread: boolean;
 };
 
 function activeAgentCardsEqual(
@@ -40,7 +41,8 @@ function activeAgentCardsEqual(
       ai.activityIsUserInput !== bi.activityIsUserInput ||
       ai.hasError !== bi.hasError ||
       ai.lastMessageAt !== bi.lastMessageAt ||
-      ai.messageCount !== bi.messageCount
+      ai.messageCount !== bi.messageCount ||
+      ai.unread !== bi.unread
     )
       return false;
   }
@@ -141,6 +143,7 @@ export function ActiveAgentsGrid() {
               activityText: activity.text,
               activityIsUserInput: activity.isUserInput,
               hasError: !!agent.state.error,
+              unread: !!agent.state.unread,
               lastMessageAt: lastMsg?.metadata?.createdAt
                 ? new Date(lastMsg.metadata.createdAt).getTime()
                 : 0,
@@ -174,12 +177,6 @@ export function ActiveAgentsGrid() {
       setPendingCreate(false);
     });
   }, [createAgent, setOpenAgent, agents.length]);
-
-  // Tracks agents that finished working but the user hasn't clicked on yet.
-  // Agents are added when isWorking transitions false, removed on click.
-  const [unacknowledged, setUnacknowledged] = useState<Set<string>>(
-    () => new Set(),
-  );
 
   // Optimistic deletion: cards are hidden immediately while the backend processes.
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(
@@ -236,13 +233,8 @@ export function ActiveAgentsGrid() {
 
   const handleClick = useCallback(
     (id: string) => {
-      setUnacknowledged((prev) => {
-        if (!prev.has(id)) return prev;
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
       // Optimistic: update the open agent immediately, don't wait for the RPC.
+      // markAsRead is handled by SidebarTopSection's useEffect on openAgent.
       setOpenAgent(id);
       void resumeAgent(id);
     },
@@ -288,28 +280,17 @@ export function ActiveAgentsGrid() {
     if (openAgent) scrollCardIntoView(openAgent);
   }, [openAgent, scrollCardIntoView]);
 
-  // When an agent finishes (isWorking → false), scroll to it and mark it
-  // as unacknowledged so the pulse animation plays until the user clicks it.
+  // When an agent finishes (isWorking → false), scroll to its card.
   const prevWorkingRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const prevWorking = prevWorkingRef.current;
     const nowWorking = new Set<string>();
-    const justFinished: string[] = [];
 
     for (const agent of agents) {
       if (agent.isWorking) nowWorking.add(agent.id);
       if (!agent.isWorking && prevWorking.has(agent.id)) {
-        justFinished.push(agent.id);
         scrollCardIntoView(agent.id);
       }
-    }
-
-    if (justFinished.length > 0) {
-      setUnacknowledged((prev) => {
-        const next = new Set(prev);
-        for (const id of justFinished) next.add(id);
-        return next;
-      });
     }
 
     prevWorkingRef.current = nowWorking;
@@ -346,7 +327,7 @@ export function ActiveAgentsGrid() {
       >
         {orderedAgents.map((agent) => {
           const isOpen = agent.id === openAgent;
-          const hasUnseen = !isOpen && unacknowledged.has(agent.id);
+          const hasUnseen = !isOpen && agent.unread;
 
           return (
             <AgentCard
