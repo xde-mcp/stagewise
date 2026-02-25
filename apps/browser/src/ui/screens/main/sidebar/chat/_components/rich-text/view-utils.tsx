@@ -41,6 +41,8 @@ export interface BadgeContainerProps
   extends React.HTMLAttributes<HTMLSpanElement> {
   /** Whether the node is currently selected in the editor */
   selected?: boolean;
+  /** Whether the badge is rendered inside an editable editor (edit mode) */
+  editMode?: boolean;
   /** Children to render inside the badge */
   children: React.ReactNode;
 }
@@ -51,13 +53,18 @@ export interface BadgeContainerProps
  * Use this when building custom badge layouts that need the same visual styling.
  */
 export const BadgeContainer = forwardRef<HTMLSpanElement, BadgeContainerProps>(
-  function BadgeContainer({ selected, className, children, ...props }, ref) {
+  function BadgeContainer(
+    { selected, editMode, className, children, ...props },
+    ref,
+  ) {
     return (
       <span
         ref={ref}
         className={cn(
-          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded bg-inherit px-1.5 align-middle text-foreground ring-1',
-          'ring-1 ring-derived group-hover/chat-message-user:bg-hover-derived group-hover/chat-message-user:ring-derived-strong dark:bg-surface-tinted dark:group-hover/chat-message-user:ring-derived-strong',
+          'group/badge -translate-y-px relative inline-flex h-4 cursor-default items-center gap-1 rounded px-1.5 align-middle text-foreground ring-1 ring-derived',
+          editMode
+            ? 'bg-surface-1'
+            : 'bg-inherit group-hover/chat-message-user:bg-hover-derived group-hover/chat-message-user:ring-derived-strong dark:bg-surface-tinted dark:group-hover/chat-message-user:ring-derived-strong',
           selected && 'ring-primary-foreground',
           className,
         )}
@@ -109,6 +116,7 @@ export const AttachmentBadge = forwardRef<
     <BadgeContainer
       ref={ref}
       selected={selected}
+      editMode={isEditable}
       className={cn('text-foreground', className)}
       {...props}
     >

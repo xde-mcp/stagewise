@@ -141,7 +141,7 @@ export function TextClipAttachmentView(props: AttachmentNodeViewProps) {
 
   // Custom badge with expand button (unique to text-clip)
   const badge = (
-    <BadgeContainer selected={props.selected}>
+    <BadgeContainer selected={props.selected} editMode={isEditable}>
       {/* Icon container - shows clipboard icon normally, X on hover when editable */}
       {isEditable ? (
         <span
