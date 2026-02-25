@@ -634,57 +634,59 @@ function WorkspacePreviewCardContent({
             onViewportRef={setSkillsViewport}
           >
             <div className="flex flex-col gap-0.75">
-              {mount.skills.map((skill) => {
-                const isEnabled = !disabledSkills.includes(skill.name);
-                const toggleId = `skill-toggle-${skill.name}`;
-                return (
-                  <div
-                    key={skill.name}
-                    className="flex items-center gap-1.5"
-                    onMouseEnter={(e) =>
-                      onItemHover(
-                        {
-                          type: 'skill',
-                          name: skill.name,
-                          description: skill.description,
-                        },
-                        e,
-                      )
-                    }
-                  >
-                    <label
-                      htmlFor={toggleId}
-                      className={cn(
-                        'flex-1 truncate text-xs leading-normal',
-                        isEnabled
-                          ? 'text-muted-foreground'
-                          : 'text-subtle-foreground',
-                      )}
+              {[...mount.skills]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((skill) => {
+                  const isEnabled = !disabledSkills.includes(skill.name);
+                  const toggleId = `skill-toggle-${skill.name}`;
+                  return (
+                    <div
+                      key={skill.name}
+                      className="flex items-center gap-1.5"
+                      onMouseEnter={(e) =>
+                        onItemHover(
+                          {
+                            type: 'skill',
+                            name: skill.name,
+                            description: skill.description,
+                          },
+                          e,
+                        )
+                      }
                     >
-                      {skill.name}
-                    </label>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Switch
-                            size="xs"
-                            id={toggleId}
-                            checked={isEnabled}
-                            onCheckedChange={(checked) =>
-                              onToggleSkill(skill.name, checked)
-                            }
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {isEnabled
-                          ? `${skill.name} is included in agent context`
-                          : `Include ${skill.name} in agent context`}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                );
-              })}
+                      <label
+                        htmlFor={toggleId}
+                        className={cn(
+                          'flex-1 truncate text-xs leading-normal',
+                          isEnabled
+                            ? 'text-muted-foreground'
+                            : 'text-subtle-foreground',
+                        )}
+                      >
+                        {skill.name}
+                      </label>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              size="xs"
+                              id={toggleId}
+                              checked={isEnabled}
+                              onCheckedChange={(checked) =>
+                                onToggleSkill(skill.name, checked)
+                              }
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {isEnabled
+                            ? `${skill.name} is included in agent context`
+                            : `Include ${skill.name} in agent context`}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  );
+                })}
             </div>
           </OverlayScrollbar>
         </div>
