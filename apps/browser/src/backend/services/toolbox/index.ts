@@ -558,7 +558,6 @@ export class ToolboxService extends DisposableService {
     if (!mounts) return [];
     if (mounts.length === 0) return [];
 
-    const seen = new Set<string>();
     const result: Skill[] = [];
 
     for (const mount of mounts) {
@@ -571,8 +570,6 @@ export class ToolboxService extends DisposableService {
       const skills = await getSkills(mount.clientRuntime);
 
       for (const skill of skills) {
-        if (seen.has(skill.name)) continue;
-        seen.add(skill.name);
         if (disabled.has(skill.name)) continue;
         result.push(skill);
       }
