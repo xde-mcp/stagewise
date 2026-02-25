@@ -66,6 +66,7 @@ export const MessageUser = memo(
   }) {
     const chatInputRef = useRef<ChatInputHandle>(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [openAgent] = useOpenAgent();
 
     // File attachments via shared hook
     const {
@@ -77,6 +78,7 @@ export const MessageUser = memo(
     } = useFileAttachments({
       chatInputRef: chatInputRef as RefObject<ChatInputHandle>,
       insertIntoEditor: true,
+      agentId: openAgent,
     });
 
     // Message edit state for file drop routing and exposing local elements
@@ -86,7 +88,6 @@ export const MessageUser = memo(
     const replaceUserMessage = useKartonProcedure(
       (p) => p.agents.replaceUserMessage,
     );
-    const [openAgent] = useOpenAgent();
 
     // Use message ID for scoping element selection
     const editMessageId = msg.id;
