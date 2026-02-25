@@ -43,7 +43,6 @@ export function extractTipTapText(json: string): string {
   try {
     const doc = JSON.parse(json);
     const parts: string[] = [];
-    // biome-ignore lint/suspicious/noExplicitAny: lightweight TipTap JSON traversal
     const walk = (node: any) => {
       if (node.type === 'text' && typeof node.text === 'string')
         parts.push(node.text);
