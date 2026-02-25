@@ -909,7 +909,8 @@ export abstract class BaseAgent<
     systemPrompt: string,
     liveSnapshot?: EnvironmentSnapshot,
   ): Promise<ModelMessage[]> {
-    const capabilities = getModelCapabilities(this.state.get().activeModelId);
+    const activeModelId = this.state.get().activeModelId;
+    const capabilities = getModelCapabilities(activeModelId);
     const globalDataPath = this.toolbox.globalDataPath;
     return convertAgentMessagesToModelMessages(
       messages,
@@ -927,6 +928,7 @@ export abstract class BaseAgent<
         });
       },
       liveSnapshot,
+      activeModelId,
     );
   }
 

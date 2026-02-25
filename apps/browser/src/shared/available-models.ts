@@ -422,3 +422,25 @@ export function getModelCapabilities(
     },
   };
 }
+
+/**
+ * Find model IDs that accept a given MIME type as inline input,
+ * optionally excluding one model (typically the current one).
+ */
+export function findModelsAcceptingMime(
+  mime: string,
+  excludeModelId?: string,
+): string[] {
+  const lowerMime = mime.toLowerCase();
+  return availableModels
+    .filter((m) => {
+      if (m.modelId === excludeModelId) return false;
+      const c = m.capabilities.inputConstraints;
+      if (!c) return false;
+      for (const constraint of [c.image, c.file, c.video, c.audio])
+        if (constraint?.mimeTypes.includes(lowerMime)) return true;
+
+      return false;
+    })
+    .map((m) => m.modelId);
+}

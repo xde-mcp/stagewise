@@ -23,6 +23,7 @@ import { textClipToContextSnippet } from '../prompts/utils/metadata-converter/te
 import xml from 'xml';
 import specialTokens from '../prompts/utils/special-tokens';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
+import { findModelsAcceptingMime } from '@shared/available-models';
 
 export type BlobReader = (
   agentId: string,
@@ -58,50 +59,114 @@ const DEFAULT_FILE_CONSTRAINT: ModalityConstraint = {
   maxBytes: 20_971_520, // 20 MB — conservative fallback
 };
 
-function matchesConstraint(
+function formatMB(bytes: number): string {
+  return `${(bytes / 1_048_576).toFixed(1)} MB`;
+}
+
+type ConstraintMatch =
+  | { mime: true; size: true }
+  | { mime: true; size: false; maxBytes: number }
+  | { mime: false };
+
+function checkConstraint(
   constraint: ModalityConstraint,
   mime: string,
   sizeBytes: number,
-): boolean {
-  return (
-    constraint.mimeTypes.includes(mime) && sizeBytes <= constraint.maxBytes
-  );
+): ConstraintMatch {
+  if (!constraint.mimeTypes.includes(mime)) return { mime: false };
+  const base64Size = Math.ceil((sizeBytes * 4) / 3);
+  if (base64Size <= constraint.maxBytes) return { mime: true, size: true };
+  return { mime: true, size: false, maxBytes: constraint.maxBytes };
 }
+
+type AttachmentCheck =
+  | { canConsume: true }
+  | { canConsume: false; reason: string };
 
 /**
  * Runtime check: can the current model consume this attachment as an
  * inline file part?  Uses per-model `inputConstraints` when available,
  * otherwise falls back to conservative defaults for image/file.
  * Video and audio require explicit constraints — no defaults.
+ *
+ * Returns a rejection reason when the attachment cannot be consumed.
  */
 function canModelConsumeAttachment(
   capabilities: ModelCapabilities | undefined,
   mediaType: string,
   sizeBytes: number,
-): boolean {
-  if (!capabilities) return false;
+  currentModelId?: string,
+): AttachmentCheck {
+  if (!capabilities)
+    return { canConsume: false, reason: 'Model capabilities unknown.' };
   const mime = mediaType.toLowerCase();
   const constraints = capabilities.inputConstraints;
 
-  if (capabilities.inputModalities.image) {
-    const c = constraints?.image ?? DEFAULT_IMAGE_CONSTRAINT;
-    if (matchesConstraint(c, mime, sizeBytes)) return true;
+  const modalityChecks: {
+    name: string;
+    enabled: boolean;
+    constraint: ModalityConstraint | undefined;
+  }[] = [
+    {
+      name: 'image',
+      enabled: capabilities.inputModalities.image,
+      constraint: constraints?.image ?? DEFAULT_IMAGE_CONSTRAINT,
+    },
+    {
+      name: 'file',
+      enabled: capabilities.inputModalities.file,
+      constraint: constraints?.file ?? DEFAULT_FILE_CONSTRAINT,
+    },
+    {
+      name: 'video',
+      enabled: capabilities.inputModalities.video,
+      constraint: constraints?.video,
+    },
+    {
+      name: 'audio',
+      enabled: capabilities.inputModalities.audio,
+      constraint: constraints?.audio,
+    },
+  ];
+
+  let sizeExceeded: { name: string; maxBytes: number } | undefined;
+
+  for (const m of modalityChecks) {
+    if (!m.enabled || !m.constraint) continue;
+    const result = checkConstraint(m.constraint, mime, sizeBytes);
+    if ('size' in result && result.size) return { canConsume: true };
+    if ('size' in result && !result.size && !sizeExceeded)
+      sizeExceeded = { name: m.name, maxBytes: result.maxBytes };
   }
 
-  if (capabilities.inputModalities.file) {
-    const c = constraints?.file ?? DEFAULT_FILE_CONSTRAINT;
-    if (matchesConstraint(c, mime, sizeBytes)) return true;
+  if (sizeExceeded) {
+    return {
+      canConsume: false,
+      reason: `File too large for inline ${sizeExceeded.name} input (${formatMB(sizeBytes)} exceeds ~${formatMB(Math.floor((sizeExceeded.maxBytes * 3) / 4))} limit).`,
+    };
   }
 
-  if (capabilities.inputModalities.video && constraints?.video) {
-    if (matchesConstraint(constraints.video, mime, sizeBytes)) return true;
+  const alternatives = findModelsAcceptingMime(mime, currentModelId);
+  const altSuffix =
+    alternatives.length > 0
+      ? ` Models supporting ${mime}: ${alternatives.join(', ')}.`
+      : '';
+
+  const allSupported = modalityChecks
+    .filter((m) => m.enabled && m.constraint)
+    .flatMap((m) => m.constraint!.mimeTypes);
+
+  if (allSupported.length > 0) {
+    return {
+      canConsume: false,
+      reason: `This model doesn't support ${mime} inline.${altSuffix}`,
+    };
   }
 
-  if (capabilities.inputModalities.audio && constraints?.audio) {
-    if (matchesConstraint(constraints.audio, mime, sizeBytes)) return true;
-  }
-
-  return false;
+  return {
+    canConsume: false,
+    reason: `This model has no inline file input support.${altSuffix}`,
+  };
 }
 
 /**
@@ -154,18 +219,20 @@ async function buildSyntheticUserMessageForAttachments(
   blobReader: BlobReader,
   capabilities?: ModelCapabilities,
   onBlobError?: BlobErrorReporter,
+  currentModelId?: string,
 ): Promise<UserModelMessage> {
   const content: UserContent = [];
 
   for (const f of attachments) {
-    const canConsume = canModelConsumeAttachment(
+    const check = canModelConsumeAttachment(
       capabilities,
       f.mediaType,
       f.sizeBytes,
+      currentModelId,
     );
-    const hint = canConsume
-      ? 'This attachment was produced by the sandbox. See next attachment for its content.'
-      : `The user attached this file. You can access its content via fs.readFile('att/${f.id}') in the sandbox.`;
+    const hint = check.canConsume
+      ? 'Sandbox-produced attachment. See next part for inline content.'
+      : `${check.reason} Access via fs.readFile('att/${f.id}') in the sandbox. To view inline, read it, resize/compress to a new file, then API.outputAttachment() the smaller copy.`;
 
     content.push({
       type: 'text',
@@ -181,7 +248,7 @@ async function buildSyntheticUserMessageForAttachments(
       }),
     });
 
-    if (canConsume) {
+    if (check.canConsume) {
       try {
         const buf = await blobReader(agentInstanceId, f.id);
         const base64 = buf.toString('base64');
@@ -251,6 +318,7 @@ export const convertAgentMessagesToModelMessages = async (
   modelCapabilities?: ModelCapabilities,
   onBlobError?: BlobErrorReporter,
   liveSnapshot?: EnvironmentSnapshot,
+  currentModelId?: string,
 ): Promise<ModelMessage[]> => {
   // We work backwards first because this makes it easier to apply compacted conversation later on.
   // Every chunk is a turn of the conversation. We later flatten it. We store each chunk individually because some UI messages result in multiple model messages that need to have correct order.
@@ -297,6 +365,7 @@ export const convertAgentMessagesToModelMessages = async (
             blobReader,
             modelCapabilities,
             onBlobError,
+            currentModelId,
           ),
         ]);
 
@@ -318,14 +387,15 @@ export const convertAgentMessagesToModelMessages = async (
 
       if ((message.metadata?.fileAttachments?.length || 0) > 0) {
         for (const f of message.metadata!.fileAttachments!) {
-          const canConsume = canModelConsumeAttachment(
+          const check = canModelConsumeAttachment(
             modelCapabilities,
             f.mediaType,
             f.sizeBytes,
+            currentModelId,
           );
-          const hint = canConsume
-            ? 'This attachment contains metadata about the file attachment. See next attachment for its content.'
-            : `The user attached this file. You can access its content via fs.readFile('att/${f.id}') in the sandbox.`;
+          const hint = check.canConsume
+            ? 'User-attached file. See next part for inline content.'
+            : `${check.reason} Access via fs.readFile('att/${f.id}') in the sandbox.`;
 
           parts.push({
             type: 'text',
@@ -341,7 +411,7 @@ export const convertAgentMessagesToModelMessages = async (
             }),
           });
 
-          if (canConsume) {
+          if (check.canConsume) {
             try {
               const content = await blobReader(agentInstanceId, f.id);
               const base64 = content.toString('base64');
