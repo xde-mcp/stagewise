@@ -1,4 +1,4 @@
--- VERSION: 1
+-- VERSION: 2
 
 CREATE TABLE IF NOT EXISTS meta(
   key LONGVARCHAR NOT NULL UNIQUE PRIMARY KEY,
@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS agentInstances(
   history TEXT NOT NULL,
   queued_messages TEXT NOT NULL,
   input_state TEXT NOT NULL,
-  used_tokens INTEGER NOT NULL
+  used_tokens INTEGER NOT NULL,
+  mounted_workspaces TEXT
 );
 
 CREATE INDEX IF NOT EXISTS agentInstances_created_at_index ON agentInstances(created_at);

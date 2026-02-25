@@ -714,6 +714,18 @@ export class ToolboxService extends DisposableService {
     return result;
   }
 
+  public getWorkspaceSnapshotForPersistence(
+    agentInstanceId: string,
+  ): Array<{ path: string; permissions: MountPermission[] }> {
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    if (!mounts) return [];
+    return mounts.map((m) => ({
+      path: m.path,
+      permissions: m.permissions,
+    }));
+  }
+
   /**
    * Refresh the API client (e.g., after auth state changes).
    * Call this when the auth token is refreshed.

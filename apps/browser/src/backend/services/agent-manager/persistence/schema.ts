@@ -11,6 +11,7 @@ import { metaTable } from '@/utils/migrate-database/types';
 import type { ModelId } from '@shared/available-models';
 import { relations } from 'drizzle-orm';
 import type { AgentTypes } from '@shared/karton-contracts/ui/agent';
+import type { MountPermission } from '@shared/karton-contracts/ui/agent/metadata';
 import superjson from 'superjson';
 
 const _sqliteBoolean = customType<{ data: boolean; driverData: number }>({
@@ -83,6 +84,10 @@ export const agentInstances = sqliteTable(
       .$type<(AgentMessage & { role: 'user' })[]>(),
     inputState: _sqliteJson('input_state').notNull().$type<string>(),
     usedTokens: integer('used_tokens').notNull(),
+    mountedWorkspaces:
+      _sqliteJson('mounted_workspaces').$type<
+        Array<{ path: string; permissions: MountPermission[] }>
+      >(),
   },
   (table) => [
     primaryKey({ columns: [table.id] }),

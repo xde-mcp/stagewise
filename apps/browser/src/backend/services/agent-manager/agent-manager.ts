@@ -545,7 +545,7 @@ export class AgentManagerService extends DisposableService {
       agent.activeModelId &&
       this.modelProviderService.modelExists(agent.activeModelId);
 
-    return await this.createAgent(
+    const createdAgent = await this.createAgent(
       agent.type,
       agent.instanceConfig as any,
       undefined,
@@ -560,6 +560,25 @@ export class AgentManagerService extends DisposableService {
       },
       instanceId,
     );
+
+    if (agent.mountedWorkspaces && Array.isArray(agent.mountedWorkspaces)) {
+      for (const ws of agent.mountedWorkspaces) {
+        try {
+          await this.toolbox.handleMountWorkspace(
+            instanceId,
+            ws.path,
+            ws.permissions,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `[AgentManager] Failed to re-mount workspace ${ws.path} for agent ${instanceId}`,
+            { error },
+          );
+        }
+      }
+    }
+
+    return createdAgent;
   }
 
   private async persistAgentState(instanceId: string) {
@@ -576,6 +595,9 @@ export class AgentManagerService extends DisposableService {
       // We don't persist empty agents.
     }
 
+    const mountedWorkspaces =
+      this.toolbox.getWorkspaceSnapshotForPersistence(instanceId);
+
     await this.agentPersistenceDB?.storeAgentInstance({
       id: instanceId,
       type: agent.agentType,
@@ -589,6 +611,7 @@ export class AgentManagerService extends DisposableService {
       queuedMessages: agentState.queuedMessages,
       inputState: agentState.inputState,
       usedTokens: agentState.usedTokens,
+      mountedWorkspaces,
     });
   }
 
