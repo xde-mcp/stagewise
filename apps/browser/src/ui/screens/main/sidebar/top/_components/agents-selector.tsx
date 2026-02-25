@@ -275,7 +275,7 @@ export const AgentsSelector = memo(function AgentsSelector({
 
         {!hasResults && <ComboboxEmpty />}
 
-        <div className="flex items-center justify-between border-border-subtle border-t py-1.5 pr-1.5 pl-2.5">
+        <div className="flex items-center justify-between border-border-subtle border-t pt-2 pr-1.5 pb-1 pl-2.5">
           <label
             htmlFor="show-active-agents"
             className="cursor-pointer text-muted-foreground text-xs"
