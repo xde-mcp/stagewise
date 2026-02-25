@@ -219,14 +219,14 @@ function WorkspaceSettingsSection() {
           workspacePath={mount.path}
           workspaceMd={
             contextFiles?.[mount.path]?.workspaceMd ?? {
-              exists: mount.hasWorkspaceMd,
+              exists: mount.workspaceMdContent !== null,
               path: null,
               content: null,
             }
           }
           agentsMd={
             contextFiles?.[mount.path]?.agentsMd ?? {
-              exists: mount.hasAgentsMd,
+              exists: mount.agentsMdContent !== null,
               path: null,
               content: null,
             }

@@ -93,10 +93,10 @@ export async function wirePagesStateSync(deps: {
       }
       return [...seen.values()].map((m) => ({
         path: m.path,
-        hasWorkspaceMd: m.hasWorkspaceMd,
-        hasAgentsMd: m.hasAgentsMd,
         isGitRepo: m.isGitRepo,
         skills: m.skills,
+        workspaceMdContent: m.workspaceMdContent,
+        agentsMdContent: m.agentsMdContent,
       }));
     },
     (mounts) => pagesService.syncWorkspaceMountsState(mounts),

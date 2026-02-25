@@ -155,7 +155,7 @@ export function StatusCard() {
           const mount = workspaceMounts.find(
             (m) => m.path === agent.workspacePath,
           );
-          if (mount?.hasWorkspaceMd) {
+          if (mount?.workspaceMdContent !== null) {
             setCompletedPaths((s) => {
               const copy = new Set(s);
               copy.add(agent.workspacePath);
@@ -243,7 +243,10 @@ export function StatusCard() {
       } else if (errorsByPath.has(mount.path)) {
         status = 'error';
         errorMessage = errorsByPath.get(mount.path) ?? null;
-      } else if (!mount.hasWorkspaceMd && !dismissedPaths.has(mount.path)) {
+      } else if (
+        mount.workspaceMdContent === null &&
+        !dismissedPaths.has(mount.path)
+      ) {
         status = 'prompt';
       } else {
         continue;

@@ -453,11 +453,11 @@ export class ToolboxService extends DisposableService {
     );
   }
 
-  public setWorkspaceMdExistsByPath(
+  public setWorkspaceMdContent(
     workspacePath: string,
-    exists: boolean,
+    content: string | null,
   ): void {
-    this.mountManagerService?.setWorkspaceMdExistsByPath(workspacePath, exists);
+    this.mountManagerService?.setWorkspaceMdContent(workspacePath, content);
   }
 
   public async getWorkspaceInfo(

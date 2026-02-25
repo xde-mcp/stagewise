@@ -19,6 +19,7 @@ import type { GlobalDataPathService } from '../global-data-path';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
 import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { writeBlob } from '@/utils/attachment-blobs';
+import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
 
 /**
  * @note Due to the complex type inference for all this stuff, we sometimes explicitly define types here to avoid errors.
@@ -363,8 +364,9 @@ export class AgentManagerService extends DisposableService {
       { workspacePath },
       {
         parentInstanceId: parentAgentId ?? '',
-        onFinish: () => {
-          this.toolbox.setWorkspaceMdExistsByPath(workspacePath, true);
+        onFinish: async () => {
+          const content = await readWorkspaceMd(workspacePath);
+          this.toolbox.setWorkspaceMdContent(workspacePath, content);
         },
         onError: (error) => {
           this.report(error, 'workspaceMdGenerationFailed');

@@ -207,13 +207,13 @@ export class MountManagerService extends DisposableService {
       draft.toolbox[agentInstanceId].workspace.mounts.push({
         prefix,
         path: resolvedWorkspacePath,
-        hasWorkspaceMd: workspaceMdContent !== null,
-        hasAgentsMd: agentsMdContent !== null,
         isGitRepo: gitRepo,
         skills: skills.map((s) => ({
           name: s.name,
           description: s.description,
         })),
+        workspaceMdContent,
+        agentsMdContent,
       });
     });
 
@@ -322,18 +322,15 @@ export class MountManagerService extends DisposableService {
     this.agentMounts.delete(agentInstanceId);
   }
 
-  public setWorkspaceMdExistsByPath(
+  public setWorkspaceMdContent(
     workspacePath: string,
-    exists: boolean,
+    content: string | null,
   ): void {
     this.uiKarton.setState((draft) => {
       for (const agentId in draft.toolbox) {
         const mounts = draft.toolbox[agentId].workspace.mounts;
-        for (const mount of mounts) {
-          if (mount.path === workspacePath) {
-            mount.hasWorkspaceMd = exists;
-          }
-        }
+        for (const mount of mounts)
+          if (mount.path === workspacePath) mount.workspaceMdContent = content;
       }
     });
   }

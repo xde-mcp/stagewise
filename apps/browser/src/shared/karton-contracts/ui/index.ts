@@ -494,10 +494,12 @@ export type OmniboxSuggestions = {
 export type MountEntry = {
   prefix: string;
   path: string;
-  hasWorkspaceMd: boolean;
-  hasAgentsMd: boolean;
   isGitRepo: boolean;
   skills: Array<{ name: string; description: string }>;
+  /** Full file content, or `null` when the file does not exist on disk. */
+  workspaceMdContent: string | null;
+  /** Full file content, or `null` when the file does not exist on disk. */
+  agentsMdContent: string | null;
 };
 
 export const EMPTY_MOUNTS: MountEntry[] = [];
