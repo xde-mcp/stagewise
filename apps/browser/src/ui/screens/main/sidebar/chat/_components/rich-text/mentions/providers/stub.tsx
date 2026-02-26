@@ -1,5 +1,5 @@
 import { GlobeIcon } from 'lucide-react';
-import { FileIcon } from '@/components/file-icon';
+import { FileIcon } from '@ui/components/file-icon';
 import type { MentionProvider } from './types';
 
 export const stubFileProvider: MentionProvider = {
