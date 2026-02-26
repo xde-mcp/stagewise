@@ -87,3 +87,12 @@
     --color-info-solid: var(--color-info-solid-dark);
     }
 }
+
+/* Override Chrome's default double-ring focus indicator with a single primary-colored outline.
+   Placed in @layer base so Tailwind utility classes (e.g. focus-visible:outline-none) can override it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary-solid);
+    outline-offset: 0px;
+  }
+}

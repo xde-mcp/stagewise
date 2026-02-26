@@ -246,7 +246,7 @@ export const Omnibox = ({
             onFocus={onInputFocus}
             onKeyDown={onInputKeyDown}
             className={cn(
-              'h-8 w-full flex-1 rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong',
+              'h-8 w-full flex-1 rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong focus-visible:outline-none',
               // Only apply transitions for mouse interactions, instant for keyboard
               isKeyboardInteraction
                 ? 'transition-none'
