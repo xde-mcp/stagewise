@@ -24,7 +24,7 @@ import { ThinkingPart } from '../thinking';
 import { ReadConsoleLogsToolPart } from './read-console-logs';
 import { ExecuteSandboxJsToolPart } from './execute-sandbox-js';
 import { GetLintingDiagnosticsToolPart } from './get-linting-diagnostics';
-import { getSandboxLabel } from './utils/cdp-label-utils';
+import { getSandboxLabel } from './utils/sandbox-label-utils';
 
 // Context for tracking expanded children within exploring section
 interface ExploringContentContextValue {

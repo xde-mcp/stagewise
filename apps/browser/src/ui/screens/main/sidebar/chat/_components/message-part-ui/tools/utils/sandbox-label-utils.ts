@@ -314,6 +314,13 @@ export function getSandboxLabel(
   const readAttCalls = parseReadAttachmentCalls(script);
   const multimodalAttachmentCalls = parseOutputAttachmentCalls(script);
 
+  const attWriteCalls = writeFileCalls.filter((c) =>
+    c.relativePath.startsWith('att/'),
+  );
+  const realWriteCalls = writeFileCalls.filter(
+    (c) => !c.relativePath.startsWith('att/'),
+  );
+
   // No API calls found
   if (
     cdpCalls.length === 0 &&
@@ -323,13 +330,8 @@ export function getSandboxLabel(
   )
     return isInProgress ? 'Running a script...' : 'Ran a script';
 
-  // Only multimodal attachment parsing, no other API calls
-  if (
-    cdpCalls.length === 0 &&
-    writeFileCalls.length === 0 &&
-    readAttCalls.length === 0 &&
-    multimodalAttachmentCalls.length > 0
-  ) {
+  // 1. API.outputAttachment always wins (user sees visual output)
+  if (multimodalAttachmentCalls.length > 0) {
     if (multimodalAttachmentCalls.length === 1)
       return isInProgress ? 'Parsing attachment...' : 'Parsed attachment';
 
@@ -338,10 +340,26 @@ export function getSandboxLabel(
       : `Parsed ${multimodalAttachmentCalls.length} attachments`;
   }
 
-  // Only attachment reads, no CDP calls, no file writes
+  // 2. att/ writes only (preparing data for visual output)
+  if (
+    attWriteCalls.length > 0 &&
+    realWriteCalls.length === 0 &&
+    cdpCalls.length === 0 &&
+    readAttCalls.length === 0
+  ) {
+    if (attWriteCalls.length === 1)
+      return isInProgress ? 'Preparing attachment...' : 'Prepared attachment';
+
+    return isInProgress
+      ? `Preparing ${attWriteCalls.length} attachments...`
+      : `Prepared ${attWriteCalls.length} attachments`;
+  }
+
+  // 3. Attachment reads only
   if (
     cdpCalls.length === 0 &&
-    writeFileCalls.length === 0 &&
+    realWriteCalls.length === 0 &&
+    attWriteCalls.length === 0 &&
     readAttCalls.length > 0
   ) {
     if (readAttCalls.length === 1)
@@ -352,51 +370,44 @@ export function getSandboxLabel(
       : `Read ${readAttCalls.length} attachments`;
   }
 
-  // Only file writes (possibly with attachment reads), no CDP calls
-  if (cdpCalls.length === 0 && writeFileCalls.length > 0) {
+  // 4. Real file writes (possibly with attachment reads), no CDP calls
+  if (cdpCalls.length === 0 && realWriteCalls.length > 0) {
     const attachmentSuffix =
       readAttCalls.length > 0
         ? ` from ${readAttCalls.length === 1 ? 'attachment' : `${readAttCalls.length} attachments`}`
         : '';
 
-    if (writeFileCalls.length === 1) {
-      const fileName = getFileName(writeFileCalls[0].relativePath);
+    if (realWriteCalls.length === 1) {
+      const fileName = getFileName(realWriteCalls[0].relativePath);
       return isInProgress
         ? `Writing ${fileName}${attachmentSuffix}...`
         : `Wrote ${fileName}${attachmentSuffix}`;
     }
     return isInProgress
-      ? `Writing ${writeFileCalls.length} files${attachmentSuffix}...`
-      : `Wrote ${writeFileCalls.length} files${attachmentSuffix}`;
+      ? `Writing ${realWriteCalls.length} files${attachmentSuffix}...`
+      : `Wrote ${realWriteCalls.length} files${attachmentSuffix}`;
   }
 
-  // Get unique tab handles
+  // 5. CDP calls
   const uniqueTabHandles = Array.from(
     new Set(cdpCalls.map((c) => c.tabHandle)),
   );
 
-  // Multiple tabs targeted
   if (uniqueTabHandles.length > 1)
     return isInProgress
       ? `Running a script on ${uniqueTabHandles.length} tabs...`
       : `Ran a script on ${uniqueTabHandles.length} tabs`;
 
-  // Single tab - resolve hostname
   const hostname = resolveTabHostname(uniqueTabHandles[0], activeTabs);
-
-  // Get the action from the last CDP call (most recent during streaming)
   const latestMethod = cdpCalls[cdpCalls.length - 1].method;
   const { label, preposition } = getMethodLabel(latestMethod, isInProgress);
-
-  // Build the suffix using the method-specific preposition
   const suffix = hostname ? ` ${preposition} ${hostname}` : '';
 
-  // If there are also file writes, mention them
-  if (writeFileCalls.length > 0) {
+  if (realWriteCalls.length > 0) {
     const fileInfo =
-      writeFileCalls.length === 1
-        ? getFileName(writeFileCalls[0].relativePath)
-        : `${writeFileCalls.length} files`;
+      realWriteCalls.length === 1
+        ? getFileName(realWriteCalls[0].relativePath)
+        : `${realWriteCalls.length} files`;
     if (isInProgress) return `${label}${suffix}, writing ${fileInfo}...`;
     return `${label}${suffix}, wrote ${fileInfo}`;
   }

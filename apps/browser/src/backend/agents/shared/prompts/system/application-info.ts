@@ -37,7 +37,7 @@ ${agentsMdSection}
 
 - Script runs inside an async IIFE.
 - Use \`API.output(data)\` to emit results during execution. Use \`return\` to send a final result (appended last).
-- Timeout: **2 minutes** (applies to sync + async execution).
+- Timeout: **45 seconds of inactivity**. Each call to \`API.output()\` or \`API.outputAttachment()\` resets the timer. Hard cap: **3 minutes** wall-clock (non-resettable).
 - **NEVER** use \`await Promise.resolve()\` or unbounded \`while(true)\` loops — these permanently block the sandbox worker.
 - In loops, yield with \`await new Promise(r => setTimeout(r, 0))\` every iteration or every ~1000 sync iterations.
 - Always use bounded loops (max iteration count). Return partial results if hitting the limit.
@@ -88,11 +88,13 @@ Send a CDP command to a specific tab debugger.
 
 #### \`API.output(data: any)\`
 Append data to the tool result. \`data\` is stringified (JSON if not already a string). Can be called multiple times; outputs appear in order. The script's \`return\` value is appended last.
+**Also resets the inactivity timeout** — use as a keep-alive heartbeat in long-running scripts.
 
 #### \`API.outputAttachment(attachment)\`
 Register a file attachment so the LLM can **see** it as multimodal input on the next turn.
 The binary data must already be written to disk via \`fs.writeFile('att/{id}', buffer)\` before calling this.
 The script's text output (\`API.output\` / \`return\`) is unaffected — the attachment is delivered separately.
+**Also resets the inactivity timeout**, same as \`API.output()\`.
 
 **Two-step pattern:**
 1. Write the binary content: \`await fs.writeFile('att/' + id, buffer)\`
@@ -150,9 +152,10 @@ You may dynamically import ESM modules from CDNs with \`await import(module_url)
 - ONLY use "fetch" for network requests.
 - Implement error handling with working fallbacks and sensible retries if possible.
 - For long running tasks (i.e. image encoding, file writing): 
-  - Ensure the script returns before the sandboxtimeout is reached.
+  - Call \`API.output()\` periodically as a progress heartbeat to prevent the 45s inactivity timeout from firing.
   - Ensure the code returns gracefully with information on how to recover/continue the task, even if it's due to a timeout.
-  - Regularly store intermediate results to allow for recovery froma timeout.
+  - Regularly store intermediate results to allow for recovery from a timeout.
+  - The 3-minute hard cap cannot be extended — split work across multiple script invocations if needed.
 
 ### Examples
 

@@ -545,6 +545,16 @@ export type AppState = {
       pendingFileDiffs: FileDiff[];
       editSummary: FileDiff[];
       pendingUserQuestion: PendingUserQuestion | null;
+      pendingSandboxOutputs?: Record<string, string[]>;
+      pendingSandboxAttachments?: Record<
+        string,
+        Array<{
+          id: string;
+          mediaType: string;
+          fileName?: string;
+          sizeBytes: number;
+        }>
+      >;
     };
   };
   userAccount: {

@@ -14,7 +14,7 @@ import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import { useKartonState } from '@/hooks/use-karton';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
-import { getSandboxLabel } from './utils/cdp-label-utils';
+import { getSandboxLabel } from './utils/sandbox-label-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import {
   getRenderer,
@@ -39,10 +39,40 @@ export const ExecuteSandboxJsToolPart = ({
   const [scriptExpanded, setScriptExpanded] = useState(false);
   const [resultExpanded, setResultExpanded] = useState(true);
   const activeTabs = useKartonState((s) => s.browser.tabs);
+  const [openAgentId] = useOpenAgent();
 
   const streaming = useMemo(() => {
     return part.state === 'input-streaming' || part.state === 'input-available';
   }, [part.state]);
+
+  const pendingOutputs = useKartonState((s) =>
+    openAgentId
+      ? s.toolbox[openAgentId]?.pendingSandboxOutputs?.[part.toolCallId]
+      : undefined,
+  );
+  const pendingAttachments = useKartonState((s) =>
+    openAgentId
+      ? s.toolbox[openAgentId]?.pendingSandboxAttachments?.[part.toolCallId]
+      : undefined,
+  );
+
+  const retainedOutputsRef = useRef<string[] | null>(null);
+  const retainedAttachmentsRef = useRef<SandboxAttachment[] | null>(null);
+
+  if (pendingOutputs && pendingOutputs.length > 0)
+    retainedOutputsRef.current = pendingOutputs;
+
+  if (pendingAttachments && pendingAttachments.length > 0)
+    retainedAttachmentsRef.current = pendingAttachments;
+
+  const finished =
+    part.state === 'output-available' || part.state === 'output-error';
+  const prevFinishedRef = useRef(finished);
+  if (finished && !prevFinishedRef.current) {
+    retainedOutputsRef.current = null;
+    retainedAttachmentsRef.current = null;
+  }
+  prevFinishedRef.current = finished;
 
   const state = useMemo(() => {
     if (streaming) return 'streaming';
@@ -91,18 +121,23 @@ export const ExecuteSandboxJsToolPart = ({
     return raw as SandboxAttachment[];
   }, [part.output]);
 
-  const hasResultContent = !!formattedResult || !!customAttachments;
+  const effectiveOutputText =
+    formattedResult ?? retainedOutputsRef.current?.join('\n') ?? null;
+  const effectiveAttachments =
+    customAttachments ?? retainedAttachmentsRef.current ?? null;
+  const hasAnyResult = !!effectiveOutputText || !!effectiveAttachments;
 
   const resultRef = useRef<HTMLDivElement>(null);
+  const liveTextRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (
-      state !== 'success' ||
-      !expanded ||
-      !hasResultContent ||
-      !resultRef.current
-    )
-      return;
+    if (streaming && liveTextRef.current) {
+      liveTextRef.current.scrollTop = liveTextRef.current.scrollHeight;
+    }
+  }, [streaming, effectiveOutputText]);
+
+  useEffect(() => {
+    if (!hasAnyResult || !expanded || !resultRef.current) return;
 
     let attempts = 0;
     const maxAttempts = 15;
@@ -149,7 +184,7 @@ export const ExecuteSandboxJsToolPart = ({
     return () => {
       if (frameId) cancelAnimationFrame(frameId);
     };
-  }, [state, hasResultContent, expanded]);
+  }, [hasAnyResult, expanded, streaming]);
 
   if (state === 'error') {
     return (
@@ -233,7 +268,7 @@ export const ExecuteSandboxJsToolPart = ({
       expanded={expanded}
       setExpanded={handleUserSetExpanded}
       isShimmering={!disableShimmer && streaming}
-      autoScroll={streaming}
+      autoScroll={streaming && !hasAnyResult}
       trigger={
         <>
           {!streaming && (
@@ -261,78 +296,98 @@ export const ExecuteSandboxJsToolPart = ({
       }
       content={
         <>
-          {part.input?.script && streaming && (
+          {streaming && !hasAnyResult && part.input?.script && (
             <StreamingCodeBlock
               code={part.input.script}
               language="javascript"
             />
           )}
-          {state === 'success' && part.input?.script && (
+          {hasAnyResult && part.input?.script && (
             <div className="flex flex-col">
-              <Collapsible
-                open={scriptExpanded}
-                onOpenChange={setScriptExpanded}
-              >
-                <CollapsibleTrigger size="condensed" className="">
-                  <ChevronDownIcon
-                    className={cn(
-                      'size-3 transition-transform duration-150',
-                      !scriptExpanded && '-rotate-90',
-                    )}
-                  />
-                  <span className="mb-1 text-[10px] uppercase tracking-wider">
-                    Script
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="duration-0!">
-                  <CodeBlock
-                    code={part.input.script}
-                    language="javascript"
-                    hideActionButtons
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-              {hasResultContent && (
-                <div ref={resultRef}>
-                  <Collapsible
-                    open={resultExpanded}
-                    onOpenChange={setResultExpanded}
-                  >
-                    <CollapsibleTrigger size="condensed" className="">
-                      <ChevronDownIcon
-                        className={cn(
-                          'size-3 transition-transform duration-150',
-                          !resultExpanded && '-rotate-90',
-                        )}
+              {!streaming && (
+                <Collapsible
+                  open={scriptExpanded}
+                  onOpenChange={setScriptExpanded}
+                >
+                  <CollapsibleTrigger size="condensed" className="">
+                    <ChevronDownIcon
+                      className={cn(
+                        'size-3 transition-transform duration-150',
+                        !scriptExpanded && '-rotate-90',
+                      )}
+                    />
+                    <span className="mb-1 text-[10px] uppercase tracking-wider">
+                      Script
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="duration-0!">
+                    <CodeBlock
+                      code={part.input.script}
+                      language="javascript"
+                      hideActionButtons
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+              <div ref={resultRef}>
+                <Collapsible
+                  open={resultExpanded}
+                  onOpenChange={setResultExpanded}
+                >
+                  <CollapsibleTrigger size="condensed" className="">
+                    <ChevronDownIcon
+                      className={cn(
+                        'size-3 transition-transform duration-150',
+                        !resultExpanded && '-rotate-90',
+                      )}
+                    />
+                    <span className="mb-1 text-[10px] uppercase tracking-wider">
+                      Result
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="duration-0!">
+                    {effectiveAttachments && (
+                      <AttachmentPreviewCards
+                        attachments={effectiveAttachments}
                       />
-                      <span className="mb-1 text-[10px] uppercase tracking-wider">
-                        Result
-                      </span>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="duration-0!">
-                      {customAttachments ? (
-                        <AttachmentPreviewCards
-                          attachments={customAttachments}
-                        />
-                      ) : (
-                        formattedResult && (
+                    )}
+                    {effectiveOutputText && (
+                      <div
+                        ref={liveTextRef}
+                        className={cn(
+                          streaming &&
+                            (effectiveAttachments
+                              ? 'scrollbar-none max-h-12 overflow-y-auto'
+                              : 'scrollbar-none max-h-50.5 overflow-y-auto'),
+                        )}
+                      >
+                        {streaming ? (
+                          <StreamingCodeBlock
+                            code={effectiveOutputText}
+                            language="json"
+                          />
+                        ) : (
                           <CodeBlock
-                            code={formattedResult}
+                            code={effectiveOutputText}
                             language="json"
                             hideActionButtons
                           />
-                        )
-                      )}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              )}
+                        )}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
             </div>
           )}
         </>
       }
       contentClassName={
-        capMaxHeight ? (streaming ? 'max-h-32!' : 'max-h-80!') : undefined
+        capMaxHeight
+          ? streaming && !hasAnyResult
+            ? 'max-h-32!'
+            : 'max-h-80!'
+          : undefined
       }
       contentFooterClassName="px-0"
     />

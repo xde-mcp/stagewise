@@ -72,6 +72,21 @@ export type WorkerToMainMessage =
       after: string | null;
       isExternal: boolean;
       bytesWritten: number;
+    }
+  | {
+      type: 'sandbox-output';
+      agentId: string;
+      output: string;
+    }
+  | {
+      type: 'sandbox-output-attachment';
+      agentId: string;
+      attachment: {
+        id: string;
+        mediaType: string;
+        fileName?: string;
+        sizeBytes: number;
+      };
     };
 
 /** Main-side: typed send + onMessage for a UtilityProcess child */

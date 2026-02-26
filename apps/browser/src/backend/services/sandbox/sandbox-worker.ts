@@ -152,6 +152,7 @@ function getSandboxAPI(agentId: string) {
       const str = typeof data === 'string' ? data : JSON.stringify(data);
       const outputs = pendingOutputs.get(agentId);
       if (outputs) outputs.push(str);
+      ipc.send({ type: 'sandbox-output', agentId, output: str });
       timerResetCallbacks.get(agentId)?.();
     },
     outputAttachment(attachment: {
@@ -179,6 +180,16 @@ function getSandboxAPI(agentId: string) {
           sizeBytes: attachment.sizeBytes,
         });
       }
+      ipc.send({
+        type: 'sandbox-output-attachment',
+        agentId,
+        attachment: {
+          id: attachment.id,
+          mediaType: attachment.mediaType,
+          fileName: attachment.fileName,
+          sizeBytes: attachment.sizeBytes,
+        },
+      });
       timerResetCallbacks.get(agentId)?.();
     },
   };

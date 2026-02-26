@@ -831,6 +831,7 @@ export class ToolboxService extends DisposableService {
       this.logger,
       fileDiffHandler,
       (agentId) => this.getSandboxMounts(agentId),
+      this.uiKarton,
     );
 
     // Use arrow function to preserve `this` binding when called as callback

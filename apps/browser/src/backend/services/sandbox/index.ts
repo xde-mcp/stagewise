@@ -10,6 +10,7 @@ import {
   type MountDescriptor,
   type WorkerToMainMessage,
 } from './ipc';
+import type { KartonService } from '@/services/karton';
 
 /**
  * Callback type for handling file diff notifications from the sandbox worker.
@@ -61,11 +62,19 @@ interface PendingRequest {
   agentId: string;
 }
 
+interface SandboxAttachmentMeta {
+  id: string;
+  mediaType: string;
+  fileName?: string;
+  sizeBytes: number;
+}
+
 export class SandboxService extends DisposableService {
   private readonly windowLayoutService: WindowLayoutService;
   private readonly logger: Logger;
   private readonly fileDiffHandler?: FileDiffHandler;
   private readonly mountResolver?: MountResolver;
+  private readonly kartonService?: KartonService;
   private workers: WorkerInfo[] = [];
   private agentToWorker = new Map<string, WorkerInfo>();
   private pendingRequests = new Map<string, PendingRequest>();
@@ -74,11 +83,16 @@ export class SandboxService extends DisposableService {
   private sandboxSessionIds = new Map<string, string>();
   private reqId = 0;
 
+  private outputBuffers = new Map<string, string[]>();
+  private attachmentBuffers = new Map<string, SandboxAttachmentMeta[]>();
+  private outputFlushTimers = new Map<string, NodeJS.Timeout>();
+
   constructor(
     windowLayoutService: WindowLayoutService,
     logger: Logger,
     fileDiffHandler?: FileDiffHandler,
     mountResolver?: MountResolver,
+    kartonService?: KartonService,
     private poolSize = 4,
   ) {
     super();
@@ -86,6 +100,7 @@ export class SandboxService extends DisposableService {
     this.logger = logger;
     this.fileDiffHandler = fileDiffHandler;
     this.mountResolver = mountResolver;
+    this.kartonService = kartonService;
   }
 
   public static async create(
@@ -93,12 +108,14 @@ export class SandboxService extends DisposableService {
     logger: Logger,
     fileDiffHandler?: FileDiffHandler,
     mountResolver?: MountResolver,
+    kartonService?: KartonService,
   ): Promise<SandboxService> {
     const instance = new SandboxService(
       windowLayoutService,
       logger,
       fileDiffHandler,
       mountResolver,
+      kartonService,
     );
     await instance.initialize();
     return instance;
@@ -319,7 +336,108 @@ export class SandboxService extends DisposableService {
         }
         break;
       }
+      case 'sandbox-output': {
+        const toolCallId = this.agentToolCallIds.get(msg.agentId);
+        if (!toolCallId || !this.kartonService) return;
+        if (!this.outputBuffers.has(toolCallId)) {
+          this.outputBuffers.set(toolCallId, []);
+        }
+        this.outputBuffers.get(toolCallId)!.push(msg.output);
+        this.scheduleFlush(msg.agentId, toolCallId);
+        break;
+      }
+      case 'sandbox-output-attachment': {
+        const toolCallId = this.agentToolCallIds.get(msg.agentId);
+        if (!toolCallId || !this.kartonService) return;
+        if (!this.attachmentBuffers.has(toolCallId)) {
+          this.attachmentBuffers.set(toolCallId, []);
+        }
+        this.attachmentBuffers.get(toolCallId)!.push(msg.attachment);
+        this.scheduleFlush(msg.agentId, toolCallId);
+        break;
+      }
     }
+  }
+
+  private static readonly FLUSH_DEBOUNCE_MS = 300;
+
+  private scheduleFlush(agentId: string, toolCallId: string) {
+    const existing = this.outputFlushTimers.get(toolCallId);
+    if (existing) clearTimeout(existing);
+    this.outputFlushTimers.set(
+      toolCallId,
+      setTimeout(
+        () => this.flushToKarton(agentId, toolCallId),
+        SandboxService.FLUSH_DEBOUNCE_MS,
+      ),
+    );
+  }
+
+  private flushToKarton(agentId: string, toolCallId: string) {
+    if (!this.kartonService) return;
+    this.outputFlushTimers.delete(toolCallId);
+
+    const outputs = this.outputBuffers.get(toolCallId);
+    const attachments = this.attachmentBuffers.get(toolCallId);
+    if (!outputs?.length && !attachments?.length) return;
+
+    const outputsSnapshot = outputs ? [...outputs] : [];
+    const attachmentsSnapshot = attachments ? [...attachments] : [];
+
+    this.kartonService.setState((draft) => {
+      if (!draft.toolbox[agentId]) {
+        draft.toolbox[agentId] = {
+          workspace: { mounts: [] },
+          pendingFileDiffs: [],
+          editSummary: [],
+          pendingUserQuestion: null,
+        };
+      }
+      if (outputsSnapshot.length > 0) {
+        if (!draft.toolbox[agentId].pendingSandboxOutputs)
+          draft.toolbox[agentId].pendingSandboxOutputs = {};
+
+        draft.toolbox[agentId].pendingSandboxOutputs![toolCallId] =
+          outputsSnapshot;
+      }
+      if (attachmentsSnapshot.length > 0) {
+        if (!draft.toolbox[agentId].pendingSandboxAttachments)
+          draft.toolbox[agentId].pendingSandboxAttachments = {};
+
+        draft.toolbox[agentId].pendingSandboxAttachments![toolCallId] =
+          attachmentsSnapshot;
+      }
+    });
+  }
+
+  clearPendingOutputs(agentId: string, toolCallId: string) {
+    this.outputBuffers.delete(toolCallId);
+    this.attachmentBuffers.delete(toolCallId);
+    const timer = this.outputFlushTimers.get(toolCallId);
+    if (timer) {
+      clearTimeout(timer);
+      this.outputFlushTimers.delete(toolCallId);
+    }
+
+    if (!this.kartonService) return;
+    const agentToolbox = this.kartonService.state.toolbox[agentId];
+    if (!agentToolbox) return;
+
+    const hasOutputs =
+      agentToolbox.pendingSandboxOutputs?.[toolCallId] !== undefined;
+    const hasAttachments =
+      agentToolbox.pendingSandboxAttachments?.[toolCallId] !== undefined;
+    if (!hasOutputs && !hasAttachments) return;
+
+    this.kartonService.setState((draft) => {
+      const tb = draft.toolbox[agentId];
+      if (!tb) return;
+      if (tb.pendingSandboxOutputs?.[toolCallId])
+        delete tb.pendingSandboxOutputs[toolCallId];
+
+      if (tb.pendingSandboxAttachments?.[toolCallId])
+        delete tb.pendingSandboxAttachments[toolCallId];
+    });
   }
 
   private handleWorkerCrash(crashed: WorkerInfo, code: number | null) {
@@ -389,5 +507,10 @@ export class SandboxService extends DisposableService {
     this.agentToolCallIds.clear();
     this.fileWriteCountPerExecution.clear();
     this.sandboxSessionIds.clear();
+
+    for (const timer of this.outputFlushTimers.values()) clearTimeout(timer);
+    this.outputFlushTimers.clear();
+    this.outputBuffers.clear();
+    this.attachmentBuffers.clear();
   }
 }

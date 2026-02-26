@@ -41,6 +41,7 @@ export const executeSandboxJsTool = (
 
         return result;
       } finally {
+        sandboxService.clearPendingOutputs(agentInstanceId, toolCallId);
         sandboxService.clearAgentToolCallId(agentInstanceId);
       }
     },
