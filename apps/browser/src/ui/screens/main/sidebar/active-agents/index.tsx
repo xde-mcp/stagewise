@@ -7,6 +7,10 @@ import {
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import { Button } from '@stagewise/stage-ui/components/button';
+import {
+  OverlayScrollbar,
+  type OverlayScrollbarRef,
+} from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { IconPlusFill18 } from 'nucleo-ui-fill-18';
 import { extractTipTapText, firstWords } from '@/utils/text-utils';
 import { useEmptyAgentId } from '@/hooks/use-empty-agent';
@@ -255,14 +259,14 @@ export function ActiveAgentsGrid() {
     [deleteAgent],
   );
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<OverlayScrollbarRef>(null);
 
   /** Scroll a card into the safe (non-masked) area of the scroll container.
    * The container has CSS mask gradients (8px top/bottom) that fade content
    * to hint at overflow. We only scroll when the card overlaps those fade
    * zones — if it's already fully visible, we leave the position alone. */
   const scrollCardIntoView = useCallback((agentId: string) => {
-    const container = scrollRef.current;
+    const container = scrollRef.current?.getViewport();
     if (!container) return;
     const card = container.querySelector<HTMLElement>(
       `[data-agent-id="${agentId}"]`,
@@ -307,8 +311,8 @@ export function ActiveAgentsGrid() {
   if (!showActiveAgents || visibleCount < 2) return null;
 
   return (
-    <div className="flex shrink-0 flex-col border-border-subtle border-b pt-2 pl-2 group-data-[collapsed=true]:hidden">
-      <div className="flex items-center justify-between pr-1.5">
+    <div className="flex shrink-0 flex-col border-border-subtle border-b px-1 pt-2 group-data-[collapsed=true]:hidden">
+      <div className="flex items-center justify-between">
         <span className="px-0.5 font-medium text-muted-foreground text-sm">
           Active agents
         </span>
@@ -322,14 +326,10 @@ export function ActiveAgentsGrid() {
           <IconPlusFill18 className="size-3" />
         </Button>
       </div>
-      <div
+      <OverlayScrollbar
         ref={scrollRef}
-        className="scrollbar-hover-only -mr-[2px] grid max-h-[15vh] min-h-5 auto-rows-max @[400px]:grid-cols-2 grid-cols-1 gap-2 overflow-y-auto pt-2 pb-3.5"
-        style={{
-          scrollbarGutter: 'stable',
-          maskImage:
-            'linear-gradient(to bottom, transparent, black 8px, black calc(100% - 8px), rgba(0,0,0,0.5))',
-        }}
+        className="max-h-[15vh] min-h-5"
+        contentClassName="grid auto-rows-max @[400px]:grid-cols-2 grid-cols-1 gap-2 pt-2 pb-3.5"
       >
         {orderedAgents.map((agent) => {
           const isOpen = agent.id === openAgent;
@@ -354,7 +354,7 @@ export function ActiveAgentsGrid() {
           );
         })}
         {showCreateSkeleton && <AgentCardSkeleton />}
-      </div>
+      </OverlayScrollbar>
     </div>
   );
 }
