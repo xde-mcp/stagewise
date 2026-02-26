@@ -238,7 +238,11 @@ const WorkspaceBadge = memo(function WorkspaceBadge({
       >
         <PreviewCardTrigger delay={200} closeDelay={300}>
           <span className="inline-flex items-center gap-1">
-            <IconFolder5Outline18 className="size-3 shrink-0" />
+            {mount.isGitRepo ? (
+              <IconCodeBranchOutline18 className="size-3 shrink-0" />
+            ) : (
+              <IconFolder5Outline18 className="size-3 shrink-0" />
+            )}
             <span className="max-w-32 truncate">{name}</span>
           </span>
         </PreviewCardTrigger>
@@ -476,7 +480,7 @@ function WorkspacePreviewCardContent({
   return (
     <div className="flex flex-col">
       {/* Header: folder name + git badge + path */}
-      <div className="flex flex-col gap-0.5 px-2.5 pt-1.5 pb-2">
+      <div className="flex flex-col items-start gap-0.5 px-2.5 pt-1.5 pb-2">
         <div className="flex items-center gap-1.5">
           <span className="truncate font-semibold text-foreground text-xs">
             {name}
