@@ -17,6 +17,7 @@ type ActiveAgentCardData = {
   id: string;
   title: string;
   isWorking: boolean;
+  isWaitingForUser: boolean;
   activityText: string;
   activityIsUserInput: boolean;
   hasError: boolean;
@@ -37,6 +38,7 @@ function activeAgentCardsEqual(
       ai.id !== bi.id ||
       ai.title !== bi.title ||
       ai.isWorking !== bi.isWorking ||
+      ai.isWaitingForUser !== bi.isWaitingForUser ||
       ai.activityText !== bi.activityText ||
       ai.activityIsUserInput !== bi.activityIsUserInput ||
       ai.hasError !== bi.hasError ||
@@ -129,17 +131,21 @@ export function ActiveAgentsGrid() {
           .map(([id, agent]) => {
             const history = agent.state.history;
             const lastMsg = history[history.length - 1];
-            const activity = deriveActivityText(
-              history as {
-                role: string;
-                parts: { type: string; text?: string }[];
-              }[],
-              agent.state.inputState,
-            );
+            const hasPendingQuestion = !!s.toolbox[id]?.pendingUserQuestion;
+            const activity = hasPendingQuestion
+              ? { text: 'Waiting for response...', isUserInput: false }
+              : deriveActivityText(
+                  history as {
+                    role: string;
+                    parts: { type: string; text?: string }[];
+                  }[],
+                  agent.state.inputState,
+                );
             return {
               id,
               title: agent.state.title,
               isWorking: agent.state.isWorking,
+              isWaitingForUser: hasPendingQuestion,
               activityText: activity.text,
               activityIsUserInput: activity.isUserInput,
               hasError: !!agent.state.error,
@@ -336,6 +342,7 @@ export function ActiveAgentsGrid() {
               title={agent.title}
               isActive={isOpen}
               isWorking={agent.isWorking}
+              isWaitingForUser={agent.isWaitingForUser}
               hasError={agent.hasError}
               hasUnseen={hasUnseen}
               activityText={agent.activityText}

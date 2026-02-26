@@ -12,6 +12,7 @@ const TOOL_LABELS: Record<string, string> = {
   'tool-updateWorkspaceMdTool': 'Updating workspace',
   'tool-searchInLibraryDocsTool': 'Searching docs',
   'tool-listLibraryDocsTool': 'Looking up docs',
+  'tool-askUserQuestionsTool': 'Asking questions',
 };
 
 export function getToolActivityLabel(toolPartType: string): string {

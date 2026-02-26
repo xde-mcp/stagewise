@@ -21,6 +21,7 @@ import {
   WorkspaceMdStatusSection,
   type WorkspaceMdStatus,
 } from './workspace-md-section';
+import { UserQuestionSection } from './user-question-section';
 
 // Stable empty arrays to avoid infinite loop with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];
@@ -188,6 +189,20 @@ export function StatusCard() {
   // Procedure to send a queued message immediately (aborts current work)
   const flushQueue = useKartonProcedure((p) => p.agents.flushQueue);
 
+  const pendingUserQuestion = useKartonState((s) =>
+    openAgentId ? (s.toolbox[openAgentId]?.pendingUserQuestion ?? null) : null,
+  );
+
+  const submitUserQuestionStep = useKartonProcedure(
+    (p) => p.toolbox.submitUserQuestionStep,
+  );
+  const cancelUserQuestion = useKartonProcedure(
+    (p) => p.toolbox.cancelUserQuestion,
+  );
+  const goBackUserQuestion = useKartonProcedure(
+    (p) => p.toolbox.goBackUserQuestion,
+  );
+
   const openDiffReviewPage = useCallback(
     (fileId: string) => {
       if (!openAgentId) return;
@@ -348,6 +363,23 @@ export function StatusCard() {
     });
     if (fileDiffSection) result.push(fileDiffSection);
 
+    const userQuestionSection = UserQuestionSection({
+      pendingQuestion: pendingUserQuestion,
+      onSubmitStep: async (questionId, answers) => {
+        if (!openAgentId) return;
+        await submitUserQuestionStep(openAgentId, questionId, answers);
+      },
+      onCancel: async (questionId) => {
+        if (!openAgentId) return;
+        await cancelUserQuestion(openAgentId, questionId, 'user_cancelled');
+      },
+      onGoBack: async (questionId) => {
+        if (!openAgentId) return;
+        await goBackUserQuestion(openAgentId, questionId);
+      },
+    });
+    if (userQuestionSection) result.push(userQuestionSection);
+
     return result;
   }, [
     workspaceMdSections,
@@ -360,6 +392,10 @@ export function StatusCard() {
     rejectAllPendingEdits,
     acceptAllPendingEdits,
     openDiffReviewPage,
+    pendingUserQuestion,
+    submitUserQuestionStep,
+    cancelUserQuestion,
+    goBackUserQuestion,
   ]);
 
   // Sync card height with CSS variable for ChatHistory padding

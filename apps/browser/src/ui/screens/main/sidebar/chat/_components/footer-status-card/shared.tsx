@@ -136,6 +136,7 @@ export function StatusCardComponent({
   return (
     <div
       ref={ref}
+      data-status-card
       className="-z-10 absolute right-2 bottom-[calc(100%+1px)] left-2 flex flex-col items-center justify-between rounded-t-lg border-derived border-t border-r border-l bg-background p-1 backdrop-blur-lg"
     >
       {items.map((item, index) => (

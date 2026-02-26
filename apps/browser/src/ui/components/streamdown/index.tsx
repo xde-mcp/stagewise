@@ -227,6 +227,15 @@ const preprocessMarkdown = (markdown: string): string => {
   return processed;
 };
 
+/** Inline markdown wrapper that strips paragraph block margins. */
+export function InlineMarkdown({ children }: { children: string }) {
+  return (
+    <span className="inline [&>div]:inline [&_p]:m-0 [&_p]:inline">
+      <Streamdown isAnimating={false}>{children}</Streamdown>
+    </span>
+  );
+}
+
 export const Streamdown = ({
   isAnimating,
   children,

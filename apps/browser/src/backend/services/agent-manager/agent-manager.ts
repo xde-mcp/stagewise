@@ -19,6 +19,7 @@ import type { GlobalDataPathService } from '../global-data-path';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
 import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { writeBlob } from '@/utils/attachment-blobs';
+import type { QuestionAnswerValue } from '@shared/karton-contracts/ui/agent/tools/types';
 import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
 
 /**
@@ -156,6 +157,38 @@ export class AgentManagerService extends DisposableService {
           };
 
         await this.sendUserMessage(instanceId, message);
+      },
+    );
+    this.karton.registerServerProcedureHandler(
+      'agents.interruptQuestionWithMessage',
+      async (
+        _callingClientId: string,
+        instanceId: string,
+        questionId: string,
+        message: AgentMessage & { role: 'user' },
+        draftAnswers: Record<string, QuestionAnswerValue>,
+      ) => {
+        const environmentSnapshot: EnvironmentSnapshot =
+          this.toolbox.captureEnvironmentSnapshot(instanceId);
+
+        if (message.metadata)
+          message.metadata = {
+            ...message.metadata,
+            environmentSnapshot,
+          };
+
+        // Queue the message FIRST, then resolve the question — both in
+        // one backend call so there's no race between separate RPCs.
+        try {
+          await this.sendUserMessage(instanceId, message);
+        } finally {
+          this.toolbox.cancelQuestion(
+            instanceId,
+            questionId,
+            'user_sent_message',
+            draftAnswers,
+          );
+        }
       },
     );
     this.karton.registerServerProcedureHandler(

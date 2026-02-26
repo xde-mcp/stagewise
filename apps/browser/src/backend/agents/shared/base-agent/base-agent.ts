@@ -1756,6 +1756,9 @@ export abstract class BaseAgent<
     } catch {}
     this.stepAbortController = null;
 
+    // Cancel any pending user questions so the form UI is dismissed
+    this.toolbox.cancelPendingQuestions(this.instanceId);
+
     const toolCallAbortReason =
       stopReason === 'user-stopped'
         ? (this.config.stopToolCallAbortReason ??

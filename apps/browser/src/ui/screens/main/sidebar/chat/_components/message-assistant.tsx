@@ -30,6 +30,7 @@ import {
 import { UnknownToolPart } from './message-part-ui/tools/unknown';
 import { ExecuteSandboxJsToolPart } from './message-part-ui/tools/execute-sandbox-js';
 import { ReadConsoleLogsToolPart } from './message-part-ui/tools/read-console-logs';
+import { AskUserQuestionsToolPart } from './message-part-ui/tools/ask-user-questions';
 import { isToolOrReasoningPart } from './message-utils';
 import { MessageBetweenSteps } from './message-between-steps';
 
@@ -237,6 +238,13 @@ export const MessageAssistant = memo(
                         return (
                           <OverwriteFileToolPart key={stableKey} part={part} />
                         );
+                      case 'tool-askUserQuestionsTool':
+                        return (
+                          <AskUserQuestionsToolPart
+                            key={stableKey}
+                            part={part}
+                          />
+                        );
                       default:
                         return (
                           <UnknownToolPart
@@ -299,7 +307,7 @@ export const MessageAssistant = memo(
         if (prevPart.text !== nextPart.text) return false;
         if (prevPart.state !== nextPart.state) return false;
       }
-      // For tool parts, compare state and input to allow streaming updates
+      // For tool parts, compare state, input, and output to allow streaming updates
       if (
         prevPart.type.startsWith('tool-') ||
         prevPart.type === 'dynamic-tool'
@@ -311,6 +319,10 @@ export const MessageAssistant = memo(
         const prevInput = JSON.stringify((prevPart as any).input);
         const nextInput = JSON.stringify((nextPart as any).input);
         if (prevInput !== nextInput) return false;
+        // Compare output so completed tool results trigger re-render
+        const prevOutput = JSON.stringify((prevPart as any).output);
+        const nextOutput = JSON.stringify((nextPart as any).output);
+        if (prevOutput !== nextOutput) return false;
       }
     }
 

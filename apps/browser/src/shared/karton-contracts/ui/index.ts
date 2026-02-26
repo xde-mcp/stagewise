@@ -5,6 +5,7 @@ import type { ReactSelectedElementInfo } from '../../selected-elements/react';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import type { SelectedElement } from '../../selected-elements';
 import type { FileDiff } from './shared-types';
+import type { QuestionField, QuestionAnswerValue } from './agent/tools/types';
 import type {
   FilePickerRequest,
   GlobalConfig,
@@ -504,6 +505,19 @@ export type MountEntry = {
 
 export const EMPTY_MOUNTS: MountEntry[] = [];
 
+export type PendingUserQuestion = {
+  id: string;
+  title: string;
+  description?: string;
+  steps: Array<{
+    title?: string;
+    description?: string;
+    fields: QuestionField[];
+  }>;
+  currentStep: number;
+  answers: Record<string, QuestionAnswerValue>;
+};
+
 export type AppState = {
   internalData: {
     posthog?: {
@@ -530,6 +544,7 @@ export type AppState = {
       };
       pendingFileDiffs: FileDiff[];
       editSummary: FileDiff[];
+      pendingUserQuestion: PendingUserQuestion | null;
     };
   };
   userAccount: {
@@ -669,6 +684,13 @@ export type KartonContract = {
         agentId: string,
         message: AgentMessage & { role: 'user' },
       ) => Promise<void>;
+      /** Queue a user message AND resolve a pending question in one atomic call. */
+      interruptQuestionWithMessage: (
+        agentId: string,
+        questionId: string,
+        message: AgentMessage & { role: 'user' },
+        draftAnswers: Record<string, QuestionAnswerValue>,
+      ) => Promise<void>;
       sendToolApprovalResponse: (
         instanceId: string,
         approvalId: string,
@@ -728,6 +750,20 @@ export type KartonContract = {
       generateWorkspaceMd: (
         agentInstanceId: string,
         mountPrefix: string,
+      ) => Promise<void>;
+      submitUserQuestionStep: (
+        agentInstanceId: string,
+        questionId: string,
+        stepAnswers: Record<string, QuestionAnswerValue>,
+      ) => Promise<void>;
+      cancelUserQuestion: (
+        agentInstanceId: string,
+        questionId: string,
+        reason: 'user_cancelled' | 'user_sent_message',
+      ) => Promise<void>;
+      goBackUserQuestion: (
+        agentInstanceId: string,
+        questionId: string,
       ) => Promise<void>;
     };
     userAccount: {

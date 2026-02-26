@@ -39,6 +39,13 @@ import {
 import { grepSearchTool } from './tools/file-modification/grep-search';
 import { executeSandboxJsTool } from './tools/browser/execute-sandbox-js';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
+import {
+  askUserQuestionsTool,
+  advanceOrCompleteQuestion,
+  cancelQuestion,
+  goBackQuestion,
+  cleanupQuestionsForAgent,
+} from './tools/user-interaction/ask-user-questions';
 import { type Tool, tool } from 'ai';
 import {
   buildAgentFileEditContent,
@@ -53,6 +60,7 @@ import {
   multiEditToolInputSchema,
   overwriteFileToolInputSchema,
   type StagewiseToolSet,
+  type QuestionAnswerValue,
 } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { BrowserSnapshot, WorkspaceSnapshot } from './types';
 import type {
@@ -365,6 +373,8 @@ export class ToolboxService extends DisposableService {
       case 'readConsoleLogsTool':
         if (!this.windowLayoutService) return null;
         return readConsoleLogsTool(this.windowLayoutService);
+      case 'askUserQuestionsTool':
+        return askUserQuestionsTool(this.uiKarton, agentInstanceId);
       default:
         this.logger.error('[ToolboxService] Tool not found', { tool });
         return null;
@@ -756,6 +766,30 @@ export class ToolboxService extends DisposableService {
    * Clear tracking data for a specific agent instance.
    * Call this when an agent session ends.
    */
+  /**
+   * Cancel any pending user questions for a specific agent instance.
+   * Call this when the agent is stopped to dismiss the question UI.
+   */
+  public cancelPendingQuestions(agentInstanceId: string): void {
+    cleanupQuestionsForAgent(agentInstanceId, this.uiKarton);
+  }
+
+  /** Resolve a specific pending question with a given reason. */
+  public cancelQuestion(
+    agentInstanceId: string,
+    questionId: string,
+    reason: 'user_cancelled' | 'user_sent_message' | 'agent_stopped',
+    draftAnswers?: Record<string, QuestionAnswerValue>,
+  ): void {
+    cancelQuestion(
+      questionId,
+      reason,
+      this.uiKarton,
+      agentInstanceId,
+      draftAnswers,
+    );
+  }
+
   public clearAgentTracking(agentInstanceId: string): void {
     this.mountManagerService?.clearAgentMounts(agentInstanceId);
     this.sandboxService?.destroyAgent(agentInstanceId);
@@ -763,6 +797,7 @@ export class ToolboxService extends DisposableService {
       this.globalDataPathService.globalDataPath,
       agentInstanceId,
     );
+    this.cancelPendingQuestions(agentInstanceId);
   }
 
   private async initialize(): Promise<void> {
@@ -801,6 +836,47 @@ export class ToolboxService extends DisposableService {
     // Use arrow function to preserve `this` binding when called as callback
     this.authService.registerAuthStateChangeCallback(() =>
       this.refreshApiClient(),
+    );
+
+    // Register askUserQuestions procedure handlers
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.submitUserQuestionStep',
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+        questionId: string,
+        stepAnswers: Record<string, QuestionAnswerValue>,
+      ) => {
+        advanceOrCompleteQuestion(
+          questionId,
+          stepAnswers,
+          this.uiKarton,
+          agentInstanceId,
+        );
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.cancelUserQuestion',
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+        questionId: string,
+        reason: 'user_cancelled' | 'user_sent_message',
+      ) => {
+        cancelQuestion(questionId, reason, this.uiKarton, agentInstanceId);
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.goBackUserQuestion',
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+        questionId: string,
+      ) => {
+        goBackQuestion(questionId, this.uiKarton, agentInstanceId);
+      },
     );
   }
 

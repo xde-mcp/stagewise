@@ -190,6 +190,7 @@ export class MountManagerService extends DisposableService {
           workspace: { mounts: [] },
           pendingFileDiffs: [],
           editSummary: [],
+          pendingUserQuestion: null,
         };
       });
     }

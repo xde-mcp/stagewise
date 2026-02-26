@@ -18,6 +18,7 @@ export interface AgentCardProps {
   title: string;
   isActive: boolean;
   isWorking: boolean;
+  isWaitingForUser: boolean;
   hasError: boolean;
   hasUnseen: boolean;
   activityText: string;
@@ -41,6 +42,7 @@ export const AgentCard = memo(function AgentCard({
   title,
   isActive,
   isWorking,
+  isWaitingForUser,
   hasError,
   hasUnseen,
   activityText,
@@ -76,7 +78,9 @@ export const AgentCard = memo(function AgentCard({
         <span
           className={cn(
             'min-w-0 flex-1 overflow-x-clip text-ellipsis whitespace-nowrap text-muted-foreground text-xs leading-normal',
-            isWorking && 'shimmer-text-primary font-medium',
+            isWorking &&
+              !isWaitingForUser &&
+              'shimmer-text-primary font-medium',
             hasError && 'text-destructive-foreground',
             activityIsUserInput && 'italic',
           )}

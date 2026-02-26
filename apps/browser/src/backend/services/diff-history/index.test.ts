@@ -23,6 +23,7 @@ function createMockKartonService() {
         pendingFileDiffs: FileDiff[];
         editSummary: FileDiff[];
         workspace: { mounts: { prefix: string; path: string }[] };
+        pendingUserQuestion: null;
       }
     >;
     agents: {
@@ -34,6 +35,7 @@ function createMockKartonService() {
         pendingFileDiffs: [],
         editSummary: [],
         workspace: { mounts: [] },
+        pendingUserQuestion: null,
       },
     },
     agents: {
@@ -219,11 +221,13 @@ describe('DiffHistoryService (E2E)', () => {
         workspace: { mounts: [] },
         pendingFileDiffs: [],
         editSummary: [],
+        pendingUserQuestion: null,
       });
       expect(mockKarton._getToolboxState('2')).toEqual({
         workspace: { mounts: [] },
         pendingFileDiffs: [],
         editSummary: [],
+        pendingUserQuestion: null,
       });
     });
 

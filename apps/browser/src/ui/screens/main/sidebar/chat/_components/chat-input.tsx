@@ -500,6 +500,8 @@ export const ChatInput = ({
 export interface ChatInputActionsProps {
   /** Whether the agent is currently working (used to determine stop/send button visibility) */
   isAgentWorking?: boolean;
+  /** Whether the agent has a pending user question (hides stop button) */
+  hasPendingQuestion?: boolean;
   onStop?: () => void;
 
   showElementSelectorButton?: boolean;
@@ -516,6 +518,7 @@ export interface ChatInputActionsProps {
 
 export const ChatInputActions = memo(function ChatInputActions({
   isAgentWorking = false,
+  hasPendingQuestion = false,
   onStop,
 
   showElementSelectorButton = true,
@@ -530,7 +533,7 @@ export const ChatInputActions = memo(function ChatInputActions({
   onSubmit,
 }: ChatInputActionsProps) {
   // Always show the send button; show stop button alongside it when agent is working
-  const showStopButton = isAgentWorking && !!onStop;
+  const showStopButton = isAgentWorking && !hasPendingQuestion && !!onStop;
   const showSendButton = true;
 
   return (

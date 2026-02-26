@@ -39,6 +39,7 @@ import {
   markdownToTipTapContent,
   enrichTipTapContent,
 } from '@/utils/tiptap-content-utils';
+import { getCurrentDraftAnswers } from './footer-status-card/user-question-section';
 
 // Stable empty arrays to avoid new-reference re-renders
 const EMPTY_HISTORY: AgentMessage[] = [];
@@ -346,6 +347,16 @@ export function ChatPanelFooter() {
   const mountedPathsRef = useRef(mountedPaths);
   mountedPathsRef.current = mountedPaths;
 
+  const pendingQuestionId = useKartonState((s) =>
+    openAgent ? (s.toolbox[openAgent]?.pendingUserQuestion?.id ?? null) : null,
+  );
+  const hasPendingQuestion = pendingQuestionId !== null;
+  const pendingQuestionIdRef = useRef(pendingQuestionId);
+  pendingQuestionIdRef.current = pendingQuestionId;
+  const interruptQuestionWithMessage = useKartonProcedure(
+    (p) => p.agents.interruptQuestionWithMessage,
+  );
+
   const handleSubmit = useCallback(async () => {
     if (!canSendMessageRef.current) return;
 
@@ -354,6 +365,9 @@ export function ChatPanelFooter() {
     const currentFileAttachments = fileAttachmentsRef.current;
     const currentSelectedElements = localSelectedElementsRef.current;
     const currentMountedPaths = mountedPathsRef.current;
+
+    // Snapshot pending question ID — used for the atomic interrupt call below.
+    const currentPendingQuestionId = pendingQuestionIdRef.current;
 
     // Collect metadata for selected elements and text clips
     const metadata = collectUserMessageMetadata(
@@ -402,8 +416,20 @@ export function ChatPanelFooter() {
       );
 
     try {
-      // Send the message to server (optimistic message is already visible)
-      if (openAgent) await sendUserMessage(openAgent, message);
+      if (openAgent) {
+        if (currentPendingQuestionId) {
+          // Atomic: queue message + resolve question in a single backend call.
+          // Include the current form draft so partial answers are preserved.
+          await interruptQuestionWithMessage(
+            openAgent,
+            currentPendingQuestionId,
+            message,
+            getCurrentDraftAnswers(),
+          );
+        } else {
+          await sendUserMessage(openAgent, message);
+        }
+      }
 
       // Keep input focused after sending - refocus in next tick
       setTimeout(() => {
@@ -430,6 +456,7 @@ export function ChatPanelFooter() {
     setChatInputState,
     clearAll,
     stopContextSelector,
+    interruptQuestionWithMessage,
   ]);
 
   const usedTokens = useKartonState((s) =>
@@ -484,6 +511,10 @@ export function ChatPanelFooter() {
       const target = ev.relatedTarget as HTMLElement;
       // We should only allow chat blur if the user clicked outside the chat box or the context selector element tree. Otherwise, we should keep the input active by refocusing it.
       if (target?.closest('#chat-file-attachment-menu-content')) {
+        return;
+      }
+      // Let focus move naturally into status card inputs (e.g. user question form)
+      if (target?.closest('[data-status-card]')) {
         return;
       }
       if (
@@ -681,6 +712,27 @@ export function ChatPanelFooter() {
         )}
         id="chat-input-container-box"
         data-chat-active={chatInputActive}
+        onKeyDown={(e) => {
+          // Shift-Tab from chat input → jump to last question in status card form
+          if (
+            e.key === 'Tab' &&
+            e.shiftKey &&
+            !(e.target as HTMLElement).closest('[data-status-card]')
+          ) {
+            const card = e.currentTarget.querySelector('[data-status-card]');
+            const questions = card?.querySelectorAll('[data-question]');
+            const last = questions?.[questions.length - 1];
+            if (last) {
+              e.preventDefault();
+              const focusable =
+                last.querySelector<HTMLElement>('button[data-checked]') ??
+                last.querySelector<HTMLElement>(
+                  'input:not([tabindex="-1"]), button, [role="radio"], [role="checkbox"]',
+                );
+              focusable?.focus();
+            }
+          }
+        }}
         onDragEnter={dragHandlers.onDragEnter}
         onDragLeave={dragHandlers.onDragLeave}
         onDragOver={dragHandlers.onDragOver}
@@ -693,6 +745,9 @@ export function ChatPanelFooter() {
           onChange={updateChatInputState}
           onSubmit={handleSubmit}
           disabled={!enableInputField}
+          placeholder={
+            hasPendingQuestion ? 'Write a message instead' : undefined
+          }
           attachmentCount={
             fileAttachments.length + localSelectedElements.length
           }
@@ -713,6 +768,7 @@ export function ChatPanelFooter() {
         />
         <ChatInputActions
           isAgentWorking={isWorking}
+          hasPendingQuestion={hasPendingQuestion}
           onStop={stableAbortAgent}
           showElementSelectorButton
           elementSelectionActive={elementSelectionActive}

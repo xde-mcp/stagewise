@@ -61,6 +61,7 @@ export class ChatAgent extends BaseAgent<never, undefined> {
       multiEditTool: await box.getTool('multiEditTool', id),
       grepSearchTool: await box.getTool('grepSearchTool', id),
       readConsoleLogsTool: await box.getTool('readConsoleLogsTool', id),
+      askUserQuestionsTool: await box.getTool('askUserQuestionsTool', id),
       // IMPORTANT: The type for this tool is defined in @apps/browser/src/shared/karton-contracts/ui/agent/tools/types.ts - update the type when you change this input schema.
       updateWorkspaceMdTool: this.getSpawnChildAgentTool(
         'Triggers an update of the `.stagewise/WORKSPACE.md` file. Use this whenever you find that the content of the file `.stagewise/WORKSPACE.md` in the system context is outdated or needs to be updated. Provide a brief reason for the update. Most importantly, provide the mount prefix of the workspace to update.',

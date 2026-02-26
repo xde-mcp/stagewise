@@ -346,6 +346,7 @@ export class DiffHistoryService extends DisposableService {
           },
           pendingFileDiffs: [],
           editSummary: [],
+          pendingUserQuestion: null,
         };
       });
 
