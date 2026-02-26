@@ -94,10 +94,12 @@ function ScrollFadeCodeBlock({
   code,
   description,
   filePath,
+  muted = false,
 }: {
   code: string;
   description: string;
   filePath: string | null;
+  muted?: boolean;
 }) {
   const [viewport, setViewport] = useState<HTMLElement | null>(null);
   const viewportRef = useMemo(
@@ -118,9 +120,20 @@ function ScrollFadeCodeBlock({
 
   return (
     <div className="space-y-2">
-      <p className="text-muted-foreground text-xs">{description}</p>
-      {/* Outer container for border - not affected by mask */}
-      <div className="relative overflow-hidden rounded-lg border border-derived">
+      <p
+        className={cn(
+          'text-xs',
+          muted ? 'text-subtle-foreground' : 'text-muted-foreground',
+        )}
+      >
+        {description}
+      </p>
+      <div
+        className={cn(
+          'relative overflow-hidden rounded-lg border',
+          muted ? 'border-derived-subtle opacity-60' : 'border-derived',
+        )}
+      >
         {/* Scrollable content with OverlayScrollbar + fade mask */}
         <OverlayScrollbar
           className="mask-alpha max-h-96"
@@ -373,8 +386,7 @@ function WorkspaceContextSection({
     [skills],
   );
 
-  const showAgentsMd = respectAgentsMd && agentsMd.exists;
-  const hasAnyContextFile = workspaceMd.exists || showAgentsMd;
+  const hasAnyContextFile = workspaceMd.exists || agentsMd.exists;
 
   const defaultTab = workspaceMd.exists ? 'workspaceMd' : 'agentsMd';
 
@@ -568,10 +580,19 @@ function WorkspaceContextSection({
                         </TooltipContent>
                       </Tooltip>
                     )}
-                    {showAgentsMd && (
+                    {agentsMd.exists && (
                       <Tooltip>
                         <TooltipTrigger>
-                          <TabsTrigger value="agentsMd">AGENTS.md</TabsTrigger>
+                          <TabsTrigger
+                            value="agentsMd"
+                            className={
+                              !respectAgentsMd
+                                ? 'text-subtle-foreground'
+                                : undefined
+                            }
+                          >
+                            AGENTS.md
+                          </TabsTrigger>
                         </TooltipTrigger>
                         <TooltipContent>
                           <span className="block max-w-80 break-all">
@@ -592,12 +613,17 @@ function WorkspaceContextSection({
                     </TabsContent>
                   )}
 
-                  {showAgentsMd && (
+                  {agentsMd.exists && (
                     <TabsContent value="agentsMd" className="w-full">
                       <ScrollFadeCodeBlock
                         code={agentsMd.content ?? ''}
-                        description="User-created coding guidelines from your workspace root."
+                        description={
+                          respectAgentsMd
+                            ? 'User-created coding guidelines from your workspace root.'
+                            : 'Not included in agent context — enable the toggle above to include.'
+                        }
                         filePath={agentsMd.path}
+                        muted={!respectAgentsMd}
                       />
                     </TabsContent>
                   )}
