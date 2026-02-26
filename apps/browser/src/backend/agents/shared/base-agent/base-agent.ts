@@ -1215,7 +1215,7 @@ export abstract class BaseAgent<
     } catch (e) {
       const error = e as Error;
       this.logger.error(
-        `[BaseAgent:${this.instanceId}] Failed to prepare step context: ${error.message}, ${error.stack}`,
+        `[BaseAgent:${this.instanceId}] Failed to prepare step context: ${this.formatError(error)}`,
       );
       this.report(error, 'prepareStepContext');
       this.state.set((draft) => {
@@ -1277,7 +1277,7 @@ export abstract class BaseAgent<
         } catch (err) {
           const error = err as Error;
           this.logger.error(
-            `[BaseAgent:${this.instanceId}] Error in onFinish: ${error.message}, ${error.stack}`,
+            `[BaseAgent:${this.instanceId}] Error in onFinish: ${this.formatError(error)}`,
           );
           this.report(error, 'onFinish');
           this.stepAbortController = null;
@@ -1299,7 +1299,7 @@ export abstract class BaseAgent<
         if (this._stepGeneration !== stepGen) return;
         const error = ev.error as Error;
         this.logger.error(
-          `[BaseAgent:${this.instanceId}] Error in 'streamText' running step: ${error.message}, ${error.stack}`,
+          `[BaseAgent:${this.instanceId}] Error in 'streamText': ${this.formatError(error)}`,
         );
         this.report(error, 'streamText');
         this.state.set((draft) => {
@@ -1367,7 +1367,7 @@ export abstract class BaseAgent<
     } catch (err) {
       const error = err as Error;
       this.logger.error(
-        `[BaseAgent:${this.instanceId}] Error in 'runStep' running step: ${JSON.stringify(err)}`,
+        `[BaseAgent:${this.instanceId}] Error in 'runStep': ${this.formatError(error)}`,
       );
       this.report(error, 'runStep');
       // Invalidate step generation so any pending onFinish callback won't
@@ -1823,30 +1823,41 @@ export abstract class BaseAgent<
     });
   }
 
+  private static extractApiErrorContext(error: Error): Record<string, unknown> {
+    const errAny = error as unknown as Record<string, unknown>;
+    const ctx: Record<string, unknown> = {};
+    if (errAny.statusCode !== undefined) ctx.statusCode = errAny.statusCode;
+    if (errAny.url !== undefined) ctx.url = errAny.url;
+    if (errAny.isRetryable !== undefined) ctx.isRetryable = errAny.isRetryable;
+    if (typeof errAny.responseBody === 'string')
+      ctx.responseBody = errAny.responseBody.slice(0, 4000);
+    if (errAny.cause instanceof Error) ctx.causeMessage = errAny.cause.message;
+    return ctx;
+  }
+
+  private formatError(error: Error): string {
+    const ctx = BaseAgent.extractApiErrorContext(error);
+    const parts = [error.message];
+    if (ctx.statusCode) parts.push(`status=${ctx.statusCode}`);
+    if (ctx.url) parts.push(`url=${ctx.url}`);
+    if (ctx.responseBody)
+      parts.push(`response=${(ctx.responseBody as string).slice(0, 500)}`);
+    if (ctx.causeMessage) parts.push(`cause=${ctx.causeMessage}`);
+    return parts.join(', ');
+  }
+
   private report(
     error: Error,
     operation: string,
     extra?: Record<string, unknown>,
   ) {
-    const errAny = error as unknown as Record<string, unknown>;
-    const apiErrorContext: Record<string, unknown> = {};
-    if (errAny.statusCode !== undefined)
-      apiErrorContext.statusCode = errAny.statusCode;
-    if (errAny.url !== undefined) apiErrorContext.url = errAny.url;
-    if (errAny.isRetryable !== undefined)
-      apiErrorContext.isRetryable = errAny.isRetryable;
-    if (typeof errAny.responseBody === 'string')
-      apiErrorContext.responseBody = errAny.responseBody.slice(0, 4000);
-    if (errAny.cause instanceof Error)
-      apiErrorContext.causeMessage = errAny.cause.message;
-
     this.telemetryService.captureException(error, {
       service: 'base-agent',
       operation,
       modelId: this.state.get().activeModelId,
       agentType: this.agentType,
       instanceId: this.instanceId,
-      ...apiErrorContext,
+      ...BaseAgent.extractApiErrorContext(error),
       ...extra,
     });
   }
