@@ -3070,7 +3070,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private getDomainFromUrl(url: string): string {
     try {
       const parsed = new URL(url);
-      return parsed.hostname || url;
+      return parsed.host || url;
     } catch {
       return url;
     }
