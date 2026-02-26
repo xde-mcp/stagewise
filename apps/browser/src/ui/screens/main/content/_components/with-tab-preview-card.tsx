@@ -34,7 +34,7 @@ export function WithTabPreviewCard({
 
   return (
     <PreviewCard>
-      <PreviewCardTrigger delay={1000} closeDelay={10}>
+      <PreviewCardTrigger delay={1000} closeDelay={10} tabIndex={-1}>
         {children}
       </PreviewCardTrigger>
       <PreviewCardContent

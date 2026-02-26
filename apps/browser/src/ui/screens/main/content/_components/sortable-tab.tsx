@@ -19,7 +19,7 @@ export function SortableTab({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tabState.id });
+  } = useSortable({ id: tabState.id, attributes: { tabIndex: -1 } });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),

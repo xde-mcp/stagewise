@@ -126,6 +126,7 @@ export function Tab({
         )}
         onClick={isActive ? undefined : handleClick}
         onAuxClick={handleAuxClick}
+        tabIndex={-1}
       >
         {/* SVG definitions and background mask for active tab */}
         {isActive && (
@@ -225,6 +226,7 @@ function TabContent({
               ? 'text-error hover:text-error-foreground'
               : 'text-muted-foreground hover:text-foreground',
           )}
+          tabIndex={-1}
         >
           {!tabState.isMuted ? (
             <IconVolumeUpFill18
@@ -248,6 +250,7 @@ function TabContent({
                 !isActive && '@[40px]:flex hidden',
               )}
               onClick={handleClose}
+              tabIndex={-1}
             >
               <IconXmark className="size-3" />
             </Button>

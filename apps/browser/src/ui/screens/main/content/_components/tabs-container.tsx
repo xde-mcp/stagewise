@@ -51,7 +51,7 @@ function DragOverlayContent({
   activateBottomLeftCornerRadius: boolean;
 }) {
   return (
-    <div style={{ width: '13rem' }}>
+    <div style={{ width: '13rem' }} tabIndex={-1}>
       <Tab
         tabState={activeTab}
         activateBottomLeftCornerRadius={
