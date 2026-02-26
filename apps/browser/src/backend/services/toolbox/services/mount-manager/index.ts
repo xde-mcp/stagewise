@@ -4,6 +4,7 @@ import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import { LspService } from '../lsp';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import chokidar, { type FSWatcher } from 'chokidar';
 import type { FilePickerService } from '@/services/file-picker';
 import type { GlobalDataPathService } from '@/services/global-data-path';
 import type { KartonService } from '@/services/karton';
@@ -11,7 +12,10 @@ import type { UserExperienceService } from '@/services/experience';
 import type { TelemetryService } from '@/services/telemetry';
 import type { WorkspaceSnapshot } from '../../types';
 import { FULL_PERMISSIONS, type MountPermission } from '@/services/sandbox/ipc';
-import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
+import {
+  readWorkspaceMd,
+  WORKSPACE_MD_FILENAME,
+} from '@/agents/shared/prompts/utils/read-workspace-md';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
 import { getSkills } from '@/agents/shared/prompts/utils/get-skills';
 import { isGitRepo } from '@/utils/git-tools';
@@ -51,6 +55,13 @@ export class MountManagerService extends DisposableService {
 
   /** Promise that resolves when LSP service is ready (or null if no workspace) */
   private lspReady: Map<string, Promise<LspService | null>> = new Map();
+
+  /** Per-workspace chokidar watchers for reactive skill/MD file updates */
+  private watchersPerPath: Map<WorkspacePath, FSWatcher> = new Map();
+  private watcherDebounceTimers: Map<
+    WorkspacePath,
+    ReturnType<typeof setTimeout>
+  > = new Map();
 
   public constructor(
     logger: Logger,
@@ -160,6 +171,11 @@ export class MountManagerService extends DisposableService {
       this.lspReady.set(resolvedWorkspacePath, lspPromise);
       const lspService = await lspPromise;
       this.lspServicesPerPath.set(resolvedWorkspacePath, lspService);
+
+      this.startWorkspaceWatcher(
+        resolvedWorkspacePath,
+        this.clientRuntimesPerPath.get(resolvedWorkspacePath)!,
+      );
     }
 
     await this.userExperienceService.saveRecentlyOpenedWorkspace({
@@ -236,6 +252,7 @@ export class MountManagerService extends DisposableService {
         workspacePath,
       );
       if (!stillInUse) {
+        this.stopWorkspaceWatcher(workspacePath);
         const lspService = this.lspServicesPerPath.get(workspacePath);
         if (lspService) void lspService.teardown();
         this.clientRuntimesPerPath.delete(workspacePath);
@@ -409,6 +426,135 @@ export class MountManagerService extends DisposableService {
     }
   }
 
+  /**
+   * Watches the workspace root for changes to skills and MD files.
+   *
+   * We watch the root with an `ignored` filter rather than specific subdirectory
+   * paths because chokidar v4 silently drops non-existent watch targets. By
+   * watching the root, we reliably detect newly created directories (e.g. when
+   * `.stagewise/skills/` is created for the first time).
+   *
+   * The `ignored` filter aggressively prunes the tree at depth 1 so only
+   * `.stagewise/`, `.agents/`, and `AGENTS.md` are traversed — keeping the
+   * number of active fs.watch handles to ~15-20 regardless of workspace size.
+   */
+  private startWorkspaceWatcher(
+    wsPath: WorkspacePath,
+    clientRuntime: ClientRuntimeNode,
+  ): void {
+    if (this.watchersPerPath.has(wsPath)) return;
+
+    const allowedTopLevel = new Set(['.stagewise', '.agents', 'AGENTS.md']);
+    const allowedChildren: Record<string, Set<string>> = {
+      '.stagewise': new Set(['skills', WORKSPACE_MD_FILENAME]),
+      '.agents': new Set(['skills']),
+    };
+
+    const watcher = chokidar.watch(wsPath, {
+      persistent: true,
+      ignoreInitial: true,
+      // depth 4 = .stagewise/skills/<skill-name>/SKILL.md
+      depth: 4,
+      awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 50 },
+      ignored: (filePath: string) => {
+        if (filePath === wsPath) return false;
+        const rel = path.relative(wsPath, filePath);
+        const segments = rel.split(path.sep);
+        if (segments.length === 1) return !allowedTopLevel.has(segments[0]);
+        if (segments.length === 2) {
+          const allowed = allowedChildren[segments[0]];
+          return !allowed || !allowed.has(segments[1]);
+        }
+        return !(
+          (segments[0] === '.stagewise' || segments[0] === '.agents') &&
+          segments[1] === 'skills'
+        );
+      },
+    });
+
+    const scheduleRefresh = () => {
+      const existing = this.watcherDebounceTimers.get(wsPath);
+      if (existing) clearTimeout(existing);
+      this.watcherDebounceTimers.set(
+        wsPath,
+        setTimeout(() => {
+          this.watcherDebounceTimers.delete(wsPath);
+          void this.refreshWorkspaceInfo(wsPath, clientRuntime);
+        }, 400),
+      );
+    };
+
+    watcher
+      .on('add', scheduleRefresh)
+      .on('change', scheduleRefresh)
+      .on('unlink', scheduleRefresh)
+      .on('addDir', scheduleRefresh)
+      .on('unlinkDir', scheduleRefresh)
+      .on('error', (error) => {
+        this.logger.debug('[MountManager] Workspace watcher error', {
+          error,
+          path: wsPath,
+        });
+      });
+
+    this.watchersPerPath.set(wsPath, watcher);
+    this.logger.debug('[MountManager] Started workspace watcher', {
+      path: wsPath,
+    });
+  }
+
+  private stopWorkspaceWatcher(wsPath: WorkspacePath): void {
+    const timer = this.watcherDebounceTimers.get(wsPath);
+    if (timer) {
+      clearTimeout(timer);
+      this.watcherDebounceTimers.delete(wsPath);
+    }
+    const watcher = this.watchersPerPath.get(wsPath);
+    if (watcher) {
+      void watcher.close();
+      this.watchersPerPath.delete(wsPath);
+      this.logger.debug('[MountManager] Stopped workspace watcher', {
+        path: wsPath,
+      });
+    }
+  }
+
+  /** Re-reads skills and MD files from disk, then pushes updated data to UI state. */
+  private async refreshWorkspaceInfo(
+    wsPath: WorkspacePath,
+    clientRuntime: ClientRuntimeNode,
+  ): Promise<void> {
+    try {
+      const [workspaceMdContent, agentsMdContent, skills] = await Promise.all([
+        readWorkspaceMd(wsPath),
+        readAgentsMd(clientRuntime),
+        getSkills(clientRuntime),
+      ]);
+
+      const skillEntries = skills.map((s) => ({
+        name: s.name,
+        description: s.description,
+      }));
+
+      this.uiKarton.setState((draft) => {
+        for (const agentId in draft.toolbox) {
+          for (const mount of draft.toolbox[agentId].workspace.mounts) {
+            if (mount.path !== wsPath) continue;
+            mount.skills = skillEntries;
+            mount.workspaceMdContent = workspaceMdContent;
+            mount.agentsMdContent = agentsMdContent;
+          }
+        }
+      });
+    } catch (error) {
+      this.logger.debug('[MountManager] Failed to refresh workspace info', {
+        error,
+        path: wsPath,
+      });
+      this.report(error as Error, 'refreshWorkspaceInfo', { path: wsPath });
+    }
+  }
+
   private report(
     error: Error,
     operation: string,
@@ -422,6 +568,8 @@ export class MountManagerService extends DisposableService {
   }
 
   protected onTeardown(): Promise<void> | void {
+    for (const wsPath of this.watchersPerPath.keys())
+      this.stopWorkspaceWatcher(wsPath);
     for (const lspService of this.lspServicesPerPath.values())
       void lspService.teardown();
     this.lspServicesPerPath.clear();
