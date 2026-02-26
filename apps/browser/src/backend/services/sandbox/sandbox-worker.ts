@@ -42,6 +42,13 @@ const pendingMultimodalAttachments = new Map<string, SandboxFileAttachment[]>();
  */
 const pendingOutputs = new Map<string, string[]>();
 
+/**
+ * Per-agent callback to reset the soft async timeout.
+ * Set before each execution, invoked by `API.output()` / `API.outputAttachment()`,
+ * and cleared when execution finishes.
+ */
+const timerResetCallbacks = new Map<string, () => void>();
+
 /** Node.js built-in modules safe to expose (computational, no I/O). */
 const ALLOWED_NODE_MODULES = new Set([
   'buffer',
@@ -145,6 +152,7 @@ function getSandboxAPI(agentId: string) {
       const str = typeof data === 'string' ? data : JSON.stringify(data);
       const outputs = pendingOutputs.get(agentId);
       if (outputs) outputs.push(str);
+      timerResetCallbacks.get(agentId)?.();
     },
     outputAttachment(attachment: {
       id: string;
@@ -171,6 +179,7 @@ function getSandboxAPI(agentId: string) {
           sizeBytes: attachment.sizeBytes,
         });
       }
+      timerResetCallbacks.get(agentId)?.();
     },
   };
 }
@@ -429,6 +438,7 @@ ipc.onMessage(async (msg) => {
       moduleCaches.delete(msg.agentId);
       agentMounts.delete(msg.agentId);
       agentIsolatedFs.delete(msg.agentId);
+      timerResetCallbacks.delete(msg.agentId);
       break;
     }
     case 'update-mounts': {
@@ -447,8 +457,12 @@ ipc.onMessage(async (msg) => {
       pendingMultimodalAttachments.set(msg.agentId, []);
       pendingOutputs.set(msg.agentId, []);
 
-      let timeoutId: NodeJS.Timeout | undefined;
+      let softTimeoutId: NodeJS.Timeout | undefined;
+      let hardTimeoutId: NodeJS.Timeout | undefined;
       let scriptPromise: Promise<unknown> | undefined;
+
+      const SOFT_TIMEOUT_MS = 45_000;
+      const HARD_TIMEOUT_MS = 180_000;
 
       try {
         const wrapped = `(async () => { ${msg.code} })()`;
@@ -460,20 +474,49 @@ ipc.onMessage(async (msg) => {
         // Sync timeout (30s) catches infinite synchronous loops (e.g. while(true){}).
         scriptPromise = script.runInContext(ctx, { timeout: 30_000 });
 
-        // Async timeout (30s) catches long-running async work (awaits, fetches, etc.)
-        const ASYNC_TIMEOUT_MS = 30_000;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => {
+        // Soft async timeout: resets on every API.output() / API.outputAttachment() call.
+        let softReject: ((reason: Error) => void) | undefined;
+        const softTimeoutPromise = new Promise<never>((_, reject) => {
+          softReject = reject;
+          softTimeoutId = setTimeout(() => {
             reject(
               new Error(
-                `Script execution timed out after ${ASYNC_TIMEOUT_MS / 1_000}s`,
+                `Script execution timed out after ${SOFT_TIMEOUT_MS / 1_000}s of inactivity (no API.output() calls)`,
               ),
             );
-          }, ASYNC_TIMEOUT_MS);
+          }, SOFT_TIMEOUT_MS);
         });
 
-        const value = await Promise.race([scriptPromise, timeoutPromise]);
-        clearTimeout(timeoutId);
+        timerResetCallbacks.set(msg.agentId, () => {
+          if (softTimeoutId !== undefined) clearTimeout(softTimeoutId);
+          softTimeoutId = setTimeout(() => {
+            softReject?.(
+              new Error(
+                `Script execution timed out after ${SOFT_TIMEOUT_MS / 1_000}s of inactivity (no API.output() calls)`,
+              ),
+            );
+          }, SOFT_TIMEOUT_MS);
+        });
+
+        // Hard async timeout: absolute wall-clock cap, cannot be reset.
+        const hardTimeoutPromise = new Promise<never>((_, reject) => {
+          hardTimeoutId = setTimeout(() => {
+            reject(
+              new Error(
+                `Script execution exceeded maximum wall-clock time of ${HARD_TIMEOUT_MS / 1_000}s`,
+              ),
+            );
+          }, HARD_TIMEOUT_MS);
+        });
+
+        const value = await Promise.race([
+          scriptPromise,
+          softTimeoutPromise,
+          hardTimeoutPromise,
+        ]);
+        clearTimeout(softTimeoutId);
+        clearTimeout(hardTimeoutId);
+        timerResetCallbacks.delete(msg.agentId);
 
         const customFileAttachments =
           pendingMultimodalAttachments.get(msg.agentId) ?? [];
@@ -492,7 +535,9 @@ ipc.onMessage(async (msg) => {
               : undefined,
         });
       } catch (err) {
-        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        if (softTimeoutId !== undefined) clearTimeout(softTimeoutId);
+        if (hardTimeoutId !== undefined) clearTimeout(hardTimeoutId);
+        timerResetCallbacks.delete(msg.agentId);
         if (scriptPromise) scriptPromise.catch(() => {});
         pendingMultimodalAttachments.delete(msg.agentId);
         pendingOutputs.delete(msg.agentId);

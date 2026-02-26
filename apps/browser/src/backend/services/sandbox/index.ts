@@ -216,7 +216,7 @@ export class SandboxService extends DisposableService {
   async execute(
     agentId: string,
     code: string,
-    timeoutMs = 120_000, // 2 minutes
+    timeoutMs = 190_000, // just over 3 min — must exceed the worker's 180s hard cap
   ): Promise<{
     value: any;
     outputs: string[];
