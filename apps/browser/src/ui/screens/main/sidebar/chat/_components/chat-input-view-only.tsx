@@ -5,7 +5,7 @@ import {
   AttachmentRegistryNodeView,
   ElementAttachmentView,
   TextClipAttachmentView,
-} from './rich-text';
+} from './rich-text/attachments';
 import type { Content } from '@tiptap/core';
 
 /**

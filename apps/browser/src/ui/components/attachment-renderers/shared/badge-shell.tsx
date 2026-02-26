@@ -2,9 +2,9 @@ import { useMemo, type ReactNode } from 'react';
 import type { BadgeProps } from '../types';
 import {
   truncateLabel,
-  AttachmentBadge,
-  AttachmentBadgeWrapper,
-} from '@ui/screens/main/sidebar/chat/_components/rich-text/view-utils';
+  InlineBadge,
+  InlineBadgeWrapper,
+} from '@ui/screens/main/sidebar/chat/_components/rich-text/shared';
 
 interface BadgeShellProps extends BadgeProps {
   icon: ReactNode;
@@ -28,18 +28,18 @@ export function BadgeShell({
   );
 
   return (
-    <AttachmentBadgeWrapper
+    <InlineBadgeWrapper
       viewOnly={viewOnly}
       previewContent={previewContent}
       tooltipContent={tooltipContent}
     >
-      <AttachmentBadge
+      <InlineBadge
         icon={icon}
         label={displayLabel}
         selected={selected ?? false}
         isEditable={!viewOnly}
         onDelete={onDelete ?? (() => {})}
       />
-    </AttachmentBadgeWrapper>
+    </InlineBadgeWrapper>
   );
 }

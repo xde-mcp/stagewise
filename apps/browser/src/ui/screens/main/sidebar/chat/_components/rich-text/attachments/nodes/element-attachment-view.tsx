@@ -17,12 +17,9 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { IdeLogo } from '@ui/components/ide-logo';
 import { IconOpenExternalOutline18 } from 'nucleo-ui-outline-18';
-import type { ElementAttachmentAttrs, AttachmentNodeViewProps } from '../types';
-import {
-  truncateLabel,
-  AttachmentBadge,
-  AttachmentBadgeWrapper,
-} from '../view-utils';
+import type { ElementAttachmentAttrs } from '../types';
+import type { InlineNodeViewProps } from '../../shared/types';
+import { truncateLabel, InlineBadge, InlineBadgeWrapper } from '../../shared';
 import type { SelectedElement } from '@shared/selected-elements';
 
 const displayedAttributes = [
@@ -375,7 +372,7 @@ function ElementPreviewContent({
  * with element details on hover.
  * Looks up element data from context to get the proper label.
  */
-export function ElementAttachmentView(props: AttachmentNodeViewProps) {
+export function ElementAttachmentView(props: InlineNodeViewProps) {
   const attrs = props.node.attrs as ElementAttachmentAttrs;
 
   const isEditable = !('viewOnly' in props);
@@ -407,11 +404,8 @@ export function ElementAttachmentView(props: AttachmentNodeViewProps) {
   const previewContent = <ElementPreviewContent element={element} />;
 
   return (
-    <AttachmentBadgeWrapper
-      viewOnly={!isEditable}
-      previewContent={previewContent}
-    >
-      <AttachmentBadge
+    <InlineBadgeWrapper viewOnly={!isEditable} previewContent={previewContent}>
+      <InlineBadge
         icon={icon}
         label={displayLabel}
         selected={props.selected}
@@ -420,6 +414,6 @@ export function ElementAttachmentView(props: AttachmentNodeViewProps) {
           'deleteNode' in props ? props.deleteNode() : undefined
         }
       />
-    </AttachmentBadgeWrapper>
+    </InlineBadgeWrapper>
   );
 }

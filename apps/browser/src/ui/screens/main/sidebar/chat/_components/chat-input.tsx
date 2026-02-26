@@ -33,7 +33,7 @@ import {
   ALL_ATTACHMENT_NODE_NAMES,
   type AttachmentAttributes,
   type AttachmentType,
-} from './rich-text';
+} from './rich-text/attachments';
 import { useState, memo } from 'react';
 // Re-export types for convenience
 export type { AttachmentAttributes, AttachmentType };

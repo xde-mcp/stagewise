@@ -1,38 +1,22 @@
-import type { NodeViewProps } from '@tiptap/react';
-
-type ViewOnlyProps = {
-  viewOnly: true;
-  selected: boolean;
-  node: { attrs: { readonly [attr: string]: any } };
-};
-
-export type AttachmentNodeViewProps = NodeViewProps | ViewOnlyProps;
-
-/**
- * Base attributes shared by all attachment types.
- */
-export interface BaseAttachmentAttrs {
-  id: string;
-  label: string;
-}
+import type { BaseNodeAttrs } from '../shared/types';
 
 /**
  * Attributes for file attachments (unified node).
  * mediaType drives renderer selection via the attachment registry.
  */
-export interface AttachmentAttrs extends BaseAttachmentAttrs {
+export interface AttachmentAttrs extends BaseNodeAttrs {
   mediaType: string;
 }
 
 /**
  * Attributes for selected element attachments.
  */
-export interface ElementAttachmentAttrs extends BaseAttachmentAttrs {}
+export interface ElementAttachmentAttrs extends BaseNodeAttrs {}
 
 /**
  * Attributes for text clip attachments (collapsed long text).
  */
-export interface TextClipAttachmentAttrs extends BaseAttachmentAttrs {
+export interface TextClipAttachmentAttrs extends BaseNodeAttrs {
   /**
    * The full pasted text content.
    * Optional in stored content (stripped to avoid duplication), required at runtime.

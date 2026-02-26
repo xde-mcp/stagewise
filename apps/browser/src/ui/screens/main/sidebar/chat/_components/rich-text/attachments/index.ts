@@ -13,7 +13,6 @@ export type {
   AttachmentAttributes,
   AttachmentType,
   AttachmentNodeOptions,
-  BaseAttachmentAttrs,
   AttachmentAttrs,
   ElementAttachmentAttrs,
   TextClipAttachmentAttrs,
@@ -38,17 +37,6 @@ export {
 export { AttachmentRegistryNodeView } from './nodes/attachment-view';
 export { ElementAttachmentView } from './nodes/element-attachment-view';
 export { TextClipAttachmentView } from './nodes/text-clip-attachment-view';
-
-// View utilities for building custom NodeView components
-export {
-  truncateLabel,
-  BadgeContainer,
-  AttachmentBadge,
-  AttachmentBadgeWrapper,
-  type BadgeContainerProps,
-  type AttachmentBadgeProps,
-  type AttachmentBadgeWrapperProps,
-} from './view-utils';
 
 /**
  * Array of all attachment node extensions.

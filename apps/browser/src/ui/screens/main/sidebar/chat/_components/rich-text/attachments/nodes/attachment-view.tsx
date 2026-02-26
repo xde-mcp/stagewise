@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { AttachmentNodeViewProps } from '../types';
+import type { InlineNodeViewProps } from '../../shared/types';
 import { getRenderer } from '@ui/components/attachment-renderers';
 import type { BadgeProps } from '@ui/components/attachment-renderers';
 import { useMessageAttachments } from '@ui/hooks/use-message-elements';
@@ -11,7 +11,7 @@ interface AttachmentAttrs {
   mediaType: string;
 }
 
-export function AttachmentRegistryNodeView(props: AttachmentNodeViewProps) {
+export function AttachmentRegistryNodeView(props: InlineNodeViewProps) {
   const attrs = props.node.attrs as AttachmentAttrs;
   const isEditable = !('viewOnly' in props);
   const [openAgent] = useOpenAgent();

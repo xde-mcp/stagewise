@@ -48,7 +48,7 @@ export interface BadgeContainerProps
 }
 
 /**
- * Base container component for attachment badges.
+ * Base container component for inline badges.
  * Provides consistent styling for the badge shell.
  * Use this when building custom badge layouts that need the same visual styling.
  */
@@ -77,7 +77,7 @@ export const BadgeContainer = forwardRef<HTMLSpanElement, BadgeContainerProps>(
   },
 );
 
-export interface AttachmentBadgeProps
+export interface InlineBadgeProps
   extends React.HTMLAttributes<HTMLSpanElement> {
   /** Icon to display (e.g., file icon, image thumbnail, element icon) */
   icon: React.ReactNode;
@@ -92,62 +92,61 @@ export interface AttachmentBadgeProps
 }
 
 /**
- * Reusable badge component for attachment nodes.
+ * Reusable badge component for inline nodes (attachments, mentions, etc.).
  * Displays an icon, truncated label, and shows a delete button on hover when editable.
  * Forwards refs and spreads additional props for compatibility with Base UI triggers.
  */
-export const AttachmentBadge = forwardRef<
-  HTMLSpanElement,
-  AttachmentBadgeProps
->(function AttachmentBadge(
-  { icon, label, selected, isEditable, onDelete, className, ...props },
-  ref,
-) {
-  const handleDelete = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onDelete();
-    },
-    [onDelete],
-  );
+export const InlineBadge = forwardRef<HTMLSpanElement, InlineBadgeProps>(
+  function InlineBadge(
+    { icon, label, selected, isEditable, onDelete, className, ...props },
+    ref,
+  ) {
+    const handleDelete = useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDelete();
+      },
+      [onDelete],
+    );
 
-  return (
-    <BadgeContainer
-      ref={ref}
-      selected={selected}
-      editMode={isEditable}
-      className={cn('text-foreground', className)}
-      {...props}
-    >
-      {isEditable ? (
-        <span
-          role="button"
-          tabIndex={-1}
-          onClick={handleDelete}
-          onMouseDown={(e) => e.preventDefault()}
-          className={cn(
-            buttonVariants({ variant: 'ghost', size: 'icon-xs' }),
-            'relative size-3 shrink-0 overflow-hidden',
-          )}
-        >
-          <span className="text-foreground transition-opacity group-hover/badge:opacity-0">
-            {icon}
+    return (
+      <BadgeContainer
+        ref={ref}
+        selected={selected}
+        editMode={isEditable}
+        className={cn('text-foreground', className)}
+        {...props}
+      >
+        {isEditable ? (
+          <span
+            role="button"
+            tabIndex={-1}
+            onClick={handleDelete}
+            onMouseDown={(e) => e.preventDefault()}
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'icon-xs' }),
+              'relative size-3 shrink-0 overflow-hidden',
+            )}
+          >
+            <span className="text-foreground transition-opacity group-hover/badge:opacity-0">
+              {icon}
+            </span>
+            <XIcon className="absolute inset-0 size-3 opacity-0 transition-opacity group-hover/badge:opacity-100" />
           </span>
-          <XIcon className="absolute inset-0 size-3 opacity-0 transition-opacity group-hover/badge:opacity-100" />
+        ) : (
+          <span className="text-foreground">{icon}</span>
+        )}
+
+        <span className="max-w-24 truncate font-medium text-xs leading-none">
+          {label}
         </span>
-      ) : (
-        <span className="text-foreground">{icon}</span>
-      )}
+      </BadgeContainer>
+    );
+  },
+);
 
-      <span className="max-w-24 truncate font-medium text-xs leading-none">
-        {label}
-      </span>
-    </BadgeContainer>
-  );
-});
-
-export interface AttachmentBadgeWrapperProps {
+export interface InlineBadgeWrapperProps {
   /** The badge content to wrap (must be a single React element for PreviewCardTrigger) */
   children: React.ReactElement;
   /** Optional preview content shown on hover */
@@ -177,14 +176,14 @@ function Wrapper({
 
 /**
  * Wrapper component that provides NodeViewWrapper and optional PreviewCard.
- * Use this to wrap your AttachmentBadge for consistent behavior across attachment types.
+ * Use this to wrap your InlineBadge for consistent behavior across inline node types.
  */
-export function AttachmentBadgeWrapper({
+export function InlineBadgeWrapper({
   children,
   previewContent,
   tooltipContent,
   viewOnly,
-}: AttachmentBadgeWrapperProps) {
+}: InlineBadgeWrapperProps) {
   return (
     <Wrapper viewOnly={viewOnly ?? false}>
       {previewContent ? (

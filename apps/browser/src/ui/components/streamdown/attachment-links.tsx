@@ -24,7 +24,7 @@ import { MessageAttachmentsProvider } from '@ui/hooks/use-message-elements';
 import {
   ElementAttachmentView,
   TextClipAttachmentView,
-} from '@ui/screens/main/sidebar/chat/_components/rich-text';
+} from '@ui/screens/main/sidebar/chat/_components/rich-text/attachments';
 import {
   getRenderer,
   type RendererProps,

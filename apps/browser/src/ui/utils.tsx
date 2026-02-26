@@ -1,7 +1,7 @@
 import posthog from 'posthog-js';
 import type { UserMessageMetadata } from '@shared/karton-contracts/ui';
 import type { SelectedElement } from '@shared/selected-elements';
-import { extractTextClipsFromTiptapContent } from '@ui/screens/main/sidebar/chat/_components/rich-text';
+import { extractTextClipsFromTiptapContent } from '@ui/screens/main/sidebar/chat/_components/rich-text/attachments';
 
 import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';

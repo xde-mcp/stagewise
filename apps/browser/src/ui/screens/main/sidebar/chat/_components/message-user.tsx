@@ -43,7 +43,7 @@ import {
 } from './chat-input';
 import { ChatInputViewOnly } from './chat-input-view-only';
 import { generateId } from 'ai';
-import type { AttachmentType } from './rich-text';
+import type { AttachmentType } from './rich-text/attachments';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import type { Content } from '@tiptap/core';
 import { IconMagicWandSparkle } from 'nucleo-micro-bold';

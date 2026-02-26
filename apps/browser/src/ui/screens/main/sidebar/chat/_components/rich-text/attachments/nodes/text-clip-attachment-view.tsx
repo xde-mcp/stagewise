@@ -14,11 +14,9 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { PreviewCardContent } from '@stagewise/stage-ui/components/preview-card';
-import type {
-  TextClipAttachmentAttrs,
-  AttachmentNodeViewProps,
-} from '../types';
-import { BadgeContainer, AttachmentBadgeWrapper } from '../view-utils';
+import type { TextClipAttachmentAttrs } from '../types';
+import type { InlineNodeViewProps } from '../../shared/types';
+import { BadgeContainer, InlineBadgeWrapper } from '../../shared';
 import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 
 /**
@@ -97,7 +95,7 @@ function TextPreviewContent({ content }: { content: string }) {
  * - Delete button to remove the attachment
  * Looks up attachment data (content) from context by ID.
  */
-export function TextClipAttachmentView(props: AttachmentNodeViewProps) {
+export function TextClipAttachmentView(props: InlineNodeViewProps) {
   const attrs = props.node.attrs as TextClipAttachmentAttrs;
   const isEditable = !('viewOnly' in props);
 
@@ -205,11 +203,8 @@ export function TextClipAttachmentView(props: AttachmentNodeViewProps) {
   const previewContent = <TextPreviewContent content={content} />;
 
   return (
-    <AttachmentBadgeWrapper
-      viewOnly={!isEditable}
-      previewContent={previewContent}
-    >
+    <InlineBadgeWrapper viewOnly={!isEditable} previewContent={previewContent}>
       {badge}
-    </AttachmentBadgeWrapper>
+    </InlineBadgeWrapper>
   );
 }

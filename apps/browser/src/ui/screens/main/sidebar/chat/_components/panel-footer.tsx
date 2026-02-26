@@ -28,7 +28,7 @@ import {
   ChatInputActions,
   type ChatInputHandle,
 } from './chat-input';
-import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/rich-text';
+import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/rich-text/attachments';
 import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';

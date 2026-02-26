@@ -1,11 +1,7 @@
 import { FileIcon } from 'lucide-react';
 import { useMemo } from 'react';
-import {
-  truncateLabel,
-  AttachmentBadge,
-  AttachmentBadgeWrapper,
-} from './view-utils';
-import type { AttachmentNodeViewProps, BaseAttachmentAttrs } from './types';
+import { truncateLabel, InlineBadge, InlineBadgeWrapper } from '../shared';
+import type { InlineNodeViewProps, BaseNodeAttrs } from '../shared/types';
 import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 
 /**
@@ -20,8 +16,8 @@ import { useMessageAttachments } from '@ui/hooks/use-message-elements';
  * Note: Node deletion notifications are handled at the ProseMirror plugin level
  * in base-attachment-node.ts, not here. This component is purely presentational.
  */
-export function AttachmentNodeView(props: AttachmentNodeViewProps) {
-  const attrs = props.node.attrs as BaseAttachmentAttrs;
+export function AttachmentNodeView(props: InlineNodeViewProps) {
+  const attrs = props.node.attrs as BaseNodeAttrs;
   const isEditable = !('viewOnly' in props);
 
   const { fileAttachments } = useMessageAttachments();
@@ -44,11 +40,8 @@ export function AttachmentNodeView(props: AttachmentNodeViewProps) {
   }, [label]);
 
   return (
-    <AttachmentBadgeWrapper
-      viewOnly={!isEditable}
-      tooltipContent={previewContent}
-    >
-      <AttachmentBadge
+    <InlineBadgeWrapper viewOnly={!isEditable} tooltipContent={previewContent}>
+      <InlineBadge
         icon={typeIcon}
         label={displayLabel}
         selected={props.selected}
@@ -57,6 +50,6 @@ export function AttachmentNodeView(props: AttachmentNodeViewProps) {
           'deleteNode' in props ? props.deleteNode() : undefined
         }
       />
-    </AttachmentBadgeWrapper>
+    </InlineBadgeWrapper>
   );
 }
