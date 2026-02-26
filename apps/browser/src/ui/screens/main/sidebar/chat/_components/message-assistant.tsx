@@ -31,6 +31,7 @@ import { UnknownToolPart } from './message-part-ui/tools/unknown';
 import { ExecuteSandboxJsToolPart } from './message-part-ui/tools/execute-sandbox-js';
 import { ReadConsoleLogsToolPart } from './message-part-ui/tools/read-console-logs';
 import { isToolOrReasoningPart } from './message-utils';
+import { MessageBetweenSteps } from './message-between-steps';
 
 type AssistantMessage = AgentMessage & { role: 'assistant' };
 
@@ -49,10 +50,12 @@ export const MessageAssistant = memo(
     message: msg,
     isLastMessage,
     isWorking,
+    showBetweenStepsIndicator,
   }: {
     message: AssistantMessage;
     isLastMessage: boolean;
     isWorking: boolean;
+    showBetweenStepsIndicator?: boolean;
   }) {
     const isEmptyMessage = useMemo(() => {
       if (
@@ -249,6 +252,7 @@ export const MessageAssistant = memo(
                     }
                   });
                 })()}
+                {showBetweenStepsIndicator && <MessageBetweenSteps />}
               </div>
             </div>
           </div>
@@ -263,6 +267,11 @@ export const MessageAssistant = memo(
     // Only re-render for isWorking changes if this is the last message
     // (shimmer effects only apply to last message)
     if (prevProps.isLastMessage && prevProps.isWorking !== nextProps.isWorking)
+      return false;
+    if (
+      prevProps.showBetweenStepsIndicator !==
+      nextProps.showBetweenStepsIndicator
+    )
       return false;
 
     if (prevProps.message.parts.length !== nextProps.message.parts.length)

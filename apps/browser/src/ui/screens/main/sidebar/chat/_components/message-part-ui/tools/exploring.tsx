@@ -477,8 +477,26 @@ export const ExploringToolParts = ({
     }
   }, [parts, activeTabs]);
 
-  // For single part, show it inline in the trigger without expand/collapse
-  if (isOnlyOnePart) {
+  // True when at least one tool part is still actively streaming/executing
+  const anyPartStreaming = useMemo(
+    () =>
+      parts.some(
+        (p) =>
+          p.type !== 'reasoning' &&
+          p.state !== 'output-available' &&
+          p.state !== 'output-error',
+      ),
+    [parts],
+  );
+
+  const headerText = anyPartStreaming
+    ? explorationInProgressText
+    : explorationFinishedText;
+
+  // For single part, show it inline without the exploring wrapper — unless
+  // the part is settled and we're still shimmering, in which case fall
+  // through to the multi-part path whose header can shimmer independently.
+  if (isOnlyOnePart && (anyPartStreaming || !isShimmering)) {
     // Use the original index from msg.parts to look up the correct metadata
     const originalIndex = originalIndices[0];
     return (
@@ -508,19 +526,17 @@ export const ExploringToolParts = ({
       trigger={
         <div className={cn(`flex flex-row items-center justify-start gap-2`)}>
           <div className="flex flex-1 flex-row items-center justify-start gap-1 text-xs">
-            {isShimmering ? (
-              <>
-                <SearchIcon className="size-3 shrink-0 text-primary-foreground" />
-                <span className="shimmer-text-primary truncate">
-                  {explorationInProgressText}
-                </span>
-              </>
-            ) : (
-              <>
-                <SearchIcon className="size-3 shrink-0" />
-                <span className="truncate">{explorationFinishedText}</span>
-              </>
-            )}
+            <SearchIcon
+              className={cn(
+                'size-3 shrink-0',
+                isShimmering && 'text-primary-foreground',
+              )}
+            />
+            <span
+              className={cn('truncate', isShimmering && 'shimmer-text-primary')}
+            >
+              {headerText}
+            </span>
           </div>
         </div>
       }

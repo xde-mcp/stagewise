@@ -19,7 +19,7 @@ import { ChatSuggestion, suggestions } from '@/components/suggestions';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
 import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
 import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
-import { isEmptyAssistantMessage } from './message-utils';
+import { isEmptyAssistantMessage, areAllPartsSettled } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { calculateChatItemHeights } from '@/utils/calculate-chat-item-height';
 
@@ -307,6 +307,7 @@ export const ChatHistory = () => {
   useEffect(() => {
     setOptimisticMessages([]);
     setReplacedMessageId(null);
+    pendingWorkingRef.current = false;
   }, [openAgent]);
 
   // Reconciliation: Remove optimistic messages that have been confirmed by server
@@ -442,6 +443,10 @@ export const ChatHistory = () => {
   const pendingAutoScrollRef = useRef(false);
   const prevMessagesLengthRef = useRef(filteredMessages.length);
 
+  // Bridge the gap between optimistic message removal and isWorking becoming true.
+  // Set when an optimistic message is sent, cleared when isWorking flips to true.
+  const pendingWorkingRef = useRef(false);
+
   // Listen for message-sent event with message data - add to optimistic state immediately
   useEffect(() => {
     const handleMessageSent = (e: CustomEvent<{ message: AgentMessage }>) => {
@@ -454,6 +459,7 @@ export const ChatHistory = () => {
       };
       setOptimisticMessages((prev) => [...prev, optimisticMsg]);
       pendingAutoScrollRef.current = true;
+      pendingWorkingRef.current = true;
     };
 
     const handleMessageFailed = (e: CustomEvent<{ clientId: string }>) => {
@@ -462,6 +468,7 @@ export const ChatHistory = () => {
         prev.filter((m) => m._clientId !== e.detail.clientId),
       );
       setReplacedMessageId(null);
+      pendingWorkingRef.current = false;
     };
 
     const handleMessageEdited = (
@@ -481,6 +488,7 @@ export const ChatHistory = () => {
       };
       setOptimisticMessages((prev) => [...prev, optimisticMsg]);
       pendingAutoScrollRef.current = true;
+      pendingWorkingRef.current = true;
     };
 
     window.addEventListener('chat-message-sent', handleMessageSent);
@@ -529,11 +537,20 @@ export const ChatHistory = () => {
     }
   }, [error, forceEnableAutoScroll, scrollToBottom]);
 
-  // Determine if we should show the "Working..." indicator
+  // Clear pending-working bridge once isWorking catches up
+  if (isWorking) pendingWorkingRef.current = false;
+
+  // Show "Working..." after user message or empty assistant message.
+  // Also show immediately for optimistic user messages before isWorking flips.
   const showWorkingIndicator = useMemo(() => {
-    if (!isWorking) return false;
     const lastMessage = filteredMessages[filteredMessages.length - 1];
     if (!lastMessage) return false;
+    const isOptimistic =
+      (lastMessage as OptimisticMessage)._optimistic === true;
+    const isPendingWorking = pendingWorkingRef.current;
+    if (lastMessage.role === 'user' && (isOptimistic || isPendingWorking))
+      return true;
+    if (!isWorking) return false;
     if (lastMessage.role === 'user') return true;
     if (
       lastMessage.role === 'assistant' &&
@@ -541,6 +558,15 @@ export const ChatHistory = () => {
     )
       return true;
     return false;
+  }, [isWorking, filteredMessages]);
+
+  // Show between-steps indicator inside the last assistant message
+  const showBetweenStepsIndicator = useMemo(() => {
+    if (!isWorking) return false;
+    const lastMessage = filteredMessages[filteredMessages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'assistant') return false;
+    if (isEmptyAssistantMessage(lastMessage)) return false;
+    return areAllPartsSettled(lastMessage);
   }, [isWorking, filteredMessages]);
 
   // Find the index of the last user message (for attaching measurement ref)
@@ -593,6 +619,9 @@ export const ChatHistory = () => {
             message={message as AgentMessage & { role: 'assistant' }}
             isLastMessage={isLastMessage}
             isWorking={isWorking ?? false}
+            showBetweenStepsIndicator={
+              isLastMessage ? showBetweenStepsIndicator : false
+            }
           />
         );
 
@@ -678,6 +707,7 @@ export const ChatHistory = () => {
       filteredMessages.length,
       lastUserMsgIndex,
       showWorkingIndicator,
+      showBetweenStepsIndicator,
       paddingRight,
       isWorking,
       lastUserMessageRef,
