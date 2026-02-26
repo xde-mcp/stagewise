@@ -145,14 +145,17 @@ export function ChatPanelFooter() {
     setLocalSelectedElements([]);
   }, [openAgent]);
 
-  // Focus input when agent changes (e.g., new chat created or switched)
-  // This is needed because ChatInput has key={openAgent}, so it re-mounts
-  // and loses focus when the agent changes
+  // Focus input and recalculate send-button state when agent changes.
+  // ChatInput has key={openAgent} so it fully re-mounts on switch —
+  // the initial render with restored content doesn't fire onChange,
+  // leaving canSendMessage stale.  Recalculate after the new mount.
   useEffect(() => {
-    // Use requestAnimationFrame to ensure the ChatInput is mounted
     if (openAgent)
       requestAnimationFrame(() => {
         chatInputRef.current?.focus();
+        const textLength =
+          chatInputRef.current?.getTextContent()?.trim().length ?? 0;
+        setCanSendMessage(textLength > 2);
       });
   }, [openAgent]);
 
