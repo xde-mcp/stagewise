@@ -76,6 +76,7 @@ export const environmentSnapshotSchema = z.object({
   browser: browserSnapshotSchema,
   workspace: workspaceSnapshotSchema,
   fileDiffs: environmentDiffSnapshotSchema,
+  sandboxSessionId: z.string().nullable(),
 });
 
 export type EnvironmentSnapshot = z.infer<typeof environmentSnapshotSchema>;

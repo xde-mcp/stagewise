@@ -547,6 +547,8 @@ export class ToolboxService extends DisposableService {
             toolboxState.editSummary,
           )
         : { pending: [], summary: [] },
+      sandboxSessionId:
+        this.sandboxService?.getSandboxSessionId(agentInstanceId) ?? null,
     };
 
     return snapshot;

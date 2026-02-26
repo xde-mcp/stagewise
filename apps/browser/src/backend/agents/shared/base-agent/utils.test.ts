@@ -19,6 +19,7 @@ function makeSnapshot(
       mounts: [{ prefix: 'w1', path: '/project' }],
     },
     fileDiffs: { pending: [], summary: [] },
+    sandboxSessionId: 'test-session-id',
     ...overrides,
   };
 }

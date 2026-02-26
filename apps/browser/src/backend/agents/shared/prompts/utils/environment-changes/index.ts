@@ -1,10 +1,12 @@
 import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { computeBrowserChanges } from './browser-changes';
 import { computeFileDiffChanges } from './file-diff-changes';
+import { computeSandboxChanges } from './sandbox-changes';
 import { computeWorkspaceChanges } from './workspace-changes';
 
 export { computeBrowserChanges } from './browser-changes';
 export { computeFileDiffChanges } from './file-diff-changes';
+export { computeSandboxChanges } from './sandbox-changes';
 export { computeWorkspaceChanges } from './workspace-changes';
 
 /**
@@ -23,6 +25,10 @@ export function computeAllEnvironmentChanges(
   if (!previous) return [];
 
   return [
+    ...computeSandboxChanges(
+      previous.sandboxSessionId,
+      current.sandboxSessionId,
+    ),
     ...computeBrowserChanges(previous.browser, current.browser),
     ...computeWorkspaceChanges(previous.workspace, current.workspace),
     ...computeFileDiffChanges(

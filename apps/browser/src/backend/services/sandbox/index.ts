@@ -2,6 +2,7 @@ import { DisposableService } from '../disposable';
 import type { Logger } from '../logger';
 import type { WindowLayoutService } from '../window-layout';
 import { utilityProcess } from 'electron';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -70,6 +71,7 @@ export class SandboxService extends DisposableService {
   private pendingRequests = new Map<string, PendingRequest>();
   private agentToolCallIds = new Map<string, string>();
   private fileWriteCountPerExecution = new Map<string, number>();
+  private sandboxSessionIds = new Map<string, string>();
   private reqId = 0;
 
   constructor(
@@ -128,6 +130,11 @@ export class SandboxService extends DisposableService {
     return count;
   }
 
+  /** Returns the current sandbox session ID for an agent, or null if no context exists. */
+  getSandboxSessionId(agentId: string): string | null {
+    return this.sandboxSessionIds.get(agentId) ?? null;
+  }
+
   /**
    * Push the current mount configuration to the sandbox worker for an agent.
    * Called by ToolboxService when mounts change.
@@ -177,6 +184,7 @@ export class SandboxService extends DisposableService {
     worker.agentIds.add(agentId);
     worker.load++;
     this.agentToWorker.set(agentId, worker);
+    this.sandboxSessionIds.set(agentId, randomUUID());
 
     this.safeSend(worker, { type: 'create-context', agentId });
 
@@ -202,6 +210,7 @@ export class SandboxService extends DisposableService {
     this.agentToWorker.delete(agentId);
     this.agentToolCallIds.delete(agentId);
     this.fileWriteCountPerExecution.delete(agentId);
+    this.sandboxSessionIds.delete(agentId);
   }
 
   async execute(
@@ -336,6 +345,7 @@ export class SandboxService extends DisposableService {
       replacement.agentIds.add(agentId);
       replacement.load++;
       this.agentToWorker.set(agentId, replacement);
+      this.sandboxSessionIds.set(agentId, randomUUID());
       this.safeSend(replacement, { type: 'create-context', agentId });
       if (this.mountResolver) {
         const mounts = this.mountResolver(agentId);
@@ -378,5 +388,6 @@ export class SandboxService extends DisposableService {
     this.pendingRequests.clear();
     this.agentToolCallIds.clear();
     this.fileWriteCountPerExecution.clear();
+    this.sandboxSessionIds.clear();
   }
 }
