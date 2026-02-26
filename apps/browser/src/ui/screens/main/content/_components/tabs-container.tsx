@@ -350,11 +350,11 @@ export function TabsContainer({
         <Button
           variant="ghost"
           size="xs"
-          className="group -ml-1.25 h-7.25 shrink-0 self-start rounded-[8.5px] rounded-bl-md text-muted-foreground transition-all duration-150 ease-out hover:bg-base-200 dark:hover:bg-base-850"
+          className="group -ml-1.25 h-7.25 shrink-0 self-start rounded-[8.5px] rounded-bl-md text-muted-foreground transition-all duration-150 ease-out hover:bg-base-200 focus-visible:bg-base-200 dark:focus-visible:bg-base-850 dark:hover:bg-base-850"
           onClick={onAddTab}
         >
           <IconPlus className="size-3" />
-          <div className="pointer-events-none flex flex-row items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className="pointer-events-none flex flex-row items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">
             <span className="ml-1 text-muted-foreground text-xs">⌘ T</span>
           </div>
         </Button>
@@ -368,11 +368,11 @@ export function TabsContainer({
                 className={cn(
                   'group h-7.25 shrink-0 self-start rounded-[8.5px] text-muted-foreground transition-all duration-150 ease-out',
                   platform !== 'darwin' ? 'mr-32' : 'mr-0',
-                  'hover:bg-base-200 dark:hover:bg-base-850',
+                  'hover:bg-base-200 focus-visible:bg-base-200 dark:focus-visible:bg-base-850 dark:hover:bg-base-850',
                 )}
                 onClick={onCleanAllTabs}
               >
-                <span className="mr-1 text-muted-foreground text-xs opacity-0 group-hover:opacity-100">
+                <span className="mr-1 text-muted-foreground text-xs opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">
                   ⌘ ↑ W
                 </span>
                 <IconBrush2Outline18 className="size-3.5" />
