@@ -41,19 +41,15 @@ export class TelemetryService extends DisposableService {
       host: process.env.POSTHOG_HOST || 'https://eu.i.posthog.com',
       flushAt: 1,
       flushInterval: 0,
-      disabled:
-        this.getTelemetryLevel() === 'off' ||
-        process.env.POSTHOG_API_KEY === undefined,
+      disabled: !apiKey,
     });
 
+    this.syncTelemetryOptIn();
     this.identifyUser();
 
     this.preferencesService.addListener((newPrefs, oldPrefs) => {
-      if (newPrefs.privacy.telemetryLevel !== oldPrefs.privacy.telemetryLevel) {
-        this.logger.debug(
-          `[TelemetryService] Detected change to telemetry level.`,
-        );
-      }
+      if (newPrefs.privacy.telemetryLevel !== oldPrefs.privacy.telemetryLevel)
+        this.syncTelemetryOptIn();
     });
 
     logger.debug('[TelemetryService] Telemetry initialized');
@@ -64,6 +60,16 @@ export class TelemetryService extends DisposableService {
    */
   private getTelemetryLevel(): TelemetryLevel {
     return this.preferencesService.get().privacy.telemetryLevel;
+  }
+
+  private syncTelemetryOptIn(): void {
+    const level = this.getTelemetryLevel();
+    if (level === 'off') this.posthogClient.disable();
+    else this.posthogClient.enable();
+
+    this.logger.debug(
+      `[TelemetryService] Telemetry opt-in synced: level=${level}`,
+    );
   }
 
   setUserProperties(properties: UserProperties): void {
@@ -177,20 +183,28 @@ export class TelemetryService extends DisposableService {
     error: Error,
     properties?: ExceptionProperties,
   ): void {
-    const telemetryLevel = this.getTelemetryLevel();
-    if (telemetryLevel === 'off') return;
-    const distinctId = this.getDistinctId();
+    try {
+      const telemetryLevel = this.getTelemetryLevel();
+      if (telemetryLevel === 'off') return;
 
-    this.posthogClient.captureException(error, distinctId, {
-      properties: {
-        ...properties,
-        telemetry_level: telemetryLevel,
-        app_version: __APP_VERSION__,
-        app_release_channel: __APP_RELEASE_CHANNEL__,
-        app_platform: __APP_PLATFORM__,
-        app_arch: __APP_ARCH__,
-      },
-    });
+      this.logger.debug(
+        `[TelemetryService] Capturing exception: ${error.message}`,
+      );
+
+      const distinctId = this.getDistinctId();
+      this.posthogClient.captureException(error, distinctId, {
+        properties: {
+          ...properties,
+          telemetry_level: telemetryLevel,
+          app_version: __APP_VERSION__,
+          app_release_channel: __APP_RELEASE_CHANNEL__,
+          app_platform: __APP_PLATFORM__,
+          app_arch: __APP_ARCH__,
+        },
+      });
+    } catch (err) {
+      this.logger.error(`[TELEMETRY] Failed to capture exception: ${err}`);
+    }
   }
 
   protected report(error: Error): void {
