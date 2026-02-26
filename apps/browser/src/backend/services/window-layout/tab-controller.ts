@@ -1771,32 +1771,54 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
 
   /**
    * Persist the latest screenshot as a thumbnail keyed by origin.
-   * Throttled to one write per origin per THUMBNAIL_SAVE_INTERVAL_MS.
+   * Only updates when the current URL path is shorter than or equal to
+   * the stored path, keeping the thumbnail in its most "root" state.
+   * Time-throttled for same-length paths; shorter paths bypass the
+   * throttle so the thumbnail converges to the root quickly.
    */
   private async persistOriginThumbnail(image: NativeImage): Promise<void> {
     if (!this.thumbnailService) return;
 
     let origin: string;
+    let urlPath: string;
     try {
-      origin = new URL(this.currentState.url).origin;
+      const parsed = new URL(this.currentState.url);
+      origin = parsed.origin;
+      urlPath = parsed.pathname;
     } catch {
       return;
     }
     // Skip internal pages and invalid origins
     if (!origin || origin === 'null') return;
 
-    const now = Date.now();
-    if (
-      this.lastThumbnailSaveOrigin === origin &&
-      now - this.lastThumbnailSaveTime < this.THUMBNAIL_SAVE_INTERVAL_MS
-    ) {
-      return;
+    // Path-based guard: only update when the current path is at the
+    // same depth or shallower than the previously stored thumbnail.
+    const { allowed, isShorterPath } =
+      await this.thumbnailService.shouldUpdateThumbnail(origin, urlPath);
+    if (!allowed) return;
+
+    // Time-based throttle: apply only when the path is the same length.
+    // Shorter paths bypass the throttle to converge quickly.
+    if (!isShorterPath) {
+      const now = Date.now();
+      if (
+        this.lastThumbnailSaveOrigin === origin &&
+        now - this.lastThumbnailSaveTime < this.THUMBNAIL_SAVE_INTERVAL_MS
+      ) {
+        return;
+      }
     }
 
     const { buffer, width, height } = this.createThumbnailBuffer(image);
-    await this.thumbnailService.storeThumbnail(origin, buffer, width, height);
+    await this.thumbnailService.storeThumbnail(
+      origin,
+      urlPath,
+      buffer,
+      width,
+      height,
+    );
     this.lastThumbnailSaveOrigin = origin;
-    this.lastThumbnailSaveTime = now;
+    this.lastThumbnailSaveTime = Date.now();
   }
 
   private async updateViewportInfo() {

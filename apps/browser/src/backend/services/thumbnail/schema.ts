@@ -11,4 +11,5 @@ export const originThumbnails = sqliteTable('origin_thumbnails', {
   height: integer('height').default(0).notNull(),
   lastUpdated: integer('last_updated').default(0).notNull(),
   lastAccessed: integer('last_accessed').default(0).notNull(),
+  lastPath: text('last_path'),
 });

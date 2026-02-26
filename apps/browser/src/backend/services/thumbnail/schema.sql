@@ -1,4 +1,4 @@
--- VERSION: 1
+-- VERSION: 2
 
 CREATE TABLE IF NOT EXISTS meta(
     key LONGVARCHAR NOT NULL UNIQUE PRIMARY KEY,
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS origin_thumbnails(
     width INTEGER NOT NULL DEFAULT 0,
     height INTEGER NOT NULL DEFAULT 0,
     last_updated INTEGER NOT NULL DEFAULT 0,
-    last_accessed INTEGER NOT NULL DEFAULT 0
+    last_accessed INTEGER NOT NULL DEFAULT 0,
+    last_path TEXT
 );
 

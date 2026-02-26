@@ -1,5 +1,5 @@
 import type { Logger } from '../logger';
-import { inArray, sql, lt } from 'drizzle-orm';
+import { inArray, sql, lt, eq } from 'drizzle-orm';
 import * as schema from './schema';
 import { drizzle } from 'drizzle-orm/libsql';
 import type { GlobalDataPathService } from '../global-data-path';
@@ -13,11 +13,15 @@ import { registry, schemaVersion } from './migrations';
 /**
  * Service responsible for persisting origin-level page thumbnails.
  * Stores one downscaled JPEG screenshot per origin for home page cards.
+ * Thumbnails prefer "root" state: updates only happen when the current
+ * URL path is shorter than or equal to the path stored for that origin.
  */
 export class ThumbnailService {
   private logger: Logger;
   private dbDriver;
   private db;
+  /** In-memory cache of origin -> last stored path to avoid DB reads */
+  private pathCache = new Map<string, string>();
 
   private constructor(logger: Logger, paths: GlobalDataPathService) {
     this.logger = logger;
@@ -66,10 +70,45 @@ export class ThumbnailService {
   // =================================================================
 
   /**
-   * Store (upsert) a thumbnail for an origin.
+   * Check whether a thumbnail update should proceed for the given origin.
+   * Returns `allowed: false` when the current path is deeper than the
+   * stored one. When allowed, `isShorterPath` indicates the current path
+   * is strictly shorter — callers can use this to bypass time throttles
+   * so that navigating to a shallower page captures immediately.
+   */
+  async shouldUpdateThumbnail(
+    origin: string,
+    currentPath: string,
+  ): Promise<{ allowed: boolean; isShorterPath: boolean }> {
+    let storedPath = this.pathCache.get(origin);
+
+    if (storedPath === undefined) {
+      // Cache miss – read from DB once
+      const row = await this.db
+        .select({ lastPath: schema.originThumbnails.lastPath })
+        .from(schema.originThumbnails)
+        .where(eq(schema.originThumbnails.origin, origin))
+        .get();
+
+      storedPath = row?.lastPath ?? undefined;
+      // Cache the result (empty string means no path stored yet)
+      this.pathCache.set(origin, storedPath ?? '');
+    }
+
+    // No stored thumbnail yet – always allow the first capture
+    if (!storedPath) return { allowed: true, isShorterPath: false };
+
+    const allowed = currentPath.length <= storedPath.length;
+    const isShorterPath = currentPath.length < storedPath.length;
+    return { allowed, isShorterPath };
+  }
+
+  /**
+   * Store (upsert) a thumbnail for an origin, recording the URL path.
    */
   async storeThumbnail(
     origin: string,
+    urlPath: string,
     buffer: Buffer,
     width: number,
     height: number,
@@ -84,6 +123,7 @@ export class ThumbnailService {
         height,
         lastUpdated: now,
         lastAccessed: now,
+        lastPath: urlPath,
       })
       .onConflictDoUpdate({
         target: schema.originThumbnails.origin,
@@ -93,8 +133,12 @@ export class ThumbnailService {
           height,
           lastUpdated: now,
           lastAccessed: now,
+          lastPath: urlPath,
         },
       });
+
+    // Update the in-memory cache
+    this.pathCache.set(origin, urlPath);
   }
 
   // =================================================================
@@ -162,6 +206,15 @@ export class ThumbnailService {
     const toDelete = countResult?.count ?? 0;
 
     if (toDelete > 0) {
+      // Collect evicted origins to clear from path cache
+      const evicted = await this.db
+        .select({ origin: schema.originThumbnails.origin })
+        .from(schema.originThumbnails)
+        .where(lt(schema.originThumbnails.lastAccessed, cutoff));
+      for (const row of evicted) {
+        this.pathCache.delete(row.origin);
+      }
+
       await this.db
         .delete(schema.originThumbnails)
         .where(lt(schema.originThumbnails.lastAccessed, cutoff));
@@ -184,6 +237,7 @@ export class ThumbnailService {
     const count = countResult?.count ?? 0;
 
     await this.db.delete(schema.originThumbnails);
+    this.pathCache.clear();
 
     return count;
   }
