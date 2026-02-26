@@ -91,7 +91,7 @@ describe('KartonServer Lazy Registration', () => {
       // Call the procedure
       const result = await client.serverProcedures.increment(5);
       
-      expect(handler).toHaveBeenCalledWith(5, expect.any(String));
+      expect(handler).toHaveBeenCalledWith(expect.any(String), 5);
       expect(result).toBe(5);
     });
 
@@ -137,7 +137,7 @@ describe('KartonServer Lazy Registration', () => {
 
       const result = await client.serverProcedures.nested.process('test');
       expect(result).toEqual({ result: 'processed: test' });
-      expect(processHandler).toHaveBeenCalledWith('test', expect.any(String));
+      expect(processHandler).toHaveBeenCalledWith(expect.any(String), 'test');
     });
 
     it('should apply handler to all existing connections', async () => {
@@ -257,7 +257,7 @@ describe('KartonServer Lazy Registration', () => {
       
       expect(result).toBe(12);
       expect(handler).not.toHaveBeenCalled();
-      expect(newHandler).toHaveBeenCalledWith(4, expect.any(String));
+      expect(newHandler).toHaveBeenCalledWith(expect.any(String), 4);
     });
 
     it('should remove handler from all connections', async () => {
