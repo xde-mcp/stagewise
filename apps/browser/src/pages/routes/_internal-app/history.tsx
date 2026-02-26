@@ -15,6 +15,7 @@ import React, {
   useState,
 } from 'react';
 import { Loader2Icon, LinkIcon } from 'lucide-react';
+import { IconChevronRightOutline18 } from 'nucleo-ui-outline-18';
 import { useKartonProcedure, useKartonConnected } from '@/hooks/use-karton';
 import type {
   HistoryFilter,
@@ -37,10 +38,19 @@ export const Route = createFileRoute('/_internal-app/history')({
 const PAGE_SIZE = 50;
 const DATE_HEADER_HEIGHT = 64;
 const ENTRY_ROW_HEIGHT = 56;
+const ORIGIN_GROUP_HEADER_HEIGHT = 48;
 
 type DateHeaderRow = {
   type: 'date-header';
   date: string;
+};
+
+type OriginGroupHeaderRow = {
+  type: 'origin-group-header';
+  groupId: string;
+  origin: string;
+  faviconUrl: string | null;
+  entryCount: number;
 };
 
 type EntryRow = {
@@ -50,9 +60,10 @@ type EntryRow = {
   title: string;
   url: string;
   faviconUrl: string | null;
+  groupId: string | null;
 };
 
-type Row = DateHeaderRow | EntryRow;
+type Row = DateHeaderRow | OriginGroupHeaderRow | EntryRow;
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
@@ -70,40 +81,115 @@ function formatTime(date: Date): string {
   });
 }
 
-function getUrlDomain(url: string): string {
+function getUrlOrigin(url: string): string {
   try {
-    if (url.startsWith('file://')) {
-      return url;
-    }
-    const urlObj = new URL(url);
-    return urlObj.hostname;
+    if (url.startsWith('file://')) return 'file://';
+    return new URL(url).hostname;
   } catch {
     return url;
   }
 }
 
-// Convert history results to flat row list with date headers
+function getUrlDisplayPath(url: string): string {
+  try {
+    if (url.startsWith('file://')) return url;
+    return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  } catch {
+    return url;
+  }
+}
+
+// Convert history results to flat row list with date headers and origin groups
 function historyToRows(history: HistoryResult[]): Row[] {
   const rows: Row[] = [];
   let currentDate: string | null = null;
 
+  // First, group entries by date
+  const dateGroups: { date: string; entries: HistoryResult[] }[] = [];
   for (const entry of history) {
     const dateKey = formatDate(entry.visitTime);
     if (dateKey !== currentDate) {
       currentDate = dateKey;
-      rows.push({ type: 'date-header', date: dateKey });
+      dateGroups.push({ date: dateKey, entries: [] });
     }
-    rows.push({
-      type: 'entry',
-      id: entry.visitId,
-      time: formatTime(entry.visitTime),
-      title: entry.title || 'Untitled',
-      url: entry.url,
-      faviconUrl: entry.faviconUrl,
-    });
+    dateGroups[dateGroups.length - 1].entries.push(entry);
+  }
+
+  for (const dateGroup of dateGroups) {
+    rows.push({ type: 'date-header', date: dateGroup.date });
+
+    // Find consecutive runs of same origin within this date
+    let i = 0;
+    while (i < dateGroup.entries.length) {
+      const origin = getUrlOrigin(dateGroup.entries[i].url);
+
+      // Find the end of this consecutive run
+      let j = i + 1;
+      while (
+        j < dateGroup.entries.length &&
+        getUrlOrigin(dateGroup.entries[j].url) === origin
+      ) {
+        j++;
+      }
+
+      const runLength = j - i;
+
+      if (runLength >= 2) {
+        // Multi-entry group — add group header + grouped entries
+        const groupId = `group-${dateGroup.entries[i].visitId}`;
+        rows.push({
+          type: 'origin-group-header',
+          groupId,
+          origin,
+          faviconUrl: dateGroup.entries[i].faviconUrl,
+          entryCount: runLength,
+        });
+        for (let k = i; k < j; k++) {
+          const e = dateGroup.entries[k];
+          rows.push({
+            type: 'entry',
+            id: e.visitId,
+            time: formatTime(e.visitTime),
+            title: e.title || 'Untitled',
+            url: e.url,
+            faviconUrl: e.faviconUrl,
+            groupId,
+          });
+        }
+      } else {
+        // Single entry — no group
+        const e = dateGroup.entries[i];
+        rows.push({
+          type: 'entry',
+          id: e.visitId,
+          time: formatTime(e.visitTime),
+          title: e.title || 'Untitled',
+          url: e.url,
+          faviconUrl: e.faviconUrl,
+          groupId: null,
+        });
+      }
+
+      i = j;
+    }
   }
 
   return rows;
+}
+
+// Filter out entries belonging to collapsed groups
+function filterCollapsedRows(rows: Row[], collapsedGroups: Set<string>): Row[] {
+  if (collapsedGroups.size === 0) return rows;
+  return rows.filter((row) => {
+    if (
+      row.type === 'entry' &&
+      row.groupId &&
+      collapsedGroups.has(row.groupId)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 // Favicon component with fallback
@@ -149,7 +235,9 @@ function Favicon({
 type RowProps = {
   rows: Row[];
   faviconBitmaps: Record<string, FaviconBitmapResult>;
+  collapsedGroups: Set<string>;
   onOpenUrl: (url: string) => void;
+  onToggleGroup: (groupId: string) => void;
 };
 
 // Row component for the virtualized list
@@ -158,7 +246,9 @@ function RowComponent({
   style,
   rows,
   faviconBitmaps,
+  collapsedGroups,
   onOpenUrl,
+  onToggleGroup,
 }: {
   index: number;
   style: React.CSSProperties;
@@ -175,6 +265,33 @@ function RowComponent({
     return (
       <div style={style} className="flex items-end pt-6 pb-3">
         <h2 className="font-medium text-foreground text-lg">{row.date}</h2>
+      </div>
+    );
+  }
+
+  if (row.type === 'origin-group-header') {
+    const isCollapsed = collapsedGroups.has(row.groupId);
+    return (
+      <div style={style} className="flex items-center pt-3">
+        <div
+          className="flex h-full w-full cursor-pointer select-none items-center gap-4 rounded-lg px-4 hover:bg-hover-derived"
+          onClick={() => onToggleGroup(row.groupId)}
+        >
+          <span className="flex min-w-[60px] items-center justify-end">
+            <IconChevronRightOutline18
+              className={`size-3.5 text-muted-foreground transition-transform ${
+                isCollapsed ? '' : 'rotate-90'
+              }`}
+            />
+          </span>
+          <Favicon faviconUrl={row.faviconUrl} bitmaps={faviconBitmaps} />
+          <span className="font-medium text-foreground text-sm">
+            {row.origin}
+          </span>
+          <span className="text-muted-foreground text-xs">
+            {row.entryCount} {row.entryCount === 1 ? 'page' : 'pages'}
+          </span>
+        </div>
       </div>
     );
   }
@@ -199,7 +316,7 @@ function RowComponent({
         <div className="flex-1 truncate">
           <div className="truncate text-foreground text-sm">{row.title}</div>
           <div className="truncate text-muted-foreground text-xs">
-            {getUrlDomain(row.url)}
+            {getUrlDisplayPath(row.url)}
           </div>
         </div>
         <Tooltip>
@@ -392,8 +509,29 @@ function Page() {
     fetchFavicons,
   ]);
 
-  // Convert history to flat rows
-  const rows = useMemo(() => historyToRows(history), [history]);
+  // Collapsed origin groups
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const toggleGroup = useCallback((groupId: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Convert history to flat rows, then filter collapsed groups
+  const allRows = useMemo(() => historyToRows(history), [history]);
+  const rows = useMemo(
+    () => filterCollapsedRows(allRows, collapsedGroups),
+    [allRows, collapsedGroups],
+  );
 
   // Get row height based on row type
   const getRowHeight = useCallback(
@@ -402,7 +540,9 @@ function Page() {
         return ENTRY_ROW_HEIGHT;
       }
       const row = rows[index];
-      return row.type === 'date-header' ? DATE_HEADER_HEIGHT : ENTRY_ROW_HEIGHT;
+      if (row.type === 'date-header') return DATE_HEADER_HEIGHT;
+      if (row.type === 'origin-group-header') return ORIGIN_GROUP_HEADER_HEIGHT;
+      return ENTRY_ROW_HEIGHT;
     },
     [rows],
   );
@@ -447,9 +587,11 @@ function Page() {
     () => ({
       rows,
       faviconBitmaps,
+      collapsedGroups,
       onOpenUrl: handleOpenUrl,
+      onToggleGroup: toggleGroup,
     }),
-    [rows, faviconBitmaps, handleOpenUrl],
+    [rows, faviconBitmaps, collapsedGroups, handleOpenUrl, toggleGroup],
   );
 
   return (
