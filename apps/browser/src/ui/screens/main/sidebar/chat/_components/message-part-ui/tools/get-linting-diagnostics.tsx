@@ -195,7 +195,12 @@ const SuccessHeader = ({
 const LoadingHeader = ({ disableShimmer }: { disableShimmer?: boolean }) => {
   return (
     <div className="flex flex-row items-center justify-start gap-1 overflow-hidden">
-      <Loader2Icon className="size-3 shrink-0 animate-spin text-primary-foreground" />
+      <Loader2Icon
+        className={cn(
+          'size-3 shrink-0 animate-spin',
+          disableShimmer ? '' : 'text-primary-foreground',
+        )}
+      />
       <span
         dir="ltr"
         className={cn(

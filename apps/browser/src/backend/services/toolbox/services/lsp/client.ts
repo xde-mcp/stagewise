@@ -62,6 +62,8 @@ export class LspClient extends EventEmitter {
 
   private static readonly DIAGNOSTICS_DEBOUNCE_MS = 150;
   private static readonly DIAGNOSTICS_TIMEOUT_MS = 3000;
+  private static readonly CLIENT_INIT_TIMEOUT_MS = 15_000;
+  private static readonly SHUTDOWN_TIMEOUT_MS = 5_000;
 
   private connection: ProtocolConnection | null = null;
   private process: ChildProcessWithoutNullStreams | null = null;
@@ -136,29 +138,30 @@ export class LspClient extends EventEmitter {
    */
   private async start(): Promise<boolean> {
     try {
-      const handle = await this.serverInfo.spawn(this.root);
-      if (!handle) {
-        this.logger.debug(
-          `[LspClient:${this.serverID}] Failed to spawn server for root: ${this.root}`,
+      const result = await Promise.race([
+        this.startInternal(),
+        new Promise<'timeout'>((resolve) =>
+          setTimeout(
+            () => resolve('timeout'),
+            LspClient.CLIENT_INIT_TIMEOUT_MS,
+          ),
+        ),
+      ]);
+      if (result === 'timeout') {
+        this.logger.warn(
+          `[LspClient:${this.serverID}] Initialization timed out after ${LspClient.CLIENT_INIT_TIMEOUT_MS}ms`,
         );
+        if (this.process) {
+          this.process.kill();
+          this.process = null;
+        }
+        if (this.connection) {
+          this.connection.dispose();
+          this.connection = null;
+        }
         return false;
       }
-
-      this.process = handle.process;
-      this.initializationOptions = handle.initializationOptions;
-      this.connection = createProtocolConnection(
-        this.process.stdout,
-        this.process.stdin,
-      );
-
-      this.setupHandlers();
-      this.connection.listen();
-
-      await this.initialize(this.initializationOptions);
-      this.logger.debug(
-        `[LspClient:${this.serverID}] Server started for root: ${this.root}`,
-      );
-      return true;
+      return result;
     } catch (error) {
       this.logger.error(
         `[LspClient:${this.serverID}] Failed to start server:`,
@@ -167,6 +170,32 @@ export class LspClient extends EventEmitter {
       this.emit('error', error);
       return false;
     }
+  }
+
+  private async startInternal(): Promise<boolean> {
+    const handle = await this.serverInfo.spawn(this.root);
+    if (!handle) {
+      this.logger.debug(
+        `[LspClient:${this.serverID}] Failed to spawn server for root: ${this.root}`,
+      );
+      return false;
+    }
+
+    this.process = handle.process;
+    this.initializationOptions = handle.initializationOptions;
+    this.connection = createProtocolConnection(
+      this.process.stdout,
+      this.process.stdin,
+    );
+
+    this.setupHandlers();
+    this.connection.listen();
+
+    await this.initialize(this.initializationOptions);
+    this.logger.debug(
+      `[LspClient:${this.serverID}] Server started for root: ${this.root}`,
+    );
+    return true;
   }
 
   private setupHandlers(): void {
@@ -414,8 +443,26 @@ export class LspClient extends EventEmitter {
 
     const uri = pathToFileURL(filePath).toString();
 
-    // Already open, skip
-    if (this.openDocuments.has(uri)) return;
+    // Already open — re-read from disk and send a change notification so
+    // the server re-analyzes with the latest content.
+    if (this.openDocuments.has(uri)) {
+      try {
+        const content = await fs.promises.readFile(filePath, 'utf-8');
+        const currentVersion = this.openDocuments.get(uri)!;
+        const newVersion = currentVersion + 1;
+        this.openDocuments.set(uri, newVersion);
+        await this.connection.sendNotification(
+          DidChangeTextDocumentNotification.type,
+          {
+            textDocument: { uri, version: newVersion },
+            contentChanges: [{ text: content }],
+          },
+        );
+      } catch {
+        // File may have been deleted between open and re-read
+      }
+      return;
+    }
 
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
@@ -911,10 +958,15 @@ export class LspClient extends EventEmitter {
 
     if (this.connection) {
       try {
-        // Send shutdown request
-        await this.connection.sendRequest(ShutdownRequest.type);
-        // Send exit notification
-        await this.connection.sendNotification(ExitNotification.type);
+        await Promise.race([
+          (async () => {
+            await this.connection!.sendRequest(ShutdownRequest.type);
+            await this.connection!.sendNotification(ExitNotification.type);
+          })(),
+          new Promise<void>((resolve) =>
+            setTimeout(resolve, LspClient.SHUTDOWN_TIMEOUT_MS),
+          ),
+        ]);
       } catch {
         // Server may have already exited
       }

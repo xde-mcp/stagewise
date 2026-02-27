@@ -9,26 +9,23 @@ import { tool } from 'ai';
 import { rethrowCappedToolOutputError } from '../../utils';
 import { resolveMountedLspService } from '../../utils/path-mounting';
 
-const description = `MANDATORY: Get linting and type-checking diagnostics for files modified during this session.
+/* Due to an issue in zod schema conversion in the ai sdk,
+   the schema descriptions are not properly used for the prompts -
+   thus, we include them in the descriptions as well. */
 
-YOU MUST call this tool after completing code changes to check for:
-- TypeScript/JavaScript type errors (MUST be fixed)
-- ESLint rule violations (SHOULD be fixed)
-- Biome linting issues (SHOULD be fixed)
-- Other LSP-reported problems
+export const DESCRIPTION = `Get linting and type-checking diagnostics (TypeScript errors, ESLint/Biome violations, other LSP-reported problems) for the specified files.
 
-WORKFLOW:
-1. Complete all code changes for the current task
-2. Call this tool to check for issues
-3. If errors/warnings found, fix them immediately
-4. Only then ask the user for feedback
+Parameters:
+- paths (string[], REQUIRED): File paths to check. Each path must include the mount prefix (e.g. "w3a1f/src/index.ts"). Use the same mount-prefixed paths returned by file tools.
 
-Never leave the codebase with unresolved errors caused by your changes.`;
+Behavior: Returns per-file diagnostics with severity, source, message, line, and column, plus an overall summary.`;
 
 type LintingDiagnosticsResult = {
   files: FileDiagnostics[];
   summary: DiagnosticsSummary;
 };
+
+const TOOL_TIMEOUT_MS = 15_000;
 
 export const getLintingDiagnosticsToolExecute = async (
   mountedLspServices: MountedLspServices,
@@ -48,6 +45,36 @@ export const getLintingDiagnosticsToolExecute = async (
     };
   }
 
+  const resultOrTimeout = await Promise.race([
+    doGetLintingDiagnostics(mountedLspServices, paths),
+    new Promise<'timeout'>((resolve) =>
+      setTimeout(() => resolve('timeout'), TOOL_TIMEOUT_MS),
+    ),
+  ]);
+
+  if (resultOrTimeout === 'timeout') {
+    return {
+      message:
+        'Diagnostics request timed out. LSP servers may be unresponsive. You can proceed without diagnostics.',
+      files: [],
+      summary: {
+        totalFiles: 0,
+        totalIssues: 0,
+        errors: 0,
+        warnings: 0,
+        infos: 0,
+        hints: 0,
+      },
+    };
+  }
+
+  return resultOrTimeout;
+};
+
+async function doGetLintingDiagnostics(
+  mountedLspServices: MountedLspServices,
+  paths: string[],
+) {
   // Touch all files in parallel so LSP servers open and analyze them,
   // then wait for diagnostics to arrive (3s timeout per file).
   await Promise.all(
@@ -140,13 +167,13 @@ export const getLintingDiagnosticsToolExecute = async (
       hints: totalHints,
     },
   };
-};
+}
 
 export const getLintingDiagnosticsTool = (
   mountedLspServices: MountedLspServices,
 ) =>
   tool({
-    description,
+    description: DESCRIPTION,
     inputSchema: getLintingDiagnosticsToolInputSchema,
     execute: async ({ paths }) => {
       return getLintingDiagnosticsToolExecute(mountedLspServices, paths);

@@ -41,6 +41,7 @@ Perform only explicit requests. Do not take hidden actions or modify goals witho
 
 - Prioritize clarity; reuse existing components.
 - Quick & dirty solutions require explicit user requests and must be labeled **[Temporary]**.
+- After making code changes, consider checking for linting/type-checking issues to catch errors early. Respect the user's preference if they ask you to skip this step.
 
 ## P4 — Communication Style
 

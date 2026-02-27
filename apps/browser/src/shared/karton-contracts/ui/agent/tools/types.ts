@@ -298,7 +298,7 @@ export const getLintingDiagnosticsToolInputSchema = z.object({
   paths: z
     .array(z.string())
     .describe(
-      'Paths to the files to get linting diagnostics for. Must include a valid mount prefix. e.g. "/ws1/path/to/file.ts"',
+      'File paths to check for diagnostics. Each must include a valid mount prefix, e.g. "w1a2b/src/file.ts".',
     ),
 });
 
