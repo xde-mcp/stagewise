@@ -229,7 +229,7 @@ const WorkspaceBadge = memo(function WorkspaceBadge({
       <div
         className={cn(
           'group/badge inline-flex items-center gap-1',
-          'rounded-md border border-derived-subtle px-1.5 py-0.5 text-muted-foreground',
+          'rounded-md border border-derived px-1.5 py-0.5 text-muted-foreground',
           'text-xs transition-colors duration-100',
           'hover:bg-hover-derived hover:text-foreground',
           'hover:has-[[data-unmount]:hover]:text-muted-foreground',
@@ -907,7 +907,7 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
                   variant="secondary"
                   size="xs"
                   {...triggerProps}
-                  className="h-5.5 text-muted-foreground hover:text-foreground"
+                  className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
                 >
                   <IconFolder5Outline18 className="size-3" />
                   <IconPlusFill18 className="size-2.5" />
@@ -924,7 +924,7 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
                   variant="secondary"
                   size="xs"
                   {...triggerProps}
-                  className="h-5.5 text-muted-foreground hover:text-foreground"
+                  className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
                 >
                   <IconFolder5Outline18 className="size-3" />
                   <span>Connect workspace</span>
