@@ -683,6 +683,7 @@ export type KartonContract = {
         workspacePaths?: string[],
       ) => Promise<string>;
       resume: (agentId: string) => Promise<void>;
+      archive: (agentId: string) => Promise<void>;
       delete: (agentId: string) => Promise<void>;
       getAgentsHistoryList: (
         offset: number,

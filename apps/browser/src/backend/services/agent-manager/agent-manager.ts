@@ -275,6 +275,12 @@ export class AgentManagerService extends DisposableService {
       },
     );
     this.karton.registerServerProcedureHandler(
+      'agents.archive',
+      async (_callingClientId: string, instanceId: string) => {
+        await this.archiveAgent(instanceId);
+      },
+    );
+    this.karton.registerServerProcedureHandler(
       'agents.markAsRead',
       async (_callingClientId: string, instanceId: string) => {
         if (this.karton.state.agents.instances[instanceId]) {
@@ -680,16 +686,6 @@ export class AgentManagerService extends DisposableService {
       await this.deleteAgent(childAgentInstanceId);
     }
 
-    // Accept all pending diffs before archiving so no "hanging" diffs remain
-    try {
-      await this.toolbox.acceptAllPendingEditsForAgent(instanceId);
-    } catch (error) {
-      this.logger.error(
-        `[AgentManager] Failed to accept pending edits for agent ${instanceId}`,
-        error,
-      );
-    }
-
     // Archive this agent (stops it, tears down resources, removes from active state)
     await this.archiveAgent(instanceId);
 
@@ -720,6 +716,16 @@ export class AgentManagerService extends DisposableService {
     await agent.reportErrorToParent(
       new Error("Agent was stopped and deleted before finishing it's task."),
     );
+
+    // Accept all pending diffs before archiving so no "hanging" diffs remain
+    try {
+      await this.toolbox.acceptAllPendingEditsForAgent(instanceId);
+    } catch (error) {
+      this.logger.error(
+        `[AgentManager] Failed to accept pending edits for agent ${instanceId}`,
+        error,
+      );
+    }
 
     // Delete all child agents as well. Do this recursively.
     const childAgentInstanceIds = Object.entries(

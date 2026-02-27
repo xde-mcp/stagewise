@@ -7,6 +7,7 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { IconTrash2Outline24 } from 'nucleo-core-outline-24';
+import { IconSleepingTimeOutline18 } from 'nucleo-ui-outline-18';
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en';
 
@@ -25,6 +26,7 @@ export interface AgentCardProps {
   activityIsUserInput: boolean;
   lastMessageAt: number;
   onClick: (id: string) => void;
+  onArchive: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -49,15 +51,27 @@ export const AgentCard = memo(function AgentCard({
   activityIsUserInput,
   lastMessageAt,
   onClick,
+  onArchive,
   onDelete,
 }: AgentCardProps) {
   const subtitle = hasError ? 'Error' : activityText;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       data-agent-id={id}
       onClick={() => onClick(id)}
+      onKeyDown={(e) => {
+        // Only handle keyboard interaction when the card itself is focused.
+        // Otherwise, nested buttons (archive/delete) would also trigger this.
+        if (e.currentTarget !== e.target) return;
+
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(id);
+        }
+      }}
       className={cn(
         'group/card relative flex min-w-0 shrink-0 cursor-pointer flex-col gap-0.5 rounded-md bg-surface-1 px-2 py-1.5 text-left transition-colors hover:bg-surface-2',
         isActive && 'bg-surface-2 ring-2 ring-derived-subtle ring-inset',
@@ -66,9 +80,13 @@ export const AgentCard = memo(function AgentCard({
     >
       <Tooltip>
         <TooltipTrigger delay={500}>
-          <span className="block w-full overflow-x-clip text-ellipsis whitespace-nowrap font-medium text-foreground text-xs leading-normal">
+          <button
+            type="button"
+            tabIndex={-1}
+            className="block w-full overflow-x-clip text-ellipsis whitespace-nowrap bg-transparent p-0 text-left font-medium text-foreground text-xs leading-normal outline-none"
+          >
             {title}
-          </span>
+          </button>
         </TooltipTrigger>
         <TooltipContent side="bottom">
           <span>{title}</span>
@@ -93,19 +111,48 @@ export const AgentCard = memo(function AgentCard({
           </span>
         )}
       </div>
-      <div className="absolute inset-y-[2px] right-[2px] flex items-center rounded-r-[calc(var(--radius-md)-2px)] bg-linear-to-r from-transparent to-[20px] to-surface-2 pr-2 pl-6 opacity-0 transition-opacity group-hover/card:opacity-100">
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          className="delete-btn text-muted-foreground hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(id);
-          }}
-        >
-          <IconTrash2Outline24 className="size-4 cursor-pointer" />
-        </Button>
+
+      <div className="absolute inset-y-[2px] right-[2px] flex items-center gap-1 rounded-r-[calc(var(--radius-md)-2px)] bg-linear-to-r from-transparent to-[20px] to-surface-2 pr-2 pl-6 opacity-0 transition-opacity group-hover/card:opacity-100">
+        <Tooltip>
+          <TooltipTrigger delay={500}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="archive-btn text-muted-foreground hover:text-foreground"
+              aria-label="Suspend agent"
+              onClick={(e) => {
+                e.stopPropagation();
+                onArchive(id);
+              }}
+            >
+              <IconSleepingTimeOutline18 className="size-4 cursor-pointer" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <span>Suspend agent (can be recovered)</span>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger delay={500}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="delete-btn text-muted-foreground hover:text-foreground"
+              aria-label="Delete agent permanently"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(id);
+              }}
+            >
+              <IconTrash2Outline24 className="size-4 cursor-pointer" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <span>Delete agent permanently</span>
+          </TooltipContent>
+        </Tooltip>
       </div>
-    </button>
+    </div>
   );
 });

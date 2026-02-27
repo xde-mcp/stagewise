@@ -118,6 +118,7 @@ export function ActiveAgentsGrid() {
   const [openAgent, setOpenAgent, removeFromHistory] = useOpenAgent();
   const createAgent = useKartonProcedure((p) => p.agents.create);
   const resumeAgent = useKartonProcedure((p) => p.agents.resume);
+  const archiveAgent = useKartonProcedure((p) => p.agents.archive);
   const deleteAgent = useKartonProcedure((p) => p.agents.delete);
 
   const [, emptyAgentIdRef] = useEmptyAgentId();
@@ -169,11 +170,19 @@ export function ActiveAgentsGrid() {
   const showCreateSkeleton =
     pendingCreate && agents.length <= agentCountAtCreateRef.current;
 
+  // Optimistic removal: cards are hidden immediately while the backend processes.
+  // Used for both "Delete" (permanent) and "Suspend" (archived).
+  const [pendingRemovals, setPendingRemovals] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const pendingRemovalsRef = useRef(pendingRemovals);
+  pendingRemovalsRef.current = pendingRemovals;
+
   const handleCreateAgent = useCallback(() => {
     // Reuse an existing empty agent instead of creating a new one.
-    // Uses refs so this callback isn't recreated when pendingDeletes changes.
+    // Uses refs so this callback isn't recreated when pendingRemovals changes.
     const existingEmpty = emptyAgentIdRef.current;
-    if (existingEmpty && !pendingDeletesRef.current.has(existingEmpty)) {
+    if (existingEmpty && !pendingRemovalsRef.current.has(existingEmpty)) {
       setOpenAgent(existingEmpty);
       window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
       return;
@@ -186,14 +195,7 @@ export function ActiveAgentsGrid() {
       setOpenAgent(id);
       setPendingCreate(false);
     });
-  }, [createAgent, setOpenAgent, agents.length]);
-
-  // Optimistic deletion: cards are hidden immediately while the backend processes.
-  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const pendingDeletesRef = useRef(pendingDeletes);
-  pendingDeletesRef.current = pendingDeletes;
+  }, [agents.length, createAgent, emptyAgentIdRef, setOpenAgent]);
 
   // Stable ordering: agents keep their position in the list. New agents
   // (created or resumed) are appended at the end. Removed agents are pruned.
@@ -212,34 +214,33 @@ export function ActiveAgentsGrid() {
     orderRef.current = kept;
 
     const byId = new Map(agents.map((a) => [a.id, a]));
-    // Exclude agents that are being optimistically deleted
+    // Exclude agents that are being optimistically removed
     return kept
-      .filter((id) => !pendingDeletes.has(id))
+      .filter((id) => !pendingRemovals.has(id))
       .map((id) => byId.get(id)!);
-  }, [agents, pendingDeletes]);
+  }, [agents, pendingRemovals]);
 
-  // Clean up pending deletes once the backend has confirmed removal.
+  // Clean up pending removals once the backend has confirmed removal.
   // The memo already filters them from the rendered list, so this is
   // purely housekeeping — no visual artifact from the effect timing.
   useEffect(() => {
-    if (pendingDeletes.size === 0) return;
+    if (pendingRemovals.size === 0) return;
     const currentIds = new Set(agents.map((a) => a.id));
-    const pendingArr = Array.from(pendingDeletes);
+    const pendingArr = Array.from(pendingRemovals);
     if (pendingArr.some((id) => !currentIds.has(id))) {
-      setPendingDeletes(new Set(pendingArr.filter((id) => currentIds.has(id))));
+      setPendingRemovals(
+        new Set(pendingArr.filter((id) => currentIds.has(id))),
+      );
     }
-  }, [agents, pendingDeletes]);
+  }, [agents, pendingRemovals]);
 
-  // When the open agent is optimistically deleted, pop it from the history
-  // stack so we fall back to the previously viewed agent. Separated from
-  // handleDelete to avoid capturing openAgent/agents/pendingDeletes in the
-  // callback (which would break AgentCard's memo by changing onDelete identity
-  // every render).
+  // When the open agent is optimistically removed, pop it from the history
+  // stack so we fall back to the previously viewed agent.
   useEffect(() => {
-    if (openAgent && pendingDeletes.has(openAgent)) {
+    if (openAgent && pendingRemovals.has(openAgent)) {
       removeFromHistory(openAgent);
     }
-  }, [openAgent, pendingDeletes, removeFromHistory]);
+  }, [openAgent, pendingRemovals, removeFromHistory]);
 
   const handleClick = useCallback(
     (id: string) => {
@@ -251,9 +252,17 @@ export function ActiveAgentsGrid() {
     [resumeAgent, setOpenAgent],
   );
 
+  const handleArchive = useCallback(
+    (id: string) => {
+      setPendingRemovals((prev) => new Set(prev).add(id));
+      void archiveAgent(id);
+    },
+    [archiveAgent],
+  );
+
   const handleDelete = useCallback(
     (id: string) => {
-      setPendingDeletes((prev) => new Set(prev).add(id));
+      setPendingRemovals((prev) => new Set(prev).add(id));
       void deleteAgent(id);
     },
     [deleteAgent],
@@ -349,6 +358,7 @@ export function ActiveAgentsGrid() {
               activityIsUserInput={agent.activityIsUserInput}
               lastMessageAt={agent.lastMessageAt}
               onClick={handleClick}
+              onArchive={handleArchive}
               onDelete={handleDelete}
             />
           );
