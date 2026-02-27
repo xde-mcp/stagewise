@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.0.0-alpha.6 (2026-02-27)
+
+### Features
+
+* allow suspending/archiving agents (f2589eb)
+* prepare components for mentions-feature (7e17f98)
+* stream sandbox-outputs and reset timeout on API.output (4ee7706)
+* add origin-grouped history entries (6a7e26d)
+
+### Bug Fixes
+
+* weird behavior when chatting normally with the agent (fe45694)
+* add 'Open file' to diff review page (1c0f132)
+* make file-icon use theme colors (0ece0b7)
+* remove weird keyboard tabbing control for web content tabs (d84f3a1)
+* enable message send button on chat switch if input contains text (175b3f4)
+* align UI of 'connect workspace'-button with workspace-badges (2090fca)
+* add timeout safeguards to lsp and relax instructions in system prompt (da082a4)
+* fix import for pages-app (4eedeec)
+* show git icon on workspace badge (526fc9e)
+
+### Other Changes
+
+* more explicit steering of stagewise-conform behavior in OpenAI models (68a0b1e)
+* restructure rich-text attachment files (cefd75b)
+
 ## 1.0.0-alpha.5 (2026-02-26)
 
 ### Features
