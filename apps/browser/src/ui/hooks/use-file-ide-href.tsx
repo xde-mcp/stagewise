@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { useMountedPaths } from '@ui/hooks/use-mounted-paths';
-import { getIDEFileUrl } from '@ui/utils';
-import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
 import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
+import { useFileIDEHref as useFileIDEHrefBase } from '@shared/hooks/use-file-ide-href';
 
 function resolveAbsolutePath(
   relativeFilePath: string,
@@ -35,44 +34,14 @@ export function useFileIDEHref() {
   const globalConfig = useKartonState((s) => s.globalConfig);
   const setGlobalConfig = useKartonProcedure((s) => s.config.set);
 
-  const needsIdePicker = !globalConfig.hasSetIde;
-
-  const getFileIDEHref = useCallback(
-    (relativeFilePath: string, lineNumber?: number) => {
-      const absolutePath = resolveAbsolutePath(relativeFilePath, mounts);
-      if (!absolutePath) return '#';
-      return getIDEFileUrl(
-        absolutePath,
-        globalConfig.openFilesInIde,
-        lineNumber,
-      );
-    },
-    [mounts, globalConfig.openFilesInIde],
+  const resolvePath = useCallback(
+    (relativePath: string) => resolveAbsolutePath(relativePath, mounts),
+    [mounts],
   );
 
-  const pickIdeAndOpen = useCallback(
-    async (
-      ide: OpenFilesInIde,
-      relativeFilePath: string,
-      lineNumber?: number,
-    ) => {
-      await setGlobalConfig({
-        ...globalConfig,
-        openFilesInIde: ide,
-        hasSetIde: true,
-      });
-
-      const absolutePath = resolveAbsolutePath(relativeFilePath, mounts);
-      if (!absolutePath) return;
-      const url = getIDEFileUrl(absolutePath, ide, lineNumber);
-      window.open(url, '_blank');
-    },
-    [globalConfig, setGlobalConfig, mounts],
-  );
-
-  return {
-    getFileIDEHref,
-    needsIdePicker,
-    pickIdeAndOpen,
-  };
+  return useFileIDEHrefBase({
+    resolvePath,
+    globalConfig,
+    setGlobalConfig,
+  });
 }

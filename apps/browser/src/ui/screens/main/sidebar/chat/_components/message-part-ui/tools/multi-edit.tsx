@@ -296,7 +296,10 @@ const SuccessHeader = ({
   return (
     <div className="pointer-events-none flex flex-row items-center justify-start gap-1">
       <div className="pointer-events-auto flex flex-row items-center justify-start gap-1">
-        <FileIcon filePath={relativePath ?? ''} className="size-5 shrink-0" />
+        <FileIcon
+          filePath={relativePath ?? ''}
+          className="-ml-1 size-4 shrink-0"
+        />
         <Tooltip>
           <TooltipTrigger>
             <span className="min-w-0 truncate text-xs" dir="rtl">

@@ -7,7 +7,14 @@ import {
   useCallback,
   type FC,
 } from 'react';
-import { Loader2Icon, ChevronDownIcon, CheckIcon, XIcon } from 'lucide-react';
+import {
+  Loader2Icon,
+  ChevronDownIcon,
+  CheckIcon,
+  XIcon,
+  ListChevronsUpDownIcon,
+  ListChevronsDownUpIcon,
+} from 'lucide-react';
 import {
   useKartonProcedure,
   useKartonConnected,
@@ -31,8 +38,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
-import { Button } from '@stagewise/stage-ui/components/button';
+import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
+import { useFileIDEHref } from '@/hooks/use-file-ide-href';
+import { IdePickerPopover } from '@ui/components/ide-picker-popover';
+import { IdeLogo } from '@ui/components/ide-logo';
+import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@ui/utils';
 
 export const Route = createFileRoute('/diff-review/$agentInstanceId')({
   component: Page,
@@ -53,7 +64,12 @@ const FileDiffItem: FC<{
   onReject: (fileId: string) => void;
 }> = ({ edit, onAccept, onReject }) => {
   const [isOpen, setIsOpen] = useState(true);
+  const [collapsedDiffView, setCollapsedDiffView] = useState(true);
   const { added, removed } = getLineStats(edit);
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
+  const openInIdeSelection = useKartonState(
+    (s) => s.globalConfig.openFilesInIde,
+  );
 
   return (
     <div
@@ -72,7 +88,10 @@ const FileDiffItem: FC<{
               isOpen ? 'border-border/30 border-b dark:border-border/70' : ''
             }`}
           >
-            <FileIcon filePath={edit.fileName} className="size-5 shrink-0" />
+            <FileIcon
+              filePath={edit.fileName}
+              className="-ml-1 size-4 shrink-0"
+            />
             <Tooltip>
               <TooltipTrigger>
                 <span className="min-w-0 truncate font-normal text-foreground text-xs hover:text-foreground group-hover:text-hover-derived">
@@ -141,28 +160,110 @@ const FileDiffItem: FC<{
                 </TooltipTrigger>
                 <TooltipContent>Accept this file</TooltipContent>
               </Tooltip>
-              <div className="flex size-6 items-center justify-center">
-                <ChevronDownIcon
-                  className={`size-3 shrink-0 transition-transform ${
-                    isOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </div>
+              <ChevronDownIcon
+                className={`size-3 shrink-0 transition-transform ${
+                  isOpen ? 'rotate-180' : ''
+                }`}
+              />
             </div>
           </div>
         </CollapsibleTrigger>
-        <CollapsibleContent>
+        <CollapsibleContent className="relative">
           {/* Diff content */}
-          <div>
+          <div className="mb-6">
             {edit.isExternal ? (
               <ExternalFilePreview fileDiff={edit} />
             ) : (
               <DiffPreview
                 diff={edit.lineChanges}
                 filePath={edit.path}
-                collapsed={true}
+                collapsed={collapsedDiffView}
               />
             )}
+          </div>
+          {/* Footer with collapse toggle and open file button */}
+          <div className="absolute right-0 bottom-0 left-0 flex h-6 flex-row items-center justify-between rounded-b-lg border-border/30 border-t bg-background py-1 text-muted-foreground dark:border-border/70 dark:bg-surface-1">
+            {!edit.isExternal ? (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      setCollapsedDiffView(!collapsedDiffView);
+                    }}
+                  >
+                    {collapsedDiffView ? (
+                      <ListChevronsUpDownIcon
+                        className={cn('size-3 shrink-0')}
+                      />
+                    ) : (
+                      <ListChevronsDownUpIcon
+                        className={cn('size-3 shrink-0')}
+                      />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {collapsedDiffView
+                    ? 'Expand code diff'
+                    : 'Collapse code diff'}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div />
+            )}
+            {!edit.isExternal && <div />}
+            {(() => {
+              const relPath = edit.path;
+              const ideName = IDE_SELECTION_ITEMS[openInIdeSelection];
+              const anchor = (
+                <a
+                  href={needsIdePicker ? '#' : getFileIDEHref(relPath)}
+                  target={needsIdePicker ? undefined : '_blank'}
+                  rel="noopener noreferrer"
+                  onClick={
+                    needsIdePicker ? (e) => e.preventDefault() : undefined
+                  }
+                  className={cn(
+                    buttonVariants({ size: 'xs', variant: 'ghost' }),
+                    'shrink-0',
+                  )}
+                >
+                  <div className="flex flex-row items-center justify-center gap-1">
+                    <IdeLogo
+                      ide={openInIdeSelection}
+                      className="size-3 shrink-0"
+                    />
+                    <span className="text-xs">Open file</span>
+                  </div>
+                </a>
+              );
+              if (needsIdePicker) {
+                return (
+                  <IdePickerPopover
+                    onSelect={(ide) => pickIdeAndOpen(ide, relPath)}
+                  >
+                    {anchor}
+                  </IdePickerPopover>
+                );
+              }
+              return (
+                <Tooltip>
+                  <TooltipTrigger>{anchor}</TooltipTrigger>
+                  <TooltipContent>
+                    <div className="flex max-w-96 flex-col gap-1">
+                      <div className="break-all font-mono text-xs">
+                        {stripMountPrefix(relPath)}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        Click to open in {ideName}
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })()}
           </div>
         </CollapsibleContent>
       </Collapsible>

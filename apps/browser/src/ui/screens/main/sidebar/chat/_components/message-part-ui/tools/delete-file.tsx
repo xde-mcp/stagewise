@@ -190,7 +190,7 @@ const SuccessHeader = ({
             <div className="flex flex-row items-center justify-start gap-1">
               <FileIcon
                 filePath={relativePath ?? ''}
-                className="size-5 shrink-0"
+                className="-ml-1 size-4 shrink-0"
               />
               <span className="min-w-0 truncate font-normal text-xs" dir="rtl">
                 <span className="items-center gap-0.5 text-xs" dir="ltr">
