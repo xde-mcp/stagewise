@@ -3,23 +3,26 @@ import { memo } from 'react';
 import { getIcon } from 'seti-icons';
 
 const setiColors: Record<string, string> = {
-  blue: '#2563eb', // blue-600 - matches primary color
-  grey: '#71717a', // zinc-500 - matches border/muted-foreground
-  'grey-light': '#e4e4e7', // zinc-200 - lighter grey
-  green: '#16a34a', // green-600 - matches success color
-  orange: '#ea580c', // orange-600
-  pink: '#db2777', // pink-600
-  purple: '#9333ea', // purple-600
-  red: '#dc2626', // red-600/rose-600 - matches error color
-  white: '#ffffff',
-  yellow: '#ca8a04', // yellow-600
+  blue: 'var(--color-primary-foreground)',
+  grey: 'var(--color-muted-foreground)',
+  'grey-light': 'var(--color-subtle-foreground)',
+  green: 'var(--color-success-foreground)',
+  orange:
+    'light-dark(var(--color-syntax-orange-light), var(--color-syntax-orange-dark))',
+  pink: 'light-dark(var(--color-syntax-pink-light), var(--color-syntax-pink-dark))',
+  purple:
+    'light-dark(var(--color-syntax-purple-light), var(--color-syntax-purple-dark))',
+  red: 'var(--color-error-foreground)',
+  white: 'var(--color-foreground)',
+  yellow: 'var(--color-warning-foreground)',
   ignore: 'transparent',
 };
 
 export const FileIcon = memo(
   ({ filePath, className }: { filePath: string; className?: string }) => {
     const fileIcon = getIcon(filePath);
-    const color = setiColors[fileIcon.color] ?? fileIcon.color ?? '#ffffff';
+    const color =
+      setiColors[fileIcon.color] ?? fileIcon.color ?? 'var(--color-foreground)';
 
     return (
       <span
