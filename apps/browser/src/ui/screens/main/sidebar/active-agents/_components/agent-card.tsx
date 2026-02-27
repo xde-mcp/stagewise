@@ -81,7 +81,7 @@ export const AgentCard = memo(function AgentCard({
             isWorking &&
               !isWaitingForUser &&
               'shimmer-text-primary font-medium',
-            hasError && 'text-destructive-foreground',
+            hasError && 'text-error-foreground',
             activityIsUserInput && 'italic',
           )}
         >
