@@ -4,18 +4,13 @@ import { cn } from '@/utils';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { InputOtp } from '@stagewise/stage-ui/components/input-otp';
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import {
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  useLayoutEffect,
-} from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
+import { useIsTruncated } from '@ui/hooks/use-is-truncated';
 import type { StepValidityCallback } from '../index';
 import type { ApiKeyValidationResult } from '@shared/karton-contracts/ui';
 
@@ -490,27 +485,9 @@ export function StepAuth({
   );
 }
 
-function isTextTruncated(el: HTMLElement): boolean {
-  if (!el.isConnected) return false;
-  return el.scrollWidth > el.clientWidth;
-}
-
 function TruncatedErrorText({ id, text }: { id: string; text: string }) {
   const ref = useRef<HTMLParagraphElement>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const check = () => setIsTruncated(isTextTruncated(el));
-    check();
-
-    const observer = new ResizeObserver(check);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [text]);
+  const { isTruncated, tooltipOpen, setTooltipOpen } = useIsTruncated(ref);
 
   return (
     <Tooltip open={isTruncated && tooltipOpen} onOpenChange={setTooltipOpen}>

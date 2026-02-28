@@ -25,15 +25,9 @@ import {
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { IdeLogo } from '@ui/components/ide-logo';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
-import {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  useRef,
-  useLayoutEffect,
-} from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { cn } from '@/utils';
+import { useIsTruncated } from '@ui/hooks/use-is-truncated';
 import type { ContextFilesResult } from '@shared/karton-contracts/pages-api/types';
 import type {
   Patch,
@@ -1085,27 +1079,9 @@ function Page() {
   );
 }
 
-function isTextTruncated(el: HTMLElement): boolean {
-  if (!el.isConnected) return false;
-  return el.scrollWidth > el.clientWidth;
-}
-
 function TruncatedErrorText({ text }: { text: string }) {
   const ref = useRef<HTMLParagraphElement>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const check = () => setIsTruncated(isTextTruncated(el));
-    check();
-
-    const observer = new ResizeObserver(check);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [text]);
+  const { isTruncated, tooltipOpen, setTooltipOpen } = useIsTruncated(ref);
 
   return (
     <Tooltip open={isTruncated && tooltipOpen} onOpenChange={setTooltipOpen}>
