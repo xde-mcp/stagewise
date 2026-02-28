@@ -4,6 +4,7 @@ import {
   useMemo,
   useState,
   useEffect,
+  useRef,
   createContext,
   useContext,
   useCallback,
@@ -19,12 +20,26 @@ import { UpdateWorkspaceMdToolPart } from './update-workspace-md';
 import { SearchInLibraryDocsToolPart } from './search-in-library-docs';
 import { ListLibraryDocsToolPart } from './list-library-docs';
 import { cn } from '@/utils';
+import { useIsTruncated } from '@ui/hooks/use-is-truncated';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@stagewise/stage-ui/components/tooltip';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { ThinkingPart } from '../thinking';
 import { ReadConsoleLogsToolPart } from './read-console-logs';
 import { ExecuteSandboxJsToolPart } from './execute-sandbox-js';
 import { GetLintingDiagnosticsToolPart } from './get-linting-diagnostics';
-import { getSandboxLabel } from './utils/sandbox-label-utils';
+import {
+  getSandboxLabel,
+  parseCDPCalls,
+  parseWriteFileCalls,
+  parseReadAttachmentCalls,
+  parseOutputAttachmentCalls,
+  resolveTabHostname,
+  getAttachmentLabel,
+} from './utils/sandbox-label-utils';
 
 // Context for tracking expanded children within exploring section
 interface ExploringContentContextValue {
@@ -277,14 +292,19 @@ export const ExploringToolParts = ({
     let linesRead = 0;
     let docsRead = 0;
     let consoleLogsRead = 0;
-    let consoleScriptsExecuted = 0;
-    let hasUsedBrowserTools = false;
     let hasUsedContext7Tools = false;
     let hasUsedFileTools = false;
     let lintingErrors = 0;
     let lintingWarnings = 0;
     let hasCheckedLinting = false;
-    let attachmentsParsed = 0;
+
+    let screenshotsTaken = 0;
+    let stylesInspected = 0;
+    let domInspected = 0;
+    let sandboxScriptsRun = 0;
+    let sandboxFilesWritten = 0;
+    const attachmentLabels: string[] = [];
+    const inspectedHostnames = new Set<string>();
 
     const finishedParts = parts.filter(
       (part) => part.state === 'output-available',
@@ -310,12 +330,59 @@ export const ExploringToolParts = ({
           hasUsedContext7Tools = true;
           break;
         case 'tool-executeSandboxJsTool': {
-          consoleScriptsExecuted += 1;
-          hasUsedBrowserTools = true;
-          const customAttachments = (part.output as any)
-            ?._customFileAttachments;
-          if (Array.isArray(customAttachments))
-            attachmentsParsed += customAttachments.length;
+          const script = part.input?.script ?? '';
+          const cdpCalls = parseCDPCalls(script);
+          const writeFileCalls = parseWriteFileCalls(script);
+          const readAttCalls = parseReadAttachmentCalls(script);
+          const multimodalCalls = parseOutputAttachmentCalls(script);
+
+          if (multimodalCalls.length > 0) {
+            const customAtts = (part.output as any)?._customFileAttachments as
+              | { mediaType?: string }[]
+              | undefined;
+            if (Array.isArray(customAtts))
+              for (const att of customAtts)
+                attachmentLabels.push(getAttachmentLabel(att.mediaType));
+            else
+              for (const call of multimodalCalls)
+                attachmentLabels.push(getAttachmentLabel(call.mediaType));
+          } else {
+            const customAtts = (part.output as any)?._customFileAttachments as
+              | { mediaType?: string }[]
+              | undefined;
+            if (Array.isArray(customAtts))
+              for (const att of customAtts)
+                attachmentLabels.push(getAttachmentLabel(att.mediaType));
+          }
+
+          if (readAttCalls.length > 0)
+            for (let i = 0; i < readAttCalls.length; i++)
+              attachmentLabels.push('attachment');
+
+          const realWrites = writeFileCalls.filter(
+            (c) => !c.relativePath.startsWith('att/'),
+          );
+          sandboxFilesWritten += realWrites.length;
+
+          if (cdpCalls.length > 0) {
+            for (const call of cdpCalls) {
+              const hostname = resolveTabHostname(call.tabHandle, activeTabs);
+              if (hostname) inspectedHostnames.add(hostname);
+
+              if (call.method === 'Page.captureScreenshot') screenshotsTaken++;
+              else if (
+                call.method.startsWith('CSS.') &&
+                call.method !== 'CSS.enable'
+              )
+                stylesInspected++;
+              else if (
+                call.method.startsWith('DOM.') &&
+                call.method !== 'DOM.enable'
+              )
+                domInspected++;
+            }
+          } else sandboxScriptsRun++;
+
           break;
         }
         case 'tool-readConsoleLogsTool':
@@ -328,37 +395,63 @@ export const ExploringToolParts = ({
           break;
       }
     });
+
+    const hasUsedBrowserTools =
+      screenshotsTaken > 0 ||
+      stylesInspected > 0 ||
+      domInspected > 0 ||
+      sandboxScriptsRun > 0 ||
+      sandboxFilesWritten > 0 ||
+      consoleLogsRead > 0;
+
     return {
       filesRead,
       filesFound,
       linesRead,
       docsRead,
       consoleLogsRead,
-      consoleScriptsExecuted,
       hasUsedBrowserTools,
       hasUsedContext7Tools,
       hasUsedFileTools,
       lintingErrors,
       lintingWarnings,
       hasCheckedLinting,
-      attachmentsParsed,
+      screenshotsTaken,
+      stylesInspected,
+      domInspected,
+      sandboxScriptsRun,
+      sandboxFilesWritten,
+      attachmentLabels,
+      inspectedHostnames,
     };
-  }, [parts]);
+  }, [parts, activeTabs]);
+
+  const isReasoningOnly = useMemo(
+    () => parts.every((p) => p.type === 'reasoning'),
+    [parts],
+  );
 
   const explorationFinishedText = useMemo(() => {
+    if (isReasoningOnly) return 'Thought';
+
     const {
       filesFound,
       filesRead,
       docsRead,
       consoleLogsRead,
-      consoleScriptsExecuted,
       hasUsedBrowserTools,
       hasUsedContext7Tools,
       hasUsedFileTools,
       lintingErrors,
       lintingWarnings,
       hasCheckedLinting,
-      attachmentsParsed,
+      screenshotsTaken,
+      stylesInspected,
+      domInspected,
+      sandboxScriptsRun,
+      sandboxFilesWritten,
+      attachmentLabels,
+      inspectedHostnames,
     } = explorationMetadata;
 
     const textParts: string[] = [];
@@ -375,19 +468,51 @@ export const ExploringToolParts = ({
         `${consoleLogsRead} console log${consoleLogsRead !== 1 ? 's' : ''}`,
       );
 
-    if (consoleScriptsExecuted > 0)
+    // Sandbox: build a descriptive browser segment
+    const hostSuffix =
+      inspectedHostnames.size === 1
+        ? ` on ${Array.from(inspectedHostnames)[0]}`
+        : inspectedHostnames.size > 1
+          ? ` on ${inspectedHostnames.size} tabs`
+          : '';
+
+    if (screenshotsTaken > 0)
       textParts.push(
-        `${consoleScriptsExecuted} tab${consoleScriptsExecuted !== 1 ? 's' : ''}`,
+        `${screenshotsTaken} screenshot${screenshotsTaken !== 1 ? 's' : ''}${hostSuffix}`,
       );
 
-    if (attachmentsParsed > 0)
+    if (stylesInspected > 0) textParts.push(`styles${hostSuffix}`);
+
+    if (domInspected > 0 && stylesInspected === 0)
+      textParts.push(`DOM${hostSuffix}`);
+
+    if (
+      sandboxScriptsRun > 0 &&
+      screenshotsTaken === 0 &&
+      stylesInspected === 0 &&
+      domInspected === 0
+    )
       textParts.push(
-        `${attachmentsParsed} attachment${attachmentsParsed !== 1 ? 's' : ''}`,
+        `${sandboxScriptsRun} script${sandboxScriptsRun !== 1 ? 's' : ''}${hostSuffix}`,
       );
+
+    if (sandboxFilesWritten > 0)
+      textParts.push(
+        `${sandboxFilesWritten} sandbox file${sandboxFilesWritten !== 1 ? 's' : ''}`,
+      );
+
+    if (attachmentLabels.length > 0) {
+      const allSame = attachmentLabels.every((l) => l === attachmentLabels[0]);
+      const noun = allSame ? attachmentLabels[0] : 'attachment';
+      textParts.push(
+        attachmentLabels.length === 1
+          ? `1 ${noun}`
+          : `${attachmentLabels.length} ${noun}s`,
+      );
+    }
 
     const hasExploredFiles = filesFound > 0 || filesRead > 0;
 
-    // Add linting results
     if (hasCheckedLinting)
       if (lintingErrors > 0 || lintingWarnings > 0) {
         const lintParts: string[] = [];
@@ -405,7 +530,7 @@ export const ExploringToolParts = ({
     if (textParts.length === 0) {
       if (hasCheckedLinting && lintingErrors === 0 && lintingWarnings === 0)
         return 'Checked linting - no issues';
-      if (hasUsedBrowserTools) textParts.push('the DOM');
+      if (hasUsedBrowserTools) textParts.push('the browser');
       if (hasUsedContext7Tools) textParts.push('documentation');
       if (hasUsedFileTools) textParts.push('files');
     }
@@ -423,7 +548,7 @@ export const ExploringToolParts = ({
     if (textParts.length === 0) return 'Explored the codebase';
     if (textParts.length === 1) return `Explored ${textParts[0]}`;
     return `Explored ${textParts.slice(0, -1).join(', ')} and ${textParts.at(-1)}`;
-  }, [explorationMetadata]);
+  }, [explorationMetadata, isReasoningOnly]);
 
   const explorationInProgressText = useMemo(() => {
     const lastNonReasoningPart = parts
@@ -473,9 +598,9 @@ export const ExploringToolParts = ({
       case 'tool-getLintingDiagnosticsTool':
         return 'Checking linting...';
       default:
-        return 'Exploring...';
+        return isReasoningOnly ? 'Thinking...' : 'Exploring...';
     }
-  }, [parts, activeTabs]);
+  }, [parts, activeTabs, isReasoningOnly]);
 
   // True when at least one tool part is still actively streaming/executing
   const anyPartStreaming = useMemo(
@@ -489,9 +614,14 @@ export const ExploringToolParts = ({
     [parts],
   );
 
-  const headerText = anyPartStreaming
-    ? explorationInProgressText
-    : explorationFinishedText;
+  const headerText =
+    anyPartStreaming || isShimmering
+      ? explorationInProgressText
+      : explorationFinishedText;
+
+  const headerRef = useRef<HTMLSpanElement>(null);
+  const { isTruncated, tooltipOpen, setTooltipOpen } =
+    useIsTruncated(headerRef);
 
   // For single part, show it inline without the exploring wrapper — unless
   // the part is settled and we're still shimmering, in which case fall
@@ -528,18 +658,32 @@ export const ExploringToolParts = ({
       autoScroll={isShimmering}
       trigger={
         <div className={cn(`flex flex-row items-center justify-start gap-2`)}>
-          <div className="flex flex-1 flex-row items-center justify-start gap-1 text-xs">
+          <div className="flex min-w-0 flex-1 flex-row items-center justify-start gap-1 text-xs">
             <SearchIcon
               className={cn(
                 'size-3 shrink-0',
                 isShimmering && 'text-primary-foreground',
               )}
             />
-            <span
-              className={cn('truncate', isShimmering && 'shimmer-text-primary')}
+            <Tooltip
+              open={isTruncated && tooltipOpen}
+              onOpenChange={setTooltipOpen}
             >
-              {headerText}
-            </span>
+              <TooltipTrigger delay={50}>
+                <span
+                  ref={headerRef}
+                  className={cn(
+                    'min-w-0 truncate',
+                    isShimmering && 'shimmer-text-primary',
+                  )}
+                >
+                  {headerText}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start">
+                <div className="max-w-xs break-all">{headerText}</div>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       }

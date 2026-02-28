@@ -216,9 +216,7 @@ export const ExecuteSandboxJsToolPart = ({
                       !scriptExpanded && '-rotate-90',
                     )}
                   />
-                  <span className="mb-1 text-[10px] uppercase tracking-wider">
-                    Script
-                  </span>
+                  <span className="text-2xs">Script</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
                   <CodeBlock
@@ -241,9 +239,7 @@ export const ExecuteSandboxJsToolPart = ({
                       !resultExpanded && '-rotate-90',
                     )}
                   />
-                  <span className="mb-1 text-[10px] uppercase tracking-wider">
-                    Error
-                  </span>
+                  <span className="text-2xs">Error</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="duration-0!">
                   <CodeBlock
@@ -316,9 +312,7 @@ export const ExecuteSandboxJsToolPart = ({
                         !scriptExpanded && '-rotate-90',
                       )}
                     />
-                    <span className="mb-1 text-[10px] uppercase tracking-wider">
-                      Script
-                    </span>
+                    <span className="text-2xs">Script</span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="duration-0!">
                     <CodeBlock
@@ -341,9 +335,7 @@ export const ExecuteSandboxJsToolPart = ({
                         !resultExpanded && '-rotate-90',
                       )}
                     />
-                    <span className="mb-1 text-[10px] uppercase tracking-wider">
-                      Result
-                    </span>
+                    <span className="text-2xs">Result</span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="duration-0!">
                     {effectiveAttachments && (

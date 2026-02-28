@@ -23,10 +23,12 @@ export interface ParsedReadAttachmentCall {
 }
 
 /**
- * Indicates an outputAttachment call was found in a sandbox script.
+ * Indicates an outputAttachment call was found in a sandbox script,
+ * optionally with its mediaType extracted.
  */
 export interface ParsedMultimodalAttachmentCall {
   found: true;
+  mediaType?: string;
 }
 
 /**
@@ -223,12 +225,46 @@ export function parseReadAttachmentCalls(
 export function parseOutputAttachmentCalls(
   script: string,
 ): ParsedMultimodalAttachmentCall[] {
-  const regex = /API\.outputAttachment\s*\(/g;
+  const regex =
+    /API\.outputAttachment\s*\(\s*\{[^}]*mediaType\s*:\s*["']([^"']+)["'][^}]*\}/g;
   const calls: ParsedMultimodalAttachmentCall[] = [];
 
-  while (regex.exec(script) !== null) calls.push({ found: true });
+  let match = regex.exec(script);
+  while (match !== null) {
+    calls.push({ found: true, mediaType: match[1] });
+    match = regex.exec(script);
+  }
+
+  if (calls.length > 0) return calls;
+
+  // Fallback: count calls without extracting mediaType
+  const fallbackRegex = /API\.outputAttachment\s*\(/g;
+  while (fallbackRegex.exec(script) !== null) calls.push({ found: true });
 
   return calls;
+}
+
+const MEDIA_TYPE_LABELS: Record<string, string> = {
+  image: 'image',
+  video: 'video',
+  audio: 'audio',
+  'application/pdf': 'PDF',
+  'text/html': 'HTML',
+  'text/csv': 'CSV',
+  'application/json': 'JSON',
+};
+
+/**
+ * Derives a human-friendly noun from a MIME mediaType.
+ * Falls back to "attachment" for unknown types.
+ */
+export function getAttachmentLabel(mediaType: string | undefined): string {
+  if (!mediaType) return 'attachment';
+  if (MEDIA_TYPE_LABELS[mediaType]) return MEDIA_TYPE_LABELS[mediaType];
+  const topLevel = mediaType.split('/')[0];
+  if (topLevel && MEDIA_TYPE_LABELS[topLevel])
+    return MEDIA_TYPE_LABELS[topLevel];
+  return 'attachment';
 }
 
 /**
@@ -332,12 +368,18 @@ export function getSandboxLabel(
 
   // 1. API.outputAttachment always wins (user sees visual output)
   if (multimodalAttachmentCalls.length > 0) {
-    if (multimodalAttachmentCalls.length === 1)
-      return isInProgress ? 'Parsing attachment...' : 'Parsed attachment';
+    const label = getAttachmentLabel(multimodalAttachmentCalls[0].mediaType);
+    const allSameType = multimodalAttachmentCalls.every(
+      (c) => getAttachmentLabel(c.mediaType) === label,
+    );
 
+    if (multimodalAttachmentCalls.length === 1)
+      return isInProgress ? `Parsing ${label}...` : `Parsed ${label}`;
+
+    const noun = allSameType ? `${label}s` : 'attachments';
     return isInProgress
-      ? `Parsing ${multimodalAttachmentCalls.length} attachments...`
-      : `Parsed ${multimodalAttachmentCalls.length} attachments`;
+      ? `Parsing ${multimodalAttachmentCalls.length} ${noun}...`
+      : `Parsed ${multimodalAttachmentCalls.length} ${noun}`;
   }
 
   // 2. att/ writes only (preparing data for visual output)
