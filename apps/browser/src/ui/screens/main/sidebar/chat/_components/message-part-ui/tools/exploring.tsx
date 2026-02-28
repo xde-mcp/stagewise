@@ -496,7 +496,10 @@ export const ExploringToolParts = ({
   // For single part, show it inline without the exploring wrapper — unless
   // the part is settled and we're still shimmering, in which case fall
   // through to the multi-part path whose header can shimmer independently.
-  if (isOnlyOnePart && (anyPartStreaming || !isShimmering)) {
+  if (
+    isOnlyOnePart &&
+    (parts[0]?.type === 'reasoning' || anyPartStreaming || !isShimmering)
+  ) {
     // Use the original index from msg.parts to look up the correct metadata
     const originalIndex = originalIndices[0];
     return (
