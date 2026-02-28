@@ -86,6 +86,7 @@ export class SandboxService extends DisposableService {
   private outputBuffers = new Map<string, string[]>();
   private attachmentBuffers = new Map<string, SandboxAttachmentMeta[]>();
   private outputFlushTimers = new Map<string, NodeJS.Timeout>();
+  private outputMaxIntervalTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     windowLayoutService: WindowLayoutService,
@@ -359,11 +360,14 @@ export class SandboxService extends DisposableService {
     }
   }
 
-  private static readonly FLUSH_DEBOUNCE_MS = 300;
+  private static readonly FLUSH_DEBOUNCE_MS = 100;
+  private static readonly FLUSH_MAX_INTERVAL_MS = 300;
+  private static readonly MAX_STREAMING_BYTES = 51_200;
 
   private scheduleFlush(agentId: string, toolCallId: string) {
-    const existing = this.outputFlushTimers.get(toolCallId);
-    if (existing) clearTimeout(existing);
+    const existingDebounce = this.outputFlushTimers.get(toolCallId);
+    if (existingDebounce) clearTimeout(existingDebounce);
+
     this.outputFlushTimers.set(
       toolCallId,
       setTimeout(
@@ -371,17 +375,45 @@ export class SandboxService extends DisposableService {
         SandboxService.FLUSH_DEBOUNCE_MS,
       ),
     );
+
+    if (!this.outputMaxIntervalTimers.has(toolCallId)) {
+      this.outputMaxIntervalTimers.set(
+        toolCallId,
+        setTimeout(
+          () => this.flushToKarton(agentId, toolCallId),
+          SandboxService.FLUSH_MAX_INTERVAL_MS,
+        ),
+      );
+    }
   }
 
   private flushToKarton(agentId: string, toolCallId: string) {
     if (!this.kartonService) return;
-    this.outputFlushTimers.delete(toolCallId);
+
+    const debounce = this.outputFlushTimers.get(toolCallId);
+    if (debounce) {
+      clearTimeout(debounce);
+      this.outputFlushTimers.delete(toolCallId);
+    }
+    const maxInterval = this.outputMaxIntervalTimers.get(toolCallId);
+    if (maxInterval) {
+      clearTimeout(maxInterval);
+      this.outputMaxIntervalTimers.delete(toolCallId);
+    }
 
     const outputs = this.outputBuffers.get(toolCallId);
     const attachments = this.attachmentBuffers.get(toolCallId);
     if (!outputs?.length && !attachments?.length) return;
 
-    const outputsSnapshot = outputs ? [...outputs] : [];
+    let outputsSnapshot: string[];
+    if (outputs) {
+      const joined = outputs.join('');
+      if (joined.length > SandboxService.MAX_STREAMING_BYTES)
+        outputsSnapshot = [joined.slice(-SandboxService.MAX_STREAMING_BYTES)];
+      else outputsSnapshot = [...outputs];
+    } else {
+      outputsSnapshot = [];
+    }
     const attachmentsSnapshot = attachments ? [...attachments] : [];
 
     this.kartonService.setState((draft) => {
@@ -413,10 +445,16 @@ export class SandboxService extends DisposableService {
   clearPendingOutputs(agentId: string, toolCallId: string) {
     this.outputBuffers.delete(toolCallId);
     this.attachmentBuffers.delete(toolCallId);
-    const timer = this.outputFlushTimers.get(toolCallId);
-    if (timer) {
-      clearTimeout(timer);
+
+    const debounce = this.outputFlushTimers.get(toolCallId);
+    if (debounce) {
+      clearTimeout(debounce);
       this.outputFlushTimers.delete(toolCallId);
+    }
+    const maxInterval = this.outputMaxIntervalTimers.get(toolCallId);
+    if (maxInterval) {
+      clearTimeout(maxInterval);
+      this.outputMaxIntervalTimers.delete(toolCallId);
     }
 
     if (!this.kartonService) return;
@@ -510,6 +548,9 @@ export class SandboxService extends DisposableService {
 
     for (const timer of this.outputFlushTimers.values()) clearTimeout(timer);
     this.outputFlushTimers.clear();
+    for (const timer of this.outputMaxIntervalTimers.values())
+      clearTimeout(timer);
+    this.outputMaxIntervalTimers.clear();
     this.outputBuffers.clear();
     this.attachmentBuffers.clear();
   }
