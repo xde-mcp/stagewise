@@ -141,7 +141,8 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
       const colonIndex = path.lastIndexOf(':');
       const hasLineNumber =
         colonIndex > 0 && /^\d+$/.test(path.slice(colonIndex + 1));
-      const filePath = hasLineNumber ? path.slice(0, colonIndex) : path;
+      const rawFilePath = hasLineNumber ? path.slice(0, colonIndex) : path;
+      const filePath = decodeURIComponent(rawFilePath);
       const lineNumber = hasLineNumber ? path.slice(colonIndex + 1) : undefined;
       return { type: 'wsfile', filePath, lineNumber, incomplete };
     },
