@@ -1,7 +1,6 @@
 import { WebContentsView, shell, session, app, net } from 'electron';
 import { domCodeToElectronKeyCode } from '../../utils/dom-code-to-electron-key-code';
 import path from 'node:path';
-import { stat } from 'node:fs/promises';
 import contextMenu from 'electron-context-menu';
 import type { Logger } from '../logger';
 import type { TelemetryService } from '../telemetry';
@@ -303,8 +302,6 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     });
   }
 
-  private static readonly MAX_FILE_SERVE_SIZE = 10 * 1024 * 1024; // 10 MB
-
   /**
    * Register the sw-file:// protocol handler on the UI session so
    * renderer components can display workspace file previews via URLs.
@@ -330,19 +327,6 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
         const absolutePath = path.resolve(workspaceRoot, relativePath);
         if (!absolutePath.startsWith(workspaceRoot + path.sep))
           return new Response('Path traversal denied', { status: 400 });
-
-        let fileStat: Awaited<ReturnType<typeof stat>>;
-        try {
-          fileStat = await stat(absolutePath);
-        } catch {
-          return new Response('File not found', { status: 404 });
-        }
-
-        if (!fileStat.isFile())
-          return new Response('Not a file', { status: 400 });
-
-        if (fileStat.size > UIController.MAX_FILE_SERVE_SIZE)
-          return new Response('File too large', { status: 413 });
 
         const mime = inferMimeType(relativePath);
         const fileUrl = pathToFileURL(absolutePath).href;
