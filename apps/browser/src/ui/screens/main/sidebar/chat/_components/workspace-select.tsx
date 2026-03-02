@@ -797,6 +797,8 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
     return items;
   }, [allMounts, recentlyOpenedWorkspaces, minimalFormatter]);
 
+  const hasRecentItems = menuItems.length > 1;
+
   const handleMenuSelect = useCallback(
     (value: string | null) => {
       if (!value || !openAgent) return;
@@ -812,6 +814,12 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
     },
     [openAgent, mountWorkspace, onWorkspaceChange],
   );
+
+  const openFilePicker = useCallback(() => {
+    if (!openAgent) return;
+    void mountWorkspace(openAgent, undefined);
+    onWorkspaceChange?.();
+  }, [openAgent, mountWorkspace, onWorkspaceChange]);
 
   const renderItem = useCallback((item: SelectItem) => {
     const isRecent = String(item.value).startsWith('workspace:');
@@ -887,59 +895,91 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
         />
       ))}
 
-      {/* Connect button — opens the Select popover with recents */}
-      <Select
-        items={menuItems}
-        value={null}
-        onValueChange={handleMenuSelect}
-        side="top"
-        sideOffset={8}
-        popupClassName="max-w-64"
-        scrollContainerClassName="max-h-96"
-        size="xs"
-        showItemIndicator={false}
-        itemClassName="relative [&>*]:w-full"
-        renderItem={renderItem}
-        customTrigger={(triggerProps) =>
-          hasMounts ? (
-            <Tooltip>
-              <TooltipTrigger>
-                <Button
-                  variant="secondary"
-                  size="xs"
-                  {...triggerProps}
-                  className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
-                >
-                  <IconFolder5Outline18 className="size-3" />
-                  <IconPlusFill18 className="size-2.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Give the agent access to your files.
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger>
-                <Button
-                  variant="secondary"
-                  size="xs"
-                  {...triggerProps}
-                  className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
-                >
-                  <IconFolder5Outline18 className="size-3" />
-                  <span>Connect workspace</span>
-                  <IconPlusFill18 className="size-3" />
-                </Button>
-                {/* </button> */}
-              </TooltipTrigger>
-              <TooltipContent>
-                Give the agent access to your files.
-              </TooltipContent>
-            </Tooltip>
-          )
-        }
-      />
+      {/* Connect button — opens recents popover or file picker directly */}
+      {hasRecentItems ? (
+        <Select
+          items={menuItems}
+          value={null}
+          onValueChange={handleMenuSelect}
+          side="top"
+          sideOffset={8}
+          popupClassName="max-w-64"
+          scrollContainerClassName="max-h-96"
+          size="xs"
+          showItemIndicator={false}
+          itemClassName="relative [&>*]:w-full"
+          renderItem={renderItem}
+          customTrigger={(triggerProps) =>
+            hasMounts ? (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    {...triggerProps}
+                    className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
+                  >
+                    <IconFolder5Outline18 className="size-3" />
+                    <IconPlusFill18 className="size-2.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Give the agent access to your files.
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    {...triggerProps}
+                    className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
+                  >
+                    <IconFolder5Outline18 className="size-3" />
+                    <span>Connect workspace</span>
+                    <IconPlusFill18 className="size-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Give the agent access to your files.
+                </TooltipContent>
+              </Tooltip>
+            )
+          }
+        />
+      ) : hasMounts ? (
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={openFilePicker}
+              className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
+            >
+              <IconFolder5Outline18 className="size-3" />
+              <IconPlusFill18 className="size-2.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Give the agent access to your files.</TooltipContent>
+        </Tooltip>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={openFilePicker}
+              className="h-5.5 bg-background text-muted-foreground hover:text-foreground dark:bg-surface-1"
+            >
+              <IconFolder5Outline18 className="size-3" />
+              <span>Connect workspace</span>
+              <IconPlusFill18 className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Give the agent access to your files.</TooltipContent>
+        </Tooltip>
+      )}
     </>
   );
 }
