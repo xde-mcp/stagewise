@@ -3,27 +3,27 @@ import { getShellArgs } from './detect-shell';
 import type { DetectedShell } from './types';
 
 describe('getShellArgs', () => {
-  it('returns -lc for bash', () => {
+  it('returns -c for bash', () => {
     const shell: DetectedShell = { type: 'bash', path: '/bin/bash' };
     expect(getShellArgs(shell, 'echo hi')).toEqual([
       '/bin/bash',
-      ['-lc', 'echo hi'],
+      ['-c', 'echo hi'],
     ]);
   });
 
-  it('returns -lc for zsh', () => {
+  it('returns -c for zsh', () => {
     const shell: DetectedShell = { type: 'zsh', path: '/bin/zsh' };
     expect(getShellArgs(shell, 'echo hi')).toEqual([
       '/bin/zsh',
-      ['-lc', 'echo hi'],
+      ['-c', 'echo hi'],
     ]);
   });
 
-  it('returns -lc for sh', () => {
+  it('returns -c for sh', () => {
     const shell: DetectedShell = { type: 'sh', path: '/bin/sh' };
     expect(getShellArgs(shell, 'echo hi')).toEqual([
       '/bin/sh',
-      ['-lc', 'echo hi'],
+      ['-c', 'echo hi'],
     ]);
   });
 
@@ -53,7 +53,7 @@ describe('getShellArgs', () => {
     const shell: DetectedShell = { type: 'bash', path: '/bin/bash' };
     const cmd = 'echo "hello world" | grep hello';
     const [, args] = getShellArgs(shell, cmd);
-    expect(args).toEqual(['-lc', cmd]);
+    expect(args).toEqual(['-c', cmd]);
     expect(args[1]).toBe(cmd);
   });
 });

@@ -153,7 +153,10 @@ export function getShellArgs(
     case 'bash':
     case 'zsh':
     case 'sh':
-      return [shell.path, ['-lc', command]];
+      // Use `-c` (not `-lc`): resolveShellEnv already captured the full
+      // login+interactive env at startup. A login shell here would re-source
+      // /etc/profile which can overwrite PATH (e.g. stripping nvm paths on Linux).
+      return [shell.path, ['-c', command]];
     case 'powershell':
       return [shell.path, ['-NoProfile', '-Command', command]];
     case 'cmd':
