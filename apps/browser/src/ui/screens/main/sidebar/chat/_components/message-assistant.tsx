@@ -31,6 +31,7 @@ import { UnknownToolPart } from './message-part-ui/tools/unknown';
 import { ExecuteSandboxJsToolPart } from './message-part-ui/tools/execute-sandbox-js';
 import { ReadConsoleLogsToolPart } from './message-part-ui/tools/read-console-logs';
 import { AskUserQuestionsToolPart } from './message-part-ui/tools/ask-user-questions';
+import { ExecuteShellCommandToolPart } from './message-part-ui/tools/execute-shell-command';
 import { isToolOrReasoningPart } from './message-utils';
 import { MessageBetweenSteps } from './message-between-steps';
 
@@ -243,6 +244,14 @@ export const MessageAssistant = memo(
                           <AskUserQuestionsToolPart
                             key={stableKey}
                             part={part}
+                          />
+                        );
+                      case 'tool-executeShellCommandTool':
+                        return (
+                          <ExecuteShellCommandToolPart
+                            key={stableKey}
+                            part={part}
+                            isLastPart={isLastPart}
                           />
                         );
                       default:

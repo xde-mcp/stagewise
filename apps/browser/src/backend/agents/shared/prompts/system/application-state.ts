@@ -26,6 +26,11 @@ export const getApplicationStateContext = async (
 
   const workspaceSnapshot = toolbox.getWorkspaceSnapshot(agentInstanceId);
 
+  const shellInfo = toolbox.getShellInfo();
+  const shellSection = shellInfo
+    ? `\n# Shell Environment\n\nPlatform: ${process.platform}\nShell: ${shellInfo.type} (${shellInfo.path})`
+    : '';
+
   return `
 # Browser information
 
@@ -45,5 +50,6 @@ export const getApplicationStateContext = async (
 # Mounted Workspaces
 
 ${formatMountedWorkspaces(workspaceSnapshot)}
+${shellSection}
     `.trim();
 };

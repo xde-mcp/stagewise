@@ -184,19 +184,22 @@ export function useAutoScroll(
     [enabled, initializeAtBottom, handleWheel, handleScrollEnd, scrollToBottom],
   );
 
-  // Disconnect observer and listeners when `enabled` becomes false.
+  // Sync observer and listeners when `enabled` changes.
   // The scrollerRef callback is only re-invoked when the DOM element changes,
-  // not when `enabled` changes, so we need this effect for cleanup.
+  // not when `enabled` changes, so we need this effect for both teardown
+  // (enabled → false) and re-attachment (enabled → true).
   useEffect(() => {
-    if (enabled) return;
-    const viewport = viewportRef.current;
-    if (viewport) {
-      viewport.removeEventListener('wheel', handleWheel);
-      viewport.removeEventListener('scrollend', handleScrollEnd);
+    if (enabled && viewportRef.current) scrollerRef(viewportRef.current);
+    else {
+      const viewport = viewportRef.current;
+      if (viewport) {
+        viewport.removeEventListener('wheel', handleWheel);
+        viewport.removeEventListener('scrollend', handleScrollEnd);
+      }
+      observerRef.current?.disconnect();
+      observerRef.current = null;
     }
-    observerRef.current?.disconnect();
-    observerRef.current = null;
-  }, [enabled, handleWheel, handleScrollEnd]);
+  }, [enabled, scrollerRef, handleWheel, handleScrollEnd]);
 
   // Cleanup on unmount
   useEffect(() => {

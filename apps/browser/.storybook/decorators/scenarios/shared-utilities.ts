@@ -766,6 +766,122 @@ export function createExecuteSandboxJsToolPart(
   } as AgentToolUIPart;
 }
 
+/**
+ * Create an execute shell command tool part
+ */
+export function createExecuteShellCommandToolPart(
+  command: string,
+  state:
+    | 'input-streaming'
+    | 'input-available'
+    | 'approval-requested'
+    | 'approval-responded'
+    | 'output-available'
+    | 'output-error'
+    | 'output-denied' = 'output-available',
+  options?: {
+    toolCallId?: string;
+    output?: string;
+    stderr?: string;
+    exit_code?: number | null;
+    timed_out?: boolean;
+    aborted?: boolean;
+    errorText?: string;
+    message?: string;
+    approvalId?: string;
+    approved?: boolean;
+    approvalReason?: string;
+  },
+): AgentToolUIPart {
+  const toolCallId = options?.toolCallId || generateId();
+  const approvalId = options?.approvalId || generateId();
+
+  if (state === 'input-streaming') {
+    return {
+      type: 'tool-executeShellCommandTool',
+      toolCallId,
+      state: 'input-streaming',
+      input: { command },
+    } as AgentToolUIPart;
+  }
+
+  if (state === 'input-available') {
+    return {
+      type: 'tool-executeShellCommandTool',
+      toolCallId,
+      state: 'input-available',
+      input: { command },
+    } as AgentToolUIPart;
+  }
+
+  if (state === 'approval-requested') {
+    return {
+      type: 'tool-executeShellCommandTool',
+      toolCallId,
+      state: 'approval-requested',
+      input: { command },
+      approval: { id: approvalId },
+    } as AgentToolUIPart;
+  }
+
+  if (state === 'approval-responded') {
+    return {
+      type: 'tool-executeShellCommandTool',
+      toolCallId,
+      state: 'approval-responded',
+      input: { command },
+      approval: {
+        id: approvalId,
+        approved: options?.approved ?? true,
+        reason: options?.approvalReason,
+      },
+    } as AgentToolUIPart;
+  }
+
+  if (state === 'output-denied') {
+    return {
+      type: 'tool-executeShellCommandTool',
+      toolCallId,
+      state: 'output-denied',
+      input: { command },
+      approval: {
+        id: approvalId,
+        approved: false,
+        reason: options?.approvalReason ?? 'User denied',
+      },
+    } as AgentToolUIPart;
+  }
+
+  if (state === 'output-error') {
+    return {
+      type: 'tool-executeShellCommandTool',
+      toolCallId,
+      state: 'output-error',
+      input: { command },
+      errorText:
+        options?.errorText ??
+        'Shell service is not available — no shell detected.',
+    } as AgentToolUIPart;
+  }
+
+  return {
+    type: 'tool-executeShellCommandTool',
+    toolCallId,
+    state: 'output-available',
+    input: { command },
+    output: {
+      message:
+        options?.message ??
+        `Command exited with code ${options?.exit_code ?? 0}`,
+      output: options?.output ?? '',
+      stderr: options?.stderr ?? '',
+      exit_code: options?.exit_code ?? 0,
+      timed_out: options?.timed_out ?? false,
+      aborted: options?.aborted ?? false,
+    },
+  } as AgentToolUIPart;
+}
+
 // ============================================================================
 // Agent Instance Helpers
 // ============================================================================

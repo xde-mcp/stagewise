@@ -22,7 +22,6 @@ export class ShellService extends DisposableService {
   private readonly outputBuffers = new Map<string, string[]>();
   private readonly outputFlushTimers = new Map<string, NodeJS.Timeout>();
   private readonly outputMaxIntervalTimers = new Map<string, NodeJS.Timeout>();
-  private readonly agentToolCallIds = new Map<string, string>();
 
   private static readonly FLUSH_DEBOUNCE_MS = 100;
   private static readonly FLUSH_MAX_INTERVAL_MS = 300;
@@ -83,16 +82,9 @@ export class ShellService extends DisposableService {
     return this.shell;
   }
 
-  setAgentToolCallId(agentId: string, toolCallId: string): void {
-    this.agentToolCallIds.set(agentId, toolCallId);
-  }
-
-  clearAgentToolCallId(agentId: string): void {
-    this.agentToolCallIds.delete(agentId);
-  }
-
   async execute(
     agentInstanceId: string,
+    toolCallId: string,
     request: ShellExecutionRequest,
   ): Promise<ShellExecutionResult> {
     this.assertNotDisposed();
@@ -109,10 +101,8 @@ export class ShellService extends DisposableService {
 
     const env = sanitizeEnv(this.resolvedEnv);
 
-    const toolCallId = this.agentToolCallIds.get(agentInstanceId);
-
     const onOutput = (chunk: string) => {
-      if (!toolCallId || !this.kartonService) return;
+      if (!this.kartonService) return;
       if (!this.outputBuffers.has(toolCallId)) {
         this.outputBuffers.set(toolCallId, []);
       }
@@ -125,6 +115,7 @@ export class ShellService extends DisposableService {
       request,
       env,
       onOutput,
+      toolCallId,
     );
 
     return result;
@@ -156,14 +147,16 @@ export class ShellService extends DisposableService {
     });
   }
 
-  destroyAgent(agentInstanceId: string): void {
-    this.processManager?.killByAgent(agentInstanceId);
+  cancelCommand(toolCallId: string): void {
+    this.processManager?.killByToolCallId(toolCallId);
+  }
 
-    const toolCallId = this.agentToolCallIds.get(agentInstanceId);
-    if (toolCallId) {
+  destroyAgent(agentInstanceId: string): void {
+    const toolCallIds =
+      this.processManager?.getToolCallIdsForAgent(agentInstanceId) ?? [];
+    this.processManager?.killByAgent(agentInstanceId);
+    for (const toolCallId of toolCallIds)
       this.clearPendingOutputs(agentInstanceId, toolCallId);
-    }
-    this.agentToolCallIds.delete(agentInstanceId);
   }
 
   private scheduleFlush(agentId: string, toolCallId: string): void {
@@ -234,15 +227,13 @@ export class ShellService extends DisposableService {
     this.processManager?.killAll();
     this.processManager = null;
 
-    for (const timer of this.outputFlushTimers.values()) {
-      clearTimeout(timer);
-    }
+    for (const timer of this.outputFlushTimers.values()) clearTimeout(timer);
+
     this.outputFlushTimers.clear();
-    for (const timer of this.outputMaxIntervalTimers.values()) {
+    for (const timer of this.outputMaxIntervalTimers.values())
       clearTimeout(timer);
-    }
+
     this.outputMaxIntervalTimers.clear();
     this.outputBuffers.clear();
-    this.agentToolCallIds.clear();
   }
 }

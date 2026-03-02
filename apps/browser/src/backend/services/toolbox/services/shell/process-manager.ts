@@ -41,6 +41,7 @@ export class ProcessManager {
     request: ShellExecutionRequest,
     env: Record<string, string>,
     onOutput?: (chunk: string) => void,
+    toolCallId?: string,
   ): { executionId: string; result: Promise<ShellExecutionResult> } {
     const executionId = randomUUID();
     const [cmd, args] = getShellArgs(this.shell, request.command);
@@ -57,6 +58,7 @@ export class ProcessManager {
       child,
       executionId,
       agentInstanceId,
+      toolCallId: toolCallId ?? executionId,
       timeoutHandle: null,
       startedAt: Date.now(),
       exited: false,
@@ -70,6 +72,10 @@ export class ProcessManager {
       let truncatedEarly = false;
       let timedOut = false;
       let aborted = false;
+
+      tracked.markAborted = () => {
+        aborted = true;
+      };
 
       const appendLines = (data: Buffer, targets: string[][]) => {
         if (truncatedEarly) return;
@@ -190,10 +196,29 @@ export class ProcessManager {
     });
   }
 
+  getToolCallIdsForAgent(agentInstanceId: string): string[] {
+    const ids: string[] = [];
+    for (const [, tracked] of this.processes)
+      if (tracked.agentInstanceId === agentInstanceId)
+        ids.push(tracked.toolCallId);
+
+    return ids;
+  }
+
   killByAgent(agentInstanceId: string): void {
     for (const [, tracked] of this.processes)
       if (tracked.agentInstanceId === agentInstanceId)
         void this.kill(tracked.executionId);
+  }
+
+  async killByToolCallId(toolCallId: string): Promise<boolean> {
+    for (const [, tracked] of this.processes) {
+      if (tracked.toolCallId === toolCallId) {
+        tracked.markAborted?.();
+        return this.kill(tracked.executionId);
+      }
+    }
+    return false;
   }
 
   killAll(): void {

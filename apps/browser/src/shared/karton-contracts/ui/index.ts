@@ -555,6 +555,7 @@ export type AppState = {
           sizeBytes: number;
         }>
       >;
+      pendingShellOutputs?: Record<string, string[]>;
     };
   };
   userAccount: {
@@ -775,6 +776,10 @@ export type KartonContract = {
       goBackUserQuestion: (
         agentInstanceId: string,
         questionId: string,
+      ) => Promise<void>;
+      cancelShellCommand: (
+        agentInstanceId: string,
+        toolCallId: string,
       ) => Promise<void>;
     };
     userAccount: {

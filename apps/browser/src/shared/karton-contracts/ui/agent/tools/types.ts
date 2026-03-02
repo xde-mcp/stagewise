@@ -641,6 +641,43 @@ export const askUserQuestionsToolSchema = {
   outputSchema: askUserQuestionsToolOutputSchema,
 } as const;
 
+export const executeShellCommandToolInputSchema = z.object({
+  command: z.string().describe('Shell command to execute.'),
+  mount_prefix: z
+    .string()
+    .optional()
+    .describe(
+      'Mount prefix whose workspace root is used as working directory. Falls back to the first mounted workspace.',
+    ),
+  timeout_ms: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('Timeout in milliseconds. Defaults to 120000 (2 minutes).'),
+});
+
+export const executeShellCommandToolOutputSchema = z.object({
+  message: z.string(),
+  output: z.string(),
+  stderr: z.string(),
+  exit_code: z.number().nullable(),
+  timed_out: z.boolean(),
+  aborted: z.boolean(),
+});
+
+export type ExecuteShellCommandToolInput = z.infer<
+  typeof executeShellCommandToolInputSchema
+>;
+export type ExecuteShellCommandToolOutput = z.infer<
+  typeof executeShellCommandToolOutputSchema
+>;
+
+export const executeShellCommandToolSchema = {
+  inputSchema: executeShellCommandToolInputSchema,
+  outputSchema: executeShellCommandToolOutputSchema,
+} as const;
+
 /**
  * Combined schema definitions for all tools.
  * Used with InferUITools to derive TypeScript types.
@@ -660,6 +697,7 @@ export const allToolSchemas = {
   listLibraryDocsTool: listLibraryDocsToolSchema,
   searchInLibraryDocsTool: searchInLibraryDocsToolSchema,
   askUserQuestionsTool: askUserQuestionsToolSchema,
+  executeShellCommandTool: executeShellCommandToolSchema,
 } as const;
 /**
  * Inferred UI types for all tools.

@@ -42,6 +42,7 @@ export type ToolboxContextProvider = Pick<
   | 'getWorkspaceSnapshot'
   | 'getWorkspaceInfo'
   | 'getBrowserSnapshot'
+  | 'getShellInfo'
   | 'captureEnvironmentSnapshot'
   | 'getAgentsMd'
   | 'getWorkspaceMd'

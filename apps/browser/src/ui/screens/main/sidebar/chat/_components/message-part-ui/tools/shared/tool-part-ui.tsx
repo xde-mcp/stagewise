@@ -21,6 +21,7 @@ export const ToolPartUI = ({
   showBorder = false,
   autoScroll = true,
   isShimmering = false,
+  hideChevron = false,
 }: {
   trigger?: React.ReactNode;
   content?: React.ReactNode;
@@ -32,6 +33,7 @@ export const ToolPartUI = ({
   showBorder?: boolean;
   autoScroll?: boolean;
   isShimmering?: boolean;
+  hideChevron?: boolean;
 }) => {
   // Internal state for uncontrolled mode
   const [internalExpanded, setInternalExpanded] = useState(true);
@@ -121,15 +123,17 @@ export const ToolPartUI = ({
           }
         >
           {trigger}
-          <ChevronDownIcon
-            className={cn(
-              'size-3 shrink-0 transition-transform duration-150',
-              expanded && 'rotate-180',
-              !showBorder && !expanded && 'hidden group-hover/trigger:block',
-              showBorder && 'ml-auto',
-              isShimmering && 'text-primary-foreground',
-            )}
-          />
+          {!hideChevron && (
+            <ChevronDownIcon
+              className={cn(
+                'size-3 shrink-0 transition-transform duration-150',
+                expanded && 'rotate-180',
+                !showBorder && !expanded && 'hidden group-hover/trigger:block',
+                showBorder && 'ml-auto',
+                isShimmering && 'text-primary-foreground',
+              )}
+            />
+          )}
         </CollapsibleTrigger>
         {content && (
           <CollapsibleContent

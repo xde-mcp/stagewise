@@ -26,9 +26,11 @@ export interface TrackedProcess {
   child: ChildProcess;
   executionId: string;
   agentInstanceId: string;
+  toolCallId: string;
   timeoutHandle: NodeJS.Timeout | null;
   startedAt: number;
   exited: boolean;
+  markAborted?: () => void;
 }
 
 export const DEFAULT_TIMEOUT_MS = 120_000;

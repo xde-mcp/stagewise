@@ -223,5 +223,23 @@ const resp = await fetch("https://api.example.com/data");
 const data = await resp.json();
 API.output(\`Step 2: got \${data.items.length} items\`);
 return "Done";
-\`\`\``;
+\`\`\`
+
+## Shell
+
+You can execute shell commands on the user's machine via the shell tool.
+
+- Runs in the user's default login shell (bash/zsh on macOS/Linux, PowerShell/cmd on Windows).
+- Each invocation spawns a **fresh process** — no state persists between calls.
+- Use \`mount_prefix\` to set the working directory to a specific workspace. If omitted, defaults to the first mounted workspace.
+- Default timeout: **2 minutes**. Override with \`timeout_ms\` for long-running commands.
+- Output (stdout + stderr merged) is streamed to the user in real-time and included in the tool result.
+- The process is killed automatically on timeout or if the agent is stopped.
+
+### Best practices
+
+- Prefer dedicated file tools (readFileTool, multiEditTool, etc.) over shell commands for file operations — they integrate with diff-history and undo.
+- Use the shell for tasks that require system tools: running tests, building projects, installing dependencies, git operations, etc.
+- For long-running commands, set an appropriate \`timeout_ms\`.
+- Avoid interactive commands that wait for stdin — stdin is not connected.`;
 }

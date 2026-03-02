@@ -1359,11 +1359,39 @@ export abstract class BaseAgent<
     void this.updateTitle();
 
     try {
+      const lastAssistantMessage = [...this.state.get().history]
+        .reverse()
+        .find((m) => m.role === 'assistant');
+
+      const hasApprovalResponse = lastAssistantMessage?.parts.some(
+        (p) =>
+          (p.type.startsWith('tool-') || p.type === 'dynamic-tool') &&
+          (p as AgentToolUIPart | DynamicToolUIPart).state ===
+            'approval-responded',
+      );
+
+      // When resuming after a tool-approval response, pass originalMessages
+      // so toUIMessageStream correlates the new stream's tool-result parts
+      // with the existing assistant message (avoids duplicate tool parts).
+      // On normal steps, omit it to prevent the SDK from appending parts
+      // from prior turns into the new message.
       const uiStream = stream.toUIMessageStream<AgentMessage>({
         generateMessageId: randomUUID,
+        originalMessages: hasApprovalResponse
+          ? this.state.get().history
+          : undefined,
       });
 
-      await this.handleUiStream(uiStream);
+      // Both branches must drain concurrently: toUIMessageStream() and
+      // consumeStream() read from the same teed stream and share
+      // back-pressure — awaiting them sequentially would deadlock.
+      await Promise.all([
+        this.handleUiStream(
+          uiStream,
+          hasApprovalResponse ? lastAssistantMessage : undefined,
+        ),
+        stream.consumeStream(),
+      ]);
     } catch (err) {
       const error = err as Error;
       this.logger.error(
@@ -1650,6 +1678,11 @@ export abstract class BaseAgent<
       return false;
     }
 
+    // Because we use `stopWhen: () => true`, the stream ends after every step.
+    // When the user approves/denies a tool, the stream for that step has already
+    // terminated — tool execution only happens in the *next* runStep() call.
+    // Therefore, `approval-responded` (both approved and denied) must be treated
+    // as resolved here so the agent loop can proceed to that next step.
     const openToolCallRequests = this.state
       .get()
       .history.filter(
@@ -1658,17 +1691,17 @@ export abstract class BaseAgent<
           msg.parts.some(
             (p) =>
               (p.type.startsWith('tool-') || p.type === 'dynamic-tool') &&
-              !(
-                (p as AgentToolUIPart | DynamicToolUIPart).state ===
-                  'approval-responded' &&
-                !(p as AgentToolUIPart | DynamicToolUIPart).approval?.approved
-              ) &&
+              (p as AgentToolUIPart | DynamicToolUIPart).state !==
+                'approval-responded' &&
               (p as AgentToolUIPart | DynamicToolUIPart).state !==
                 'output-available' &&
               (p as AgentToolUIPart | DynamicToolUIPart).state !==
-                'output-error',
+                'output-error' &&
+              (p as AgentToolUIPart | DynamicToolUIPart).state !==
+                'output-denied',
           ),
       );
+
     return openToolCallRequests.length === 0;
   }
 
@@ -1701,9 +1734,17 @@ export abstract class BaseAgent<
 
   private async handleUiStream(
     uiStream: AsyncIterableStream<InferUIMessageChunk<AgentMessage>>,
+    lastAssistantMessage?: AgentMessage,
   ): Promise<void> {
+    // When resuming after tool-approval, pass the last assistant message so
+    // readUIMessageStream can append tool-result parts to it instead of
+    // creating a new message. Must be cloned because the SDK mutates it
+    // in-place, which would corrupt the stored history.
     for await (const uiMessage of readUIMessageStream<AgentMessage>({
       stream: uiStream,
+      message: lastAssistantMessage
+        ? structuredClone(lastAssistantMessage)
+        : undefined,
     })) {
       this.state.set((draft) => {
         const existingMessage =

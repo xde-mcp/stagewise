@@ -3,6 +3,7 @@ import { MountManagerService } from './services/mount-manager';
 import type { FilePickerService } from '@/services/file-picker';
 import type { UserExperienceService } from '@/services/experience';
 import { SandboxService } from '../sandbox';
+import { ShellService } from './services/shell';
 import { APPEND_ONLY_PERMISSIONS, type MountDescriptor } from '../sandbox/ipc';
 import type { WorkspaceAgentSettings } from '@shared/karton-contracts/ui/shared-types';
 import type { KartonService } from '@/services/karton';
@@ -38,6 +39,7 @@ import {
 } from './tools/file-modification/multi-edit';
 import { grepSearchTool } from './tools/file-modification/grep-search';
 import { executeSandboxJsTool } from './tools/browser/execute-sandbox-js';
+import { executeShellCommandTool } from './tools/shell/execute-shell-command';
 import { readConsoleLogsTool } from './tools/browser/read-console-logs';
 import {
   askUserQuestionsTool,
@@ -99,6 +101,7 @@ export class ToolboxService extends DisposableService {
   private readonly userExperienceService: UserExperienceService;
 
   private sandboxService: SandboxService | null = null;
+  private shellService: ShellService | null = null;
 
   private mountManagerService: MountManagerService | null = null;
 
@@ -375,6 +378,11 @@ export class ToolboxService extends DisposableService {
         return readConsoleLogsTool(this.windowLayoutService);
       case 'askUserQuestionsTool':
         return askUserQuestionsTool(this.uiKarton, agentInstanceId);
+      case 'executeShellCommandTool':
+        if (!this.shellService?.isAvailable()) return null;
+        return executeShellCommandTool(this.shellService, agentInstanceId, () =>
+          this.getMountedPathsForAgent(agentInstanceId),
+        );
       default:
         this.logger.error('[ToolboxService] Tool not found', { tool });
         return null;
@@ -480,6 +488,14 @@ export class ToolboxService extends DisposableService {
     return Promise.all(
       [...mountsWithRt.values()].map((m) => getWorkspaceInfoUtil(m)),
     );
+  }
+
+  public getShellInfo(): { type: string; path: string } | null {
+    return this.shellService?.getShellInfo() ?? null;
+  }
+
+  public cancelShellCommand(toolCallId: string): void {
+    this.shellService?.cancelCommand(toolCallId);
   }
 
   public getBrowserSnapshot(): BrowserSnapshot {
@@ -793,6 +809,7 @@ export class ToolboxService extends DisposableService {
   public clearAgentTracking(agentInstanceId: string): void {
     this.mountManagerService?.clearAgentMounts(agentInstanceId);
     this.sandboxService?.destroyAgent(agentInstanceId);
+    this.shellService?.destroyAgent(agentInstanceId);
     void deleteAgentBlobs(
       this.globalDataPathService.globalDataPath,
       agentInstanceId,
@@ -833,6 +850,8 @@ export class ToolboxService extends DisposableService {
       (agentId) => this.getSandboxMounts(agentId),
       this.uiKarton,
     );
+
+    this.shellService = await ShellService.create(this.logger, this.uiKarton);
 
     // Use arrow function to preserve `this` binding when called as callback
     this.authService.registerAuthStateChangeCallback(() =>
@@ -879,6 +898,17 @@ export class ToolboxService extends DisposableService {
         goBackQuestion(questionId, this.uiKarton, agentInstanceId);
       },
     );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.cancelShellCommand',
+      async (
+        _callingClientId: string,
+        _agentInstanceId: string,
+        toolCallId: string,
+      ) => {
+        this.cancelShellCommand(toolCallId);
+      },
+    );
   }
 
   protected onTeardown(): Promise<void> | void {
@@ -889,5 +919,8 @@ export class ToolboxService extends DisposableService {
 
     void this.sandboxService?.teardown();
     this.sandboxService = null;
+
+    void this.shellService?.teardown();
+    this.shellService = null;
   }
 }
