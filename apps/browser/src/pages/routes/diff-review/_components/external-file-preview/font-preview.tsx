@@ -1,12 +1,19 @@
 import { useState, useEffect, memo, useRef, useId, type FC } from 'react';
 import { Loader2Icon } from 'lucide-react';
-import type { FontPreviewProps } from './types';
 import { inferFontMimeType } from '@ui/utils/file-type-utils';
 
 const FONT_SAMPLE_TEXT = 'The quick brown fox jumps over the lazy dog';
 const FONT_SAMPLE_CHARS =
   'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz';
 const FONT_SAMPLE_NUMBERS = '0123456789';
+
+export interface FontPreviewProps {
+  base64Content: string | null;
+  mimeType: string | null;
+  filePath: string;
+  isLoading: boolean;
+  error: string | null;
+}
 
 export const FontPreview: FC<FontPreviewProps> = memo(
   ({ base64Content, mimeType, filePath, isLoading, error }) => {

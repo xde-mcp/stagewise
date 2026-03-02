@@ -4,8 +4,8 @@ import { IconArrowRightFill18 } from 'nucleo-ui-fill-18';
 import { useKartonProcedure } from '@/hooks/use-karton';
 import type { ExternalFileDiff } from '@shared/karton-contracts/ui/shared-types';
 import type { ExternalFileContentResult } from '@shared/karton-contracts/pages-api/types';
-import { ImagePreview } from '@ui/components/file-preview';
-import { FontPreview } from '@ui/components/file-preview';
+import { ImagePreview } from './image-preview';
+import { FontPreview } from './font-preview';
 import { isImageFile, isFontFile } from '@ui/utils/file-type-utils';
 
 function useFileContent(

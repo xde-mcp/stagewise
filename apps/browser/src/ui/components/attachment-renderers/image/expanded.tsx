@@ -1,14 +1,24 @@
+import { Suspense } from 'react';
 import type { RendererProps } from '../types';
 import { ExpandedShell } from '../shared/expanded-shell';
+import { imagePreview } from '@ui/components/file-preview/previews/image';
 
-export default function ImageExpanded({ blobUrl, fileName }: RendererProps) {
+const ImageExpandedPreview = imagePreview.variants.expanded!;
+
+export default function ImageExpanded({
+  blobUrl,
+  fileName,
+  mediaType,
+}: RendererProps) {
   return (
     <ExpandedShell fileName={fileName}>
-      <img
-        src={blobUrl}
-        alt={fileName}
-        className="max-h-56 max-w-72 rounded object-contain"
-      />
+      <Suspense fallback={null}>
+        <ImageExpandedPreview
+          src={blobUrl}
+          fileName={fileName}
+          mediaType={mediaType}
+        />
+      </Suspense>
     </ExpandedShell>
   );
 }

@@ -1,15 +1,22 @@
-export type ImagePreviewProps = {
-  base64Content: string | null;
-  mimeType?: string | null;
-  filePath: string;
-  isLoading?: boolean;
-  error?: string | null;
-};
+import type { FC, LazyExoticComponent } from 'react';
 
-export type FontPreviewProps = {
-  base64Content: string | null;
-  mimeType?: string | null;
-  filePath: string;
-  isLoading?: boolean;
-  error?: string | null;
-};
+export interface FilePreviewProps {
+  src: string;
+  fileName: string;
+  mediaType: string;
+  className?: string;
+  options?: Record<string, unknown>;
+}
+
+export type PreviewComponent =
+  | FC<FilePreviewProps>
+  | LazyExoticComponent<FC<FilePreviewProps>>;
+
+export interface FilePreviewEntry {
+  id: string;
+  mimePatterns: string[];
+  variants: {
+    compact: FC<FilePreviewProps>;
+    [key: string]: PreviewComponent;
+  };
+}

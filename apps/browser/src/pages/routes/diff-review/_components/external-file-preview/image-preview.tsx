@@ -1,7 +1,14 @@
 import { memo, type FC } from 'react';
 import { Loader2Icon } from 'lucide-react';
-import type { ImagePreviewProps } from './types';
 import { inferImageMimeType } from '@ui/utils/file-type-utils';
+
+export interface ImagePreviewProps {
+  base64Content: string | null;
+  mimeType: string | null;
+  filePath: string;
+  isLoading: boolean;
+  error: string | null;
+}
 
 export const ImagePreview: FC<ImagePreviewProps> = memo(
   ({ base64Content, mimeType, filePath, isLoading, error }) => {
