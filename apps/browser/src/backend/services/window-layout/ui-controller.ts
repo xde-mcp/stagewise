@@ -1,6 +1,7 @@
 import { WebContentsView, shell, session, app, net } from 'electron';
 import { domCodeToElectronKeyCode } from '../../utils/dom-code-to-electron-key-code';
 import path from 'node:path';
+import { stat } from 'node:fs/promises';
 import contextMenu from 'electron-context-menu';
 import type { Logger } from '../logger';
 import type { TelemetryService } from '../telemetry';
@@ -18,6 +19,7 @@ import {
 } from 'electron-devtools-installer';
 import { getBlobPath, blobExists } from '@/utils/attachment-blobs';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import { inferMimeType } from '@shared/mime-utils';
 
 const UI_SESSION_PARTITION = 'persist:stagewise-ui';
 
@@ -242,6 +244,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     this.uiKarton = new KartonService(logger);
 
     this.registerBlobProtocol();
+    this.registerFileProtocol();
     this.view = this.createView();
     this.loadApp();
     this.registerKartonProcedures();
@@ -298,6 +301,78 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
         return new Response('Internal error', { status: 500 });
       }
     });
+  }
+
+  private static readonly MAX_FILE_SERVE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  /**
+   * Register the sw-file:// protocol handler on the UI session so
+   * renderer components can display workspace file previews via URLs.
+   * URL format: sw-file://{mountPrefix}/{relativePath}
+   */
+  private registerFileProtocol(): void {
+    const uiSession = session.fromPartition(UI_SESSION_PARTITION);
+    uiSession.protocol.handle('sw-file', async (request) => {
+      try {
+        const url = new URL(request.url);
+        const mountPrefix = url.hostname;
+        const relativePath = decodeURIComponent(
+          url.pathname.replace(/^\//, ''),
+        );
+
+        if (!mountPrefix || !relativePath)
+          return new Response('Invalid file URL', { status: 400 });
+
+        const workspaceRoot = this.findMountPath(mountPrefix);
+        if (!workspaceRoot)
+          return new Response('Mount not found', { status: 404 });
+
+        const absolutePath = path.resolve(workspaceRoot, relativePath);
+        if (!absolutePath.startsWith(workspaceRoot + path.sep))
+          return new Response('Path traversal denied', { status: 400 });
+
+        let fileStat: Awaited<ReturnType<typeof stat>>;
+        try {
+          fileStat = await stat(absolutePath);
+        } catch {
+          return new Response('File not found', { status: 404 });
+        }
+
+        if (!fileStat.isFile())
+          return new Response('Not a file', { status: 400 });
+
+        if (fileStat.size > UIController.MAX_FILE_SERVE_SIZE)
+          return new Response('File too large', { status: 413 });
+
+        const mime = inferMimeType(relativePath);
+        const fileUrl = pathToFileURL(absolutePath).href;
+        const fileResponse = await net.fetch(fileUrl);
+
+        return new Response(fileResponse.body, {
+          status: 200,
+          headers: { 'Content-Type': mime },
+        });
+      } catch (err) {
+        this.logger.error('[UIController] sw-file protocol error', {
+          error: err,
+          url: request.url,
+        });
+        return new Response('Internal error', { status: 500 });
+      }
+    });
+  }
+
+  /**
+   * Find the absolute workspace path for a mount prefix by scanning
+   * all agents' toolbox mounts in Karton state.
+   */
+  private findMountPath(prefix: string): string | null {
+    for (const agentId in this.uiKarton.state.toolbox) {
+      const mounts = this.uiKarton.state.toolbox[agentId]?.workspace?.mounts;
+      if (!mounts) continue;
+      for (const m of mounts) if (m.prefix === prefix) return m.path;
+    }
+    return null;
   }
 
   /**

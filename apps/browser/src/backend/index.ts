@@ -71,6 +71,16 @@ protocol.registerSchemesAsPrivileged([
       corsEnabled: true,
     },
   },
+  {
+    scheme: 'sw-file',
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
 ]);
 
 const singleInstanceLock = app.requestSingleInstanceLock();
