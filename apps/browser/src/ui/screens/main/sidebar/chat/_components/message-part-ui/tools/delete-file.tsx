@@ -1,6 +1,7 @@
 import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
 import { DiffPreview } from './shared/diff-preview';
 import { ToolPartUI } from './shared/tool-part-ui';
+import { getBaseName } from '@shared/path-utils';
 import {
   Loader2Icon,
   XIcon,
@@ -180,7 +181,7 @@ const SuccessHeader = ({
   relativePath?: string;
   deletedLineCount?: number;
 }) => {
-  const fileName = relativePath?.split('/').pop() ?? relativePath;
+  const fileName = relativePath ? getBaseName(relativePath) : relativePath;
 
   return (
     <div className="pointer-events-none flex flex-row items-center justify-start gap-1">
@@ -215,7 +216,7 @@ const SuccessHeader = ({
 };
 
 const LoadingHeader = ({ relativePath }: { relativePath?: string }) => {
-  const fileName = relativePath?.split('/').pop() ?? relativePath;
+  const fileName = relativePath ? getBaseName(relativePath) : relativePath;
 
   return (
     <div className="flex flex-row items-center justify-start gap-1">

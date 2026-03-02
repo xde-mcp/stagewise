@@ -2,6 +2,7 @@ import { Button } from '@stagewise/stage-ui/components/button';
 import { IconMediaStopFill18 } from 'nucleo-ui-fill-18';
 import { IconMagicWandSparkleFill18 } from 'nucleo-ui-fill-18';
 import { stripMountPrefix } from '@/utils';
+import { getBaseName } from '@shared/path-utils';
 import { Loader2Icon, XIcon } from 'lucide-react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { StatusCardSection } from './shared';
@@ -71,7 +72,7 @@ function getStatusText(history: AgentMessage[]): string {
   switch (lastToolPart?.type) {
     case 'tool-readFileTool': {
       const stripped = relativizePath(lastToolPart.input?.relative_path);
-      const fileName = stripped?.split('/').pop();
+      const fileName = getBaseName(stripped ?? '');
       return fileName ? `Reading ${fileName}...` : 'Reading file...';
     }
     case 'tool-listFilesTool': {

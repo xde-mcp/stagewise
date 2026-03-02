@@ -24,6 +24,7 @@ import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { IdeLogo } from '@ui/components/ide-logo';
 import { getIDEFileUrl, IDE_SELECTION_ITEMS } from '@ui/utils';
+import { getBaseName } from '@shared/path-utils';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
 import { type MountEntry, EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
@@ -52,7 +53,7 @@ const WorkspaceBadge = memo(function WorkspaceBadge({
   onUnmount: (prefix: string) => void;
   agentInstanceId: string;
 }) {
-  const name = mount.path.split('/').pop() || mount.path;
+  const name = getBaseName(mount.path) || mount.path;
 
   const respectAgentsMd = useKartonState(
     (s) =>
@@ -818,7 +819,7 @@ export function WorkspaceSelect({ onWorkspaceChange }: WorkspaceSelectProps) {
 
     if (isRecent) {
       const path = String(item.value).replace('workspace:', '');
-      const name = path.split('/').pop() || path;
+      const name = getBaseName(path) || path;
       return (
         <Tooltip>
           <TooltipTrigger>

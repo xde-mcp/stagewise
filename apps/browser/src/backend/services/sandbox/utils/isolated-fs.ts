@@ -40,7 +40,8 @@ function resolveSandboxPath(
     throw new Error('No workspaces mounted. Mount a workspace first.');
   }
 
-  const parts = raw.split('/');
+  const normalized = raw.replace(/\\/g, '/');
+  const parts = normalized.split('/');
   const prefixCandidate = parts[0];
   const matchedMount = mounts.find((m) => m.prefix === prefixCandidate);
 
@@ -52,7 +53,7 @@ function resolveSandboxPath(
     relativePart = parts.slice(1).join('/');
   } else if (mounts.length === 1) {
     mount = mounts[0];
-    relativePart = raw;
+    relativePart = normalized;
   } else {
     throw new Error(
       `Path must be prefixed with a mount (${mounts.map((m) => m.prefix).join(', ')}). Got: "${raw}"`,

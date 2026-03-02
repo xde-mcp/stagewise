@@ -158,7 +158,8 @@ const MOUNT_PREFIX_RE = /^w[a-f0-9]+\//;
  * Strip a mount prefix (e.g. "w1a2b/" or "w1/") from a workspace-relative path
  * so it can be displayed without the internal addressing scheme.
  */
-export function stripMountPrefix(path: string): string {
+export function stripMountPrefix(rawPath: string): string {
+  const path = rawPath.replace(/\\/g, '/');
   if (!path.includes('/')) return '';
   return path.replace(MOUNT_PREFIX_RE, '');
 }

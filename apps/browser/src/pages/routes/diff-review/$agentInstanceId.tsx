@@ -28,6 +28,7 @@ import {
   getLineStats,
 } from '@ui/screens/main/sidebar/chat/_components/footer-status-card/shared';
 import { ExternalFilePreview } from './_components/external-file-preview';
+import { getBaseName } from '@shared/path-utils';
 import {
   Tooltip,
   TooltipTrigger,
@@ -393,7 +394,7 @@ function Page() {
   const formattedEdits = useMemo((): FormattedFileDiffWithElementId[] => {
     return pendingEdits.map((edit) => ({
       ...edit,
-      fileName: edit.path.split('/').pop() ?? '',
+      fileName: getBaseName(edit.path),
       // Create a stable id for scrolling based on the path
       elementId: `file-${encodeURIComponent(edit.path)}`,
     }));

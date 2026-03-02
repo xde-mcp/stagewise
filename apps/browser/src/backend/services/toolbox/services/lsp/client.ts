@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { getBaseName } from '@shared/path-utils';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import {
   createProtocolConnection,
@@ -226,7 +227,7 @@ export class LspClient extends EventEmitter {
           // Ensure workspaceFolder is set (CRITICAL for ESLint)
           if (!config.workspaceFolder) {
             config.workspaceFolder = {
-              name: this.root.split('/').pop() || 'workspace',
+              name: getBaseName(this.root) || 'workspace',
               uri: pathToFileURL(this.root).toString(),
             };
           }

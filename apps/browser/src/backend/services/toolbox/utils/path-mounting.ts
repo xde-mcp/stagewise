@@ -1,6 +1,7 @@
 import type { MountedClientRuntimes, MountedLspServices } from '.';
 import type { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 import type { LspService } from '../services/lsp';
+import { normalizePath } from '@shared/path-utils';
 
 /**
  * Resolve the client runtime and the relative path from a mounted relative path
@@ -12,7 +13,8 @@ export function resolveMountedRelativePath(
   mountedRuntimes: MountedClientRuntimes,
   relativePathWithMountPrefix: string,
 ): { clientRuntime: ClientRuntimeNode; relativePath: string } {
-  const [mountPrefix, ...pathParts] = relativePathWithMountPrefix.split('/');
+  const normalized = normalizePath(relativePathWithMountPrefix);
+  const [mountPrefix, ...pathParts] = normalized.split('/');
   const clientRuntime = mountedRuntimes.get(mountPrefix);
   if (!clientRuntime)
     throw new Error(
@@ -25,7 +27,8 @@ export function resolveMountedLspService(
   mountedLspServices: MountedLspServices,
   relativePathWithMountPrefix: string,
 ): { lspService: LspService; relativePath: string } {
-  const [mountPrefix, ...pathParts] = relativePathWithMountPrefix.split('/');
+  const normalized = normalizePath(relativePathWithMountPrefix);
+  const [mountPrefix, ...pathParts] = normalized.split('/');
   const lspService = mountedLspServices.get(mountPrefix);
   if (!lspService)
     throw new Error(

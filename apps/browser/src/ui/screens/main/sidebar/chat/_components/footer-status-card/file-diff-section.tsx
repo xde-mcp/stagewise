@@ -3,6 +3,7 @@ import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import { ChevronDownIcon } from 'lucide-react';
 import { FileIcon } from '@/components/file-icon';
 import { cn } from '@/utils';
+import { getBaseName } from '@shared/path-utils';
 import {
   type StatusCardSection,
   type FormattedFileDiff,
@@ -22,7 +23,7 @@ export interface FileDiffSectionProps {
 export function formatFileDiff(fileDiff: FileDiff): FormattedFileDiff {
   return {
     ...fileDiff,
-    fileName: fileDiff.path.split('/').pop() ?? '',
+    fileName: getBaseName(fileDiff.path),
   };
 }
 

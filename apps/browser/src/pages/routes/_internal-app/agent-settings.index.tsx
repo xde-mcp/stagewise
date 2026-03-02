@@ -51,6 +51,7 @@ import { Button } from '@stagewise/stage-ui/components/button';
 import { produceWithPatches, enablePatches } from 'immer';
 import { IconChevronRightOutline18 } from 'nucleo-ui-outline-18';
 import { ChevronDownIcon, Loader2Icon, RefreshCwIcon } from 'lucide-react';
+import { getBaseName } from '@shared/path-utils';
 
 enablePatches();
 
@@ -285,12 +286,7 @@ function WorkspaceContextSection({
   }, [isTarget, scrollReady]);
 
   const folderName = useMemo(
-    () =>
-      workspacePath
-        .replace('\\', '/')
-        .split('/')
-        .filter((p) => p !== '')
-        .pop() ?? workspacePath,
+    () => getBaseName(workspacePath) || workspacePath,
     [workspacePath],
   );
 

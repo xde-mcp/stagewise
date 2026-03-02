@@ -100,6 +100,17 @@ describe('path resolution', () => {
     const content = isolatedFs.readFileSync('w1/src/lib/util.ts', 'utf-8');
     expect(content).toBe('export {}');
   });
+
+  it('handles backslash separators (Windows-style paths)', () => {
+    const mounts = [mount('w1', mountA)];
+    const { isolatedFs } = createIsolatedFs(mounts, null);
+
+    fs.mkdirSync(path.join(mountA, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(mountA, 'src', 'index.ts'), 'hello');
+
+    const content = isolatedFs.readFileSync('w1\\src\\index.ts', 'utf-8');
+    expect(content).toBe('hello');
+  });
 });
 
 // =============================================================================

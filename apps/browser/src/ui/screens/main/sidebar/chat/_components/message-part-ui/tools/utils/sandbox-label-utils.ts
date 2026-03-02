@@ -1,4 +1,5 @@
 import type { TabState } from '@shared/karton-contracts/ui';
+import { getBaseName } from '@shared/path-utils';
 
 /**
  * Represents a parsed CDP call extracted from a sandbox script.
@@ -271,8 +272,7 @@ export function getAttachmentLabel(mediaType: string | undefined): string {
  * Gets the filename from a path (last segment after /).
  */
 function getFileName(relativePath: string): string {
-  const parts = relativePath.split('/');
-  return parts[parts.length - 1] || relativePath;
+  return getBaseName(relativePath) || relativePath;
 }
 
 interface MethodLabelResult {

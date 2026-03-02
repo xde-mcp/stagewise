@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { stripMountPrefix } from '@ui/utils';
+import { normalizePath } from '@shared/path-utils';
 import type { WorkspaceMountInfo } from '@shared/karton-contracts/pages-api';
 import { useFileIDEHref as useFileIDEHrefBase } from '@shared/hooks/use-file-ide-href';
 
@@ -11,9 +12,9 @@ function resolveAbsolutePath(
   if (workspaceMounts.length === 0) return null;
   const relativePath = stripMountPrefix(mountPrefixedPath);
   if (!relativePath) return null;
-  const normalized = relativePath.replace('\\', '/');
+  const normalized = normalizePath(relativePath);
   if (normalized.startsWith('/')) return normalized;
-  const basePath = workspaceMounts[0].path.replace('\\', '/');
+  const basePath = normalizePath(workspaceMounts[0].path);
   return `${basePath}/${normalized}`;
 }
 

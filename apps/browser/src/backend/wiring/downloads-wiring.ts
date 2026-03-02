@@ -11,6 +11,7 @@ import type { HistoryService } from '../services/history';
 import type { PagesService } from '../services/pages';
 import type { Logger } from '../services/logger';
 import type { TelemetryService } from '../services/telemetry';
+import { getBaseName } from '@shared/path-utils';
 
 const MAX_DOWNLOADS_TO_SHOW = 5;
 
@@ -102,7 +103,7 @@ export function wireDownloads(deps: {
             return {
               id: downloadId,
               filename: d.targetPath
-                ? (d.targetPath.split('/').pop() ?? 'Unknown')
+                ? getBaseName(d.targetPath) || 'Unknown'
                 : 'Unknown',
               progress,
               isActive: false,

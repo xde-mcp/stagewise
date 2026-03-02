@@ -4,6 +4,7 @@ import { useMountedPaths } from '@ui/hooks/use-mounted-paths';
 import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { useFileIDEHref as useFileIDEHrefBase } from '@shared/hooks/use-file-ide-href';
+import { normalizePath } from '@shared/path-utils';
 
 function resolveAbsolutePath(
   relativeFilePath: string,
@@ -12,11 +13,11 @@ function resolveAbsolutePath(
   for (const mount of mounts) {
     if (relativeFilePath.startsWith(`${mount.prefix}/`)) {
       const stripped = relativeFilePath.slice(mount.prefix.length + 1);
-      return `${mount.path.replace('\\', '/')}/${stripped.replace('\\', '/')}`;
+      return `${normalizePath(mount.path)}/${normalizePath(stripped)}`;
     }
   }
   if (mounts.length === 1) {
-    return `${mounts[0].path.replace('\\', '/')}/${relativeFilePath.replace('\\', '/')}`;
+    return `${normalizePath(mounts[0].path)}/${normalizePath(relativeFilePath)}`;
   }
   return null;
 }

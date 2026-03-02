@@ -22,6 +22,7 @@ import {
   type WorkspaceMdStatus,
 } from './workspace-md-section';
 import { UserQuestionSection } from './user-question-section';
+import { getBaseName } from '@shared/path-utils';
 
 // Stable empty arrays to avoid infinite loop with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];
@@ -244,7 +245,7 @@ export function StatusCard() {
 
     for (const mount of workspaceMounts) {
       const agent = agentByPath.get(mount.path);
-      const folderName = mount.path.split('/').pop() || mount.path;
+      const folderName = getBaseName(mount.path) || mount.path;
 
       let status: WorkspaceMdStatus;
       let errorMessage: string | null = null;
