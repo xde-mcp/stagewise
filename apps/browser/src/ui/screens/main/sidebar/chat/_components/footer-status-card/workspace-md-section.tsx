@@ -153,12 +153,12 @@ export function WorkspaceMdStatusSection({
             <Tooltip>
               <TooltipTrigger>
                 <div className="flex shrink cursor-default flex-row items-center gap-1 truncate">
-                  <IconMagicWandSparkleFill18 className="size-3 shrink-0 text-foreground" />
                   <span className="truncate font-normal text-foreground">
                     {workspaceName
                       ? `Improve context for ${workspaceName}?`
                       : 'Improve context for the agent?'}
                   </span>
+                  <IconMagicWandSparkleFill18 className="size-3 shrink-0 text-muted-foreground" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
