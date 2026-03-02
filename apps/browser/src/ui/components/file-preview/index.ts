@@ -4,6 +4,7 @@ import { imagePreview } from './previews/image';
 import { videoPreview } from './previews/video';
 import { audioPreview } from './previews/audio';
 import { pdfPreview } from './previews/pdf';
+import { fontPreview } from './previews/font';
 import { fallbackPreview } from './previews/fallback';
 
 export type {
@@ -18,6 +19,7 @@ const entries: FilePreviewEntry[] = [
   imagePreview,
   videoPreview,
   audioPreview,
+  fontPreview,
   fallbackPreview,
 ];
 

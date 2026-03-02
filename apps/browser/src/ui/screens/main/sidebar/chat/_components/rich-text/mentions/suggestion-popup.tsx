@@ -2,14 +2,87 @@ import {
   forwardRef,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
+  type FC,
 } from 'react';
 import { cn } from '@/utils';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import type { TabState } from '@shared/karton-contracts/ui';
-import type { ResolvedMentionItem, TabMentionItem } from './types';
+import { inferMimeType } from '@shared/mime-utils';
+import {
+  getFilePreview,
+  type FilePreviewProps,
+} from '@ui/components/file-preview';
+import type {
+  ResolvedMentionItem,
+  TabMentionItem,
+  FileMentionItem,
+} from './types';
 import { MentionIcon } from './mention-icon';
+
+type SidePanelContent =
+  | {
+      type: 'tab';
+      key: string;
+      screenshot: string;
+      title?: string;
+      url?: string;
+    }
+  | {
+      type: 'file';
+      key: string;
+      src: string;
+      fileName: string;
+      relativePath: string;
+      mediaType: string;
+      Preview: FC<FilePreviewProps>;
+    };
+
+function deriveSidePanel(
+  item: ResolvedMentionItem | undefined,
+  tabs: Record<string, TabState>,
+): SidePanelContent | null {
+  if (!item) return null;
+
+  if (item.providerType === 'tab') {
+    const meta = (item as TabMentionItem).meta;
+    const tabState = tabs[meta.tabId];
+    const screenshot = tabState?.screenshot;
+    if (!screenshot) return null;
+    return {
+      type: 'tab',
+      key: `tab:${meta.tabId}`,
+      screenshot,
+      title: tabState.title,
+      url: tabState.url,
+    };
+  }
+
+  if (item.providerType === 'file') {
+    const meta = (item as FileMentionItem).meta;
+    if (meta.isDirectory) return null;
+
+    const mime = inferMimeType(meta.fileName);
+    const entry = getFilePreview(mime);
+
+    if (!entry.variants.expanded || entry.id === 'video') return null;
+
+    const src = `sw-file://${meta.mountPrefix}/${encodeURIComponent(meta.relativePath)}`;
+    return {
+      type: 'file',
+      key: `file:${meta.mountedPath}`,
+      src,
+      fileName: meta.fileName,
+      relativePath: meta.relativePath,
+      mediaType: mime,
+      Preview: entry.variants.compact,
+    };
+  }
+
+  return null;
+}
 
 interface SuggestionPopupProps {
   items: ResolvedMentionItem[];
@@ -83,11 +156,10 @@ export function SuggestionPopup({
   }, [selectedIndex]);
 
   const selectedItem = items[selectedIndex] as ResolvedMentionItem | undefined;
-  const tabState =
-    selectedItem?.providerType === 'tab'
-      ? tabs[(selectedItem as TabMentionItem).meta.tabId]
-      : undefined;
-  const screenshot = tabState?.screenshot ?? null;
+  const sidePanel = useMemo(
+    () => deriveSidePanel(selectedItem, tabs),
+    [selectedItem, tabs],
+  );
 
   useLayoutEffect(() => {
     const itemEl = itemRefs.current.get(selectedIndex);
@@ -107,7 +179,7 @@ export function SuggestionPopup({
     offset = Math.min(offset, containerHeight - panelHeight);
 
     setSidePanelOffset(offset);
-  }, [selectedIndex, screenshot]);
+  }, [selectedIndex, sidePanel]);
 
   if (items.length === 0) {
     return (
@@ -124,14 +196,24 @@ export function SuggestionPopup({
       clientRect={clientRect}
       ref={containerRef}
       sidePanel={
-        screenshot ? (
-          <TabPreviewPanel
-            ref={sidePanelRef}
-            screenshot={screenshot}
-            title={tabState?.title}
-            url={tabState?.url}
-            offset={sidePanelOffset}
-          />
+        sidePanel ? (
+          <PreviewSidePanel ref={sidePanelRef} offset={sidePanelOffset}>
+            {sidePanel.type === 'tab' ? (
+              <TabPreviewContent
+                screenshot={sidePanel.screenshot}
+                title={sidePanel.title}
+                url={sidePanel.url}
+              />
+            ) : (
+              <FilePreviewContent
+                src={sidePanel.src}
+                fileName={sidePanel.fileName}
+                relativePath={sidePanel.relativePath}
+                mediaType={sidePanel.mediaType}
+                Preview={sidePanel.Preview}
+              />
+            )}
+          </PreviewSidePanel>
         ) : null
       }
     >
@@ -187,21 +269,10 @@ const PopupContainer = forwardRef<
   );
 });
 
-const TabPreviewPanel = forwardRef<
+const PreviewSidePanel = forwardRef<
   HTMLDivElement,
-  {
-    screenshot: string;
-    title?: string;
-    url?: string;
-    offset: number;
-  }
->(function TabPreviewPanel({ screenshot, title, url, offset }, ref) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-
-  useEffect(() => {
-    setImageLoaded(false);
-  }, [screenshot]);
-
+  { offset: number; children: React.ReactNode }
+>(function PreviewSidePanel({ offset, children }, ref) {
   return (
     <div
       ref={ref}
@@ -211,6 +282,28 @@ const TabPreviewPanel = forwardRef<
       )}
       style={{ top: offset }}
     >
+      {children}
+    </div>
+  );
+});
+
+function TabPreviewContent({
+  screenshot,
+  title,
+  url,
+}: {
+  screenshot: string;
+  title?: string;
+  url?: string;
+}) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [screenshot]);
+
+  return (
+    <>
       <img
         src={screenshot}
         className="hidden"
@@ -237,6 +330,37 @@ const TabPreviewPanel = forwardRef<
           <span dir="ltr">{url}</span>
         </span>
       )}
-    </div>
+    </>
   );
-});
+}
+
+function FilePreviewContent({
+  src,
+  fileName,
+  relativePath,
+  mediaType,
+  Preview,
+}: {
+  src: string;
+  fileName: string;
+  relativePath: string;
+  mediaType: string;
+  Preview: FC<FilePreviewProps>;
+}) {
+  return (
+    <>
+      <Preview
+        src={src}
+        fileName={fileName}
+        mediaType={mediaType}
+        className="max-h-32"
+      />
+      <span className="truncate font-medium text-foreground text-xs">
+        {fileName}
+      </span>
+      <span className="truncate text-[10px] text-subtle-foreground" dir="rtl">
+        <span dir="ltr">{relativePath}</span>
+      </span>
+    </>
+  );
+}
