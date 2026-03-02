@@ -1,4 +1,4 @@
-import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { computeBrowserChanges } from './browser-changes';
 import { computeFileDiffChanges } from './file-diff-changes';
 import { computeSandboxChanges } from './sandbox-changes';
@@ -8,9 +8,13 @@ export { computeBrowserChanges } from './browser-changes';
 export { computeFileDiffChanges } from './file-diff-changes';
 export { computeSandboxChanges } from './sandbox-changes';
 export { computeWorkspaceChanges } from './workspace-changes';
+export {
+  resolveEffectiveSnapshot,
+  sparsifySnapshot,
+} from './resolve-snapshot';
 
 /**
- * Compares two full environment snapshots and returns all
+ * Compares two fully-resolved environment snapshots and returns all
  * human-readable change descriptions across browser tabs,
  * workspace state, and file diffs.
  *
@@ -18,8 +22,8 @@ export { computeWorkspaceChanges } from './workspace-changes';
  * or when nothing changed.
  */
 export function computeAllEnvironmentChanges(
-  previous: EnvironmentSnapshot | null,
-  current: EnvironmentSnapshot,
+  previous: FullEnvironmentSnapshot | null,
+  current: FullEnvironmentSnapshot,
   agentInstanceId: string,
 ): string[] {
   if (!previous) return [];

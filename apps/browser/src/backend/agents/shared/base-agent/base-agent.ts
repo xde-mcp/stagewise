@@ -17,7 +17,7 @@ import type {
   AgentTypes,
   AgentState,
 } from '@shared/karton-contracts/ui/agent';
-import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
 import { type ModelId, getModelCapabilities } from '@shared/available-models';
 import type { z } from 'zod';
@@ -34,6 +34,10 @@ import {
 } from './utils';
 import { readBlob } from '@/utils/attachment-blobs';
 import { randomUUID } from 'node:crypto';
+import {
+  resolveEffectiveSnapshot,
+  sparsifySnapshot,
+} from '../prompts/utils/environment-changes';
 import type { StagewiseToolSet } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { AgentsMap } from '../../agents-map';
@@ -907,7 +911,7 @@ export abstract class BaseAgent<
   protected async transformMessagesToModelMessages(
     messages: AgentMessage[],
     systemPrompt: string,
-    liveSnapshot?: EnvironmentSnapshot,
+    liveSnapshot?: FullEnvironmentSnapshot,
   ): Promise<ModelMessage[]> {
     const activeModelId = this.state.get().activeModelId;
     const capabilities = getModelCapabilities(activeModelId);
@@ -1458,6 +1462,18 @@ export abstract class BaseAgent<
             `[BaseAgent:${this.instanceId}] Stored compressed history in message ${lastUncompactedMessageId}`,
           );
           lastUncompactedMessage.metadata.compressedHistory = compressedHistory;
+
+          const boundaryIndex = draft.history.findIndex(
+            (m) => m.id === lastUncompactedMessageId,
+          );
+          const effectiveAtBoundary = resolveEffectiveSnapshot(
+            draft.history,
+            boundaryIndex,
+          );
+          if (effectiveAtBoundary) {
+            lastUncompactedMessage.metadata.environmentSnapshot =
+              effectiveAtBoundary;
+          }
         } else {
           this.logger.warn(
             `[BaseAgent:${this.instanceId}] Last uncompacted message not found in history after compressing history. Maybe the user undid/manipulated messages while we were busy compressing the history.`,
@@ -1646,7 +1662,7 @@ export abstract class BaseAgent<
     // a tail env-change for anything that changed since the last message.
     const liveSnapshot = this.toolbox.captureEnvironmentSnapshot(
       this.instanceId,
-    );
+    ) as FullEnvironmentSnapshot;
 
     // Then, we use the filtered UI messages and system prompt to transform to model messages
     const modelMessages = await this.transformMessagesToModelMessages(
@@ -1757,15 +1773,25 @@ export abstract class BaseAgent<
         existingMessage.parts = uiMessage.parts;
 
         // Add metadata for message creation
-        existingMessage.metadata ??= {
-          createdAt: new Date(),
-          mountedPaths: this.toolbox.getWorkspaceSnapshot(this.instanceId)
-            .mounts,
-          partsMetadata: [],
-          environmentSnapshot: this.toolbox.captureEnvironmentSnapshot(
+        existingMessage.metadata ??= (() => {
+          const fullSnapshot = this.toolbox.captureEnvironmentSnapshot(
             this.instanceId,
-          ),
-        };
+          ) as FullEnvironmentSnapshot;
+          const prevIdx = draft.history.length - 2;
+          const previousEffective =
+            prevIdx >= 0
+              ? resolveEffectiveSnapshot(draft.history, prevIdx)
+              : null;
+          return {
+            createdAt: new Date(),
+            mountedPaths: fullSnapshot.workspace.mounts,
+            partsMetadata: [],
+            environmentSnapshot: sparsifySnapshot(
+              fullSnapshot,
+              previousEffective,
+            ),
+          };
+        })();
 
         // Add metadata for each part of the message
         uiMessage.parts.forEach(

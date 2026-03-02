@@ -1,15 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type {
+  EnvironmentSnapshot,
+  FullEnvironmentSnapshot,
+} from '@shared/karton-contracts/ui/agent/metadata';
 import type { UserMessageMetadata } from '@shared/karton-contracts/ui/agent/metadata';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import {
   buildSyntheticEnvironmentChangeMessage,
   convertAgentMessagesToModelMessages,
 } from './utils';
+import {
+  resolveEffectiveSnapshot,
+  sparsifySnapshot,
+} from '../prompts/utils/environment-changes';
 
 function makeSnapshot(
-  overrides: Partial<EnvironmentSnapshot> = {},
-): EnvironmentSnapshot {
+  overrides: Partial<FullEnvironmentSnapshot> = {},
+): FullEnvironmentSnapshot {
   return {
     browser: {
       tabs: [{ handle: 't_1', url: 'https://a.com', title: 'A' }],
@@ -458,5 +465,260 @@ describe('convertAgentMessagesToModelMessages – env-change injection', () => {
         ),
     );
     expect(envChangeMessages).toHaveLength(0);
+  });
+});
+
+describe('resolveEffectiveSnapshot', () => {
+  it('returns full snapshot from a single message', () => {
+    const snap = makeSnapshot();
+    const messages: AgentMessage[] = [makeUserMsg('u1', 'hello', snap)];
+    const resolved = resolveEffectiveSnapshot(messages, 0);
+    expect(resolved).toEqual(snap);
+  });
+
+  it('returns null when no messages have snapshots', () => {
+    const messages: AgentMessage[] = [makeUserMsg('u1', 'hello')];
+    const resolved = resolveEffectiveSnapshot(messages, 0);
+    expect(resolved).toBeNull();
+  });
+
+  it('assembles full snapshot from sparse messages by walking backward', () => {
+    const fullSnap = makeSnapshot();
+    const sparseSnap: EnvironmentSnapshot = {
+      browser: { tabs: [], activeTabHandle: null },
+    };
+    const messages: AgentMessage[] = [
+      makeUserMsg('u1', 'hello', fullSnap),
+      makeAssistantMsg('a1', 'response', sparseSnap),
+    ];
+    const resolved = resolveEffectiveSnapshot(messages, 1);
+    expect(resolved).not.toBeNull();
+    expect(resolved!.browser).toEqual({ tabs: [], activeTabHandle: null });
+    expect(resolved!.workspace).toEqual(fullSnap.workspace);
+    expect(resolved!.fileDiffs).toEqual(fullSnap.fileDiffs);
+    expect(resolved!.sandboxSessionId).toBe(fullSnap.sandboxSessionId);
+  });
+
+  it('returns null when partial coverage across all messages', () => {
+    const sparseSnap: EnvironmentSnapshot = {
+      browser: { tabs: [], activeTabHandle: null },
+    };
+    const messages: AgentMessage[] = [makeUserMsg('u1', 'hello', sparseSnap)];
+    const resolved = resolveEffectiveSnapshot(messages, 0);
+    expect(resolved).toBeNull();
+  });
+
+  it('respects upToIndex and ignores later messages', () => {
+    const snap1 = makeSnapshot();
+    const snap2 = makeSnapshot({
+      browser: { tabs: [], activeTabHandle: null },
+    });
+    const messages: AgentMessage[] = [
+      makeUserMsg('u1', 'hello', snap1),
+      makeAssistantMsg('a1', 'response', snap2),
+    ];
+    const resolved = resolveEffectiveSnapshot(messages, 0);
+    expect(resolved!.browser).toEqual(snap1.browser);
+  });
+
+  it('handles out-of-bounds upToIndex gracefully', () => {
+    const snap = makeSnapshot();
+    const messages: AgentMessage[] = [makeUserMsg('u1', 'hello', snap)];
+    const resolved = resolveEffectiveSnapshot(messages, -1);
+    expect(resolved).toBeNull();
+  });
+
+  it('picks most recent domain values across multiple sparse messages', () => {
+    const baseSnap = makeSnapshot();
+    const sparse1: EnvironmentSnapshot = {
+      browser: {
+        tabs: [{ handle: 't_2', url: 'https://b.com', title: 'B' }],
+        activeTabHandle: 't_2',
+      },
+    };
+    const sparse2: EnvironmentSnapshot = {
+      workspace: { mounts: [] },
+    };
+    const messages: AgentMessage[] = [
+      makeUserMsg('u1', 'first', baseSnap),
+      makeAssistantMsg('a1', 'reply', sparse1),
+      makeUserMsg('u2', 'second', sparse2),
+    ];
+    const resolved = resolveEffectiveSnapshot(messages, 2);
+    expect(resolved!.workspace).toEqual({ mounts: [] });
+    expect(resolved!.browser).toEqual(sparse1.browser);
+    expect(resolved!.fileDiffs).toEqual(baseSnap.fileDiffs);
+    expect(resolved!.sandboxSessionId).toBe(baseSnap.sandboxSessionId);
+  });
+});
+
+describe('sparsifySnapshot', () => {
+  it('returns full snapshot when previous is null (keyframe)', () => {
+    const full = makeSnapshot();
+    const sparse = sparsifySnapshot(full, null);
+    expect(sparse).toEqual(full);
+  });
+
+  it('returns empty object when nothing changed', () => {
+    const snap = makeSnapshot();
+    const sparse = sparsifySnapshot(snap, snap);
+    expect(sparse).toEqual({});
+  });
+
+  it('includes only changed browser domain', () => {
+    const previous = makeSnapshot();
+    const current = makeSnapshot({
+      browser: { tabs: [], activeTabHandle: null },
+    });
+    const sparse = sparsifySnapshot(current, previous);
+    expect(sparse.browser).toEqual({ tabs: [], activeTabHandle: null });
+    expect(sparse.workspace).toBeUndefined();
+    expect(sparse.fileDiffs).toBeUndefined();
+    expect(sparse.sandboxSessionId).toBeUndefined();
+  });
+
+  it('includes only changed workspace domain', () => {
+    const previous = makeSnapshot();
+    const current = makeSnapshot({ workspace: { mounts: [] } });
+    const sparse = sparsifySnapshot(current, previous);
+    expect(sparse.workspace).toEqual({ mounts: [] });
+    expect(sparse.browser).toBeUndefined();
+  });
+
+  it('includes only changed sandboxSessionId', () => {
+    const previous = makeSnapshot();
+    const current = makeSnapshot({ sandboxSessionId: 'new-session' });
+    const sparse = sparsifySnapshot(current, previous);
+    expect(sparse.sandboxSessionId).toBe('new-session');
+    expect(sparse.browser).toBeUndefined();
+    expect(sparse.workspace).toBeUndefined();
+    expect(sparse.fileDiffs).toBeUndefined();
+  });
+
+  it('includes multiple changed domains', () => {
+    const previous = makeSnapshot();
+    const current = makeSnapshot({
+      browser: { tabs: [], activeTabHandle: null },
+      sandboxSessionId: 'changed',
+    });
+    const sparse = sparsifySnapshot(current, previous);
+    expect(sparse.browser).toBeDefined();
+    expect(sparse.sandboxSessionId).toBe('changed');
+    expect(sparse.workspace).toBeUndefined();
+    expect(sparse.fileDiffs).toBeUndefined();
+  });
+});
+
+describe('sparse snapshot diffing in convertAgentMessagesToModelMessages', () => {
+  const agentId = 'agent-1';
+
+  it('detects changes from sparse snapshots via backward resolution', async () => {
+    const baseSnap = makeSnapshot();
+    const sparseSnap: EnvironmentSnapshot = {
+      browser: { tabs: [], activeTabHandle: null },
+    };
+    const messages: AgentMessage[] = [
+      makeUserMsg('u1', 'hello', baseSnap),
+      makeAssistantMsg('a1', 'response', sparseSnap),
+    ];
+
+    const result = await convertAgentMessagesToModelMessages(
+      messages,
+      'system prompt',
+      {},
+      0,
+      agentId,
+      noopBlobReader,
+    );
+
+    const envChangeMessages = result.filter(
+      (m) =>
+        m.role === 'user' &&
+        typeof m.content !== 'string' &&
+        Array.isArray(m.content) &&
+        m.content.some(
+          (p) =>
+            'text' in p &&
+            typeof p.text === 'string' &&
+            p.text.includes('<env-changes>'),
+        ),
+    );
+    expect(envChangeMessages).toHaveLength(1);
+    const text = ((envChangeMessages[0] as any).content[0] as { text: string })
+      .text;
+    expect(text).toContain('tab closed');
+  });
+
+  it('does not inject env-change when sparse snapshots carry no effective change', async () => {
+    const baseSnap = makeSnapshot();
+    const emptySparse: EnvironmentSnapshot = {};
+    const messages: AgentMessage[] = [
+      makeUserMsg('u1', 'hello', baseSnap),
+      makeAssistantMsg('a1', 'response', emptySparse),
+    ];
+
+    const result = await convertAgentMessagesToModelMessages(
+      messages,
+      'system prompt',
+      {},
+      0,
+      agentId,
+      noopBlobReader,
+    );
+
+    const envChangeMessages = result.filter(
+      (m) =>
+        m.role === 'user' &&
+        typeof m.content !== 'string' &&
+        Array.isArray(m.content) &&
+        m.content.some(
+          (p) =>
+            'text' in p &&
+            typeof p.text === 'string' &&
+            p.text.includes('<env-changes>'),
+        ),
+    );
+    expect(envChangeMessages).toHaveLength(0);
+  });
+
+  it('resolves across undo boundary: keyframe after truncation', async () => {
+    const snap1 = makeSnapshot();
+    const snap2 = makeSnapshot({
+      browser: {
+        tabs: [{ handle: 't_2', url: 'https://b.com', title: 'B' }],
+        activeTabHandle: 't_2',
+      },
+    });
+    const messages: AgentMessage[] = [
+      makeUserMsg('u1', 'first', snap1),
+      makeUserMsg('u2', 'after undo - keyframe', snap2),
+    ];
+
+    const result = await convertAgentMessagesToModelMessages(
+      messages,
+      'system prompt',
+      {},
+      0,
+      agentId,
+      noopBlobReader,
+    );
+
+    const envChangeMessages = result.filter(
+      (m) =>
+        m.role === 'user' &&
+        typeof m.content !== 'string' &&
+        Array.isArray(m.content) &&
+        m.content.some(
+          (p) =>
+            'text' in p &&
+            typeof p.text === 'string' &&
+            p.text.includes('<env-changes>'),
+        ),
+    );
+    expect(envChangeMessages).toHaveLength(1);
+    const text = ((envChangeMessages[0] as any).content[0] as { text: string })
+      .text;
+    expect(text).toContain('tab closed');
+    expect(text).toContain('new tab opened');
   });
 });

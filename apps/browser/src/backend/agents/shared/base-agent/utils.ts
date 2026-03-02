@@ -11,9 +11,12 @@ import type {
   AgentMessage,
   AgentToolUIPart,
 } from '@shared/karton-contracts/ui/agent';
-import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import type { SelectedElement } from '@shared/selected-elements';
-import { computeAllEnvironmentChanges } from '../prompts/utils/environment-changes';
+import {
+  computeAllEnvironmentChanges,
+  resolveEffectiveSnapshot,
+} from '../prompts/utils/environment-changes';
 import type { ModelProviderService } from '@/agents/model-provider';
 import {
   relevantCodebaseFilesToContextSnippet,
@@ -317,7 +320,7 @@ export const convertAgentMessagesToModelMessages = async (
   blobReader: BlobReader,
   modelCapabilities?: ModelCapabilities,
   onBlobError?: BlobErrorReporter,
-  liveSnapshot?: EnvironmentSnapshot,
+  liveSnapshot?: FullEnvironmentSnapshot,
   currentModelId?: string,
 ): Promise<ModelMessage[]> => {
   // We work backwards first because this makes it easier to apply compacted conversation later on.
@@ -501,13 +504,15 @@ export const convertAgentMessagesToModelMessages = async (
     // Inject a synthetic env-change user message when the environment
     // snapshot changed between the previous message and this one.
     if (msgIndex > 0) {
-      const currentSnapshot = messages[msgIndex].metadata?.environmentSnapshot;
-      const previousSnapshot =
-        messages[msgIndex - 1].metadata?.environmentSnapshot;
-      if (currentSnapshot && previousSnapshot) {
+      const currentEffective = resolveEffectiveSnapshot(messages, msgIndex);
+      const previousEffective = resolveEffectiveSnapshot(
+        messages,
+        msgIndex - 1,
+      );
+      if (currentEffective && previousEffective) {
         const changes = computeAllEnvironmentChanges(
-          previousSnapshot,
-          currentSnapshot,
+          previousEffective,
+          currentEffective,
           agentInstanceId,
         );
         if (changes.length > 0) {
@@ -542,11 +547,13 @@ export const convertAgentMessagesToModelMessages = async (
   // Inject a live env-change at the tail so the model sees changes that
   // happened since the last message was created (eliminates 1-step delay).
   if (liveSnapshot) {
-    const lastMsg = messages[messages.length - 1];
-    const lastSnapshot = lastMsg?.metadata?.environmentSnapshot;
-    if (lastSnapshot) {
+    const lastEffective = resolveEffectiveSnapshot(
+      messages,
+      messages.length - 1,
+    );
+    if (lastEffective) {
       const liveChanges = computeAllEnvironmentChanges(
-        lastSnapshot,
+        lastEffective,
         liveSnapshot,
         agentInstanceId,
       );

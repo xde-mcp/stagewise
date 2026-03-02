@@ -17,10 +17,14 @@ import type { z } from 'zod';
 import { AgentPersistenceDB } from './persistence/db';
 import type { GlobalDataPathService } from '../global-data-path';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
-import type { EnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { writeBlob } from '@/utils/attachment-blobs';
 import type { QuestionAnswerValue } from '@shared/karton-contracts/ui/agent/tools/types';
 import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
+import {
+  resolveEffectiveSnapshot,
+  sparsifySnapshot,
+} from '@/agents/shared/prompts/utils/environment-changes';
 
 /**
  * @note Due to the complex type inference for all this stuff, we sometimes explicitly define types here to avoid errors.
@@ -147,8 +151,18 @@ export class AgentManagerService extends DisposableService {
         instanceId: string,
         message: AgentMessage & { role: 'user' },
       ) => {
-        const environmentSnapshot: EnvironmentSnapshot =
+        const fullSnapshot =
           this.toolbox.captureEnvironmentSnapshot(instanceId);
+        const history =
+          this.karton.state.agents.instances[instanceId]?.state.history ?? [];
+        const previousEffective = resolveEffectiveSnapshot(
+          history,
+          history.length - 1,
+        );
+        const environmentSnapshot = sparsifySnapshot(
+          fullSnapshot as FullEnvironmentSnapshot,
+          previousEffective,
+        );
 
         if (message.metadata)
           message.metadata = {
@@ -168,8 +182,18 @@ export class AgentManagerService extends DisposableService {
         message: AgentMessage & { role: 'user' },
         draftAnswers: Record<string, QuestionAnswerValue>,
       ) => {
-        const environmentSnapshot: EnvironmentSnapshot =
+        const fullSnapshot =
           this.toolbox.captureEnvironmentSnapshot(instanceId);
+        const history =
+          this.karton.state.agents.instances[instanceId]?.state.history ?? [];
+        const previousEffective = resolveEffectiveSnapshot(
+          history,
+          history.length - 1,
+        );
+        const environmentSnapshot = sparsifySnapshot(
+          fullSnapshot as FullEnvironmentSnapshot,
+          previousEffective,
+        );
 
         if (message.metadata)
           message.metadata = {
@@ -260,6 +284,15 @@ export class AgentManagerService extends DisposableService {
         newMessage: AgentMessage & { role: 'user' },
         undoToolCalls: boolean,
       ) => {
+        const fullSnapshot =
+          this.toolbox.captureEnvironmentSnapshot(instanceId);
+
+        if (newMessage.metadata)
+          newMessage.metadata = {
+            ...newMessage.metadata,
+            environmentSnapshot: fullSnapshot,
+          };
+
         return await this.replaceUserMessage(
           instanceId,
           userMessageId,

@@ -73,13 +73,20 @@ export const workspaceSnapshotSchema = z.object({
 export type WorkspaceSnapshot = z.infer<typeof workspaceSnapshotSchema>;
 
 export const environmentSnapshotSchema = z.object({
-  browser: browserSnapshotSchema,
-  workspace: workspaceSnapshotSchema,
-  fileDiffs: environmentDiffSnapshotSchema,
-  sandboxSessionId: z.string().nullable(),
+  browser: browserSnapshotSchema.optional(),
+  workspace: workspaceSnapshotSchema.optional(),
+  fileDiffs: environmentDiffSnapshotSchema.optional(),
+  sandboxSessionId: z.string().nullable().optional(),
 });
 
 export type EnvironmentSnapshot = z.infer<typeof environmentSnapshotSchema>;
+
+/**
+ * A fully-resolved environment snapshot where every domain is present.
+ * Produced by `resolveEffectiveSnapshot` which walks backward through
+ * history to collect the most recent value for each domain.
+ */
+export type FullEnvironmentSnapshot = Required<EnvironmentSnapshot>;
 
 const metadataSchema = z.object({
   createdAt: z.date(),
