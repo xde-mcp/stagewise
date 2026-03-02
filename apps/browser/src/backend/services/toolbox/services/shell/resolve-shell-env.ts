@@ -1,8 +1,17 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { homedir, userInfo } from 'node:os';
 import type { DetectedShell } from './types';
 
 const DEFAULT_RESOLVE_TIMEOUT_MS = 10_000;
+
+function safeUsername(): string {
+  try {
+    return userInfo().username;
+  } catch {
+    return '';
+  }
+}
 
 export async function resolveShellEnv(
   shell: DetectedShell,
@@ -28,7 +37,13 @@ export async function resolveShellEnv(
       return null;
   }
 
+  // On Linux, desktop-launched Electron apps may inherit a nearly empty
+  // process.env (no HOME, USER, PATH, etc.). Ensure essential vars are
+  // present so the login shell can locate ~/.profile and ~/.bashrc.
   const env: Record<string, string> = {
+    HOME: homedir(),
+    USER: safeUsername(),
+    SHELL: shell.path,
     ...process.env,
     ELECTRON_RUN_AS_NODE: '1',
     ELECTRON_NO_ATTACH_CONSOLE: '1',
