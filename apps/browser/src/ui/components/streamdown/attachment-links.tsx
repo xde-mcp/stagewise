@@ -16,6 +16,7 @@ import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { usePostHog } from 'posthog-js/react';
 import { IdePickerPopover } from '@ui/components/ide-picker-popover';
+import { FileContextMenu } from '@ui/components/file-context-menu';
 import {
   useAttachmentMetadata,
   type AttachmentMetadata,
@@ -246,7 +247,8 @@ export const WorkspaceFileLink = ({
   const [openAgent] = useOpenAgent();
   const openInIdeChoice = useKartonState((s) => s.globalConfig.openFilesInIde);
   const ideName = IDE_SELECTION_ITEMS[openInIdeChoice];
-  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen, resolvePath } =
+    useFileIDEHref();
 
   const strippedPath = stripMountPrefix(filePath);
 
@@ -295,28 +297,42 @@ export const WorkspaceFileLink = ({
 
   if (needsIdePicker) {
     return (
-      <IdePickerPopover
-        onSelect={(ide) => pickIdeAndOpen(ide, pathWithLine, parsedLineNumber)}
+      <FileContextMenu
+        relativePath={filePath}
+        resolvePath={resolvePath}
+        lineNumber={parsedLineNumber}
       >
-        {anchor}
-      </IdePickerPopover>
+        <IdePickerPopover
+          onSelect={(ide) =>
+            pickIdeAndOpen(ide, pathWithLine, parsedLineNumber)
+          }
+        >
+          {anchor}
+        </IdePickerPopover>
+      </FileContextMenu>
     );
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger>{anchor}</TooltipTrigger>
-      <TooltipContent>
-        <div className="flex max-w-96 flex-col gap-1">
-          <div className="break-all font-mono text-xs">
-            {displayPathWithLine}
+    <FileContextMenu
+      relativePath={filePath}
+      resolvePath={resolvePath}
+      lineNumber={parsedLineNumber}
+    >
+      <Tooltip>
+        <TooltipTrigger>{anchor}</TooltipTrigger>
+        <TooltipContent>
+          <div className="flex max-w-96 flex-col gap-1">
+            <div className="break-all font-mono text-xs">
+              {displayPathWithLine}
+            </div>
+            <div className="text-muted-foreground text-xs">
+              Click to open in {ideName}
+            </div>
           </div>
-          <div className="text-muted-foreground text-xs">
-            Click to open in {ideName}
-          </div>
-        </div>
-      </TooltipContent>
-    </Tooltip>
+        </TooltipContent>
+      </Tooltip>
+    </FileContextMenu>
   );
 };
 

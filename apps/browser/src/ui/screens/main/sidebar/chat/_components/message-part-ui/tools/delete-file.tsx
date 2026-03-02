@@ -20,6 +20,8 @@ import { diffLines } from 'diff';
 import { cn, stripMountPrefix } from '@/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
+import { useFileIDEHref } from '@/hooks/use-file-ide-href';
+import { FileContextMenu } from '@ui/components/file-context-menu';
 
 export const DeleteFileToolPart = ({
   part,
@@ -28,6 +30,7 @@ export const DeleteFileToolPart = ({
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [collapsedDiffView, setCollapsedDiffView] = useState(true);
+  const { resolvePath } = useFileIDEHref();
 
   const outputWithDiff = part.output as
     | WithDiff<typeof part.output>
@@ -78,15 +81,21 @@ export const DeleteFileToolPart = ({
         />
       );
     else if (streaming)
-      return <LoadingHeader relativePath={path ?? undefined} />;
+      return (
+        <LoadingHeader
+          relativePath={path ?? undefined}
+          resolvePath={resolvePath}
+        />
+      );
     else
       return (
         <SuccessHeader
           relativePath={path ?? undefined}
+          resolvePath={resolvePath}
           deletedLineCount={deletedLineCount}
         />
       );
-  }, [state, streaming, path, part.errorText, deletedLineCount]);
+  }, [state, streaming, path, part.errorText, deletedLineCount, resolvePath]);
 
   const content = useMemo(() => {
     if (state === 'error') return undefined;
@@ -176,9 +185,11 @@ const ErrorHeader = ({
 
 const SuccessHeader = ({
   relativePath,
+  resolvePath,
   deletedLineCount,
 }: {
   relativePath?: string;
+  resolvePath: (path: string) => string | null;
   deletedLineCount?: number;
 }) => {
   const fileName = relativePath ? getBaseName(relativePath) : relativePath;
@@ -186,22 +197,30 @@ const SuccessHeader = ({
   return (
     <div className="pointer-events-none flex flex-row items-center justify-start gap-1">
       <div className="pointer-events-auto flex flex-row items-center justify-start gap-1 text-muted-foreground">
-        <Tooltip>
-          <TooltipTrigger>
-            <div className="flex flex-row items-center justify-start gap-1">
-              <FileIcon
-                filePath={relativePath ?? ''}
-                className="-ml-1 size-4 shrink-0"
-              />
-              <span className="min-w-0 truncate font-normal text-xs" dir="rtl">
-                <span className="items-center gap-0.5 text-xs" dir="ltr">
-                  {fileName}
+        <FileContextMenu
+          relativePath={relativePath ?? ''}
+          resolvePath={resolvePath}
+        >
+          <Tooltip>
+            <TooltipTrigger>
+              <div className="flex flex-row items-center justify-start gap-1">
+                <FileIcon
+                  filePath={relativePath ?? ''}
+                  className="-ml-1 size-4 shrink-0"
+                />
+                <span
+                  className="min-w-0 truncate font-normal text-xs"
+                  dir="rtl"
+                >
+                  <span className="items-center gap-0.5 text-xs" dir="ltr">
+                    {fileName}
+                  </span>
                 </span>
-              </span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>{relativePath ?? ''}</TooltipContent>
-        </Tooltip>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>{relativePath ?? ''}</TooltipContent>
+          </Tooltip>
+        </FileContextMenu>
       </div>
       <span className="shrink-0 text-error-foreground text-xs group-hover/trigger:text-hover-derived">
         (deleted)
@@ -215,23 +234,34 @@ const SuccessHeader = ({
   );
 };
 
-const LoadingHeader = ({ relativePath }: { relativePath?: string }) => {
+const LoadingHeader = ({
+  relativePath,
+  resolvePath,
+}: {
+  relativePath?: string;
+  resolvePath: (path: string) => string | null;
+}) => {
   const fileName = relativePath ? getBaseName(relativePath) : relativePath;
 
   return (
     <div className="flex flex-row items-center justify-start gap-1">
       <Loader2Icon className="size-3 shrink-0 animate-spin text-primary" />
       {relativePath !== null ? (
-        <Tooltip>
-          <TooltipTrigger>
-            <span className="min-w-0 flex-1 truncate text-xs" dir="rtl">
-              <span dir="ltr" className="shimmer-text-primary">
-                {fileName}
+        <FileContextMenu
+          relativePath={relativePath ?? ''}
+          resolvePath={resolvePath}
+        >
+          <Tooltip>
+            <TooltipTrigger>
+              <span className="min-w-0 flex-1 truncate text-xs" dir="rtl">
+                <span dir="ltr" className="shimmer-text-primary">
+                  {fileName}
+                </span>
               </span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{relativePath ?? ''}</TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent>{relativePath ?? ''}</TooltipContent>
+          </Tooltip>
+        </FileContextMenu>
       ) : (
         <Skeleton className="h-3 w-16" variant="text" />
       )}

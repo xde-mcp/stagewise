@@ -16,6 +16,7 @@ import {
 import { Skeleton } from '@stagewise/stage-ui/components/skeleton';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { IdePickerPopover } from '@/components/ide-picker-popover';
+import { FileContextMenu } from '@ui/components/file-context-menu';
 import { DiffPreview } from './shared/diff-preview';
 import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@/utils';
 import { useMemo, useState } from 'react';
@@ -37,7 +38,8 @@ export const OverwriteFileToolPart = ({
 }) => {
   const [codeDiffCollapsed, setCodeDiffCollapsed] = useState(true);
   const [expanded, setExpanded] = useState(true);
-  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen, resolvePath } =
+    useFileIDEHref();
   const outputWithDiff = part.output as
     | WithDiff<typeof part.output>
     | undefined;
@@ -100,11 +102,17 @@ export const OverwriteFileToolPart = ({
         />
       );
     else if (streaming)
-      return <LoadingHeader relativePath={path ?? undefined} />;
+      return (
+        <LoadingHeader
+          relativePath={path ?? undefined}
+          resolvePath={resolvePath}
+        />
+      );
     else
       return (
         <SuccessHeader
           relativePath={path ?? undefined}
+          resolvePath={resolvePath}
           newLineCount={newLineCount}
           deletedLineCount={deletedLineCount}
           fileWasCreated={outputWithDiff?._diff?.before === null}
@@ -263,11 +271,13 @@ const ErrorHeader = ({
 
 const SuccessHeader = ({
   relativePath,
+  resolvePath,
   newLineCount,
   deletedLineCount,
   fileWasCreated,
 }: {
   relativePath?: string;
+  resolvePath: (path: string) => string | null;
   newLineCount: number;
   deletedLineCount: number;
   fileWasCreated: boolean;
@@ -281,19 +291,24 @@ const SuccessHeader = ({
           filePath={relativePath ?? ''}
           className="-ml-1 size-4 shrink-0"
         />
-        <Tooltip>
-          <TooltipTrigger>
-            <span className="min-w-0 truncate text-xs" dir="rtl">
-              <span
-                className="items-center gap-0.5 text-foreground text-xs group-hover/trigger:text-hover-derived"
-                dir="ltr"
-              >
-                {fileName}
+        <FileContextMenu
+          relativePath={relativePath ?? ''}
+          resolvePath={resolvePath}
+        >
+          <Tooltip>
+            <TooltipTrigger>
+              <span className="min-w-0 truncate text-xs" dir="rtl">
+                <span
+                  className="items-center gap-0.5 text-foreground text-xs group-hover/trigger:text-hover-derived"
+                  dir="ltr"
+                >
+                  {fileName}
+                </span>
               </span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{relativePath ?? ''}</TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent>{relativePath ?? ''}</TooltipContent>
+          </Tooltip>
+        </FileContextMenu>
       </div>
       {fileWasCreated && (
         <span className="shrink-0 text-success-foreground text-xs group-hover/trigger:text-hover-derived">
@@ -312,7 +327,13 @@ const SuccessHeader = ({
   );
 };
 
-const LoadingHeader = ({ relativePath }: { relativePath?: string }) => {
+const LoadingHeader = ({
+  relativePath,
+  resolvePath,
+}: {
+  relativePath?: string;
+  resolvePath: (path: string) => string | null;
+}) => {
   const fileName = relativePath ? getBaseName(relativePath) : relativePath;
 
   return (
@@ -321,16 +342,21 @@ const LoadingHeader = ({ relativePath }: { relativePath?: string }) => {
         className={cn('size-3 shrink-0 animate-spin text-primary-foreground')}
       />
       {relativePath !== null ? (
-        <Tooltip>
-          <TooltipTrigger>
-            <span className="min-w-0 flex-1 truncate text-xs" dir="rtl">
-              <span dir="ltr" className="shimmer-text-primary">
-                {fileName}
+        <FileContextMenu
+          relativePath={relativePath ?? ''}
+          resolvePath={resolvePath}
+        >
+          <Tooltip>
+            <TooltipTrigger>
+              <span className="min-w-0 flex-1 truncate text-xs" dir="rtl">
+                <span dir="ltr" className="shimmer-text-primary">
+                  {fileName}
+                </span>
               </span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{relativePath ?? ''}</TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent>{relativePath ?? ''}</TooltipContent>
+          </Tooltip>
+        </FileContextMenu>
       ) : (
         <Skeleton className="h-3 w-16" variant="text" />
       )}

@@ -25,6 +25,7 @@ import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { IdeLogo } from '@ui/components/ide-logo';
 import { getIDEFileUrl, IDE_SELECTION_ITEMS } from '@ui/utils';
 import { getBaseName } from '@shared/path-utils';
+import { FileContextMenu } from '@ui/components/file-context-menu';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
 import { type MountEntry, EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
@@ -154,6 +155,8 @@ const WorkspaceBadge = memo(function WorkspaceBadge({
     (s) => s.globalConfig.openFilesInIde,
   );
 
+  const resolveAbsolute = useCallback((p: string) => p, []);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const sidePanelRef = useRef<HTMLDivElement>(null);
   const [sidePanelContent, setSidePanelContent] =
@@ -227,49 +230,51 @@ const WorkspaceBadge = memo(function WorkspaceBadge({
 
   return (
     <PreviewCard>
-      <div
-        className={cn(
-          'group/badge inline-flex items-center gap-1',
-          'rounded-md border border-derived px-1.5 py-0.5 text-muted-foreground',
-          'text-xs transition-colors duration-100',
-          'hover:bg-hover-derived hover:text-foreground',
-          'hover:has-[[data-unmount]:hover]:text-muted-foreground',
-          'has-[[data-popup-open]]:bg-hover-derived has-[[data-popup-open]]:text-foreground',
-        )}
-      >
-        <PreviewCardTrigger delay={200} closeDelay={300}>
-          <span className="inline-flex items-center gap-1">
-            {mount.isGitRepo ? (
-              <IconCodeBranchOutline18 className="size-3 shrink-0" />
-            ) : (
-              <IconFolder5Outline18 className="size-3 shrink-0" />
-            )}
-            <span className="max-w-32 truncate">{name}</span>
-          </span>
-        </PreviewCardTrigger>
-        <Tooltip>
-          <TooltipTrigger>
-            <span
-              role="button"
-              tabIndex={-1}
-              data-unmount
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onUnmount(mount.prefix);
-              }}
-              className={cn(
-                'flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded',
-                'text-subtle-foreground transition-colors duration-100',
-                'hover:text-foreground',
+      <FileContextMenu relativePath={mount.path} resolvePath={resolveAbsolute}>
+        <div
+          className={cn(
+            'group/badge inline-flex items-center gap-1',
+            'rounded-md border border-derived px-1.5 py-0.5 text-muted-foreground',
+            'text-xs transition-colors duration-100',
+            'hover:bg-hover-derived hover:text-foreground',
+            'hover:has-[[data-unmount]:hover]:text-muted-foreground',
+            'has-[[data-popup-open]]:bg-hover-derived has-[[data-popup-open]]:text-foreground',
+          )}
+        >
+          <PreviewCardTrigger delay={200} closeDelay={300}>
+            <span className="inline-flex items-center gap-1">
+              {mount.isGitRepo ? (
+                <IconCodeBranchOutline18 className="size-3 shrink-0" />
+              ) : (
+                <IconFolder5Outline18 className="size-3 shrink-0" />
               )}
-            >
-              <IconXmarkFill18 className="size-2.5" />
+              <span className="max-w-32 truncate">{name}</span>
             </span>
-          </TooltipTrigger>
-          <TooltipContent>Disconnect {name}</TooltipContent>
-        </Tooltip>
-      </div>
+          </PreviewCardTrigger>
+          <Tooltip>
+            <TooltipTrigger>
+              <span
+                role="button"
+                tabIndex={-1}
+                data-unmount
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onUnmount(mount.prefix);
+                }}
+                className={cn(
+                  'flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded',
+                  'text-subtle-foreground transition-colors duration-100',
+                  'hover:text-foreground',
+                )}
+              >
+                <IconXmarkFill18 className="size-2.5" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Disconnect {name}</TooltipContent>
+          </Tooltip>
+        </div>
+      </FileContextMenu>
 
       <PreviewCardBase.Portal>
         <PreviewCardBase.Backdrop

@@ -10,15 +10,16 @@ function resolveAbsolutePath(
   relativeFilePath: string,
   mounts: Mount[],
 ): string | null {
+  const normalized = normalizePath(relativeFilePath);
+  if (normalized.startsWith('/')) return normalized;
   for (const mount of mounts) {
-    if (relativeFilePath.startsWith(`${mount.prefix}/`)) {
-      const stripped = relativeFilePath.slice(mount.prefix.length + 1);
-      return `${normalizePath(mount.path)}/${normalizePath(stripped)}`;
-    }
+    if (!normalized.startsWith(`${mount.prefix}/`)) continue;
+    const stripped = normalized.slice(mount.prefix.length + 1);
+    return `${normalizePath(mount.path)}/${stripped}`;
   }
-  if (mounts.length === 1) {
-    return `${normalizePath(mounts[0].path)}/${normalizePath(relativeFilePath)}`;
-  }
+  if (mounts.length === 1)
+    return `${normalizePath(mounts[0].path)}/${normalized}`;
+
   return null;
 }
 

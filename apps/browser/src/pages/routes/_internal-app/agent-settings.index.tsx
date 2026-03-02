@@ -52,6 +52,7 @@ import { produceWithPatches, enablePatches } from 'immer';
 import { IconChevronRightOutline18 } from 'nucleo-ui-outline-18';
 import { ChevronDownIcon, Loader2Icon, RefreshCwIcon } from 'lucide-react';
 import { getBaseName } from '@shared/path-utils';
+import { FileContextMenu } from '@ui/components/file-context-menu';
 
 enablePatches();
 
@@ -276,6 +277,8 @@ function WorkspaceContextSection({
   const isTarget = targetWorkspace === workspacePath;
   const [isOpen, setIsOpen] = useState(defaultOpen || isTarget);
 
+  const resolveAbsolute = useCallback((p: string) => p, []);
+
   useEffect(() => {
     if (isTarget && scrollReady && sectionRef.current) {
       sectionRef.current.scrollIntoView({
@@ -388,21 +391,26 @@ function WorkspaceContextSection({
             <span className="font-medium text-foreground text-sm">
               {folderName}
             </span>
-            <Tooltip>
-              <TooltipTrigger>
-                <span
-                  className="max-w-80 truncate text-muted-foreground text-xs"
-                  dir="rtl"
-                >
-                  <span dir="ltr">{workspacePath}</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span className="block max-w-80 break-all">
-                  {workspacePath}
-                </span>
-              </TooltipContent>
-            </Tooltip>
+            <FileContextMenu
+              relativePath={workspacePath}
+              resolvePath={resolveAbsolute}
+            >
+              <Tooltip>
+                <TooltipTrigger>
+                  <span
+                    className="max-w-80 truncate text-muted-foreground text-xs"
+                    dir="rtl"
+                  >
+                    <span dir="ltr">{workspacePath}</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span className="block max-w-80 break-all">
+                    {workspacePath}
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            </FileContextMenu>
           </div>
           <ChevronDownIcon
             className={cn(
@@ -557,39 +565,49 @@ function WorkspaceContextSection({
                 <Tabs defaultValue={defaultTab} className="w-full">
                   <TabsList className="max-w-96">
                     {workspaceMd.exists && (
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <TabsTrigger value="workspaceMd">
-                            WORKSPACE.md
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <span className="block max-w-80 break-all">
-                            {workspaceMd.path}
-                          </span>
-                        </TooltipContent>
-                      </Tooltip>
+                      <FileContextMenu
+                        relativePath={workspaceMd.path ?? ''}
+                        resolvePath={resolveAbsolute}
+                      >
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <TabsTrigger value="workspaceMd">
+                              WORKSPACE.md
+                            </TabsTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <span className="block max-w-80 break-all">
+                              {workspaceMd.path}
+                            </span>
+                          </TooltipContent>
+                        </Tooltip>
+                      </FileContextMenu>
                     )}
                     {agentsMd.exists && (
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <TabsTrigger
-                            value="agentsMd"
-                            className={
-                              !respectAgentsMd
-                                ? 'text-subtle-foreground'
-                                : undefined
-                            }
-                          >
-                            AGENTS.md
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <span className="block max-w-80 break-all">
-                            {agentsMd.path}
-                          </span>
-                        </TooltipContent>
-                      </Tooltip>
+                      <FileContextMenu
+                        relativePath={agentsMd.path ?? ''}
+                        resolvePath={resolveAbsolute}
+                      >
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <TabsTrigger
+                              value="agentsMd"
+                              className={
+                                !respectAgentsMd
+                                  ? 'text-subtle-foreground'
+                                  : undefined
+                              }
+                            >
+                              AGENTS.md
+                            </TabsTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <span className="block max-w-80 break-all">
+                              {agentsMd.path}
+                            </span>
+                          </TooltipContent>
+                        </Tooltip>
+                      </FileContextMenu>
                     )}
                   </TabsList>
 

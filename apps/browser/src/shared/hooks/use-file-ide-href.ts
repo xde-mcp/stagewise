@@ -51,5 +51,6 @@ export function useFileIDEHref({
     getFileIDEHref,
     needsIdePicker,
     pickIdeAndOpen,
+    resolvePath,
   };
 }

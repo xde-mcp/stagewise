@@ -43,6 +43,7 @@ import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { IdePickerPopover } from '@ui/components/ide-picker-popover';
+import { FileContextMenu } from '@ui/components/file-context-menu';
 import { IdeLogo } from '@ui/components/ide-logo';
 import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@ui/utils';
 
@@ -67,7 +68,8 @@ const FileDiffItem: FC<{
   const [isOpen, setIsOpen] = useState(true);
   const [collapsedDiffView, setCollapsedDiffView] = useState(true);
   const { added, removed } = getLineStats(edit);
-  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen } = useFileIDEHref();
+  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen, resolvePath } =
+    useFileIDEHref();
   const openInIdeSelection = useKartonState(
     (s) => s.globalConfig.openFilesInIde,
   );
@@ -93,16 +95,18 @@ const FileDiffItem: FC<{
               filePath={edit.fileName}
               className="-ml-1 size-4 shrink-0"
             />
-            <Tooltip>
-              <TooltipTrigger>
-                <span className="min-w-0 truncate font-normal text-foreground text-xs hover:text-foreground group-hover:text-hover-derived">
-                  {edit.fileName}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="max-w-md">{edit.path}</div>
-              </TooltipContent>
-            </Tooltip>
+            <FileContextMenu relativePath={edit.path} resolvePath={resolvePath}>
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="min-w-0 truncate font-normal text-foreground text-xs hover:text-foreground group-hover:text-hover-derived">
+                    {edit.fileName}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="max-w-md">{edit.path}</div>
+                </TooltipContent>
+              </Tooltip>
+            </FileContextMenu>
             {edit.isExternal && edit.changeType === 'created' && (
               <span className="shrink-0 text-success-foreground text-xs">
                 (new)
