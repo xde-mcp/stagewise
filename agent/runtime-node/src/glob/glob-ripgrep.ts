@@ -30,11 +30,13 @@ function buildRipgrepGlobArgs(
   // Ignore user config files for deterministic behavior (VS Code pattern)
   args.push('--no-config');
 
-  // Include hidden files (dotfiles)
+  // Include hidden files (dotfiles) but exclude .git directory;
+  // --hidden does not auto-exclude .git in any ripgrep version.
   args.push('--hidden');
+  args.push('-g', '!.git');
 
-  // Include pattern
-  args.push('-g', pattern);
+  // Include pattern (skip for '**' which is match-all; rg --files already lists everything)
+  if (pattern !== '**') args.push('-g', pattern);
 
   // Exclude patterns
   if (options?.excludePatterns && options.excludePatterns.length > 0)

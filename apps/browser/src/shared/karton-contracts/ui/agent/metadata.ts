@@ -72,6 +72,63 @@ export const workspaceSnapshotSchema = z.object({
 
 export type WorkspaceSnapshot = z.infer<typeof workspaceSnapshotSchema>;
 
+/**
+ * Per-provider mention metadata types.
+ * These are self-contained snapshots captured at message creation time
+ * so the system prompt builder can format them without runtime state.
+ */
+
+export const fileMentionMetaSchema = z.object({
+  providerType: z.literal('file'),
+  /** Mount-prefixed path, e.g. "w234/src/button.tsx" — agent-facing ID */
+  mountedPath: z.string(),
+  /** Path relative to workspace root, e.g. "src/button.tsx" */
+  relativePath: z.string(),
+  /** Mount prefix, e.g. "w234" */
+  mountPrefix: z.string(),
+  /** Base filename, e.g. "button.tsx" */
+  fileName: z.string(),
+  sizeBytes: z.number().optional(),
+  isDirectory: z.boolean().optional(),
+});
+
+export type FileMentionMeta = z.infer<typeof fileMentionMetaSchema>;
+
+export const tabMentionMetaSchema = z.object({
+  providerType: z.literal('tab'),
+  /** Internal tab ID */
+  tabId: z.string(),
+  /** LLM-visible handle, e.g. "t_1" */
+  tabHandle: z.string(),
+  /** Tab URL at mention time */
+  url: z.string(),
+  /** Tab title at mention time */
+  title: z.string(),
+});
+
+export type TabMentionMeta = z.infer<typeof tabMentionMetaSchema>;
+
+export const mentionMetaSchema = z.discriminatedUnion('providerType', [
+  fileMentionMetaSchema,
+  tabMentionMetaSchema,
+]);
+
+export type MentionMeta = z.infer<typeof mentionMetaSchema>;
+
+// For v1, Mention === MentionMeta (no file content).
+// Future: FileMention will extend FileMentionMeta with { content, truncated }.
+export const mentionSchema = mentionMetaSchema;
+export type Mention = MentionMeta;
+
+/** Search result returned by toolbox.searchMentionFiles procedure. */
+export const mentionFileCandidateSchema = fileMentionMetaSchema.extend({
+  relevanceReason: z
+    .enum(['pending-diff', 'edit-summary', 'search-match'])
+    .optional(),
+});
+
+export type MentionFileCandidate = z.infer<typeof mentionFileCandidateSchema>;
+
 export const environmentSnapshotSchema = z.object({
   browser: browserSnapshotSchema.optional(),
   workspace: workspaceSnapshotSchema.optional(),
@@ -106,6 +163,8 @@ const metadataSchema = z.object({
   fileAttachments: z.array(fileAttachmentSchema).optional(),
   /** Snapshot of browser, workspace, and file-diff state at message creation time. Used to compute environment change descriptions between agent turns. */
   environmentSnapshot: environmentSnapshotSchema.optional(),
+  /** @-mentions of files, tabs, or other items the user referenced inline */
+  mentions: z.array(mentionSchema).optional(),
 });
 
 export type UserMessageMetadata = z.infer<typeof metadataSchema>;

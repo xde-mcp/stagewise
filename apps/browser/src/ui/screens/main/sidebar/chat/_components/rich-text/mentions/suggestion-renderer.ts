@@ -5,6 +5,7 @@ import type {
   SuggestionKeyDownProps,
 } from '@tiptap/suggestion';
 import { SuggestionPopup } from './suggestion-popup';
+import { mentionContextRef } from './mention-extension';
 import type { ResolvedMentionItem } from './types';
 
 export const mentionSuggestionActive = { current: false };
@@ -29,6 +30,7 @@ export function createSuggestionRenderer() {
         selectedIndex,
         onSelect: (item: ResolvedMentionItem) => currentProps?.command(item),
         clientRect: currentProps.clientRect ?? null,
+        tabs: mentionContextRef.current.tabs,
       }),
     );
   }
@@ -40,7 +42,8 @@ export function createSuggestionRenderer() {
       selectedIndex = 0;
 
       container = document.createElement('div');
-      container.className = 'mention-suggestion-container';
+      container.className =
+        'mention-suggestion-container animate-in fade-in-0 zoom-in-95 duration-150';
       document.body.appendChild(container);
       root = createRoot(container);
       renderPopup();
@@ -57,13 +60,18 @@ export function createSuggestionRenderer() {
       const count = currentProps.items.length;
       if (count === 0) return false;
 
-      if (event.key === 'ArrowDown') {
+      const isCtrlOnly =
+        event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
+
+      if (event.key === 'ArrowDown' || (isCtrlOnly && event.key === 'n')) {
+        event.preventDefault();
         selectedIndex = (selectedIndex + 1) % count;
         renderPopup();
         return true;
       }
 
-      if (event.key === 'ArrowUp') {
+      if (event.key === 'ArrowUp' || (isCtrlOnly && event.key === 'p')) {
+        event.preventDefault();
         selectedIndex = (selectedIndex - 1 + count) % count;
         renderPopup();
         return true;

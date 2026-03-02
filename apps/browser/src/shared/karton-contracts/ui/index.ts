@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import type { ModelId } from '@shared/available-models';
-import type { UserMessageMetadata, MountPermission } from './agent/metadata';
+import type {
+  UserMessageMetadata,
+  MountPermission,
+  MentionFileCandidate,
+} from './agent/metadata';
 import type { ReactSelectedElementInfo } from '../../selected-elements/react';
 import type { AppRouter, TRPCClient } from '@stagewise/api-client';
 import type { SelectedElement } from '../../selected-elements';
@@ -781,6 +785,10 @@ export type KartonContract = {
         agentInstanceId: string,
         toolCallId: string,
       ) => Promise<void>;
+      searchMentionFiles: (
+        agentInstanceId: string,
+        query: string,
+      ) => Promise<MentionFileCandidate[]>;
     };
     userAccount: {
       sendOtp: (email: string) => Promise<{ error?: string }>;

@@ -160,7 +160,7 @@ export function createAttachmentNode<TAttrs extends object = object>(
       // Tokenize function parses our custom link syntax
       tokenize(src: string) {
         // Match empty link syntax with our protocol: [](protocol:id)
-        const pattern = `^\\[\\]\\(${markdownProtocol}:([^)]+)\\)`;
+        const pattern = `^\\[\\]\\(${markdownProtocol}:((?:[^()]|\\([^()]*\\))+)\\)`;
         const match = src.match(new RegExp(pattern));
         if (!match) return undefined;
 

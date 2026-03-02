@@ -44,6 +44,7 @@ import {
 import { ChatInputViewOnly } from './chat-input-view-only';
 import { generateId } from 'ai';
 import type { AttachmentType } from './rich-text/attachments';
+import type { MentionContext } from './rich-text/mentions';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import type { Content } from '@tiptap/core';
 import { IconMagicWandSparkle } from 'nucleo-micro-bold';
@@ -125,6 +126,10 @@ export const MessageUser = memo(
     }, [clearSelectedElementsProc]);
     const removeSelectedElement = useKartonProcedure(
       (p) => p.browser.contextSelection.removeElement,
+    );
+
+    const searchMentionFiles = useKartonProcedure(
+      (p) => p.toolbox.searchMentionFiles,
     );
 
     // Edit mode state with mention IDs
@@ -509,6 +514,16 @@ export const MessageUser = memo(
       return activeTab?.url?.startsWith('stagewise://internal/') ?? false;
     }, [activeTab?.url]);
 
+    const mentionContext = useMemo<MentionContext>(
+      () => ({
+        agentInstanceId: openAgent,
+        searchFiles: searchMentionFiles,
+        tabs,
+        activeTabId,
+      }),
+      [openAgent, searchMentionFiles, tabs, activeTabId],
+    );
+
     // Count total attachments for display
     const totalAttachments =
       editedFileAttachments.length + selectedElementsFromWebcontents.length;
@@ -645,6 +660,7 @@ export const MessageUser = memo(
                         onBlur={onEditInputBlur}
                         onPasteFiles={handlePasteFiles}
                         onAttachmentRemoved={handleRemoveAttachment}
+                        mentionContext={mentionContext}
                         className="w-full"
                       />
                       {/* Action buttons */}

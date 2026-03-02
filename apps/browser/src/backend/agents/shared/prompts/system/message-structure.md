@@ -5,7 +5,9 @@
 User input is delivered as structured XML. Each top-level tag has a defined role:
 
 - `<user-msg>`: Contains the actual user message. Content is inside CDATA. Written in markdown. May contain custom markdown link protocols. This is the ONLY content written by the user.
-- `<attach>`: Structured metadata or attachments (images, selected DOM elements, files, environment info), including an unqiue ID that may be referenced by links in both user and agent message contents.
+- `<attach>`: Structured metadata or attachments (images, selected DOM elements, files, environment info, mentions), including an unqiue ID that may be referenced by links in both user and agent message contents.
+  - `type="file-mention"`: A workspace file or directory the user referenced with `@`. Attributes: `path` (relative), `mounted-path` (agent-facing), `filename`, optional `is-directory`.
+  - `type="tab-mention"`: A browser tab the user referenced with `@`. Attributes: `tab-handle`, `url`, `title`.
 - `<compressed-history>`: Summary of previous conversation context.
 - `<env-changes>`: Auto-injected between messages when the environment changes. Lists browser tab events (opened/closed/navigated), workspace status changes, and file modifications by others. Your own file edits are never listed — any `agent-*` contributor is always a different agent.
 - Other top-level XML tags: Represent other trusted application context.

@@ -34,6 +34,12 @@ import {
   type AttachmentAttributes,
   type AttachmentType,
 } from './rich-text/attachments';
+import {
+  MentionExtension,
+  mentionSuggestionActive,
+  mentionContextRef,
+  type MentionContext,
+} from './rich-text/mentions';
 import { useState, memo } from 'react';
 // Re-export types for convenience
 export type { AttachmentAttributes, AttachmentType };
@@ -78,6 +84,9 @@ export interface ChatInputProps {
 
   // Attachment removal callback (when badges are deleted from editor)
   onAttachmentRemoved?: (id: string, type: AttachmentType) => void;
+
+  // Mention provider context (Karton state bridge)
+  mentionContext?: MentionContext;
 
   // Styling
   className?: string;
@@ -125,6 +134,8 @@ export const ChatInput = ({
   onEscape,
   onPasteFiles,
   onAttachmentRemoved,
+
+  mentionContext,
 
   className,
   ref,
@@ -185,6 +196,7 @@ export const ChatInput = ({
       ...configureAttachmentExtensions({
         onNodeDeleted: onAttachmentRemoved,
       }),
+      MentionExtension,
       // Add Markdown extension for parsing/serializing attachment links
       Markdown,
     ],
@@ -202,6 +214,7 @@ export const ChatInput = ({
       handleKeyDown: (view, event) => {
         // Handle Enter without Shift for submit
         if (event.key === 'Enter' && !event.shiftKey) {
+          if (mentionSuggestionActive.current) return false;
           event.preventDefault();
           // If input is empty and there are queued messages, flush the queue
           const isEmpty = view.state.doc.textContent.trim().length === 0;
@@ -264,6 +277,10 @@ export const ChatInput = ({
     editor?.commands.selectAll();
   }, [editor, shownPlaceholder]);
 
+  // Sync mention context to the module-level ref synchronously during render
+  // so the TipTap suggestion `items` callback always has current data.
+  if (mentionContext) mentionContextRef.current = mentionContext;
+
   const canSendMessage = useMemo(() => {
     return !disabled && textContent.trim().length > 2;
   }, [disabled, textContent]);
@@ -323,10 +340,11 @@ export const ChatInput = ({
     const editorElement = editor?.view?.dom;
     if (!editorElement) return;
 
-    // Build selector for all attachment node types
-    const attachmentSelectors = ALL_ATTACHMENT_NODE_NAMES.map(
-      (name) => `.react-renderer.node-${name}`,
-    ).join(', ');
+    // Build selector for all inline badge node types (attachments + mentions)
+    const allInlineNodeNames = [...ALL_ATTACHMENT_NODE_NAMES, 'mention'];
+    const attachmentSelectors = allInlineNodeNames
+      .map((name) => `.react-renderer.node-${name}`)
+      .join(', ');
 
     const observer = new MutationObserver(() => {
       editorElement
@@ -349,7 +367,7 @@ export const ChatInput = ({
                   'ProseMirror-separator',
                 )) ||
               // Next is another badge (consecutive badges)
-              ALL_ATTACHMENT_NODE_NAMES.some((name) =>
+              allInlineNodeNames.some((name) =>
                 (next as Element).classList?.contains(`node-${name}`),
               );
             if (isProblematic) {
@@ -442,6 +460,11 @@ export const ChatInput = ({
             '[&_.react-renderer.node-textClipAttachment]:before:w-0.5 [&_.react-renderer.node-textClipAttachment]:after:w-0.5',
             '[&_.react-renderer.node-textClipAttachment]:before:h-[1em] [&_.react-renderer.node-textClipAttachment]:after:h-[1em]',
             '[&_.react-renderer.node-textClipAttachment]:before:align-middle [&_.react-renderer.node-textClipAttachment]:after:align-middle',
+            '[&_.react-renderer.node-mention]:before:content-[""] [&_.react-renderer.node-mention]:after:content-[""]',
+            '[&_.react-renderer.node-mention]:before:inline-block [&_.react-renderer.node-mention]:after:inline-block',
+            '[&_.react-renderer.node-mention]:before:w-0.5 [&_.react-renderer.node-mention]:after:w-0.5',
+            '[&_.react-renderer.node-mention]:before:h-[1em] [&_.react-renderer.node-mention]:after:h-[1em]',
+            '[&_.react-renderer.node-mention]:before:align-middle [&_.react-renderer.node-mention]:after:align-middle',
             // Hide ProseMirror-separator elements to prevent cursor height issues at node boundaries
             '[&_.ProseMirror-separator]:hidden',
           )}

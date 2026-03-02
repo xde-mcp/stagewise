@@ -13,6 +13,10 @@ import type { TelemetryService } from '@/services/telemetry';
 import type { WorkspaceSnapshot } from '../../types';
 import { FULL_PERMISSIONS, type MountPermission } from '@/services/sandbox/ipc';
 import {
+  MentionSearchService,
+  type MentionSearchContext,
+} from './mention-search';
+import {
   readWorkspaceMd,
   WORKSPACE_MD_FILENAME,
 } from '@/agents/shared/prompts/utils/read-workspace-md';
@@ -42,6 +46,7 @@ export class MountManagerService extends DisposableService {
   private readonly userExperienceService: UserExperienceService;
   private readonly uiKarton: KartonService;
   private readonly telemetryService: TelemetryService;
+  private readonly mentionSearch: MentionSearchService;
   private onMountsChanged?: (agentInstanceId: string) => void;
 
   private agentMounts: Map<
@@ -78,6 +83,22 @@ export class MountManagerService extends DisposableService {
     this.userExperienceService = userExperienceService;
     this.uiKarton = uiKarton;
     this.telemetryService = telemetryService;
+
+    const searchCtx: MentionSearchContext = {
+      getWorkspacePathForPrefix: (prefix) =>
+        this.workspacePathsPerMount.get(prefix),
+      getClientRuntimeForPrefix: (prefix) => {
+        const wsPath = this.workspacePathsPerMount.get(prefix);
+        return wsPath ? this.clientRuntimesPerPath.get(wsPath) : undefined;
+      },
+      getToolboxState: (agentInstanceId) =>
+        this.uiKarton.state.toolbox[agentInstanceId],
+      getMountPrefixes: (agentInstanceId) => {
+        const mounts = this.agentMounts.get(agentInstanceId);
+        return mounts ? [...mounts.keys()] : undefined;
+      },
+    };
+    this.mentionSearch = new MentionSearchService(logger, searchCtx);
   }
 
   public static async create(
@@ -129,6 +150,17 @@ export class MountManagerService extends DisposableService {
         mountPrefix: string,
       ) => {
         await this.handleUnmountWorkspace(agentInstanceId, mountPrefix);
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.searchMentionFiles',
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+        query: string,
+      ) => {
+        return this.mentionSearch.search(agentInstanceId, query);
       },
     );
   }
@@ -577,6 +609,7 @@ export class MountManagerService extends DisposableService {
     this.clientRuntimesPerPath.clear();
     this.uiKarton.removeServerProcedureHandler('toolbox.mountWorkspace');
     this.uiKarton.removeServerProcedureHandler('toolbox.unmountWorkspace');
+    this.uiKarton.removeServerProcedureHandler('toolbox.searchMentionFiles');
     return Promise.resolve();
   }
 }

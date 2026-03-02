@@ -6,6 +6,7 @@ import {
   ElementAttachmentView,
   TextClipAttachmentView,
 } from './rich-text/attachments';
+import { MentionNodeView } from './rich-text/mentions';
 import type { Content } from '@tiptap/core';
 
 /**
@@ -154,9 +155,17 @@ function RenderNode({ node }: { node: TiptapNode }): React.ReactNode {
       );
 
     case 'textClipAttachment':
-      // TextClipAttachmentView looks up content from context
       return (
         <TextClipAttachmentView
+          viewOnly
+          selected={false}
+          node={{ attrs: node.attrs ?? {} }}
+        />
+      );
+
+    case 'mention':
+      return (
+        <MentionNodeView
           viewOnly
           selected={false}
           node={{ attrs: node.attrs ?? {} }}

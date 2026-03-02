@@ -1,15 +1,7 @@
-import uFuzzy from '@leeoniya/ufuzzy';
-
-const uf = new uFuzzy({
-  intraMode: 1,
-  intraSub: 1,
-  intraTrn: 1,
-  intraDel: 1,
-  intraIns: 1,
-});
+import { hasMatch, score, SCORE_MIN, SCORE_MAX } from 'fzy.js';
 
 /**
- * Batch-scores how well `query` matches each string in `haystack` using uFuzzy.
+ * Batch-scores how well `query` matches each string in `haystack` using fzy.js.
  * Returns a Map from haystack index to a 0-1 score (higher = better match).
  * Items not in the map did not match at all.
  */
@@ -19,16 +11,30 @@ export function batchFuzzyScore(
 ): Map<number, number> {
   if (!query || haystack.length === 0) return new Map();
 
-  const [idxs, info, order] = uf.search(haystack, query, 1);
+  const lowerQuery = query.toLowerCase();
 
-  if (!idxs || !order || order.length === 0) return new Map();
+  const raw: Array<{ idx: number; score: number }> = [];
+  let maxScore = SCORE_MIN;
+
+  for (let i = 0; i < haystack.length; i++) {
+    const entry = haystack[i];
+    if (!hasMatch(lowerQuery, entry.toLowerCase())) continue;
+
+    const s = score(lowerQuery, entry.toLowerCase());
+    if (s === SCORE_MIN) continue;
+
+    raw.push({ idx: i, score: s });
+    if (s !== SCORE_MAX && s > maxScore) maxScore = s;
+  }
+
+  if (raw.length === 0) return new Map();
 
   const scores = new Map<number, number>();
-  const count = order.length;
 
-  for (let rank = 0; rank < count; rank++) {
-    const haystackIdx = info.idx[order[rank]];
-    scores.set(haystackIdx, 1 - rank / Math.max(count, 2));
+  for (const { idx, score: s } of raw) {
+    if (s === SCORE_MAX) scores.set(idx, 1);
+    else if (maxScore <= 0) scores.set(idx, 0.5);
+    else scores.set(idx, Math.max(0, s / maxScore));
   }
 
   return scores;

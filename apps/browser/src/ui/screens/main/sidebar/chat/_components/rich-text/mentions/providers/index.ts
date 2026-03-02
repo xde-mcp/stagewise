@@ -1,31 +1,43 @@
-import type { MentionItem } from '../types';
-import type { ResolvedMentionItem } from '../types';
-import type { MentionProvider, MentionProviderIcon } from './types';
+import type { MentionItem, ResolvedMentionItem } from '../types';
+import type {
+  MentionProvider,
+  MentionProviderIcon,
+  MentionContext,
+} from './types';
 import { batchFuzzyScore } from './fuzzy-score';
-import { stubFileProvider, stubTabProvider } from './stub';
+import { fileProvider } from './file-provider';
+import { tabProvider } from './tab-provider';
 
 const FUZZY_WEIGHT = 10;
 const RELEVANCE_WEIGHT = 5;
 
 const providerMap = new Map<string, MentionProvider>([
-  [stubFileProvider.type, stubFileProvider],
-  [stubTabProvider.type, stubTabProvider],
+  [fileProvider.type, fileProvider],
+  [tabProvider.type, tabProvider],
 ]);
 
 type ScoredItem = ResolvedMentionItem & { _score: number };
 
 export async function queryAllProviders(
   query: string,
+  ctx: MentionContext,
 ): Promise<ResolvedMentionItem[]> {
   const results = await Promise.all(
     Array.from(providerMap.values()).map(async (p) => {
-      const items = await p.query(query);
-      return { provider: p, items };
+      try {
+        const items = await p.query(query, ctx);
+        return { provider: p, items };
+      } catch (err) {
+        console.error(`[mention] provider "${p.type}" failed:`, err);
+        return { provider: p, items: [] as MentionItem[] };
+      }
     }),
   );
 
-  const allEntries: Array<{ provider: MentionProvider; item: MentionItem }> =
-    [];
+  const allEntries: Array<{
+    provider: MentionProvider;
+    item: MentionItem;
+  }> = [];
   for (const { provider, items } of results) {
     for (const item of items) {
       allEntries.push({ provider, item });
@@ -33,7 +45,7 @@ export async function queryAllProviders(
   }
 
   const haystack = allEntries.map(
-    ({ item }) => `${item.label} ${item.description ?? ''}`,
+    ({ item }) => item.searchText ?? `${item.description ?? ''}${item.label}`,
   );
   const fuzzyScores = query
     ? batchFuzzyScore(query, haystack)
@@ -54,7 +66,6 @@ export async function queryAllProviders(
     scored.push({
       ...item,
       group: item.group ?? provider.groupLabel,
-      providerType: item.providerType ?? provider.type,
       _score: score,
     });
   }
@@ -70,4 +81,8 @@ export function getProviderIcon(
   return providerMap.get(type)?.icon;
 }
 
-export type { MentionProvider, MentionProviderIcon } from './types';
+export type {
+  MentionProvider,
+  MentionProviderIcon,
+  MentionContext,
+} from './types';

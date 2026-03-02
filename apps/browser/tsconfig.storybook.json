@@ -28,6 +28,7 @@
     "src/ui/**/*.ts",
     "src/shared/**/*.ts",
     "src/shared/**/*.tsx",
+    "src/types/**/*.d.ts",
     ".storybook/decorators/**/*.ts",
     ".storybook/decorators/**/*.tsx",
     ".storybook/mocks/**/*.ts",

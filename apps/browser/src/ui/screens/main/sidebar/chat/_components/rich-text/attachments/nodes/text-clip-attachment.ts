@@ -173,7 +173,7 @@ export const TextClipAttachment = Node.create<AttachmentNodeOptions>({
     // Tokenize function parses our custom link syntax
     tokenize(src: string) {
       // Match empty link syntax with text-clip protocol: [](text-clip:id)
-      const match = src.match(/^\[\]\(text-clip:([^)]+)\)/);
+      const match = src.match(/^\[\]\(text-clip:((?:[^()]|\([^()]*\))+)\)/);
       if (!match) return undefined;
 
       return {

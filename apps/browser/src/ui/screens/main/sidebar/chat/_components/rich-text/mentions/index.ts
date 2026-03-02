@@ -1,6 +1,18 @@
-export { MentionExtension } from './mention-extension';
+export { MentionExtension, mentionContextRef } from './mention-extension';
 export { mentionSuggestionActive } from './suggestion-renderer';
 export { MentionNodeView } from './mention-node-view';
-export type { MentionAttrs, MentionItem, ResolvedMentionItem } from './types';
+export { extractMentionsFromTiptapContent } from './extract';
+export type {
+  MentionAttrs,
+  MentionItem,
+  MentionItemBase,
+  FileMentionItem,
+  TabMentionItem,
+  ResolvedMentionItem,
+} from './types';
 export { queryAllProviders, getProviderIcon } from './providers';
-export type { MentionProvider, MentionProviderIcon } from './providers/types';
+export type {
+  MentionProvider,
+  MentionProviderIcon,
+  MentionContext,
+} from './providers/types';

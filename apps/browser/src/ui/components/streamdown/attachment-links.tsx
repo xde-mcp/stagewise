@@ -26,6 +26,7 @@ import {
   ElementAttachmentView,
   TextClipAttachmentView,
 } from '@ui/screens/main/sidebar/chat/_components/rich-text/attachments';
+import { MentionNodeView } from '@ui/screens/main/sidebar/chat/_components/rich-text/mentions';
 import {
   getRenderer,
   type RendererProps,
@@ -105,7 +106,8 @@ export type AttachmentLinkData =
       filePath: string;
       lineNumber?: string;
       incomplete?: boolean;
-    };
+    }
+  | { type: 'mention'; providerType: string; id: string };
 
 const ATTACHMENT_LINK_PATTERNS: Array<{
   prefix: string;
@@ -132,6 +134,19 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
   {
     prefix: 'color:',
     parse: (rest) => ({ type: 'color', color: decodeURIComponent(rest) }),
+  },
+  {
+    prefix: 'mention:',
+    parse: (rest) => {
+      const colonIdx = rest.indexOf(':');
+      if (colonIdx < 0)
+        return { type: 'mention', providerType: 'file', id: rest };
+      return {
+        type: 'mention',
+        providerType: rest.slice(0, colonIdx),
+        id: rest.slice(colonIdx + 1),
+      };
+    },
   },
   {
     prefix: 'wsfile:',
@@ -230,6 +245,8 @@ export function getAttachmentKey(linkData: AttachmentLinkData): string {
       return `wsfile-${linkData.filePath}`;
     case 'color':
       return `color-${linkData.color}`;
+    case 'mention':
+      return `mention-${linkData.providerType}-${linkData.id}`;
   }
 }
 
@@ -458,5 +475,19 @@ export const AttachmentLinkRouter = ({
       );
     case 'color':
       return <ColorBadge color={linkData.color} />;
+    case 'mention':
+      return (
+        <MentionNodeView
+          viewOnly
+          selected={false}
+          node={{
+            attrs: {
+              id: linkData.id,
+              label: linkData.id,
+              providerType: linkData.providerType,
+            },
+          }}
+        />
+      );
   }
 };

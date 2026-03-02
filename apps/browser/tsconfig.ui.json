@@ -16,7 +16,13 @@
     "types": ["vite/client"],
     "skipLibCheck": true
   },
-  "include": ["src/ui", "forge.env.d.ts", "src/shared", ".storybook/**/*"],
+  "include": [
+    "src/ui",
+    "forge.env.d.ts",
+    "src/shared",
+    "src/types",
+    ".storybook/**/*"
+  ],
   "exclude": [
     "**/*.stories.tsx",
     "**/*.stories.ts",

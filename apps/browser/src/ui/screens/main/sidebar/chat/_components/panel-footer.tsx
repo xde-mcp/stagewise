@@ -29,6 +29,7 @@ import {
   type ChatInputHandle,
 } from './chat-input';
 import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/rich-text/attachments';
+import type { MentionContext } from '@/screens/main/sidebar/chat/_components/rich-text/mentions';
 import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
@@ -191,6 +192,21 @@ export function ChatPanelFooter() {
   );
   const removeSelectedElementProc = useKartonProcedure(
     (p) => p.browser.contextSelection.removeElement,
+  );
+
+  const searchMentionFiles = useKartonProcedure(
+    (p) => p.toolbox.searchMentionFiles,
+  );
+  const mentionTabs = useKartonState((s) => s.browser.tabs);
+  const mentionActiveTabId = useKartonState((s) => s.browser.activeTabId);
+  const mentionContext = useMemo<MentionContext>(
+    () => ({
+      agentInstanceId: openAgent,
+      searchFiles: searchMentionFiles,
+      tabs: mentionTabs,
+      activeTabId: mentionActiveTabId,
+    }),
+    [openAgent, searchMentionFiles, mentionTabs, mentionActiveTabId],
   );
 
   const mountedPaths = useKartonState((s) =>
@@ -768,6 +784,7 @@ export function ChatPanelFooter() {
           onBlur={onInputBlur}
           onPasteFiles={handlePasteFiles}
           onAttachmentRemoved={handleAttachmentRemoved}
+          mentionContext={mentionContext}
         />
         <ChatInputActions
           isAgentWorking={isWorking}

@@ -23,6 +23,7 @@ import {
   selectedElementToContextSnippet,
 } from '../prompts/utils/metadata-converter/html-elements';
 import { textClipToContextSnippet } from '../prompts/utils/metadata-converter/text-clips';
+import { mentionToContextSnippet } from '../prompts/utils/metadata-converter/mentions';
 import xml from 'xml';
 import specialTokens from '../prompts/utils/special-tokens';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
@@ -461,6 +462,11 @@ export const convertAgentMessagesToModelMessages = async (
           systemAttachmentTextPart.push(textClipToContextSnippet(textClip));
         });
 
+      if (message.metadata?.mentions && message.metadata.mentions.length > 0)
+        message.metadata.mentions.forEach((mention) => {
+          systemAttachmentTextPart.push(mentionToContextSnippet(mention));
+        });
+
       if (
         message.metadata?.selectedPreviewElements &&
         message.metadata.selectedPreviewElements.length > 0
@@ -656,9 +662,14 @@ export const convertAgentMessagesToCompactMessageHistoryString = (
         message.metadata?.selectedPreviewElements?.map((se) => {
           return `[ATTACHED SELECTED ELEMENT: ID:'${se.id}', TagName:'${se.tagName}', TextContent:'${se.textContent}']`;
         });
+      const serializedMentionParts = message.metadata?.mentions?.map((m) => {
+        if (m.providerType === 'file')
+          return `[MENTIONED FILE: Path:'${m.relativePath}'${m.isDirectory ? ', Directory' : ''}]`;
+        return `[MENTIONED TAB: Handle:'${m.tabHandle}', URL:'${m.url}']`;
+      });
 
       revertedCompactedHistoryStringParts.push(
-        `**User:** ${serializedParts.join(' ')} ${serializedFileAttachmentMetadataParts?.join(' ') ?? ''} ${serializedTextClipAttachmentMetadataParts?.join(' ') ?? ''} ${serializedSelectedPreviewElementsMetadataParts?.join(' ') ?? ''}`.trim(),
+        `**User:** ${serializedParts.join(' ')} ${serializedFileAttachmentMetadataParts?.join(' ') ?? ''} ${serializedTextClipAttachmentMetadataParts?.join(' ') ?? ''} ${serializedSelectedPreviewElementsMetadataParts?.join(' ') ?? ''} ${serializedMentionParts?.join(' ') ?? ''}`.trim(),
       );
 
       if (message.metadata?.compressedHistory) {

@@ -27,17 +27,20 @@ import type { SelectedElement } from '@shared/selected-elements';
 
 /**
  * Regex matching attachment link syntax: [optional label](protocol:id)
- * Protocols: att, element, text-clip
+ * Protocols: att, element, text-clip, mention
  * The label in brackets is optional — empty brackets [] are fine.
  * For att: protocol, the id may contain query params (e.g. att:id?display=expanded).
+ * For mention: protocol, the id contains providerType:id (e.g. mention:file:src/foo.ts).
  */
-const ATTACHMENT_LINK_RE = /\[([^\]]*)\]\((att|element|text-clip):([^)]+)\)/g;
+const ATTACHMENT_LINK_RE =
+  /\[([^\]]*)\]\((att|element|text-clip|mention):((?:[^()]|\([^()]*\))+)\)/g;
 
 /** Maps attachment link protocol to TipTap node type */
 const PROTOCOL_TO_NODE: Record<string, string> = {
   att: 'attachment',
   element: 'elementAttachment',
   'text-clip': 'textClipAttachment',
+  mention: 'mention',
 };
 
 /**
@@ -59,12 +62,23 @@ function parseLineToInlineContent(line: string): JSONContent[] {
       });
     }
 
-    const [, , protocol, rawId] = match;
+    const [, bracketLabel, protocol, rawId] = match;
     const nodeType = PROTOCOL_TO_NODE[protocol!];
     if (nodeType) {
-      const qIdx = rawId!.indexOf('?');
-      const id = qIdx >= 0 ? rawId!.slice(0, qIdx) : rawId;
-      nodes.push({ type: nodeType, attrs: { id, label: id } });
+      if (nodeType === 'mention') {
+        const colonIdx = rawId!.indexOf(':');
+        const providerType = colonIdx >= 0 ? rawId!.slice(0, colonIdx) : 'file';
+        const id = colonIdx >= 0 ? rawId!.slice(colonIdx + 1) : rawId;
+        const label = bracketLabel || id;
+        nodes.push({
+          type: nodeType,
+          attrs: { id, label, providerType },
+        });
+      } else {
+        const qIdx = rawId!.indexOf('?');
+        const id = qIdx >= 0 ? rawId!.slice(0, qIdx) : rawId;
+        nodes.push({ type: nodeType, attrs: { id, label: id } });
+      }
     }
 
     lastIndex = match.index + match[0].length;

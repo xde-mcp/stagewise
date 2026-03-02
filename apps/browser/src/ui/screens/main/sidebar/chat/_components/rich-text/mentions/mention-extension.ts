@@ -3,17 +3,26 @@ import { ReactNodeViewRenderer } from '@tiptap/react';
 import { MentionNodeView } from './mention-node-view';
 import { createSuggestionRenderer } from './suggestion-renderer';
 import { queryAllProviders } from './providers';
+import type { MentionContext } from './providers/types';
 import type { ResolvedMentionItem } from './types';
 
 const MENTION_PROTOCOL = 'mention';
 
 /**
- * Configured Mention extension with:
- * - Custom `providerType` attribute for distinguishing file/tab/future mention types
- * - React NodeView rendering via InlineBadge
- * - Markdown serialization as [](mention:providerType:id)
- * - Suggestion popup wired to pluggable providers
+ * Module-level ref holding the latest MentionContext.
+ * Written synchronously by ChatInput during render so
+ * the TipTap suggestion `items` callback always sees
+ * current data (useEffect is too late — it fires after paint).
  */
+export const mentionContextRef: { current: MentionContext } = {
+  current: {
+    agentInstanceId: null,
+    searchFiles: null,
+    tabs: {},
+    activeTabId: null,
+  },
+};
+
 export const MentionExtension = Mention.extend({
   selectable: true,
   draggable: true,
@@ -29,6 +38,16 @@ export const MentionExtension = Mention.extend({
           'data-provider-type': attributes.providerType,
         }),
       },
+      meta: {
+        default: null,
+        parseHTML: (element: HTMLElement) => {
+          const raw = element.getAttribute('data-meta');
+          return raw ? JSON.parse(raw) : null;
+        },
+        renderHTML: (attributes: Record<string, any>) => ({
+          'data-meta': attributes.meta ? JSON.stringify(attributes.meta) : null,
+        }),
+      },
     };
   },
 
@@ -39,27 +58,30 @@ export const MentionExtension = Mention.extend({
   },
 
   renderText({ node }) {
-    return `@${node.attrs.label ?? node.attrs.id}`;
+    return `[${node.attrs.label ?? node.attrs.id}](mention:${node.attrs.providerType}:${node.attrs.id})`;
   },
 
   renderMarkdown(node: any) {
-    return `[](${MENTION_PROTOCOL}:${node.attrs.providerType}:${node.attrs.id})`;
+    return `[${node.attrs.label ?? node.attrs.id}](${MENTION_PROTOCOL}:${node.attrs.providerType}:${node.attrs.id})`;
   },
 
   markdownTokenizer: {
     name: 'mention',
     level: 'inline' as const,
     start(src: string) {
-      return src.match(/\[\]\(mention:/)?.index ?? -1;
+      return src.match(/\[[^\]]*\]\(mention:/)?.index ?? -1;
     },
     tokenize(src: string) {
-      const match = src.match(/^\[\]\(mention:([^:)]+):([^)]+)\)/);
+      const match = src.match(
+        /^\[([^\]]*)\]\(mention:([^:)]+):((?:[^()]|\([^()]*\))+)\)/,
+      );
       if (!match) return undefined;
       return {
         type: 'mention',
         raw: match[0],
-        providerType: match[1],
-        id: match[2],
+        label: match[1],
+        providerType: match[2],
+        id: match[3],
       };
     },
   },
@@ -69,7 +91,7 @@ export const MentionExtension = Mention.extend({
       type: 'mention',
       attrs: {
         id: token.id,
-        label: token.id,
+        label: token.label || token.id,
         providerType: token.providerType,
       },
     };
@@ -79,7 +101,9 @@ export const MentionExtension = Mention.extend({
   suggestion: {
     char: '@',
     allowSpaces: false,
-    items: async ({ query }: { query: string }) => queryAllProviders(query),
+    items: async ({ query }: { query: string; editor: any }) => {
+      return queryAllProviders(query, mentionContextRef.current);
+    },
     command: ({ editor, range, props }: any) => {
       const item = props as ResolvedMentionItem;
       editor
@@ -92,6 +116,7 @@ export const MentionExtension = Mention.extend({
               id: item.id,
               label: item.label,
               providerType: item.providerType,
+              meta: item.meta,
             },
           },
           { type: 'text', text: ' ' },
