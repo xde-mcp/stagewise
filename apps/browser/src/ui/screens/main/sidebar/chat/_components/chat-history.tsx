@@ -246,16 +246,25 @@ export const ChatHistory = () => {
       )
       .reduce<AgentMessage[]>((curr, message) => {
         const lastMessage = curr[curr.length - 1];
-        if (!lastMessage) {
-          curr.push({ ...message, parts: [...message.parts] });
-          return curr;
-        }
 
-        if (lastMessage.role === message.role && message.role === 'assistant') {
+        if (lastMessage?.role === 'assistant' && message.role === 'assistant') {
+          const prevPartsLength = lastMessage.parts.length;
           lastMessage.parts = [...lastMessage.parts, ...message.parts];
+
+          const incoming = message.metadata?.partsMetadata;
+          if (incoming?.length) {
+            const merged = [...(lastMessage.metadata?.partsMetadata ?? [])];
+            for (let i = 0; i < incoming.length; i++)
+              merged[prevPartsLength + i] = incoming[i];
+            lastMessage.metadata = {
+              ...lastMessage.metadata!,
+              partsMetadata: merged,
+            };
+          }
         } else {
           curr.push({ ...message, parts: [...message.parts] });
         }
+
         return curr;
       }, []);
   }, [history]);
