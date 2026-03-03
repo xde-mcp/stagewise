@@ -19,6 +19,15 @@ const MIME_MAP: Record<string, string> = {
   wav: 'audio/wav',
   flac: 'audio/flac',
   aac: 'audio/aac',
+  // Web
+  html: 'text/html',
+  htm: 'text/html',
+  js: 'text/javascript',
+  mjs: 'text/javascript',
+  css: 'text/css',
+  json: 'application/json',
+  wasm: 'application/wasm',
+  xml: 'application/xml',
   // Documents
   pdf: 'application/pdf',
   // Fonts

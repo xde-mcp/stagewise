@@ -1,6 +1,7 @@
 import { WebContentsView, shell, session, app, net } from 'electron';
 import { domCodeToElectronKeyCode } from '../../utils/dom-code-to-electron-key-code';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import contextMenu from 'electron-context-menu';
 import type { Logger } from '../logger';
 import type { TelemetryService } from '../telemetry';
@@ -244,6 +245,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
 
     this.registerBlobProtocol();
     this.registerFileProtocol();
+    this.registerAppRuntimeProtocol();
     this.view = this.createView();
     this.loadApp();
     this.registerKartonProcedures();
@@ -338,6 +340,57 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
         });
       } catch (err) {
         this.logger.error('[UIController] sw-file protocol error', {
+          error: err,
+          url: request.url,
+        });
+        return new Response('Internal error', { status: 500 });
+      }
+    });
+  }
+
+  /**
+   * Register the app-runtime:// protocol handler on the UI session so
+   * agent-created custom apps can be served in iframes.
+   * URL format: app-runtime://{appId}/{relativePath}
+   * Files are served from {userData}/custom-apps/{appId}/{relativePath}.
+   */
+  private registerAppRuntimeProtocol(): void {
+    const uiSession = session.fromPartition(UI_SESSION_PARTITION);
+    const customAppsRoot = path.join(this.globalDataPath, 'custom-apps');
+
+    uiSession.protocol.handle('app-runtime', async (request) => {
+      try {
+        const url = new URL(request.url);
+        const appId = url.hostname;
+        const relativePath = decodeURIComponent(
+          url.pathname.replace(/^\//, ''),
+        );
+
+        if (!appId || !relativePath)
+          return new Response('Invalid app-runtime URL', { status: 400 });
+
+        const appRoot = path.join(customAppsRoot, appId);
+        const absolutePath = path.resolve(appRoot, relativePath);
+
+        if (!absolutePath.startsWith(appRoot + path.sep))
+          return new Response('Path traversal denied', { status: 400 });
+
+        try {
+          await fs.access(absolutePath);
+        } catch {
+          return new Response('File not found', { status: 404 });
+        }
+
+        const mime = inferMimeType(relativePath);
+        const fileUrl = pathToFileURL(absolutePath).href;
+        const fileResponse = await net.fetch(fileUrl);
+
+        return new Response(fileResponse.body, {
+          status: 200,
+          headers: { 'Content-Type': mime },
+        });
+      } catch (err) {
+        this.logger.error('[UIController] app-runtime protocol error', {
           error: err,
           url: request.url,
         });
