@@ -83,7 +83,14 @@ export const WebContentsBoundsSyncer = () => {
         const isOmniboxModalActive =
           document.querySelector('[data-omnibox-modal-active]') !== null;
 
-        if (!isElementSelectorOverlay && !isOmniboxModalActive) {
+        const isNotificationToastActive =
+          document.querySelector('[data-notification-toast-active]') !== null;
+
+        if (
+          !isElementSelectorOverlay &&
+          !isOmniboxModalActive &&
+          !isNotificationToastActive
+        ) {
           const hoverContainer = elementAtPoint.closest(
             '[id^="dev-app-preview-container-"]',
           );

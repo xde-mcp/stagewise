@@ -1,5 +1,5 @@
 import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   toast,
   dismiss,
@@ -14,10 +14,23 @@ export function NotificationToaster() {
   const dismissNotification = useKartonProcedure(
     (s) => s.notifications.dismiss,
   );
+  const movePanelToForeground = useKartonProcedure(
+    (s) => s.browser.layout.movePanelToForeground,
+  );
 
   const [renderedNotificationIds, setRenderedNotifications] = useState<
     string[]
   >([]);
+
+  const hadNotificationsRef = useRef(false);
+
+  useEffect(() => {
+    const hasNotifications = notifications.length > 0;
+    if (hasNotifications && !hadNotificationsRef.current)
+      void movePanelToForeground('stagewise-ui');
+
+    hadNotificationsRef.current = hasNotifications;
+  }, [notifications, movePanelToForeground]);
 
   useEffect(() => {
     for (const notification of notifications) {
@@ -51,5 +64,13 @@ export function NotificationToaster() {
     }
   }, [notifications, renderedNotificationIds, triggerAction]);
 
-  return <Toaster position="bottom-right" swipeDirections={['bottom']} />;
+  const hasNotifications = notifications.length > 0;
+
+  return (
+    <div
+      {...(hasNotifications ? { 'data-notification-toast-active': true } : {})}
+    >
+      <Toaster position="bottom-right" swipeDirections={['bottom']} />
+    </div>
+  );
 }
