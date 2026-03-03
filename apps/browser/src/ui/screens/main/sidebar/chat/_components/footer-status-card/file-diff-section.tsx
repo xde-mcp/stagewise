@@ -3,6 +3,11 @@ import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import { ChevronDownIcon } from 'lucide-react';
 import { FileIcon } from '@/components/file-icon';
 import { cn } from '@/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@stagewise/stage-ui/components/tooltip';
 import { getBaseName } from '@shared/path-utils';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { FileContextMenu } from '@ui/components/file-context-menu';
@@ -37,52 +42,61 @@ export function FileDiffFileItem({
   onOpenDiffReview: (fileId: string) => void;
 }) {
   const { added, removed } = getLineStats(fileDiff);
-  const { resolvePath } = useFileIDEHref();
+  const { resolvePath, toRelativePath } = useFileIDEHref();
+  const displayPath = toRelativePath(fileDiff.path) ?? fileDiff.path;
 
   return (
     <FileContextMenu relativePath={fileDiff.path} resolvePath={resolvePath}>
-      <button
-        type="button"
-        className="flex w-full cursor-pointer flex-col items-start justify-start gap-2 rounded px-1 py-0.5 text-foreground hover:bg-surface-1 hover:text-hover-derived"
-        onClick={() => onOpenDiffReview(fileDiff.fileId)}
-      >
-        <span className="flex flex-row items-center justify-start gap-1 truncate text-xs">
-          <FileIcon filePath={fileDiff.fileName} className="size-5 shrink-0" />
-          <span className="text-xs leading-none">{fileDiff.fileName}</span>
-          {fileDiff.isExternal ? (
-            <>
-              {fileDiff.changeType === 'created' && (
-                <span className="text-[10px] text-success-foreground leading-none">
-                  (new)
-                </span>
+      <Tooltip>
+        <TooltipTrigger>
+          <button
+            type="button"
+            className="flex w-full cursor-pointer flex-col items-start justify-start gap-2 rounded px-1 py-0.5 text-foreground hover:bg-surface-1 hover:text-hover-derived"
+            onClick={() => onOpenDiffReview(fileDiff.fileId)}
+          >
+            <span className="flex flex-row items-center justify-start gap-1 truncate text-xs">
+              <FileIcon
+                filePath={fileDiff.fileName}
+                className="size-5 shrink-0"
+              />
+              <span className="text-xs leading-none">{fileDiff.fileName}</span>
+              {fileDiff.isExternal ? (
+                <>
+                  {fileDiff.changeType === 'created' && (
+                    <span className="text-[10px] text-success-foreground leading-none">
+                      (new)
+                    </span>
+                  )}
+                  {fileDiff.changeType === 'deleted' && (
+                    <span className="text-[10px] text-error-foreground leading-none">
+                      (deleted)
+                    </span>
+                  )}
+                  {fileDiff.changeType === 'modified' && (
+                    <span className="text-[10px] text-muted-foreground leading-none">
+                      (binary)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  {added > 0 && (
+                    <span className="text-[10px] text-success-foreground leading-none hover:text-hover-derived">
+                      +{added}
+                    </span>
+                  )}
+                  {removed > 0 && (
+                    <span className="text-[10px] text-error-foreground leading-none hover:text-hover-derived">
+                      -{removed}
+                    </span>
+                  )}
+                </>
               )}
-              {fileDiff.changeType === 'deleted' && (
-                <span className="text-[10px] text-error-foreground leading-none">
-                  (deleted)
-                </span>
-              )}
-              {fileDiff.changeType === 'modified' && (
-                <span className="text-[10px] text-muted-foreground leading-none">
-                  (binary)
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              {added > 0 && (
-                <span className="text-[10px] text-success-foreground leading-none hover:text-hover-derived">
-                  +{added}
-                </span>
-              )}
-              {removed > 0 && (
-                <span className="text-[10px] text-error-foreground leading-none hover:text-hover-derived">
-                  -{removed}
-                </span>
-              )}
-            </>
-          )}
-        </span>
-      </button>
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{displayPath}</TooltipContent>
+      </Tooltip>
     </FileContextMenu>
   );
 }

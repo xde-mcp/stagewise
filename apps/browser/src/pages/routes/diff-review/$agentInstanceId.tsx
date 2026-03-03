@@ -45,7 +45,7 @@ import { useFileIDEHref } from '@/hooks/use-file-ide-href';
 import { IdePickerPopover } from '@ui/components/ide-picker-popover';
 import { FileContextMenu } from '@ui/components/file-context-menu';
 import { IdeLogo } from '@ui/components/ide-logo';
-import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@ui/utils';
+import { cn, IDE_SELECTION_ITEMS } from '@ui/utils';
 
 export const Route = createFileRoute('/diff-review/$agentInstanceId')({
   component: Page,
@@ -68,8 +68,13 @@ const FileDiffItem: FC<{
   const [isOpen, setIsOpen] = useState(true);
   const [collapsedDiffView, setCollapsedDiffView] = useState(true);
   const { added, removed } = getLineStats(edit);
-  const { getFileIDEHref, needsIdePicker, pickIdeAndOpen, resolvePath } =
-    useFileIDEHref();
+  const {
+    getFileIDEHref,
+    needsIdePicker,
+    pickIdeAndOpen,
+    resolvePath,
+    toRelativePath,
+  } = useFileIDEHref();
   const openInIdeSelection = useKartonState(
     (s) => s.globalConfig.openFilesInIde,
   );
@@ -103,7 +108,9 @@ const FileDiffItem: FC<{
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <div className="max-w-md">{edit.path}</div>
+                  <div className="max-w-md">
+                    {toRelativePath(edit.path) ?? edit.path}
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </FileContextMenu>
@@ -259,7 +266,7 @@ const FileDiffItem: FC<{
                   <TooltipContent>
                     <div className="flex max-w-96 flex-col gap-1">
                       <div className="break-all font-mono text-xs">
-                        {stripMountPrefix(relPath)}
+                        {toRelativePath(relPath) ?? relPath}
                       </div>
                       <div className="text-muted-foreground text-xs">
                         Click to open in {ideName}

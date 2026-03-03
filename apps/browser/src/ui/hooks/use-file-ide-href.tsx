@@ -23,6 +23,20 @@ function resolveAbsolutePath(
   return null;
 }
 
+function absoluteToRelative(
+  absolutePath: string,
+  mounts: Mount[],
+): string | null {
+  const normalized = normalizePath(absolutePath);
+  if (!normalized.startsWith('/')) return normalized;
+  for (const mount of mounts) {
+    const mountRoot = normalizePath(mount.path);
+    if (!normalized.startsWith(`${mountRoot}/`)) continue;
+    return normalized.slice(mountRoot.length + 1);
+  }
+  return null;
+}
+
 export function useFileIDEHref() {
   const historicalMounts = useMountedPaths();
   const [openAgentId] = useOpenAgent();
@@ -41,9 +55,17 @@ export function useFileIDEHref() {
     [mounts],
   );
 
-  return useFileIDEHrefBase({
-    resolvePath,
-    globalConfig,
-    setGlobalConfig,
-  });
+  const toRelativePath = useCallback(
+    (absPath: string) => absoluteToRelative(absPath, mounts),
+    [mounts],
+  );
+
+  return {
+    ...useFileIDEHrefBase({
+      resolvePath,
+      globalConfig,
+      setGlobalConfig,
+    }),
+    toRelativePath,
+  };
 }

@@ -18,6 +18,20 @@ function resolveAbsolutePath(
   return `${basePath}/${normalized}`;
 }
 
+function absoluteToRelative(
+  absolutePath: string,
+  workspaceMounts: WorkspaceMountInfo[],
+): string | null {
+  const normalized = normalizePath(absolutePath);
+  if (!normalized.startsWith('/')) return normalized;
+  for (const mount of workspaceMounts) {
+    const mountRoot = normalizePath(mount.path);
+    if (!normalized.startsWith(`${mountRoot}/`)) continue;
+    return normalized.slice(mountRoot.length + 1);
+  }
+  return null;
+}
+
 export function useFileIDEHref() {
   const workspaceMounts = useKartonState((s) => s.workspaceMounts);
   const globalConfig = useKartonState((s) => s.globalConfig);
@@ -29,9 +43,17 @@ export function useFileIDEHref() {
     [workspaceMounts],
   );
 
-  return useFileIDEHrefBase({
-    resolvePath,
-    globalConfig,
-    setGlobalConfig,
-  });
+  const toRelativePath = useCallback(
+    (absPath: string) => absoluteToRelative(absPath, workspaceMounts),
+    [workspaceMounts],
+  );
+
+  return {
+    ...useFileIDEHrefBase({
+      resolvePath,
+      globalConfig,
+      setGlobalConfig,
+    }),
+    toRelativePath,
+  };
 }
