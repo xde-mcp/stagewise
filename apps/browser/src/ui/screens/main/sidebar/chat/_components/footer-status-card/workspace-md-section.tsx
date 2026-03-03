@@ -36,7 +36,7 @@ export interface WorkspaceMdStatusSectionProps {
 
 function relativizePath(filePath: string | undefined): string | undefined {
   if (!filePath) return filePath;
-  return stripMountPrefix(filePath) || filePath;
+  return stripMountPrefix(filePath);
 }
 
 /**
