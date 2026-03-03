@@ -12,7 +12,7 @@ import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollb
 import type { TabState } from '@shared/karton-contracts/ui';
 import { inferMimeType } from '@shared/mime-utils';
 import {
-  getFilePreview,
+  getFilePreviewForFile,
   type FilePreviewProps,
 } from '@ui/components/file-preview';
 import type {
@@ -64,8 +64,8 @@ function deriveSidePanel(
     const meta = (item as FileMentionItem).meta;
     if (meta.isDirectory) return null;
 
+    const entry = getFilePreviewForFile(meta.fileName);
     const mime = inferMimeType(meta.fileName);
-    const entry = getFilePreview(mime);
 
     if (!entry.variants.expanded || entry.id === 'video') return null;
 

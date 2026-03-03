@@ -15,6 +15,7 @@ export type PreviewComponent =
 export interface FilePreviewEntry {
   id: string;
   mimePatterns: string[];
+  extensionPatterns?: string[];
   variants: {
     compact: FC<FilePreviewProps>;
     [key: string]: PreviewComponent;
