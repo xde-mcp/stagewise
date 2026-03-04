@@ -54,6 +54,8 @@ export function FileContextMenu({
           side="bottom"
         >
           <MenuBase.Popup
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
             className={cn(
               'flex origin-(--transform-origin) flex-col items-stretch gap-0.5',
               'rounded-lg border border-border-subtle bg-background p-1',

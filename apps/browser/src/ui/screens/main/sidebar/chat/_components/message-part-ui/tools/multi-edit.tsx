@@ -120,6 +120,7 @@ export const MultiEditToolPart = ({
       return (
         <LoadingHeader
           relativePath={path ?? undefined}
+          fullPath={part.input?.relative_path ?? undefined}
           resolvePath={resolvePath}
         />
       );
@@ -127,6 +128,7 @@ export const MultiEditToolPart = ({
       return (
         <SuccessHeader
           relativePath={path ?? undefined}
+          fullPath={part.input?.relative_path ?? undefined}
           resolvePath={resolvePath}
           newLineCount={newLineCount}
           deletedLineCount={deletedLineCount}
@@ -136,6 +138,7 @@ export const MultiEditToolPart = ({
     state,
     streaming,
     path,
+    part.input?.relative_path,
     newLineCount,
     deletedLineCount,
     part.errorText,
@@ -301,11 +304,13 @@ const ErrorHeader = ({
 
 const SuccessHeader = ({
   relativePath,
+  fullPath,
   resolvePath,
   newLineCount,
   deletedLineCount,
 }: {
   relativePath?: string;
+  fullPath?: string;
   resolvePath: (path: string) => string | null;
   newLineCount: number;
   deletedLineCount: number;
@@ -320,7 +325,7 @@ const SuccessHeader = ({
           className="-ml-1 size-4 shrink-0"
         />
         <FileContextMenu
-          relativePath={relativePath ?? ''}
+          relativePath={fullPath ?? relativePath ?? ''}
           resolvePath={resolvePath}
         >
           <Tooltip>
@@ -354,9 +359,11 @@ const SuccessHeader = ({
 
 const LoadingHeader = ({
   relativePath,
+  fullPath,
   resolvePath,
 }: {
   relativePath?: string;
+  fullPath?: string;
   resolvePath: (path: string) => string | null;
 }) => {
   const fileName = relativePath ? getBaseName(relativePath) : relativePath;
@@ -366,7 +373,7 @@ const LoadingHeader = ({
       <Loader2Icon className="size-3 shrink-0 animate-spin text-primary-foreground" />
       {relativePath !== null ? (
         <FileContextMenu
-          relativePath={relativePath ?? ''}
+          relativePath={fullPath ?? relativePath ?? ''}
           resolvePath={resolvePath}
         >
           <Tooltip>

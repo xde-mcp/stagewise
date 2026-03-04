@@ -105,6 +105,7 @@ export const OverwriteFileToolPart = ({
       return (
         <LoadingHeader
           relativePath={path ?? undefined}
+          fullPath={part.input?.relative_path ?? undefined}
           resolvePath={resolvePath}
         />
       );
@@ -112,13 +113,23 @@ export const OverwriteFileToolPart = ({
       return (
         <SuccessHeader
           relativePath={path ?? undefined}
+          fullPath={part.input?.relative_path ?? undefined}
           resolvePath={resolvePath}
           newLineCount={newLineCount}
           deletedLineCount={deletedLineCount}
           fileWasCreated={outputWithDiff?._diff?.before === null}
         />
       );
-  }, [state, streaming, path, newLineCount, deletedLineCount]);
+  }, [
+    state,
+    streaming,
+    path,
+    part.input?.relative_path,
+    newLineCount,
+    deletedLineCount,
+    outputWithDiff?._diff?.before,
+    resolvePath,
+  ]);
 
   const content = useMemo(() => {
     if (state === 'error') return undefined;
@@ -271,12 +282,14 @@ const ErrorHeader = ({
 
 const SuccessHeader = ({
   relativePath,
+  fullPath,
   resolvePath,
   newLineCount,
   deletedLineCount,
   fileWasCreated,
 }: {
   relativePath?: string;
+  fullPath?: string;
   resolvePath: (path: string) => string | null;
   newLineCount: number;
   deletedLineCount: number;
@@ -292,7 +305,7 @@ const SuccessHeader = ({
           className="-ml-1 size-4 shrink-0"
         />
         <FileContextMenu
-          relativePath={relativePath ?? ''}
+          relativePath={fullPath ?? relativePath ?? ''}
           resolvePath={resolvePath}
         >
           <Tooltip>
@@ -329,9 +342,11 @@ const SuccessHeader = ({
 
 const LoadingHeader = ({
   relativePath,
+  fullPath,
   resolvePath,
 }: {
   relativePath?: string;
+  fullPath?: string;
   resolvePath: (path: string) => string | null;
 }) => {
   const fileName = relativePath ? getBaseName(relativePath) : relativePath;
@@ -343,7 +358,7 @@ const LoadingHeader = ({
       />
       {relativePath !== null ? (
         <FileContextMenu
-          relativePath={relativePath ?? ''}
+          relativePath={fullPath ?? relativePath ?? ''}
           resolvePath={resolvePath}
         >
           <Tooltip>
