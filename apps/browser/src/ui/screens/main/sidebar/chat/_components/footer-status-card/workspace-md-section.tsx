@@ -153,7 +153,7 @@ export function WorkspaceMdStatusSection({
           <>
             <Tooltip>
               <TooltipTrigger>
-                <div className="flex shrink cursor-default flex-row items-center gap-1 truncate">
+                <div className="flex min-w-0 shrink cursor-default flex-row items-center gap-1 truncate">
                   <span className="truncate font-normal text-foreground">
                     {workspaceName
                       ? `Improve context for ${workspaceName}?`
@@ -197,7 +197,7 @@ export function WorkspaceMdStatusSection({
         ) : isRunning ? (
           <div className="flex w-full shrink cursor-default flex-row items-center gap-1">
             <TooltipWrapper showTooltip={isRunning} content={statusText}>
-              <div className="-ml-1 flex shrink flex-row items-center gap-1">
+              <div className="-ml-1 flex min-w-0 shrink flex-row items-center gap-1">
                 <div className="relative flex size-5 shrink-0 items-center justify-center">
                   <Loader2Icon className="size-3 animate-spin text-primary-foreground" />
                 </div>
@@ -225,7 +225,7 @@ export function WorkspaceMdStatusSection({
             </Tooltip>
           </div>
         ) : isError ? (
-          <div className="flex w-full cursor-default flex-row items-center justify-between gap-1 truncate">
+          <div className="flex w-full min-w-0 cursor-default flex-row items-center justify-between gap-1 truncate">
             <div className="flex size-5 shrink-0 flex-row items-center justify-center">
               <XIcon className="size-3 shrink-0 text-foreground" />
             </div>
@@ -267,24 +267,24 @@ export function WorkspaceMdStatusSection({
           </div>
         ) : (
           <>
-            <div className="flex shrink flex-row items-center gap-1 truncate">
+            <div className="flex min-w-0 shrink flex-row items-center gap-1 truncate">
               <FileIcon
                 filePath=".stagewise/WORKSPACE.md"
                 className="size-5 shrink-0"
               />
               <Tooltip>
                 <TooltipTrigger>
-                  <span className="text-foreground text-xs leading-none">
+                  <span className="truncate text-foreground text-xs leading-none">
                     WORKSPACE.md
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>.stagewise/WORKSPACE.md</TooltipContent>
               </Tooltip>
-              <span className="font-normal text-muted-foreground">
+              <span className="truncate font-normal text-muted-foreground">
                 generated
               </span>
             </div>
-            <div className="ml-auto flex flex-row items-center justify-start gap-1">
+            <div className="ml-auto flex shrink-0 flex-row items-center justify-start gap-1">
               <Button
                 variant="ghost"
                 size="xs"
