@@ -49,7 +49,7 @@ export default function TeamPage() {
                 to their ways of thinking and doing.
               </p>
 
-              <div className="my-8 overflow-hidden rounded-xl border border-zinc-900/50 shadow-[0_0_20px_rgba(0,0,0,0.15)] dark:border-zinc-100/50 dark:shadow-[0_0_20px_rgba(255,255,255,0.05)]">
+              <div className="my-8 overflow-hidden rounded-xl border border-border shadow-[0_0_20px_rgba(0,0,0,0.15)] dark:shadow-[0_0_20px_rgba(255,255,255,0.05)]">
                 <Image
                   src={TeamPic}
                   alt="The stagewise founding team"
@@ -90,7 +90,7 @@ export default function TeamPage() {
 
           {/* CTA sidebar */}
           <ScrollReveal delay={400}>
-            <div className="flex flex-col gap-8 border-zinc-900/30 lg:w-80 lg:shrink-0 lg:border-l lg:pl-8 dark:border-zinc-100/30">
+            <div className="flex flex-col gap-8 border-border/30 lg:w-80 lg:shrink-0 lg:border-l lg:pl-8">
               <div>
                 <h3 className="mb-3 font-medium text-foreground text-xl">
                   Join our team
@@ -120,7 +120,7 @@ export default function TeamPage() {
                   href="https://github.com/stagewise-io/stagewise"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-md border border-zinc-900/50 px-4 py-2 font-medium text-foreground text-sm transition-colors hover:bg-hover-derived dark:border-zinc-100/50"
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-medium text-foreground text-sm transition-colors hover:bg-hover-derived"
                 >
                   <IconGithub className="size-4" />
                   View on GitHub

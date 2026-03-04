@@ -27,35 +27,31 @@ export function PricingCards({ plans }: PricingCardsProps) {
           <ScrollReveal key={plan.name} delay={100}>
             <div className="relative flex h-full flex-col rounded-2xl bg-surface-1 p-8">
               <div className="mb-8 text-center">
-                <h3 className="mb-6 font-bold text-2xl text-zinc-900 dark:text-white">
+                <h3 className="mb-6 font-bold text-2xl text-foreground">
                   {plan.name}
                 </h3>
                 <div className="mb-4">
-                  <span className="font-bold text-4xl text-zinc-900 dark:text-white">
+                  <span className="font-bold text-4xl text-foreground">
                     {plan.price}
                   </span>
-                  <span className="ml-2 text-zinc-600 dark:text-zinc-400">
+                  <span className="ml-2 text-muted-foreground">
                     {plan.period}
                   </span>
                   {plan.vatNote && (
-                    <div className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                    <div className="mt-1 text-sm text-subtle-foreground">
                       {plan.vatNote}
                     </div>
                   )}
                 </div>
-                <p className="text-zinc-600 dark:text-zinc-400">
-                  {plan.description}
-                </p>
+                <p className="text-muted-foreground">{plan.description}</p>
               </div>
 
               <div className="mb-8 flex-1">
                 <ul className="space-y-4">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3">
-                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
-                      <span className="text-zinc-700 dark:text-zinc-300">
-                        {feature}
-                      </span>
+                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
+                      <span className="text-foreground">{feature}</span>
                     </li>
                   ))}
                 </ul>

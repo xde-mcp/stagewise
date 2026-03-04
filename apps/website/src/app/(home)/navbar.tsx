@@ -44,7 +44,7 @@ export function Navbar() {
         className={cn(
           'z-50 flex h-14 w-full max-w-7xl flex-col items-start justify-between gap-2 overflow-hidden px-4 py-3 transition-all duration-150 ease-out sm:h-14 sm:flex-row sm:items-center sm:py-0',
           isOpen &&
-            'h-[calc-size(auto,size)] h-auto border-zinc-200 border-b shadow-sm dark:border-zinc-800',
+            'h-[calc-size(auto,size)] h-auto border-border border-b shadow-sm',
         )}
       >
         <div className="flex w-full items-center justify-between sm:w-auto">
@@ -60,7 +60,7 @@ export function Navbar() {
               height={28}
               className="size-7 rounded-full ring-1 ring-border"
             />
-            <LogoText className="h-6 text-foreground dark:text-white" />
+            <LogoText className="h-6 text-foreground" />
           </Link>
           <Button
             variant="secondary"

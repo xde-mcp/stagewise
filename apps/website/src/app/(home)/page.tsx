@@ -53,7 +53,7 @@ function FeatureSection() {
             </div>
             <Image
               src={agentInBrowserImage}
-              className="w-full max-w-[66.67%] shrink-0 rounded-md border border-zinc-200 dark:border-zinc-800"
+              className="w-full max-w-[66.67%] shrink-0 rounded-md border border-border"
               alt="Image showing a browser with an integrated coding agent"
             />
           </div>
@@ -80,7 +80,7 @@ function FeatureSection() {
             </div>
             <Image
               src={agentInBrowserImage}
-              className="w-full max-w-[66.67%] shrink-0 rounded-md border border-zinc-200 dark:border-zinc-800"
+              className="w-full max-w-[66.67%] shrink-0 rounded-md border border-border"
               alt="Image showing a browser with an integrated coding agent"
             />
           </div>
@@ -108,13 +108,13 @@ function FeatureSection() {
             {/* Light mode image */}
             <Image
               src={reverseEngineeringLight}
-              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-zinc-200 dark:hidden dark:border-zinc-800"
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:hidden"
               alt="Reverse engineering tools extracting styles from websites"
             />
             {/* Dark mode image */}
             <Image
               src={reverseEngineeringDark}
-              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-zinc-200 dark:block dark:border-zinc-800"
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:block"
               alt="Reverse engineering tools extracting styles from websites"
             />
           </div>
@@ -142,13 +142,13 @@ function FeatureSection() {
             {/* Light mode image */}
             <Image
               src={agentIdeIntegrationLight}
-              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-zinc-200 dark:hidden dark:border-zinc-800"
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:hidden"
               alt="IDE integration showing code changes in your favorite editor"
             />
             {/* Dark mode image */}
             <Image
               src={agentIdeIntegrationDark}
-              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-zinc-200 dark:block dark:border-zinc-800"
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:block"
               alt="IDE integration showing code changes in your favorite editor"
             />
           </div>
@@ -314,7 +314,7 @@ export default function Home() {
 
             <ScrollReveal delay={300}>
               <div className="w-full">
-                <div className="group relative mt-16 mb-16 transform rounded-xl border border-zinc-900/50 md:mt-40 dark:border-zinc-100/50">
+                <div className="group relative mt-16 mb-16 transform rounded-xl border border-border md:mt-40">
                   <video
                     src="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-6-0-undo/landing-demo-undo.mp4"
                     width={1200}
@@ -332,7 +332,7 @@ export default function Home() {
                       href="https://www.youtube.com/watch?v=C1fWQl8r_zY"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-lg bg-white/80 px-6 py-3 font-medium text-zinc-900 shadow-lg transition-all duration-200 hover:bg-white hover:shadow-xl dark:bg-zinc-900/80 dark:text-white dark:hover:bg-zinc-900"
+                      className="flex items-center gap-2 rounded-lg bg-surface-1/80 px-6 py-3 font-medium text-foreground shadow-lg transition-all duration-200 hover:bg-surface-1 hover:shadow-xl"
                     >
                       <svg
                         className="h-4 w-4"
