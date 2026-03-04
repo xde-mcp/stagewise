@@ -25,10 +25,6 @@ import {
 import { cn } from '@/utils';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 interface ModelOption {
   modelId: string;
   displayName: string;
@@ -37,10 +33,6 @@ interface ModelOption {
   thinkingEnabled: boolean;
   group?: string;
 }
-
-// ============================================================================
-// Sub-components
-// ============================================================================
 
 function ModelTooltipContent({
   model,
@@ -60,9 +52,7 @@ function ModelTooltipContent({
   );
 }
 
-// ============================================================================
-// Main component
-// ============================================================================
+const EMPTY_STRING_ARRAY: string[] = [];
 
 interface ModelSelectProps {
   onModelChange?: () => void;
@@ -77,28 +67,36 @@ export const ModelSelect = memo(function ModelSelect({
   );
   const setSelectedModel = useKartonProcedure((p) => p.agents.setActiveModelId);
   const customModels = useKartonState((s) => s.preferences?.customModels ?? []);
+  const disabledModelIds = useKartonState(
+    (s) => s.preferences?.agent?.disabledModelIds ?? EMPTY_STRING_ARRAY,
+  );
 
   // Build flat model options list
   const modelOptions = useMemo<ModelOption[]>(() => {
-    const builtIn: ModelOption[] = availableModels.map((model) => ({
-      modelId: model.modelId,
-      displayName: model.modelDisplayName,
-      description: model.modelDescription,
-      context: model.modelContext,
-      thinkingEnabled: 'thinkingEnabled' in model && !!model.thinkingEnabled,
-    }));
+    const disabled = new Set(disabledModelIds);
+    const builtIn: ModelOption[] = availableModels
+      .filter((m) => !disabled.has(m.modelId))
+      .map((model) => ({
+        modelId: model.modelId,
+        displayName: model.modelDisplayName,
+        description: model.modelDescription,
+        context: model.modelContext,
+        thinkingEnabled: 'thinkingEnabled' in model && !!model.thinkingEnabled,
+      }));
 
-    const custom: ModelOption[] = customModels.map((model) => ({
-      modelId: model.modelId,
-      displayName: model.displayName,
-      description: model.description,
-      context: `${Math.round(model.contextWindowSize / 1000)}k context`,
-      thinkingEnabled: !!model.thinkingEnabled,
-      group: 'Custom',
-    }));
+    const custom: ModelOption[] = customModels
+      .filter((m) => !disabled.has(m.modelId))
+      .map((model) => ({
+        modelId: model.modelId,
+        displayName: model.displayName,
+        description: model.description,
+        context: `${Math.round(model.contextWindowSize / 1000)}k context`,
+        thinkingEnabled: !!model.thinkingEnabled,
+        group: 'Custom',
+      }));
 
     return [...builtIn, ...custom];
-  }, [customModels]);
+  }, [customModels, disabledModelIds]);
 
   // Index by modelId for fast lookups
   const modelMap = useMemo(() => {
@@ -333,10 +331,6 @@ export const ModelSelect = memo(function ModelSelect({
     </Combobox>
   );
 });
-
-// ============================================================================
-// ModelItem — extracted to keep list render clean
-// ============================================================================
 
 const ModelItem = memo(function ModelItem({
   model,

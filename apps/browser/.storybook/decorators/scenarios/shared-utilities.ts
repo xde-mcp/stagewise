@@ -932,7 +932,6 @@ export function createAgentInstance(
         file: false,
       },
       toolCalling: true,
-      intelligence: { canPlan: true, canCode: true },
     },
     allowUserInput: options?.allowUserInput ?? true,
     parentAgentInstanceId: null,

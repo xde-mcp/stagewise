@@ -7,21 +7,27 @@ interface SidebarNavItemProps {
   to: string;
   icon: ReactNode;
   children: ReactNode;
+  exact?: boolean;
 }
 
-function SidebarNavItem({ to, icon, children }: SidebarNavItemProps) {
+function SidebarNavItem({
+  to,
+  icon,
+  children,
+  exact = true,
+}: SidebarNavItemProps) {
   return (
     <Link
       to={to}
       className={cn(
-        buttonVariants({ variant: 'ghost', size: 'md' }),
-        'w-full justify-start gap-3 bg-base-100 font-normal dark:bg-base-900',
+        buttonVariants({ variant: 'ghost', size: 'sm' }),
+        'w-full justify-start gap-2 bg-base-100 font-normal text-sm dark:bg-base-900',
         'not-data-[active=true]:hover:bg-hover-derived data-[active=true]:bg-background data-[active=true]:text-foreground',
       )}
       activeProps={{
         'data-active': 'true',
       }}
-      activeOptions={{ exact: true }}
+      activeOptions={{ exact, includeSearch: false }}
     >
       {icon}
       {children}
@@ -37,7 +43,7 @@ interface SidebarNavGroupProps {
 function SidebarNavGroup({ label, children }: SidebarNavGroupProps) {
   return (
     <div className="flex w-full flex-col items-stretch justify-start gap-2">
-      <span className="ml-1 text-muted-foreground text-sm">{label}</span>
+      <span className="ml-1 text-sm text-subtle-foreground">{label}</span>
       {children}
     </div>
   );
@@ -49,7 +55,7 @@ interface SidebarNavProps {
 
 export function SidebarNav({ children }: SidebarNavProps) {
   return (
-    <div className="flex w-full flex-col items-stretch justify-start gap-6">
+    <div className="flex w-full flex-col items-stretch justify-start gap-4">
       {children}
     </div>
   );

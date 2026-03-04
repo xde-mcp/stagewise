@@ -177,7 +177,10 @@ export function StatusCard() {
       const params = workspacePath
         ? `?workspace=${encodeURIComponent(workspacePath)}`
         : '';
-      void createTab(`stagewise://internal/agent-settings${params}`, true);
+      void createTab(
+        `stagewise://internal/agent-settings/skills-context${params}`,
+        true,
+      );
     },
     [createTab],
   );

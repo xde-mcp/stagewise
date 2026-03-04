@@ -356,7 +356,7 @@ function Page() {
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => navigate({ to: '/agent-settings' })}
+            onClick={() => navigate({ to: '/agent-settings/models-providers' })}
           >
             <IconChevronLeftOutline18 className="size-4" />
           </Button>

@@ -83,10 +83,6 @@ export const availableModels = [
       },
       inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
     headers: anthropicHeaders,
     thinkingEnabled: true,
@@ -117,10 +113,6 @@ export const availableModels = [
       },
       inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
     headers: anthropicHeaders,
     thinkingEnabled: true,
@@ -158,10 +150,6 @@ export const availableModels = [
       },
       inputConstraints: OPENAI_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
   },
   {
@@ -197,10 +185,6 @@ export const availableModels = [
       },
       inputConstraints: GOOGLE_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
   },
   {
@@ -231,10 +215,6 @@ export const availableModels = [
       },
       inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
   },
   {
@@ -270,10 +250,6 @@ export const availableModels = [
       },
       inputConstraints: OPENAI_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
   },
   {
@@ -309,10 +285,6 @@ export const availableModels = [
       },
       inputConstraints: OPENAI_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
   },
   {
@@ -343,10 +315,6 @@ export const availableModels = [
       },
       inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
   },
   {
@@ -377,10 +345,6 @@ export const availableModels = [
       },
       inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
   },
 ] as const satisfies ModelSettings[];
@@ -416,10 +380,6 @@ export function getModelCapabilities(
     },
     inputConstraints: undefined,
     toolCalling: true,
-    intelligence: {
-      canPlan: true,
-      canCode: true,
-    },
   };
 }
 

@@ -20,9 +20,10 @@ import { Route as InternalAppAgentSettingsRouteImport } from './routes/_internal
 import { Route as InternalAppAccountRouteImport } from './routes/_internal-app/account'
 import { Route as InternalAppAboutRouteImport } from './routes/_internal-app/about'
 import { Route as InternalAppBrowsingSettingsIndexRouteImport } from './routes/_internal-app/browsing-settings.index'
-import { Route as InternalAppAgentSettingsIndexRouteImport } from './routes/_internal-app/agent-settings.index'
 import { Route as InternalAppBrowsingSettingsWebsitePermissionsRouteImport } from './routes/_internal-app/browsing-settings.website-permissions'
-import { Route as InternalAppAgentSettingsModelsRouteImport } from './routes/_internal-app/agent-settings.models'
+import { Route as InternalAppAgentSettingsSkillsContextRouteImport } from './routes/_internal-app/agent-settings.skills-context'
+import { Route as InternalAppAgentSettingsModelsProvidersRouteImport } from './routes/_internal-app/agent-settings.models-providers'
+import { Route as InternalAppAgentSettingsGeneralRouteImport } from './routes/_internal-app/agent-settings.general'
 import { Route as InternalAppAgentSettingsCustomProvidersRouteImport } from './routes/_internal-app/agent-settings.custom-providers'
 import { Route as ErrorPagesErrorPageLoadFailedRouteImport } from './routes/_error-pages/error.page-load-failed'
 
@@ -84,22 +85,28 @@ const InternalAppBrowsingSettingsIndexRoute =
     path: '/',
     getParentRoute: () => InternalAppBrowsingSettingsRoute,
   } as any)
-const InternalAppAgentSettingsIndexRoute =
-  InternalAppAgentSettingsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => InternalAppAgentSettingsRoute,
-  } as any)
 const InternalAppBrowsingSettingsWebsitePermissionsRoute =
   InternalAppBrowsingSettingsWebsitePermissionsRouteImport.update({
     id: '/website-permissions',
     path: '/website-permissions',
     getParentRoute: () => InternalAppBrowsingSettingsRoute,
   } as any)
-const InternalAppAgentSettingsModelsRoute =
-  InternalAppAgentSettingsModelsRouteImport.update({
-    id: '/models',
-    path: '/models',
+const InternalAppAgentSettingsSkillsContextRoute =
+  InternalAppAgentSettingsSkillsContextRouteImport.update({
+    id: '/skills-context',
+    path: '/skills-context',
+    getParentRoute: () => InternalAppAgentSettingsRoute,
+  } as any)
+const InternalAppAgentSettingsModelsProvidersRoute =
+  InternalAppAgentSettingsModelsProvidersRouteImport.update({
+    id: '/models-providers',
+    path: '/models-providers',
+    getParentRoute: () => InternalAppAgentSettingsRoute,
+  } as any)
+const InternalAppAgentSettingsGeneralRoute =
+  InternalAppAgentSettingsGeneralRouteImport.update({
+    id: '/general',
+    path: '/general',
     getParentRoute: () => InternalAppAgentSettingsRoute,
   } as any)
 const InternalAppAgentSettingsCustomProvidersRoute =
@@ -127,24 +134,27 @@ export interface FileRoutesByFullPath {
   '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
   '/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/agent-settings/custom-providers': typeof InternalAppAgentSettingsCustomProvidersRoute
-  '/agent-settings/models': typeof InternalAppAgentSettingsModelsRoute
+  '/agent-settings/general': typeof InternalAppAgentSettingsGeneralRoute
+  '/agent-settings/models-providers': typeof InternalAppAgentSettingsModelsProvidersRoute
+  '/agent-settings/skills-context': typeof InternalAppAgentSettingsSkillsContextRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
-  '/agent-settings/': typeof InternalAppAgentSettingsIndexRoute
   '/browsing-settings/': typeof InternalAppBrowsingSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/home': typeof HomeRoute
   '/about': typeof InternalAppAboutRoute
   '/account': typeof InternalAppAccountRoute
+  '/agent-settings': typeof InternalAppAgentSettingsRouteWithChildren
   '/clear-data': typeof InternalAppClearDataRoute
   '/downloads': typeof InternalAppDownloadsRoute
   '/history': typeof InternalAppHistoryRoute
   '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
   '/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/agent-settings/custom-providers': typeof InternalAppAgentSettingsCustomProvidersRoute
-  '/agent-settings/models': typeof InternalAppAgentSettingsModelsRoute
+  '/agent-settings/general': typeof InternalAppAgentSettingsGeneralRoute
+  '/agent-settings/models-providers': typeof InternalAppAgentSettingsModelsProvidersRoute
+  '/agent-settings/skills-context': typeof InternalAppAgentSettingsSkillsContextRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
-  '/agent-settings': typeof InternalAppAgentSettingsIndexRoute
   '/browsing-settings': typeof InternalAppBrowsingSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -161,9 +171,10 @@ export interface FileRoutesById {
   '/diff-review/$agentInstanceId': typeof DiffReviewAgentInstanceIdRoute
   '/_error-pages/error/page-load-failed': typeof ErrorPagesErrorPageLoadFailedRoute
   '/_internal-app/agent-settings/custom-providers': typeof InternalAppAgentSettingsCustomProvidersRoute
-  '/_internal-app/agent-settings/models': typeof InternalAppAgentSettingsModelsRoute
+  '/_internal-app/agent-settings/general': typeof InternalAppAgentSettingsGeneralRoute
+  '/_internal-app/agent-settings/models-providers': typeof InternalAppAgentSettingsModelsProvidersRoute
+  '/_internal-app/agent-settings/skills-context': typeof InternalAppAgentSettingsSkillsContextRoute
   '/_internal-app/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
-  '/_internal-app/agent-settings/': typeof InternalAppAgentSettingsIndexRoute
   '/_internal-app/browsing-settings/': typeof InternalAppBrowsingSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -180,24 +191,27 @@ export interface FileRouteTypes {
     | '/diff-review/$agentInstanceId'
     | '/error/page-load-failed'
     | '/agent-settings/custom-providers'
-    | '/agent-settings/models'
+    | '/agent-settings/general'
+    | '/agent-settings/models-providers'
+    | '/agent-settings/skills-context'
     | '/browsing-settings/website-permissions'
-    | '/agent-settings/'
     | '/browsing-settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/home'
     | '/about'
     | '/account'
+    | '/agent-settings'
     | '/clear-data'
     | '/downloads'
     | '/history'
     | '/diff-review/$agentInstanceId'
     | '/error/page-load-failed'
     | '/agent-settings/custom-providers'
-    | '/agent-settings/models'
+    | '/agent-settings/general'
+    | '/agent-settings/models-providers'
+    | '/agent-settings/skills-context'
     | '/browsing-settings/website-permissions'
-    | '/agent-settings'
     | '/browsing-settings'
   id:
     | '__root__'
@@ -213,9 +227,10 @@ export interface FileRouteTypes {
     | '/diff-review/$agentInstanceId'
     | '/_error-pages/error/page-load-failed'
     | '/_internal-app/agent-settings/custom-providers'
-    | '/_internal-app/agent-settings/models'
+    | '/_internal-app/agent-settings/general'
+    | '/_internal-app/agent-settings/models-providers'
+    | '/_internal-app/agent-settings/skills-context'
     | '/_internal-app/browsing-settings/website-permissions'
-    | '/_internal-app/agent-settings/'
     | '/_internal-app/browsing-settings/'
   fileRoutesById: FileRoutesById
 }
@@ -305,13 +320,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalAppBrowsingSettingsIndexRouteImport
       parentRoute: typeof InternalAppBrowsingSettingsRoute
     }
-    '/_internal-app/agent-settings/': {
-      id: '/_internal-app/agent-settings/'
-      path: '/'
-      fullPath: '/agent-settings/'
-      preLoaderRoute: typeof InternalAppAgentSettingsIndexRouteImport
-      parentRoute: typeof InternalAppAgentSettingsRoute
-    }
     '/_internal-app/browsing-settings/website-permissions': {
       id: '/_internal-app/browsing-settings/website-permissions'
       path: '/website-permissions'
@@ -319,11 +327,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalAppBrowsingSettingsWebsitePermissionsRouteImport
       parentRoute: typeof InternalAppBrowsingSettingsRoute
     }
-    '/_internal-app/agent-settings/models': {
-      id: '/_internal-app/agent-settings/models'
-      path: '/models'
-      fullPath: '/agent-settings/models'
-      preLoaderRoute: typeof InternalAppAgentSettingsModelsRouteImport
+    '/_internal-app/agent-settings/skills-context': {
+      id: '/_internal-app/agent-settings/skills-context'
+      path: '/skills-context'
+      fullPath: '/agent-settings/skills-context'
+      preLoaderRoute: typeof InternalAppAgentSettingsSkillsContextRouteImport
+      parentRoute: typeof InternalAppAgentSettingsRoute
+    }
+    '/_internal-app/agent-settings/models-providers': {
+      id: '/_internal-app/agent-settings/models-providers'
+      path: '/models-providers'
+      fullPath: '/agent-settings/models-providers'
+      preLoaderRoute: typeof InternalAppAgentSettingsModelsProvidersRouteImport
+      parentRoute: typeof InternalAppAgentSettingsRoute
+    }
+    '/_internal-app/agent-settings/general': {
+      id: '/_internal-app/agent-settings/general'
+      path: '/general'
+      fullPath: '/agent-settings/general'
+      preLoaderRoute: typeof InternalAppAgentSettingsGeneralRouteImport
       parentRoute: typeof InternalAppAgentSettingsRoute
     }
     '/_internal-app/agent-settings/custom-providers': {
@@ -345,16 +367,20 @@ declare module '@tanstack/react-router' {
 
 interface InternalAppAgentSettingsRouteChildren {
   InternalAppAgentSettingsCustomProvidersRoute: typeof InternalAppAgentSettingsCustomProvidersRoute
-  InternalAppAgentSettingsModelsRoute: typeof InternalAppAgentSettingsModelsRoute
-  InternalAppAgentSettingsIndexRoute: typeof InternalAppAgentSettingsIndexRoute
+  InternalAppAgentSettingsGeneralRoute: typeof InternalAppAgentSettingsGeneralRoute
+  InternalAppAgentSettingsModelsProvidersRoute: typeof InternalAppAgentSettingsModelsProvidersRoute
+  InternalAppAgentSettingsSkillsContextRoute: typeof InternalAppAgentSettingsSkillsContextRoute
 }
 
 const InternalAppAgentSettingsRouteChildren: InternalAppAgentSettingsRouteChildren =
   {
     InternalAppAgentSettingsCustomProvidersRoute:
       InternalAppAgentSettingsCustomProvidersRoute,
-    InternalAppAgentSettingsModelsRoute: InternalAppAgentSettingsModelsRoute,
-    InternalAppAgentSettingsIndexRoute: InternalAppAgentSettingsIndexRoute,
+    InternalAppAgentSettingsGeneralRoute: InternalAppAgentSettingsGeneralRoute,
+    InternalAppAgentSettingsModelsProvidersRoute:
+      InternalAppAgentSettingsModelsProvidersRoute,
+    InternalAppAgentSettingsSkillsContextRoute:
+      InternalAppAgentSettingsSkillsContextRoute,
   }
 
 const InternalAppAgentSettingsRouteWithChildren =

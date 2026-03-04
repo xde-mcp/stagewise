@@ -86,7 +86,7 @@ export function NotSignedIn() {
       )}
       {phase === 'email' && (
         <a
-          href="stagewise://internal/agent-settings"
+          href="stagewise://internal/agent-settings/models-providers"
           className={cn(buttonVariants({ variant: 'ghost', size: 'xs' }))}
         >
           I want to use my own API keys

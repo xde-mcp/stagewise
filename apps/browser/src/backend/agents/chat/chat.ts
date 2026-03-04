@@ -25,10 +25,6 @@ export class ChatAgent extends BaseAgent<never, undefined> {
         file: false,
       },
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: true,
-      },
     },
     finishToolOutputSchema: undefined,
     allowUserInput: true,

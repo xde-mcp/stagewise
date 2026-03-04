@@ -148,12 +148,6 @@ export const modelCapabilitiesSchema = z.object({
     })
     .optional(),
   toolCalling: z.boolean().default(true),
-  intelligence: z
-    .object({
-      canPlan: z.boolean().default(true),
-      canCode: z.boolean().default(true),
-    })
-    .default({ canPlan: true, canCode: true }),
 });
 export type ModelCapabilities = z.infer<typeof modelCapabilitiesSchema>;
 
@@ -181,7 +175,6 @@ export const customModelSchema = z.object({
       file: false,
     },
     toolCalling: true,
-    intelligence: { canPlan: true, canCode: true },
   }),
   providerOptions: z.record(z.string(), z.unknown()).default({}),
   headers: z.record(z.string(), z.string()).default({}),
@@ -245,10 +238,6 @@ type BaseSettings = {
       audio?: ModalityConstraint;
     };
     toolCalling: boolean;
-    intelligence: {
-      canPlan: boolean; // Whether the model is intelligent enough to plan complex tasks.
-      canCode: boolean; // Whether the model is intelligent enough to code.
-    };
   };
 };
 
@@ -385,8 +374,10 @@ export const userPreferencesSchema = z.object({
       workspaceSettings: z
         .record(z.string(), workspaceAgentSettingsSchema)
         .default({}),
+      /** Model IDs the user has chosen to hide from the model selector */
+      disabledModelIds: z.array(z.string()).default([]),
     })
-    .default({ workspaceSettings: {} }),
+    .default({ workspaceSettings: {}, disabledModelIds: [] }),
   /** LLM provider endpoint configurations (API keys, custom URLs) */
   providerConfigs: providerConfigsSchema.default({
     anthropic: { mode: 'stagewise' },
@@ -473,7 +464,7 @@ export const defaultUserPreferences: UserPreferences = {
   permissions: defaultPermissionsForUserPrefs,
   devToolbar: defaultDevToolbarForUserPrefs,
   sidebar: { showActiveAgents: true },
-  agent: { workspaceSettings: {} },
+  agent: { workspaceSettings: {}, disabledModelIds: [] },
   providerConfigs: {
     anthropic: { mode: 'stagewise' },
     openai: { mode: 'stagewise' },

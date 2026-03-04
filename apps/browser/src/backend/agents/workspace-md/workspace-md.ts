@@ -38,10 +38,6 @@ export class WorkspaceMdAgent extends BaseAgent<
         file: false,
       },
       toolCalling: true,
-      intelligence: {
-        canPlan: true,
-        canCode: false, // Only analyzing, not writing code
-      },
     },
     allowUserInput: false, // Autonomous agent - no user input
     generateTitles: false, // Background task - no title needed

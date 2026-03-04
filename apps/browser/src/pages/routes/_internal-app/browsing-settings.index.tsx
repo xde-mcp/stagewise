@@ -44,7 +44,7 @@ export const Route = createFileRoute('/_internal-app/browsing-settings/')({
   head: () => ({
     meta: [
       {
-        title: 'Browsing Settings',
+        title: 'General',
       },
     ],
   }),
@@ -714,9 +714,7 @@ function Page() {
       {/* Header */}
       <div className="flex items-center border-border/30 border-b px-6 py-4">
         <div className="mx-auto w-full max-w-3xl">
-          <h1 className="font-semibold text-foreground text-xl">
-            Browsing Settings
-          </h1>
+          <h1 className="font-semibold text-foreground text-xl">General</h1>
         </div>
       </div>
 

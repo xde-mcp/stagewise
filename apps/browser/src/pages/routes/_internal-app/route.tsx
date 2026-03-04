@@ -1,13 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { SidebarNav } from '@/components/sidebar-nav';
 import {
-  IconGearFillDuo18,
-  IconUserSettingsFillDuo18,
   IconHistoryFillDuo18,
   IconBroomFillDuo18,
-  IconRobotFillDuo18,
   IconDownloadFillDuo18,
   IconCircleInfoFillDuo18,
+  IconDatabaseKeyFillDuo18,
+  IconUserUpdateFillDuo18,
+  // IconSpace3dFillDuo18,
+  IconNoteFillDuo18,
+  IconGear3FillDuo18,
 } from 'nucleo-ui-fill-duo-18';
 import { IconLinkedin, IconDiscord, IconGithub } from 'nucleo-social-media';
 import {
@@ -47,7 +49,7 @@ function RouteComponent() {
 
 function Sidebar() {
   return (
-    <div className="flex h-full min-w-fit max-w-64 basis-1/4 flex-col items-start justify-between gap-2 py-2 pl-2">
+    <div className="flex h-full min-w-fit max-w-56 basis-1/4 flex-col items-start justify-between gap-2 py-2 pl-2">
       <div className="flex flex-row items-center justify-start gap-4 dark:drop-shadow-md">
         <img
           src={LogoImage}
@@ -57,54 +59,74 @@ function Sidebar() {
       </div>
       <div className="mt-6 flex w-full flex-1 flex-col items-start justify-start">
         <SidebarNav>
-          <SidebarNav.Group label="Settings">
+          <SidebarNav.Group label="Agent">
             <SidebarNav.Item
-              to="/browsing-settings"
-              icon={<IconGearFillDuo18 className="size-5" />}
+              to="/agent-settings/general"
+              icon={<IconGear3FillDuo18 className="size-4" />}
             >
-              Browsing settings
+              General
             </SidebarNav.Item>
             <SidebarNav.Item
-              to="/agent-settings"
-              icon={<IconRobotFillDuo18 className="size-5" />}
+              to="/agent-settings/models-providers"
+              icon={<IconDatabaseKeyFillDuo18 className="size-4" />}
             >
-              Agent settings
+              Models & Providers
             </SidebarNav.Item>
             <SidebarNav.Item
-              to="/account"
-              icon={<IconUserSettingsFillDuo18 className="size-5" />}
+              to="/agent-settings/skills-context"
+              icon={<IconNoteFillDuo18 className="size-4" />}
             >
-              Account
+              Skills & Context files
             </SidebarNav.Item>
+            {/* <SidebarNav.Item
+              to="/"
+              icon={<IconSpace3dFillDuo18 className="size-4 rotate-180" />}
+            >
+              Plugins
+            </SidebarNav.Item> */}
           </SidebarNav.Group>
           <hr className="ml-1 border-derived-strong bg-base-100 dark:bg-base-900" />
-          <SidebarNav.Group label="Browsing data">
+          <SidebarNav.Group label="Browsing">
+            <SidebarNav.Item
+              to="/browsing-settings"
+              icon={<IconGear3FillDuo18 className="size-4" />}
+            >
+              General
+            </SidebarNav.Item>
             <SidebarNav.Item
               to="/history"
-              icon={<IconHistoryFillDuo18 className="size-5" />}
+              icon={<IconHistoryFillDuo18 className="size-4" />}
             >
               History
             </SidebarNav.Item>
             <SidebarNav.Item
               to="/downloads"
-              icon={<IconDownloadFillDuo18 className="size-5" />}
+              icon={<IconDownloadFillDuo18 className="size-4" />}
             >
               Downloads
             </SidebarNav.Item>
             <SidebarNav.Item
               to="/clear-data"
-              icon={<IconBroomFillDuo18 className="size-5" />}
+              icon={<IconBroomFillDuo18 className="size-4" />}
             >
               Clear data
             </SidebarNav.Item>
           </SidebarNav.Group>
           <hr className="ml-1 border-derived-strong bg-base-100 dark:bg-base-900" />
-          <SidebarNav.Item
-            to="/about"
-            icon={<IconCircleInfoFillDuo18 className="size-5" />}
-          >
-            About
-          </SidebarNav.Item>
+          <div className="flex w-full flex-col items-stretch justify-start gap-2">
+            <SidebarNav.Item
+              to="/account"
+              icon={<IconUserUpdateFillDuo18 className="size-4" />}
+            >
+              Account
+            </SidebarNav.Item>
+            <SidebarNav.Item
+              to="/about"
+              icon={<IconCircleInfoFillDuo18 className="size-4" />}
+            >
+              About
+            </SidebarNav.Item>
+          </div>
         </SidebarNav>
       </div>
       <div className="mb-4 flex w-full flex-row items-center justify-start gap-3">
@@ -139,7 +161,7 @@ function Sidebar() {
               })}
               aria-label="LinkedIn"
             >
-              <IconLinkedin className="size-5" />
+              <IconLinkedin className="size-4" />
             </a>
           </TooltipTrigger>
           <TooltipContent>LinkedIn</TooltipContent>
@@ -157,7 +179,7 @@ function Sidebar() {
               })}
               aria-label="Discord"
             >
-              <IconDiscord className="size-5" />
+              <IconDiscord className="size-4" />
             </a>
           </TooltipTrigger>
           <TooltipContent>Discord</TooltipContent>
@@ -175,7 +197,7 @@ function Sidebar() {
               })}
               aria-label="GitHub Repository"
             >
-              <IconGithub className="size-5" />
+              <IconGithub className="size-4" />
             </a>
           </TooltipTrigger>
           <TooltipContent>GitHub Repository</TooltipContent>
