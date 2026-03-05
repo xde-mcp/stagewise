@@ -1868,6 +1868,7 @@ export abstract class BaseAgent<
             const updatedToolPart: AgentToolUIPart | DynamicToolUIPart = {
               ...toolPart,
               state: 'output-error',
+              input: toolPart.input ?? {},
               approval: undefined,
               errorText: toolCallAbortReason,
             };
