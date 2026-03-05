@@ -50,6 +50,12 @@ export const getApplicationStateContext = async (
 # Mounted Workspaces
 
 ${formatMountedWorkspaces(workspaceSnapshot)}
+
+## Always-Available Mounts
+
+These mounts are always present regardless of whether a workspace is connected:
+
+- att/: Agent attachment directory (use 'att/...' to read/write attachments). Append-only permissions.
 ${shellSection}
     `.trim();
 };
