@@ -137,7 +137,8 @@ export function ActiveAgentsGrid() {
             const history = agent.state.history;
             const lastMsg = history[history.length - 1];
             const hasPendingQuestion = !!s.toolbox[id]?.pendingUserQuestion;
-            const activity = hasPendingQuestion
+            const isWorking = agent.state.isWorking;
+            const rawActivity = hasPendingQuestion
               ? { text: 'Waiting for response...', isUserInput: false }
               : deriveActivityText(
                   history as {
@@ -146,6 +147,12 @@ export function ActiveAgentsGrid() {
                   }[],
                   agent.state.inputState,
                 );
+            // When the agent is actively working but we only have a
+            // user-input fallback, show "Working…" instead.
+            const activity =
+              isWorking && rawActivity.isUserInput
+                ? { text: 'Working…', isUserInput: false }
+                : rawActivity;
             return {
               id,
               title: agent.state.title,
