@@ -63,7 +63,7 @@ export class WindowLayoutService extends DisposableService {
   private chatStateController: ChatStateController | null = null;
 
   private currentWebContentBounds: Electron.Rectangle | null = null;
-  private isWebContentInteractive = true;
+  private isWebContentInteractive = false;
 
   // HTML5 content fullscreen tracking
   private contentFullscreenTabId: string | null = null;
@@ -1039,6 +1039,7 @@ export class WindowLayoutService extends DisposableService {
     } else {
       // If no bounds set yet, keep invisible until layout update
       newTab.setVisible(false);
+      this.isWebContentInteractive = false;
     }
 
     // Hide previous tab after new tab is visible
@@ -1225,8 +1226,13 @@ export class WindowLayoutService extends DisposableService {
   private handleTogglePanelKeyboardFocus = async (
     panel: 'stagewise-ui' | 'tab-content',
   ) => {
-    if (panel === 'stagewise-ui') this.uiController?.focus();
-    else this.activeTab?.focus();
+    if (panel === 'stagewise-ui') {
+      this.uiController?.focus();
+      this.isWebContentInteractive = false;
+      this.updateZOrder();
+    } else {
+      this.activeTab?.focus();
+    }
   };
 
   private updateZOrder() {
