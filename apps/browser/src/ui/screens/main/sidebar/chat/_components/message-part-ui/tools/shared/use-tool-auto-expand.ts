@@ -17,21 +17,17 @@ export function useToolAutoExpand({
   isStreaming: boolean;
   isLastPart: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(isStreaming || isLastPart);
   const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
   const exploringContext = useExploringContentContext();
   const id = useId();
 
-  // Auto-expand when streaming starts OR when part finishes and is last
-  // Auto-collapse only when no longer the last part (and not manually expanded)
   useEffect(() => {
     if (isStreaming) {
       setExpanded(true);
       setIsManuallyExpanded(false);
-    } else if (!isLastPart && !isManuallyExpanded) {
-      setExpanded(false);
-    }
-    // When streaming ends and isLastPart, stay expanded
+    } else if (isLastPart) setExpanded((prev) => prev || !isManuallyExpanded);
+    else if (!isManuallyExpanded) setExpanded(false);
   }, [isStreaming, isLastPart, isManuallyExpanded]);
 
   // Handle user-initiated expansion toggle
