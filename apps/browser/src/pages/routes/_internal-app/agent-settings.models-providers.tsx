@@ -70,16 +70,8 @@ export const Route = createFileRoute(
 
 const PROVIDERS: ModelProvider[] = ['anthropic', 'openai', 'google'];
 
-function isValidUrl(value: string): boolean {
-  try {
-    new URL(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
+  const navigate = useNavigate();
   const preferences = useKartonState((s) => s.preferences);
   const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
   const setProviderApiKey = useKartonProcedure((s) => s.setProviderApiKey);
@@ -93,6 +85,7 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
   };
   const displayInfo = PROVIDER_DISPLAY_INFO[provider];
   const officialUrl = PROVIDER_OFFICIAL_URLS[provider];
+  const customEndpoints = preferences?.customEndpoints ?? [];
 
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [isSavingKey, setIsSavingKey] = useState(false);
@@ -100,8 +93,6 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
   const [validated, setValidated] = useState<
     null | { success: true } | { success: false; error: string }
   >(null);
-  const [urlError, setUrlError] = useState<string | null>(null);
-  const customUrlRef = useRef(config.customBaseUrl ?? '');
   const hasKey = !!config.encryptedApiKey;
 
   useEffect(() => {
@@ -121,10 +112,10 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
     [preferences, provider, updatePreferences],
   );
 
-  const handleCustomUrlChange = useCallback(
-    async (value: string) => {
+  const handleCustomProviderChange = useCallback(
+    async (endpointId: string) => {
       const [, patches] = produceWithPatches(preferences, (draft) => {
-        draft.providerConfigs[provider].customBaseUrl = value;
+        draft.providerConfigs[provider].customProviderId = endpointId;
       });
       await updatePreferences(patches);
     },
@@ -141,38 +132,6 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
         setValidated(null);
         try {
           const result = await validateProviderApiKey(provider, trimmedKey);
-          if (result && !result.success) {
-            setValidated({ success: false, error: result.error });
-            return;
-          }
-        } catch {
-          setValidated({
-            success: false,
-            error: 'Validation request failed. Please try again.',
-          });
-          return;
-        } finally {
-          setIsValidating(false);
-        }
-      } else if (config.mode === 'custom') {
-        const url = customUrlRef.current.trim() || undefined;
-        if (!url) {
-          setUrlError('Please enter an endpoint URL.');
-          return;
-        }
-        if (!isValidUrl(url)) {
-          setUrlError('Please enter a valid URL.');
-          return;
-        }
-        setUrlError(null);
-        setIsValidating(true);
-        setValidated(null);
-        try {
-          const result = await validateProviderApiKey(
-            provider,
-            trimmedKey,
-            url,
-          );
           if (result && !result.success) {
             setValidated({ success: false, error: result.error });
             return;
@@ -205,7 +164,10 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
     setValidated(null);
   }, [provider, clearProviderApiKey]);
 
-  const showByokFields = config.mode === 'official' || config.mode === 'custom';
+  const customProviderItems = customEndpoints.map((ep) => ({
+    value: ep.id,
+    label: ep.name,
+  }));
 
   return (
     <div className="space-y-3 rounded-lg border border-derived p-3">
@@ -219,67 +181,37 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
       </div>
 
       <RadioGroup value={config.mode} onValueChange={handleModeChange}>
-        {/* Stagewise option */}
         <RadioLabel>
           <Radio value="stagewise" />
           <span>Use my stagewise account</span>
         </RadioLabel>
 
-        {/* Official API option */}
         <RadioLabel>
           <Radio value="official" />
           <span>Use own API key with {displayInfo.name} API</span>
         </RadioLabel>
 
-        {/* Custom endpoint option */}
         <RadioLabel>
           <Radio value="custom" />
-          <span>Use own API key with custom endpoint</span>
+          <span>Use custom provider</span>
         </RadioLabel>
       </RadioGroup>
 
-      {/* BYOK fields: URL + API Key in responsive grid */}
-      {showByokFields && (
+      {/* Official mode: API key fields */}
+      {config.mode === 'official' && (
         <div className="grid grid-cols-1 gap-3 border-derived border-t pt-3 sm:grid-cols-2">
-          {/* Endpoint URL */}
           <div className="space-y-1">
             <p className="font-medium text-muted-foreground text-xs">
               Endpoint URL
             </p>
             <Input
-              value={
-                config.mode === 'custom'
-                  ? (config.customBaseUrl ?? '')
-                  : officialUrl
-              }
-              placeholder="https://your-proxy.example.com/v1"
-              onValueChange={
-                config.mode === 'custom'
-                  ? (v) => {
-                      customUrlRef.current = v;
-                      setUrlError(null);
-                      void handleCustomUrlChange(v);
-                    }
-                  : undefined
-              }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && apiKeyInput.trim()) {
-                  void handleSaveAndValidate(apiKeyInput);
-                }
-              }}
-              disabled={
-                config.mode === 'official' || isValidating || isSavingKey
-              }
+              value={officialUrl}
+              disabled
               size="sm"
               style={{ maxWidth: 'none' }}
-              debounce={400}
             />
-            {urlError && config.mode === 'custom' && (
-              <p className="text-2xs text-error-foreground">{urlError}</p>
-            )}
           </div>
 
-          {/* API Key */}
           <div className="space-y-1">
             <p className="font-medium text-muted-foreground text-xs">
               API Key
@@ -313,15 +245,9 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
                   }
                 }}
                 onBlur={() => {
-                  if (!apiKeyInput.trim()) return;
-                  if (
-                    config.mode === 'custom' &&
-                    (!customUrlRef.current.trim() ||
-                      !isValidUrl(customUrlRef.current.trim()))
-                  ) {
-                    return;
+                  if (apiKeyInput.trim()) {
+                    void handleSaveAndValidate(apiKeyInput);
                   }
-                  void handleSaveAndValidate(apiKeyInput);
                 }}
                 disabled={isValidating || isSavingKey}
                 size="sm"
@@ -347,6 +273,43 @@ function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
               <TruncatedErrorText text={validated.error} />
             )}
           </div>
+        </div>
+      )}
+
+      {/* Custom provider mode: select from configured providers */}
+      {config.mode === 'custom' && (
+        <div className="border-derived border-t pt-3">
+          {customEndpoints.length === 0 ? (
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">
+                No custom providers configured yet.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  navigate({ to: '/agent-settings/custom-providers' })
+                }
+              >
+                Configure Providers
+                <IconChevronRightOutline18 className="size-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <p className="font-medium text-muted-foreground text-xs">
+                Provider
+              </p>
+              <Select
+                value={config.customProviderId ?? ''}
+                onValueChange={handleCustomProviderChange}
+                items={customProviderItems}
+                placeholder="Select a provider..."
+                size="sm"
+                triggerClassName="w-full"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -805,8 +768,10 @@ function BuiltInModelCard({
           </h3>
           <p className="text-muted-foreground text-xs">
             {model.modelId} &middot;{' '}
-            {PROVIDER_DISPLAY_INFO[model.provider].name} &middot;{' '}
-            {model.modelContext}
+            {model.officialProvider
+              ? PROVIDER_DISPLAY_INFO[model.officialProvider].name
+              : 'Unknown'}{' '}
+            &middot; {model.modelContext}
           </p>
         </div>
         <div
@@ -935,7 +900,10 @@ function CustomModelsSection() {
       (m) =>
         m.modelId.toLowerCase().includes(q) ||
         m.modelDisplayName.toLowerCase().includes(q) ||
-        PROVIDER_DISPLAY_INFO[m.provider].name.toLowerCase().includes(q),
+        (m.officialProvider &&
+          PROVIDER_DISPLAY_INFO[m.officialProvider].name
+            .toLowerCase()
+            .includes(q)),
     );
   }, [searchQuery]);
 

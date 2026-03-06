@@ -72,7 +72,8 @@ export function MessageRuntimeError({
     );
     if (!builtInModel) return false;
 
-    const provider = builtInModel.provider as ModelProvider;
+    const provider = builtInModel.officialProvider as ModelProvider | undefined;
+    if (!provider) return false;
     return providerConfigs[provider]?.mode === 'stagewise';
   }, [error, activeModelId, providerConfigs]);
 

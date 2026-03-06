@@ -110,11 +110,61 @@ export class PreferencesService extends DisposableService {
       defaultUserPreferences,
     );
 
+    // Migration: convert old customBaseUrl configs to customProviderId
+    await this.migrateCustomBaseUrlToProviderId();
+
     this.logger.debug('[PreferencesService] Loaded preferences', {
       telemetryLevel: this.preferences.privacy.telemetryLevel,
     });
 
     this.logger.debug('[PreferencesService] Initialized');
+  }
+
+  /**
+   * Migrate old `customBaseUrl` provider configs to the new `customProviderId` format.
+   * For each provider in custom mode that has a customBaseUrl but no customProviderId,
+   * create a custom endpoint and link to it.
+   */
+  private async migrateCustomBaseUrlToProviderId(): Promise<void> {
+    const providers = ['anthropic', 'openai', 'google'] as const;
+    let needsSave = false;
+
+    for (const provider of providers) {
+      const config = this.preferences.providerConfigs[provider];
+      if (
+        config.mode === 'custom' &&
+        config.customBaseUrl &&
+        !config.customProviderId
+      ) {
+        const id = crypto.randomUUID();
+        const apiSpecMap: Record<string, string> = {
+          anthropic: 'anthropic',
+          openai: 'openai-chat-completions',
+          google: 'google',
+        };
+
+        this.preferences.customEndpoints.push({
+          id,
+          name: `Migrated ${provider} endpoint`,
+          apiSpec: apiSpecMap[provider] as any,
+          baseUrl: config.customBaseUrl,
+          encryptedApiKey: config.encryptedApiKey,
+        });
+
+        config.customProviderId = id;
+        config.customBaseUrl = undefined;
+        config.encryptedApiKey = undefined;
+        needsSave = true;
+
+        this.logger.debug(
+          `[PreferencesService] Migrated ${provider} customBaseUrl to endpoint ${id}`,
+        );
+      }
+    }
+
+    if (needsSave) {
+      await this.save();
+    }
   }
 
   /**
@@ -256,6 +306,10 @@ export class PreferencesService extends DisposableService {
       (provider) => this.clearProviderApiKey(provider),
       (endpointId, apiKey) => this.setCustomEndpointApiKey(endpointId, apiKey),
       (endpointId) => this.clearCustomEndpointApiKey(endpointId),
+      (endpointId, secretKey) =>
+        this.setCustomEndpointSecretKey(endpointId, secretKey),
+      (endpointId, credentials) =>
+        this.setCustomEndpointGoogleCredentials(endpointId, credentials),
     );
   }
 
@@ -726,6 +780,64 @@ export class PreferencesService extends DisposableService {
     await this.update(patches);
     this.logger.debug(
       `[PreferencesService] Cleared API key for custom endpoint: ${endpointId}`,
+    );
+  }
+
+  /**
+   * Encrypt and store a secret key for an Amazon Bedrock custom endpoint.
+   */
+  public async setCustomEndpointSecretKey(
+    endpointId: string,
+    plaintextKey: string,
+  ): Promise<void> {
+    this.assertNotDisposed();
+
+    const idx = this.preferences.customEndpoints.findIndex(
+      (ep) => ep.id === endpointId,
+    );
+    if (idx === -1) throw new Error(`Custom endpoint ${endpointId} not found`);
+
+    const encrypted = safeStorage.encryptString(plaintextKey);
+    const patches: Patch[] = [
+      {
+        op: 'replace',
+        path: ['customEndpoints', idx, 'encryptedSecretKey'],
+        value: encrypted.toString('base64'),
+      },
+    ];
+
+    await this.update(patches);
+    this.logger.debug(
+      `[PreferencesService] Set encrypted secret key for endpoint: ${endpointId}`,
+    );
+  }
+
+  /**
+   * Encrypt and store Google service account credentials for a Vertex AI endpoint.
+   */
+  public async setCustomEndpointGoogleCredentials(
+    endpointId: string,
+    credentialsJson: string,
+  ): Promise<void> {
+    this.assertNotDisposed();
+
+    const idx = this.preferences.customEndpoints.findIndex(
+      (ep) => ep.id === endpointId,
+    );
+    if (idx === -1) throw new Error(`Custom endpoint ${endpointId} not found`);
+
+    const encrypted = safeStorage.encryptString(credentialsJson);
+    const patches: Patch[] = [
+      {
+        op: 'replace',
+        path: ['customEndpoints', idx, 'encryptedGoogleCredentials'],
+        value: encrypted.toString('base64'),
+      },
+    ];
+
+    await this.update(patches);
+    this.logger.debug(
+      `[PreferencesService] Set encrypted Google credentials for endpoint: ${endpointId}`,
     );
   }
 

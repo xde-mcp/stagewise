@@ -20,6 +20,8 @@ import type {
   LocalPortEntry,
   OriginThumbnailResult,
   MostVisitedOriginEntry,
+  CurrentUsageResponse,
+  UsageHistoryResponse,
 } from './types';
 import type {
   UserPreferences,
@@ -181,6 +183,16 @@ export type PagesApiContract = {
     ) => Promise<void>;
     /** Clear the API key for a custom endpoint */
     clearCustomEndpointApiKey: (endpointId: string) => Promise<void>;
+    /** Set an encrypted secret key for a custom endpoint */
+    setCustomEndpointSecretKey: (
+      endpointId: string,
+      secretKey: string,
+    ) => Promise<void>;
+    /** Set encrypted Google credentials JSON for a custom endpoint */
+    setCustomEndpointGoogleCredentials: (
+      endpointId: string,
+      credentials: string,
+    ) => Promise<void>;
     /** Validate a provider API key by making a lightweight test request */
     validateProviderApiKey: (
       provider: ModelProvider,
@@ -204,6 +216,12 @@ export type PagesApiContract = {
       offset: number;
       limit: number;
     }) => Promise<MostVisitedOriginEntry[]>;
+    /** Get current usage stats (window percentages + prepaid balance) */
+    getUsageCurrent: () => Promise<CurrentUsageResponse>;
+    /** Get daily usage history breakdown */
+    getUsageHistory: (params: {
+      days?: number;
+    }) => Promise<UsageHistoryResponse>;
   };
 };
 

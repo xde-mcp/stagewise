@@ -1,11 +1,18 @@
 import type { KartonContract } from '@shared/karton-contracts/ui';
+import type {
+  CurrentUsageResponse,
+  UsageHistoryResponse,
+} from '@shared/karton-contracts/pages-api/types';
 import type { KartonService } from '../karton';
 import type { Logger } from '../logger';
-import { AuthServerInterop, createSupabaseClient } from './server-interop';
+import {
+  AuthServerInterop,
+  createBetterAuthClient,
+  type BetterAuthClient,
+} from './server-interop';
 import type { NotificationService } from '../notification';
 import type { IdentifierService } from '../identifier';
 import { DisposableService } from '../disposable';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import {
   readPersistedData,
@@ -18,21 +25,24 @@ import {
 
 const CREDENTIALS_KEY = 'credentials';
 
-const sessionSchema = z
+const credentialsSchema = z
   .object({
-    access_token: z.string(),
-    refresh_token: z.string(),
-    expires_at: z.number().optional(),
+    token: z.string(),
     user: z
       .object({
         id: z.string(),
         email: z.string().optional(),
+        name: z.string().optional(),
       })
       .optional(),
   })
   .nullable();
 
+type StoredCredentials = z.infer<typeof credentialsSchema>;
+
 export type AuthState = KartonContract['state']['userAccount'];
+
+const SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export class AuthService extends DisposableService {
   private readonly identifierService: IdentifierService;
@@ -40,11 +50,11 @@ export class AuthService extends DisposableService {
   private readonly notificationService: NotificationService;
   private readonly logger: Logger;
 
-  private _sessionJson: string | null = null;
+  private _credentials: StoredCredentials = null;
   private serverInterop: AuthServerInterop;
-  private supabase!: SupabaseClient;
+  private authClient: BetterAuthClient;
 
-  private _authStateCheckInterval: NodeJS.Timeout | null = null;
+  private _refreshInterval: NodeJS.Timeout | null = null;
   private authChangeCallbacks: ((newAuthState: AuthState) => void)[] = [];
 
   private constructor(
@@ -59,12 +69,21 @@ export class AuthService extends DisposableService {
     this.notificationService = notificationService;
     this.logger = logger;
     this.serverInterop = new AuthServerInterop(logger);
+    this.authClient = createBetterAuthClient(
+      () => this._credentials?.token ?? null,
+      (token) => {
+        this.persistCredentials({
+          ...this._credentials,
+          token,
+        });
+        this.logger.debug('[AuthService] Token captured/refreshed');
+      },
+    );
   }
 
-  private persistSession(value: string | null): void {
-    this._sessionJson = value;
-    const parsed = value ? JSON.parse(value) : null;
-    void writePersistedData(CREDENTIALS_KEY, sessionSchema, parsed, {
+  private persistCredentials(credentials: StoredCredentials): void {
+    this._credentials = credentials;
+    void writePersistedData(CREDENTIALS_KEY, credentialsSchema, credentials, {
       encrypt: true,
     });
   }
@@ -72,108 +91,38 @@ export class AuthService extends DisposableService {
   private async initialize(): Promise<void> {
     const persisted = await readPersistedData(
       CREDENTIALS_KEY,
-      sessionSchema,
+      credentialsSchema,
       null,
       { encrypt: true },
     );
-    if (persisted) {
-      this._sessionJson = JSON.stringify(persisted);
+
+    if (persisted?.token) {
+      this._credentials = persisted;
+      this.logger.debug(
+        '[AuthService] Restored persisted credentials, validating session...',
+      );
+
+      await this.refreshSession();
+    } else {
+      this.updateAuthState((draft) => {
+        draft.userAccount = {
+          status: 'unauthenticated',
+          machineId: this.identifierService.getMachineId(),
+        };
+      });
     }
 
-    // Create the Supabase client
-    this.supabase = createSupabaseClient(this.logger);
-
-    // Restore persisted session into the Supabase client's in-memory storage
-    const storedSession = this._sessionJson;
-    if (storedSession) {
-      // The Supabase client reads from its storage adapter on getSession(),
-      // so we need to seed the in-memory storage before calling it.
-      // We do this by setting the session directly.
-      try {
-        const parsed = JSON.parse(storedSession);
-        if (parsed?.access_token && parsed?.refresh_token) {
-          await this.supabase.auth.setSession({
-            access_token: parsed.access_token,
-            refresh_token: parsed.refresh_token,
-          });
-          this.logger.debug(
-            '[AuthService] Restored persisted Supabase session',
-          );
-        }
-      } catch (err) {
-        this.logger.warn(
-          `[AuthService] Failed to restore persisted session: ${err}`,
-        );
+    this._refreshInterval = setInterval(() => {
+      if (this._credentials?.token) {
+        void this.refreshSession();
       }
-    }
+    }, SESSION_REFRESH_INTERVAL_MS);
 
-    this.uiKarton.setState((draft) => {
-      draft.userAccount.status = 'server_unreachable';
-    });
+    this.registerProcedureHandlers();
+    this.logger.debug('[AuthService] Initialized');
+  }
 
-    // Listen for Supabase auth state changes (handles auto-refresh)
-    this.supabase.auth.onAuthStateChange((event, session) => {
-      this.logger.debug(`[AuthService] Supabase auth state change: ${event}`);
-
-      if (
-        event === 'SIGNED_IN' ||
-        event === 'TOKEN_REFRESHED' ||
-        event === 'INITIAL_SESSION'
-      ) {
-        if (session) {
-          // Persist the session to disk
-          this.persistSession(
-            JSON.stringify({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token,
-              expires_at: session.expires_at,
-              user: session.user
-                ? { id: session.user.id, email: session.user.email }
-                : undefined,
-            }),
-          );
-
-          // Update Karton state
-          this.updateAuthState((draft) => {
-            draft.userAccount = {
-              ...draft.userAccount,
-              status: 'authenticated',
-              machineId: this.identifierService.getMachineId(),
-              user: session.user
-                ? {
-                    id: session.user.id,
-                    email: session.user.email ?? '',
-                  }
-                : undefined,
-            };
-          });
-
-          // Fetch subscription in the background
-          if (event !== 'TOKEN_REFRESHED') {
-            void this.fetchSubscription(session.access_token);
-          }
-        }
-      } else if (event === 'SIGNED_OUT') {
-        this.persistSession(null);
-        this.updateAuthState((draft) => {
-          draft.userAccount = {
-            status: 'unauthenticated',
-            machineId: this.identifierService.getMachineId(),
-          };
-        });
-      }
-    });
-
-    // Initial auth state check
-    void this.checkAuthState();
-    this._authStateCheckInterval = setInterval(
-      () => {
-        void this.checkAuthState();
-      },
-      10 * 60 * 1000,
-    );
-
-    // Register procedure handlers
+  private registerProcedureHandlers(): void {
     this.uiKarton.registerServerProcedureHandler(
       'userAccount.sendOtp',
       async (_callingClientId: string, email: string) => {
@@ -198,7 +147,7 @@ export class AuthService extends DisposableService {
     this.uiKarton.registerServerProcedureHandler(
       'userAccount.refreshStatus',
       async (_callingClientId: string) => {
-        await this.checkAuthState();
+        await this.refreshSession();
       },
     );
 
@@ -209,8 +158,6 @@ export class AuthService extends DisposableService {
         return validateApiKeys(keys);
       },
     );
-
-    this.logger.debug('[AuthService] Initialized');
   }
 
   public static async create(
@@ -230,7 +177,9 @@ export class AuthService extends DisposableService {
   }
 
   protected onTeardown(): void {
-    clearInterval(this._authStateCheckInterval!);
+    if (this._refreshInterval) {
+      clearInterval(this._refreshInterval);
+    }
 
     this.uiKarton.removeServerProcedureHandler('userAccount.sendOtp');
     this.uiKarton.removeServerProcedureHandler('userAccount.verifyOtp');
@@ -242,12 +191,16 @@ export class AuthService extends DisposableService {
     this.logger.debug('[AuthService] Teardown complete');
   }
 
-  /**
-   * Send an OTP code to the given email address.
-   */
+  // ---------------------------------------------------------------------------
+  // OTP flow
+  // ---------------------------------------------------------------------------
+
   public async sendOtp(email: string): Promise<{ error?: string }> {
     try {
-      const { error } = await this.supabase.auth.signInWithOtp({ email });
+      const { error } = await this.authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: 'sign-in',
+      });
       if (error) {
         this.logger.error(`[AuthService] Failed to send OTP: ${error.message}`);
         return { error: error.message };
@@ -260,19 +213,14 @@ export class AuthService extends DisposableService {
     }
   }
 
-  /**
-   * Verify an OTP code for the given email address.
-   * On success, the Supabase client will fire onAuthStateChange with SIGNED_IN.
-   */
   public async verifyOtp(
     email: string,
     code: string,
   ): Promise<{ error?: string }> {
     try {
-      const { data, error } = await this.supabase.auth.verifyOtp({
+      const { data, error } = await this.authClient.signIn.emailOtp({
         email,
-        token: code,
-        type: 'email',
+        otp: code,
       });
 
       if (error) {
@@ -282,28 +230,66 @@ export class AuthService extends DisposableService {
         return { error: error.message };
       }
 
-      if (data.session) {
-        this.logger.debug('[AuthService] OTP verified, session established');
-        return {};
+      // The global onSuccess handler already persisted the token.
+      // Now update auth state with the user info.
+      const user = data?.user;
+      this.updateAuthState((draft) => {
+        draft.userAccount = {
+          ...draft.userAccount,
+          status: 'authenticated',
+          machineId: this.identifierService.getMachineId(),
+          user: user ? { id: user.id, email: user.email ?? '' } : undefined,
+        };
+      });
+
+      const currentToken = this._credentials?.token;
+      if (user && currentToken) {
+        this.persistCredentials({
+          ...this._credentials,
+          token: currentToken,
+          user: {
+            id: user.id,
+            email: user.email ?? undefined,
+            name: user.name ?? undefined,
+          },
+        });
       }
 
-      return { error: 'Verification completed but no session was created.' };
+      if (currentToken) {
+        void this.fetchSubscription(currentToken);
+      }
+
+      this.logger.debug('[AuthService] Signed in via OTP');
+      return {};
     } catch (err) {
       this.logger.error(`[AuthService] Unexpected error verifying OTP: ${err}`);
       return { error: 'An unexpected error occurred.' };
     }
   }
 
-  /**
-   * Check the current auth state by querying the Supabase session.
-   */
-  private async checkAuthState(): Promise<void> {
-    try {
-      const {
-        data: { session },
-      } = await this.supabase.auth.getSession();
+  // ---------------------------------------------------------------------------
+  // Session management
+  // ---------------------------------------------------------------------------
 
-      if (!session) {
+  private async refreshSession(): Promise<void> {
+    if (!this._credentials?.token) {
+      this.updateAuthState((draft) => {
+        draft.userAccount = {
+          status: 'unauthenticated',
+          machineId: this.identifierService.getMachineId(),
+        };
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await this.authClient.getSession();
+
+      if (error || !data) {
+        this.logger.warn(
+          `[AuthService] Session refresh failed: ${error?.message ?? 'no session'}`,
+        );
+        this.persistCredentials(null);
         this.updateAuthState((draft) => {
           draft.userAccount = {
             status: 'unauthenticated',
@@ -313,33 +299,42 @@ export class AuthService extends DisposableService {
         return;
       }
 
+      const user = data.user;
+      const credentials = this._credentials;
+      if (user && credentials) {
+        this.persistCredentials({
+          ...credentials,
+          user: {
+            id: user.id,
+            email: user.email ?? undefined,
+            name: user.name ?? undefined,
+          },
+        });
+      }
+
       this.updateAuthState((draft) => {
         draft.userAccount = {
           ...draft.userAccount,
           status: 'authenticated',
           machineId: this.identifierService.getMachineId(),
-          user: session.user
-            ? {
-                id: session.user.id,
-                email: session.user.email ?? '',
-              }
-            : undefined,
+          user: user
+            ? { id: user.id, email: user.email ?? '' }
+            : draft.userAccount.user,
         };
       });
 
-      // Fetch subscription data
-      await this.fetchSubscription(session.access_token);
+      const token = this._credentials?.token;
+      if (token) {
+        void this.fetchSubscription(token);
+      }
     } catch (err) {
+      this.logger.error(`[AuthService] Failed to refresh session: ${err}`);
       this.updateAuthState((draft) => {
         draft.userAccount.status = 'server_unreachable';
       });
-      this.logger.error(`[AuthService] Failed to check auth state: ${err}`);
     }
   }
 
-  /**
-   * Fetch subscription info and update Karton state.
-   */
   private async fetchSubscription(accessToken: string): Promise<void> {
     const subscriptionData =
       await this.serverInterop.getSubscription(accessToken);
@@ -349,20 +344,36 @@ export class AuthService extends DisposableService {
         draft.userAccount = {
           ...draft.userAccount,
           subscription: {
-            active: subscriptionData.hasSubscription || false,
-            plan: subscriptionData.subscription?.priceId || undefined,
-            expiresAt:
-              subscriptionData.subscription?.currentPeriodEnd?.toISOString() ||
-              undefined,
+            active:
+              subscriptionData.status === 'active' ||
+              subscriptionData.status === 'trialing',
+            plan: subscriptionData.plan || undefined,
+            expiresAt: subscriptionData.currentPeriodEnd || undefined,
           },
         };
       });
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
+
   public async logout(): Promise<void> {
-    await this.supabase.auth.signOut();
-    this.persistSession(null);
+    try {
+      await this.authClient.signOut();
+    } catch {
+      // Sign-out may fail if server is unreachable; we still clear local state.
+    }
+
+    this.persistCredentials(null);
+
+    this.updateAuthState((draft) => {
+      draft.userAccount = {
+        status: 'unauthenticated',
+        machineId: this.identifierService.getMachineId(),
+      };
+    });
 
     this.notificationService.showNotification({
       title: 'Logged out',
@@ -382,19 +393,29 @@ export class AuthService extends DisposableService {
 
   public get accessToken(): string | undefined {
     this.assertNotDisposed();
-    if (!this._sessionJson) return undefined;
-    try {
-      const parsed = JSON.parse(this._sessionJson);
-      return parsed?.access_token;
-    } catch {
-      return undefined;
-    }
+    return this._credentials?.token ?? undefined;
   }
 
   public async refreshAuthState(): Promise<AuthState> {
-    await this.checkAuthState();
+    await this.refreshSession();
     return this.authState;
   }
+
+  public async getUsageCurrent(): Promise<CurrentUsageResponse> {
+    const token = this.accessToken;
+    if (!token) throw new Error('Not authenticated');
+    return this.serverInterop.getUsageCurrent(token);
+  }
+
+  public async getUsageHistory(days?: number): Promise<UsageHistoryResponse> {
+    const token = this.accessToken;
+    if (!token) throw new Error('Not authenticated');
+    return this.serverInterop.getUsageHistory(token, days);
+  }
+
+  // ---------------------------------------------------------------------------
+  // State management
+  // ---------------------------------------------------------------------------
 
   private updateAuthState(
     draft: Parameters<typeof this.uiKarton.setState>[0],

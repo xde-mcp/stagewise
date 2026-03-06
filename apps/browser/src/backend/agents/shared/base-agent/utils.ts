@@ -17,7 +17,10 @@ import {
   computeAllEnvironmentChanges,
   resolveEffectiveSnapshot,
 } from '../prompts/utils/environment-changes';
-import type { ModelProviderService } from '@/agents/model-provider';
+import {
+  type ModelProviderService,
+  deepMergeProviderOptions,
+} from '@/agents/model-provider';
 import {
   relevantCodebaseFilesToContextSnippet,
   selectedElementToContextSnippet,
@@ -579,8 +582,76 @@ export const convertAgentMessagesToModelMessages = async (
 
   const modelMessages = [...revertedModelMessageChunks].reverse().flat();
 
-  return modelMessages;
+  return addCacheControlBreakpoints(modelMessages);
 };
+
+/**
+ * Cache-control provider options for native SDK providers.
+ * Each SDK reads only its own key on message-level providerOptions.
+ *
+ * The `openaiCompatible` key is hardcoded in the SDK's message converter
+ * (`getOpenAIMetadata`) and spread directly onto each message in the
+ * request body — it does NOT use the custom provider name. This is how
+ * `cache_control` reaches the stagewise gateway without any extra
+ * transform logic.
+ */
+const CACHE_CONTROL_PROVIDER_OPTIONS = {
+  anthropic: { cacheControl: { type: 'ephemeral' } },
+  openaiCompatible: { cache_control: { type: 'ephemeral' } },
+} satisfies Record<string, unknown>;
+
+/**
+ * Annotates up to 3 messages with Anthropic ephemeral cache control breakpoints:
+ *
+ * 1. The **first system message** — the system prompt is large and stable.
+ * 2. The **last user message before the final block of assistant messages** —
+ *    this is the pivot point where user context ends and agent output begins.
+ * 3. The **last message overall** — ensures the tail of the conversation is cached.
+ *
+ * If any of these indices overlap (e.g. only 1 message), duplicates are
+ * deduplicated so each message is annotated at most once.
+ *
+ * Non-Anthropic providers ignore unknown `providerOptions` keys, so this is
+ * safe to apply unconditionally.
+ */
+function addCacheControlBreakpoints(messages: ModelMessage[]): ModelMessage[] {
+  if (messages.length === 0) return messages;
+
+  const indicesToCache = new Set<number>();
+
+  // 1. First system message
+  const firstSystemIndex = messages.findIndex((m) => m.role === 'system');
+  if (firstSystemIndex !== -1) indicesToCache.add(firstSystemIndex);
+
+  // 2. Last user message before the final contiguous block of assistant messages.
+  //    Walk backwards: skip all trailing non-user messages that form the last
+  //    assistant block, then find the first user message before that block.
+  let pivotUserIndex = -1;
+  let i = messages.length - 1;
+  // Skip the trailing assistant/tool block (anything that isn't 'user' or 'system')
+  while (i >= 0 && messages[i].role !== 'user') {
+    i--;
+  }
+  // `i` now points at the last user message before the tail assistant block
+  // (or -1 if there are no user messages).
+  if (i >= 0) pivotUserIndex = i;
+  if (pivotUserIndex !== -1) indicesToCache.add(pivotUserIndex);
+
+  // 3. Last message overall
+  indicesToCache.add(messages.length - 1);
+
+  // Apply cache control to selected messages (mutate-free)
+  return messages.map((message, idx) => {
+    if (!indicesToCache.has(idx)) return message;
+    return {
+      ...message,
+      providerOptions: deepMergeProviderOptions(
+        CACHE_CONTROL_PROVIDER_OPTIONS,
+        message.providerOptions,
+      ),
+    };
+  });
+}
 
 const getSimpleToolsStateString = (
   toolPart: AgentToolUIPart | DynamicToolUIPart,
@@ -717,10 +788,10 @@ export const generateSimpleTitle = async (
 
   const title = await generateText({
     model: modelWithOptions.model,
-    providerOptions: {
-      ...modelWithOptions.providerOptions,
-      anthropic: { thinking: { type: 'disabled' } },
-    },
+    providerOptions: deepMergeProviderOptions(
+      modelWithOptions.providerOptions,
+      { anthropic: { thinking: { type: 'disabled' } } },
+    ),
     headers: modelWithOptions.headers,
     messages: [
       {

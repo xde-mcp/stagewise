@@ -4,6 +4,10 @@ import { Input } from '@stagewise/stage-ui/components/input';
 import { InputOtp } from '@stagewise/stage-ui/components/input-otp';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import type { CurrentUsageResponse } from '@shared/karton-contracts/pages-api/types';
+
+const CONSOLE_URL =
+  import.meta.env.VITE_STAGEWISE_CONSOLE_URL || 'https://console.stagewise.io';
 
 export const Route = createFileRoute('/_internal-app/account')({
   component: Page,
@@ -67,6 +71,8 @@ function AuthenticatedView({
   machineId?: string;
   onLogout: () => void;
 }) {
+  const openTab = useKartonProcedure((p) => p.openTab);
+
   return (
     <>
       {/* User info */}
@@ -135,13 +141,139 @@ function AuthenticatedView({
 
       <hr className="border-border-subtle" />
 
-      {/* Sign out */}
-      <div className="flex justify-end">
+      <UsageSection />
+
+      <hr className="border-border-subtle" />
+
+      {/* Actions */}
+      <div className="flex justify-end gap-2">
         <Button variant="secondary" size="sm" onClick={onLogout}>
           Sign out
         </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => void openTab(CONSOLE_URL, true)}
+        >
+          Open Console
+        </Button>
       </div>
     </>
+  );
+}
+
+const WINDOW_LABELS: Record<string, string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+};
+
+function formatCredits(raw: number): string {
+  const dollars = raw / 10_000;
+  return `$${dollars.toFixed(2)}`;
+}
+
+function formatResetTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  if (diffMs <= 0) return 'now';
+  const diffH = Math.floor(diffMs / 3_600_000);
+  if (diffH < 24) return `in ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  return `in ${diffD}d`;
+}
+
+function UsageSection() {
+  const getUsageCurrent = useKartonProcedure((p) => p.getUsageCurrent);
+  const getUsageCurrentRef = useRef(getUsageCurrent);
+  getUsageCurrentRef.current = getUsageCurrent;
+  const [usage, setUsage] = useState<CurrentUsageResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getUsageCurrentRef
+      .current()
+      .then((data) => {
+        if (!cancelled) setUsage(data);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'string'
+              ? err
+              : 'Failed to load usage data.';
+        setError(message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h3 className="font-medium text-foreground">Usage</h3>
+
+      {loading && (
+        <p className="text-muted-foreground text-sm">Loading usage...</p>
+      )}
+
+      {error && <p className="text-error-foreground text-sm">{error}</p>}
+
+      {usage && (
+        <div className="flex flex-col gap-5">
+          {/* Credits */}
+          <div className="grid grid-cols-[140px_1fr] gap-x-4">
+            <span className="font-medium text-muted-foreground text-sm">
+              Credits
+            </span>
+            <span className="text-foreground text-sm">
+              {formatCredits(usage.prepaidBalance)} remaining
+            </span>
+          </div>
+
+          {/* Rate-limit windows */}
+          <div className="flex flex-col gap-3">
+            {usage.windows.map((w) => {
+              const remaining = Math.max(0, 100 - w.usedPercent);
+              const barColor =
+                w.usedPercent >= 100
+                  ? 'bg-error-solid'
+                  : w.usedPercent > 80
+                    ? 'bg-warning-solid'
+                    : 'bg-primary-solid';
+              return (
+                <div key={w.type} className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground text-sm">
+                      {WINDOW_LABELS[w.type] ?? w.type}
+                    </span>
+                    <span className="text-muted-foreground text-sm">
+                      {remaining.toFixed(0)}% left &middot; resets{' '}
+                      {formatResetTime(w.resetsAt)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-1">
+                    <div
+                      className={`h-full rounded-full ${barColor}`}
+                      style={{ width: `${w.usedPercent}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

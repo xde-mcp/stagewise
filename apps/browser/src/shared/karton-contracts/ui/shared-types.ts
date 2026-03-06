@@ -1,38 +1,8 @@
 import { z } from 'zod';
 import type { ChangeObject, StructuredPatchHunk } from 'diff';
-import type {
-  AnthropicProvider,
-  AnthropicProviderOptions,
-} from '@ai-sdk/anthropic';
-import type {
-  OpenAIProvider,
-  OpenAIResponsesProviderOptions,
-} from '@ai-sdk/openai';
-import type {
-  GoogleGenerativeAIProvider,
-  GoogleGenerativeAIProviderOptions,
-} from '@ai-sdk/google';
-
-type AllAnthropicModelIds = Parameters<AnthropicProvider['languageModel']>[0];
-type AllOpenAIModelIds = Parameters<OpenAIProvider['languageModel']>[0];
-type AllGoogleModelIds = Parameters<
-  GoogleGenerativeAIProvider['languageModel']
->[0];
-
-type AnthropicModelIds =
-  | Extract<
-      AllAnthropicModelIds,
-      'claude-haiku-4-5' | 'claude-sonnet-4-5' | 'claude-opus-4-5'
-    >
-  | 'claude-opus-4-5'
-  | 'claude-opus-4-6'
-  | 'claude-sonnet-4-6';
-
-type OpenAIModelIds =
-  | Extract<AllOpenAIModelIds, 'gpt-5.2' | 'gpt-5.1-codex-max'>
-  | 'gpt-5.2-codex';
-
-type GoogleModelIds = Extract<AllGoogleModelIds, 'gemini-3-pro-preview'>;
+import type { AnthropicProviderOptions } from '@ai-sdk/anthropic';
+import type { OpenAIResponsesProviderOptions } from '@ai-sdk/openai';
+import type { GoogleGenerativeAIProviderOptions } from '@ai-sdk/google';
 
 // ============================================================================
 // Model Provider Configuration
@@ -56,7 +26,9 @@ export const providerConfigSchema = z.object({
   mode: providerEndpointModeSchema.default('stagewise'),
   /** Base64-encoded safeStorage-encrypted API key (encrypted on backend, opaque to UI) */
   encryptedApiKey: z.string().optional(),
-  /** Custom base URL (only used when mode is 'custom') */
+  /** ID of a custom endpoint to use (only when mode is 'custom') */
+  customProviderId: z.string().optional(),
+  /** @deprecated Migrated to customProviderId — kept for backwards compat parsing */
   customBaseUrl: z.string().optional(),
 });
 export type ProviderConfig = z.infer<typeof providerConfigSchema>;
@@ -79,6 +51,9 @@ const apiSpecValues = [
   'openai-chat-completions',
   'openai-responses',
   'google',
+  'azure',
+  'amazon-bedrock',
+  'google-vertex',
 ] as const;
 export const apiSpecSchema = z
   .string()
@@ -97,6 +72,18 @@ export const customEndpointSchema = z.object({
   apiSpec: apiSpecSchema,
   baseUrl: z.string(),
   encryptedApiKey: z.string().optional(),
+  /** Maps built-in model IDs to the IDs expected by this endpoint */
+  modelIdMapping: z.record(z.string(), z.string()).optional(),
+  // Azure-specific fields
+  resourceName: z.string().optional(),
+  apiVersion: z.string().optional(),
+  // Amazon Bedrock-specific fields
+  region: z.string().optional(),
+  encryptedSecretKey: z.string().optional(),
+  // Google Vertex-specific fields
+  projectId: z.string().optional(),
+  location: z.string().optional(),
+  encryptedGoogleCredentials: z.string().optional(),
 });
 export type CustomEndpoint = z.infer<typeof customEndpointSchema>;
 
@@ -207,15 +194,35 @@ export const PROVIDER_DISPLAY_INFO: Record<
   },
 };
 
-type BaseSettings = {
-  /** Which provider this model belongs to */
-  provider: ModelProvider;
+export type StagewiseProviderOptions = {
+  reasoning?: {
+    enabled: boolean;
+    effort: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+  };
+  cache_control?: {
+    type: 'ephemeral' | 'persistent';
+  };
+};
+
+export type ModelSettings = {
+  modelId: string;
+  /** Which provider should be used for the official API option */
+  officialProvider?: ModelProvider;
   modelDisplayName: string;
   modelDescription: string;
   modelContext: string;
   modelContextRaw: number;
   headers?: Record<string, string>;
-  thinkingEnabled?: boolean;
+  /**
+   * Per-provider configuration options.
+   */
+  providerOptions: {
+    stagewise?: StagewiseProviderOptions;
+    google?: GoogleGenerativeAIProviderOptions;
+    anthropic?: AnthropicProviderOptions;
+    openai?: OpenAIResponsesProviderOptions;
+  } & Record<string, unknown>;
+  thinkingEnabled: boolean; // Shows an thinking icon in the model card
   capabilities: {
     inputModalities: {
       text: boolean;
@@ -240,26 +247,6 @@ type BaseSettings = {
     toolCalling: boolean;
   };
 };
-
-type AnthropicModelSettings = BaseSettings & {
-  modelId: AnthropicModelIds;
-  providerOptions: AnthropicProviderOptions;
-};
-
-type OpenAIModelSettings = BaseSettings & {
-  modelId: OpenAIModelIds;
-  providerOptions: OpenAIResponsesProviderOptions;
-};
-
-type GoogleModelSettings = BaseSettings & {
-  modelId: GoogleModelIds;
-  providerOptions: GoogleGenerativeAIProviderOptions;
-};
-
-export type ModelSettings =
-  | AnthropicModelSettings
-  | OpenAIModelSettings
-  | GoogleModelSettings;
 
 /**
  * GLOBAL CONFIG CAPABILITIES

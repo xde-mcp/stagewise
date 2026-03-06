@@ -6,7 +6,7 @@ import type {
   MentionFileCandidate,
 } from './agent/metadata';
 import type { ReactSelectedElementInfo } from '../../selected-elements/react';
-import type { AppRouter, TRPCClient } from '@stagewise/api-client';
+import type { ApiClient } from '@stagewise/api-client';
 import type { SelectedElement } from '../../selected-elements';
 import type { FileDiff } from './shared-types';
 import type { QuestionField, QuestionAnswerValue } from './agent/tools/types';
@@ -77,8 +77,8 @@ export type DownloadSummary = {
 export type { UserMessageMetadata, ReactSelectedElementInfo };
 export type { SelectedElement } from '../../selected-elements';
 
-export type InspirationWebsite = Awaited<
-  ReturnType<TRPCClient<AppRouter>['inspiration']['list']['query']>
+export type InspirationWebsite = NonNullable<
+  Awaited<ReturnType<ApiClient['v1']['inspiration']['get']>>['data']
 >;
 
 export type {

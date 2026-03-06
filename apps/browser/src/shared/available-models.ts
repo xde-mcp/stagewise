@@ -58,14 +58,22 @@ const GOOGLE_INPUT_CONSTRAINTS: InputConstraints = {
 export const availableModels = [
   // Anthropic Models
   {
-    provider: 'anthropic',
+    officialProvider: 'anthropic',
     modelId: 'claude-opus-4-6',
-    providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Opus 4.6',
     modelDescription:
       "Anthropic's most capable model, excels at complex reasoning and architectural decisions.",
     modelContext: '200k context',
     modelContextRaw: 200000,
+    headers: anthropicHeaders,
+    providerOptions: {
+      stagewise: { reasoning: { enabled: true, effort: 'medium' } },
+      anthropic: {
+        thinking: { type: 'adaptive' },
+        effort: 'medium',
+      },
+    },
+    thinkingEnabled: true,
     capabilities: {
       inputModalities: {
         text: true,
@@ -84,54 +92,24 @@ export const availableModels = [
       inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
       toolCalling: true,
     },
-    headers: anthropicHeaders,
-    thinkingEnabled: true,
   },
   {
-    provider: 'anthropic',
-    modelId: 'claude-opus-4-5',
-    providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
-    modelDisplayName: 'Opus 4.5',
-    modelDescription:
-      "Anthropic's previous flagship model, excels at complex reasoning and architectural decisions.",
+    officialProvider: 'openai',
+    modelId: 'gpt-5.3-chat',
+    modelDisplayName: 'GPT-5.3 Instant',
+    modelDescription: "OpenAI's latest chatting model for daily use.",
     modelContext: '200k context',
     modelContextRaw: 200000,
-    capabilities: {
-      inputModalities: {
-        text: true,
-        audio: false,
-        image: true,
-        video: false,
-        file: true,
-      },
-      outputModalities: {
-        text: true,
-        audio: false,
-        image: false,
-        video: false,
-        file: false,
-      },
-      inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
-      toolCalling: true,
-    },
-    headers: anthropicHeaders,
-    thinkingEnabled: true,
-  },
-  {
-    provider: 'openai',
-    modelId: 'gpt-5.2',
-    providerOptions: {
-      reasoningEffort: 'high',
-      reasoningSummary: 'auto',
-      parallelToolCalls: true,
-      strictJsonSchema: true,
-    },
-    modelDisplayName: 'GPT-5.2',
-    modelDescription:
-      "OpenAI's latest flagship model with advanced reasoning for complex coding tasks.",
-    modelContext: '128k context',
-    modelContextRaw: 128000,
     headers: openaiHeaders,
+    providerOptions: {
+      stagewise: { reasoning: { enabled: true, effort: 'high' } },
+      openai: {
+        reasoningEffort: 'high',
+        reasoningSummary: 'auto',
+        parallelToolCalls: true,
+        strictJsonSchema: true,
+      },
+    },
     thinkingEnabled: true,
     capabilities: {
       inputModalities: {
@@ -153,20 +131,20 @@ export const availableModels = [
     },
   },
   {
-    provider: 'google',
-    modelId: 'gemini-3-pro-preview',
-    providerOptions: {
-      thinkingConfig: {
-        includeThoughts: true,
-        thinkingLevel: 'high',
-      },
-    },
-    headers: googleHeaders,
-    modelDisplayName: 'Gemini 3 Pro',
+    officialProvider: 'google',
+    modelId: 'gemini-3-1-pro-preview',
+    modelDisplayName: 'Gemini 3.1 Pro (Preview)',
     modelDescription:
-      "Google's advanced model with strong reasoning and multimodal capabilities.",
+      "Google's latest model with strong reasoning and multimodal capabilities. Preview version (may be unstable).",
     modelContext: '1M context',
     modelContextRaw: 1000000,
+    headers: googleHeaders,
+    providerOptions: {
+      stagewise: { reasoning: { enabled: true, effort: 'medium' } },
+      google: {
+        thinkingConfig: { includeThoughts: true, thinkingLevel: 'high' },
+      },
+    },
     thinkingEnabled: true,
     capabilities: {
       inputModalities: {
@@ -188,15 +166,18 @@ export const availableModels = [
     },
   },
   {
-    provider: 'anthropic',
+    officialProvider: 'anthropic',
     modelId: 'claude-haiku-4-5',
-    providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     modelDisplayName: 'Haiku 4.5',
     modelDescription:
       'Fast and cost-effective, ideal for quick iterations and simple edits.',
     modelContext: '200k context',
     modelContextRaw: 200000,
     headers: anthropicHeaders,
+    providerOptions: {
+      stagewise: { reasoning: { enabled: true, effort: 'medium' } },
+      anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
+    },
     thinkingEnabled: true,
     capabilities: {
       inputModalities: {
@@ -218,55 +199,23 @@ export const availableModels = [
     },
   },
   {
-    provider: 'openai',
-    modelId: 'gpt-5.2-codex',
-    providerOptions: {
-      reasoningEffort: 'high',
-      reasoningSummary: 'auto',
-      parallelToolCalls: true,
-      strictJsonSchema: true,
-    },
-    modelDisplayName: 'GPT-5.2 Codex',
+    officialProvider: 'openai',
+    modelId: 'gpt-5.3-codex',
+    modelDisplayName: 'GPT-5.3 Codex',
     modelDescription:
       "OpenAI's most powerful coding model, designed for large-scale projects and complex refactoring.",
     modelContext: '128k context',
     modelContextRaw: 128000,
     headers: openaiHeaders,
-    thinkingEnabled: true,
-    capabilities: {
-      inputModalities: {
-        text: true,
-        audio: false,
-        image: true,
-        video: false,
-        file: true,
-      },
-      outputModalities: {
-        text: true,
-        audio: false,
-        image: false,
-        video: false,
-        file: false,
-      },
-      inputConstraints: OPENAI_INPUT_CONSTRAINTS,
-      toolCalling: true,
-    },
-  },
-  {
-    provider: 'openai',
-    modelId: 'gpt-5.1-codex-max',
     providerOptions: {
-      reasoningEffort: 'high',
-      reasoningSummary: 'auto',
-      parallelToolCalls: true,
-      strictJsonSchema: true,
+      stagewise: { reasoning: { enabled: true, effort: 'high' } },
+      openai: {
+        reasoningEffort: 'high',
+        reasoningSummary: 'auto',
+        parallelToolCalls: true,
+        strictJsonSchema: true,
+      },
     },
-    modelDisplayName: 'GPT-5.1 Codex Max',
-    modelDescription:
-      "OpenAI's previous most powerful coding model, designed for large-scale projects and complex refactoring.",
-    modelContext: '128k context',
-    modelContextRaw: 128000,
-    headers: openaiHeaders,
     thinkingEnabled: true,
     capabilities: {
       inputModalities: {
@@ -288,45 +237,19 @@ export const availableModels = [
     },
   },
   {
-    provider: 'anthropic',
+    officialProvider: 'anthropic',
     modelId: 'claude-sonnet-4-6',
-    providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
+
     modelDisplayName: 'Sonnet 4.6',
     modelDescription:
       "Anthropic's balanced model, great for daily coding tasks.",
     modelContext: '200k context',
     modelContextRaw: 200000,
     headers: anthropicHeaders,
-    thinkingEnabled: true,
-    capabilities: {
-      inputModalities: {
-        text: true,
-        audio: false,
-        image: true,
-        video: false,
-        file: true,
-      },
-      outputModalities: {
-        text: true,
-        audio: false,
-        image: false,
-        video: false,
-        file: false,
-      },
-      inputConstraints: ANTHROPIC_INPUT_CONSTRAINTS,
-      toolCalling: true,
+    providerOptions: {
+      stagewise: { reasoning: { enabled: true, effort: 'medium' } },
+      anthropic: { thinking: { type: 'adaptive' }, effort: 'medium' },
     },
-  },
-  {
-    provider: 'anthropic',
-    modelId: 'claude-sonnet-4-5',
-    providerOptions: { thinking: { type: 'enabled', budgetTokens: 10000 } },
-    modelDisplayName: 'Sonnet 4.5',
-    modelDescription:
-      "Anthropic's deprecated balanced model, great for daily coding tasks.",
-    modelContext: '200k context',
-    modelContextRaw: 200000,
-    headers: anthropicHeaders,
     thinkingEnabled: true,
     capabilities: {
       inputModalities: {

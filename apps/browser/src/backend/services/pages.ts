@@ -46,6 +46,8 @@ import type {
   LocalPortEntry,
   OriginThumbnailResult,
   MostVisitedOriginEntry,
+  CurrentUsageResponse,
+  UsageHistoryResponse,
 } from '@shared/karton-contracts/pages-api/types';
 import { DisposableService } from './disposable';
 import type { TelemetryService } from './telemetry';
@@ -114,6 +116,10 @@ export class PagesService extends DisposableService {
     oid: string,
   ) => Promise<ExternalFileContentResult | null>;
   private scanLocalPortsHandler?: () => Promise<void>;
+  private getUsageCurrentHandler?: () => Promise<CurrentUsageResponse>;
+  private getUsageHistoryHandler?: (params: {
+    days?: number;
+  }) => Promise<UsageHistoryResponse>;
 
   private readonly telemetryService: TelemetryService;
 
@@ -1146,6 +1152,29 @@ export class PagesService extends DisposableService {
     );
 
     this.kartonServer.registerServerProcedureHandler(
+      'getUsageCurrent',
+      async (_callingClientId: string): Promise<CurrentUsageResponse> => {
+        if (!this.getUsageCurrentHandler) {
+          throw new Error('Usage handler not available');
+        }
+        return this.getUsageCurrentHandler();
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'getUsageHistory',
+      async (
+        _callingClientId: string,
+        params: { days?: number },
+      ): Promise<UsageHistoryResponse> => {
+        if (!this.getUsageHistoryHandler) {
+          throw new Error('Usage handler not available');
+        }
+        return this.getUsageHistoryHandler(params);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
       'getMostVisitedOrigins',
       async (
         _callingClientId: string,
@@ -1276,6 +1305,14 @@ export class PagesService extends DisposableService {
       apiKey: string,
     ) => Promise<void>,
     clearCustomEndpointApiKeyHandler: (endpointId: string) => Promise<void>,
+    setCustomEndpointSecretKeyHandler: (
+      endpointId: string,
+      secretKey: string,
+    ) => Promise<void>,
+    setCustomEndpointGoogleCredentialsHandler: (
+      endpointId: string,
+      credentials: string,
+    ) => Promise<void>,
   ): void {
     this.getPreferencesHandler = getHandler;
     this.updatePreferencesHandler = updateHandler;
@@ -1330,6 +1367,31 @@ export class PagesService extends DisposableService {
       'clearCustomEndpointApiKey',
       async (_callingClientId: string, endpointId: string) => {
         await clearCustomEndpointApiKeyHandler(endpointId);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'setCustomEndpointSecretKey',
+      async (
+        _callingClientId: string,
+        endpointId: string,
+        secretKey: string,
+      ) => {
+        await setCustomEndpointSecretKeyHandler(endpointId, secretKey);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'setCustomEndpointGoogleCredentials',
+      async (
+        _callingClientId: string,
+        endpointId: string,
+        credentials: string,
+      ) => {
+        await setCustomEndpointGoogleCredentialsHandler(
+          endpointId,
+          credentials,
+        );
       },
     );
 
@@ -1400,6 +1462,20 @@ export class PagesService extends DisposableService {
     this.sendOtpHandler = handlers.sendOtp;
     this.verifyOtpHandler = handlers.verifyOtp;
     this.logoutHandler = handlers.logout;
+  }
+
+  /**
+   * Set the handlers for usage data retrieval.
+   * This should be called by pages-handler-wiring to wire up to AuthService.
+   */
+  public setUsageHandlers(handlers: {
+    getUsageCurrent: () => Promise<CurrentUsageResponse>;
+    getUsageHistory: (params: {
+      days?: number;
+    }) => Promise<UsageHistoryResponse>;
+  }): void {
+    this.getUsageCurrentHandler = handlers.getUsageCurrent;
+    this.getUsageHistoryHandler = handlers.getUsageHistory;
   }
 
   /**
@@ -1659,6 +1735,8 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('scanLocalPorts');
     this.kartonServer.removeServerProcedureHandler('getThumbnailsForOrigins');
     this.kartonServer.removeServerProcedureHandler('getMostVisitedOrigins');
+    this.kartonServer.removeServerProcedureHandler('getUsageCurrent');
+    this.kartonServer.removeServerProcedureHandler('getUsageHistory');
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');
@@ -1677,6 +1755,8 @@ export class PagesService extends DisposableService {
     this.generateWorkspaceMdHandler = undefined;
     this.getExternalFileContentHandler = undefined;
     this.scanLocalPortsHandler = undefined;
+    this.getUsageCurrentHandler = undefined;
+    this.getUsageHistoryHandler = undefined;
     this.sendOtpHandler = undefined;
     this.verifyOtpHandler = undefined;
     this.logoutHandler = undefined;

@@ -2,7 +2,7 @@ import {
   type ListLibraryDocsToolInput,
   listLibraryDocsToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { AppRouter, TRPCClient } from '@stagewise/api-client';
+import type { ApiClient } from '@stagewise/api-client';
 import { tool } from 'ai';
 import { rethrowCappedToolOutputError, capToolOutput } from '../../utils';
 
@@ -16,12 +16,15 @@ Parameters:
 
 export async function listPackageDocsToolExecute(
   params: ListLibraryDocsToolInput,
-  apiClient: TRPCClient<AppRouter>,
+  apiClient: ApiClient,
 ) {
   const { name } = params;
 
   try {
-    const response = await apiClient.context7.search.query({ query: name });
+    const { data: response, error } = await apiClient.v1.context7.search.get({
+      query: { query: name },
+    });
+    if (error) throw new Error(String(error));
     const results = response.results.map((r) => ({
       libraryId: r.id,
       title: r.title,
@@ -46,7 +49,7 @@ export async function listPackageDocsToolExecute(
   }
 }
 
-export const listLibraryDocsTool = (apiClient: TRPCClient<AppRouter>) =>
+export const listLibraryDocsTool = (apiClient: ApiClient) =>
   tool({
     description: DESCRIPTION,
     inputSchema: listLibraryDocsToolInputSchema,

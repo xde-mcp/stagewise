@@ -17,11 +17,7 @@ import type { KartonService } from './karton';
 import type { Logger } from './logger';
 import type { GlobalDataPathService } from './global-data-path';
 import type { PagesService } from './pages';
-import {
-  type AppRouter,
-  createNodeApiClient,
-  type TRPCClient,
-} from '@stagewise/api-client';
+import { type ApiClient, createApiClient } from '@stagewise/api-client';
 import { API_URL } from './auth/server-interop';
 import { DisposableService } from './disposable';
 import { readPersistedData, writePersistedData } from '../utils/persisted-data';
@@ -41,11 +37,7 @@ export class UserExperienceService extends DisposableService {
   };
   private inspirationFetchInProgress: Promise<InspirationWebsite> | null = null;
 
-  private unAuthenticatedApiClient: TRPCClient<AppRouter> = createNodeApiClient(
-    {
-      baseUrl: API_URL,
-    },
-  );
+  private unAuthenticatedApiClient: ApiClient = createApiClient(API_URL);
 
   // Store bound callback reference for proper unregistration
   private readonly boundHandleServiceStateChange: () => void;
@@ -298,12 +290,20 @@ export class UserExperienceService extends DisposableService {
     minCount: number,
   ): Promise<InspirationWebsite> {
     try {
-      const response =
-        await this.unAuthenticatedApiClient.inspiration.list.query({
-          offset: this.cachedInspirationWebsites.websites.length,
-          limit: Math.max(minCount, 10), // Fetch at least 10 at a time
-          seed: this.inspirationSeed,
+      const { data: response, error } =
+        await this.unAuthenticatedApiClient.v1.inspiration.get({
+          query: {
+            offset: String(this.cachedInspirationWebsites.websites.length),
+            limit: String(Math.max(minCount, 10)),
+            seed: this.inspirationSeed,
+          },
         });
+
+      if (error || !response) {
+        throw new Error(
+          error ? String(error) : 'Empty response from inspiration API',
+        );
+      }
 
       this.cachedInspirationWebsites = {
         websites: [

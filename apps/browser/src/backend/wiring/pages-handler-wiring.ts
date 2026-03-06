@@ -70,6 +70,12 @@ export function wirePagesHandlers(deps: {
     logout: () => authService.logout(),
   });
 
+  // --- Usage handlers ---
+  pagesService.setUsageHandlers({
+    getUsageCurrent: () => authService.getUsageCurrent(),
+    getUsageHistory: (params) => authService.getUsageHistory(params.days),
+  });
+
   // --- Home page services bidirectional wiring ---
   userExperienceService.setPagesService(pagesService);
   pagesService.setUserExperienceService(userExperienceService);

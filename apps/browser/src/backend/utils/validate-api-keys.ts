@@ -34,6 +34,9 @@ const providerConfigs: Record<
 /**
  * Validate API keys by making a lightweight test request to each provider.
  * Keys that are empty/undefined are skipped (result stays `null`).
+ *
+ * Cloud providers (Azure, Bedrock, Vertex) are not validated here since they
+ * require different auth mechanisms — validation for those happens at first use.
  */
 export async function validateApiKeys(
   keys: ApiKeysInput,
@@ -50,6 +53,7 @@ export async function validateApiKeys(
   for (const [provider, apiKey] of Object.entries(keys)) {
     if (!apiKey) continue;
     const k = provider as ApiKeyProvider;
+    if (!providerConfigs[k]) continue;
     const model = providerConfigs[k](apiKey, baseUrl);
 
     const p = generateText({

@@ -2,7 +2,7 @@ import {
   type SearchInLibraryDocsToolInput,
   searchInLibraryDocsToolInputSchema,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import type { AppRouter, TRPCClient } from '@stagewise/api-client';
+import type { ApiClient } from '@stagewise/api-client';
 import { tool } from 'ai';
 import { rethrowCappedToolOutputError, capToolOutput } from '../../utils';
 
@@ -19,20 +19,26 @@ Parameters:
 
 export async function searchInLibraryDocsToolExecute(
   params: SearchInLibraryDocsToolInput,
-  apiClient: TRPCClient<AppRouter>,
+  apiClient: ApiClient,
 ) {
   const { libraryId, topic, mode, page } = params;
 
   try {
-    const response = (await apiClient.context7.docs.query({
-      libraryId,
-      topic,
-      mode,
-      page,
-      type: 'txt',
-    })) as string;
+    const { data: response, error } = await apiClient.v1.context7.docs.get({
+      query: {
+        libraryId,
+        topic,
+        mode: mode as 'code' | 'info',
+        page,
+        type: 'txt',
+      },
+    });
 
-    const cappedResponse = capToolOutput(response);
+    if (error) throw new Error(String(error));
+
+    // The `type: 'txt'` query param makes the server return plain text at
+    // runtime, but the Eden Treaty type always reflects the JSON shape.
+    const cappedResponse = capToolOutput(response as unknown as string);
 
     const message = cappedResponse.truncated
       ? `Successfully searched for documentation for library: ${libraryId} (The result was truncated. Original size: ${cappedResponse.originalSize}, capped size: ${cappedResponse.cappedSize})`
@@ -47,7 +53,7 @@ export async function searchInLibraryDocsToolExecute(
   }
 }
 
-export const searchInLibraryDocsTool = (apiClient: TRPCClient<AppRouter>) =>
+export const searchInLibraryDocsTool = (apiClient: ApiClient) =>
   tool({
     description: DESCRIPTION,
     inputSchema: searchInLibraryDocsToolInputSchema,

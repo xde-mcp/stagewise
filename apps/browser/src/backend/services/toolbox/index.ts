@@ -18,7 +18,7 @@ import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import { createFileDiffHandler } from './utils/sandbox-callbacks';
 import { deleteAgentBlobs, getAgentBlobDir } from '@/utils/attachment-blobs';
 import { mkdirSync } from 'node:fs';
-import type { AppRouter, TRPCClient } from '@stagewise/api-client';
+import type { ApiClient } from '@stagewise/api-client';
 import {
   deleteFileToolExecute,
   DESCRIPTION as DELETE_FILE_DESCRIPTION,
@@ -106,7 +106,7 @@ export class ToolboxService extends DisposableService {
   private mountManagerService: MountManagerService | null = null;
 
   /** Cached API client - recreated when auth changes */
-  private apiClient: TRPCClient<AppRouter> | null = null;
+  private apiClient: ApiClient | null = null;
 
   public get globalDataPath(): string {
     return this.globalDataPathService.globalDataPath;
@@ -713,7 +713,7 @@ export class ToolboxService extends DisposableService {
    * Get or create an authenticated API client.
    * Returns null if not authenticated.
    */
-  private getOrCreateApiClient(): TRPCClient<AppRouter> | null {
+  private getOrCreateApiClient(): ApiClient | null {
     const accessToken = this.authService.accessToken;
     if (!accessToken) {
       this.apiClient = null;

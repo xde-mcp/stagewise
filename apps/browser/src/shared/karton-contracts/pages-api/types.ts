@@ -351,3 +351,42 @@ export interface ExternalFileContentResult {
   /** MIME type inferred from file extension (null if unknown) */
   mimeType: string | null;
 }
+
+// ─── Usage Types ─────────────────────────────────────────────────────────────
+
+export type UsageWindowType = 'daily' | 'weekly' | 'monthly';
+export type UsagePlan = 'free' | 'pro' | 'ultra';
+
+export interface UsageWindowStatus {
+  type: UsageWindowType;
+  /** Percentage of window used (0–100) */
+  usedPercent: number;
+  exceeded: boolean;
+  /** ISO timestamp when the window resets */
+  resetsAt: string;
+}
+
+export interface CurrentUsageResponse {
+  plan: UsagePlan;
+  windows: UsageWindowStatus[];
+  /** Available prepaid credits (1/100 USD-cent) */
+  prepaidBalance: number;
+}
+
+export interface UsageModelBreakdown {
+  model: string;
+  /** Model cost as percentage of that day total (0–100) */
+  costPercent: number;
+  inputTokens: number;
+  outputTokens: number;
+  requestCount: number;
+}
+
+export interface UsageDailyBreakdown {
+  date: string;
+  models: UsageModelBreakdown[];
+}
+
+export interface UsageHistoryResponse {
+  days: UsageDailyBreakdown[];
+}
