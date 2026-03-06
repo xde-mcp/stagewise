@@ -1,5 +1,3 @@
-import type { GlobalDataPathService } from './global-data-path';
-import fs from 'node:fs/promises';
 import type { Logger } from './logger';
 import type { KartonService } from './karton';
 import {
@@ -7,13 +5,13 @@ import {
   globalConfigSchema,
 } from '@shared/karton-contracts/ui/shared-types';
 import { DisposableService } from './disposable';
+import { readPersistedData, writePersistedData } from '@/utils/persisted-data';
 
 /**
  * The global config service gives access to a global config objects that's stored
  * independently of any workspace etc.
  */
 export class GlobalConfigService extends DisposableService {
-  private readonly globalDataPathService: GlobalDataPathService;
   private config: GlobalConfig | null = null;
   private configUpdatedListeners: ((
     newConfig: GlobalConfig,
@@ -22,42 +20,25 @@ export class GlobalConfigService extends DisposableService {
   private readonly logger: Logger;
   private readonly uiKarton: KartonService;
 
-  private constructor(
-    globalDataPathService: GlobalDataPathService,
-    logger: Logger,
-    uiKarton: KartonService,
-  ) {
+  private constructor(logger: Logger, uiKarton: KartonService) {
     super();
-    this.globalDataPathService = globalDataPathService;
     this.logger = logger;
     this.uiKarton = uiKarton;
   }
 
   private async initialize(): Promise<void> {
     this.logger.debug('[GlobalConfigService] Initializing...');
-    const configPath = this.globalDataPathService.configFilePath;
-    const configFile = await fs.readFile(configPath, 'utf-8').catch(() => {
-      this.logger.debug(
-        '[GlobalConfigService] No config file found. Creating a new one...',
-      );
-      return '{}';
-    });
 
-    // Now, we validate the loaded config and set that as the current config in this service.
-    // If the config is invalid, we throw an error.
-    const parsedConfig = globalConfigSchema.safeParse(
-      safeParseJSON(configFile, {}),
+    const loadedConfig = await readPersistedData(
+      'config',
+      globalConfigSchema,
+      globalConfigSchema.parse({}),
     );
-    if (!parsedConfig.success) {
-      this.logger.error(
-        `The global config file is invalid. Error: ${parsedConfig.error.message} Path: ${configPath}`,
-      );
-      throw new Error('Invalid global config');
-    }
-    this.config = parsedConfig.data;
+
+    this.config = loadedConfig;
 
     this.uiKarton.setState((draft) => {
-      draft.globalConfig = parsedConfig.data;
+      draft.globalConfig = loadedConfig;
     });
     this.uiKarton.registerServerProcedureHandler(
       'config.set',
@@ -65,7 +46,6 @@ export class GlobalConfigService extends DisposableService {
         this.set(config),
     );
 
-    // We also store the config once it's validated. We do that to make sure that the stored config is always aligned with the schema.
     this.logger.debug(
       '[GlobalConfigService] Saving config file after validation...',
     );
@@ -74,15 +54,10 @@ export class GlobalConfigService extends DisposableService {
   }
 
   public static async create(
-    globalDataPathService: GlobalDataPathService,
     logger: Logger,
     uiKarton: KartonService,
   ): Promise<GlobalConfigService> {
-    const instance = new GlobalConfigService(
-      globalDataPathService,
-      logger,
-      uiKarton,
-    );
+    const instance = new GlobalConfigService(logger, uiKarton);
     await instance.initialize();
     return instance;
   }
@@ -127,12 +102,9 @@ export class GlobalConfigService extends DisposableService {
   }
 
   private async saveConfigFile(): Promise<void> {
-    const configPath = this.globalDataPathService.configFilePath;
-    this.logger.debug(
-      `[GlobalConfigService] Saving config file to path ${configPath}...`,
-    );
+    this.logger.debug('[GlobalConfigService] Saving config file...');
     const config = globalConfigSchema.parse(this.config);
-    await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    await writePersistedData('config', globalConfigSchema, config);
     this.logger.debug('[GlobalConfigService] Config file saved');
   }
 
@@ -156,11 +128,3 @@ export class GlobalConfigService extends DisposableService {
     );
   }
 }
-
-const safeParseJSON = <T>(json: string, fallback: T): T => {
-  try {
-    return JSON.parse(json);
-  } catch {
-    return fallback;
-  }
-};

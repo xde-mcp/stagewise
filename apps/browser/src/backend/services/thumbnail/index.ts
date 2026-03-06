@@ -2,13 +2,12 @@ import type { Logger } from '../logger';
 import { inArray, sql, lt, eq } from 'drizzle-orm';
 import * as schema from './schema';
 import { drizzle } from 'drizzle-orm/libsql';
-import type { GlobalDataPathService } from '../global-data-path';
-import path from 'node:path';
 import { createClient } from '@libsql/client';
 import type { OriginThumbnailResult } from '@shared/karton-contracts/pages-api/types';
 import initSql from './schema.sql?raw';
 import { migrateDatabase } from '@/utils/migrate-database';
 import { registry, schemaVersion } from './migrations';
+import { getDbPath } from '@/utils/paths';
 
 /**
  * Service responsible for persisting origin-level page thumbnails.
@@ -23,20 +22,17 @@ export class ThumbnailService {
   /** In-memory cache of origin -> last stored path to avoid DB reads */
   private pathCache = new Map<string, string>();
 
-  private constructor(logger: Logger, paths: GlobalDataPathService) {
+  private constructor(logger: Logger) {
     this.logger = logger;
-    const dbPath = path.join(paths.globalDataPath, 'Thumbnails');
+    const dbPath = getDbPath('thumbnails');
     this.dbDriver = createClient({
       url: `file:${dbPath}`,
     });
     this.db = drizzle(this.dbDriver, { schema });
   }
 
-  public static async create(
-    logger: Logger,
-    globalDataPathService: GlobalDataPathService,
-  ): Promise<ThumbnailService> {
-    const instance = new ThumbnailService(logger, globalDataPathService);
+  public static async create(logger: Logger): Promise<ThumbnailService> {
+    const instance = new ThumbnailService(logger);
     await instance.initialize();
     logger.debug('[ThumbnailService] Created service');
     return instance;

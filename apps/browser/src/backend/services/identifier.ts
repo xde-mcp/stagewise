@@ -4,51 +4,46 @@
  * Returns a unique identifier of the machine.
  */
 
-import path from 'node:path';
-import type { GlobalDataPathService } from './global-data-path';
 import type { Logger } from './logger';
-import fs from 'node:fs/promises';
 import { DisposableService } from './disposable';
+import { z } from 'zod';
+import { readPersistedData, writePersistedData } from '@/utils/persisted-data';
+
+const identitySchema = z.object({
+  machineId: z.string().uuid(),
+});
 
 export class IdentifierService extends DisposableService {
-  private readonly globalDataPathService: GlobalDataPathService;
   private readonly logger: Logger;
   private machineId: string | null = null;
 
-  private constructor(
-    globalDataPathService: GlobalDataPathService,
-    logger: Logger,
-  ) {
+  private constructor(logger: Logger) {
     super();
-    this.globalDataPathService = globalDataPathService;
     this.logger = logger;
   }
 
   private async initialize(): Promise<void> {
-    // Check if a machine ID exists. If not, create a new one.
-    const identifierFilePath = path.resolve(
-      this.globalDataPathService.globalDataPath,
-      'identity.json',
+    const data = await readPersistedData(
+      'identity',
+      identitySchema,
+      null as unknown as z.infer<typeof identitySchema>,
     );
-    await fs
-      .readFile(identifierFilePath, 'utf-8')
-      .then((fileContent) => {
-        this.machineId = fileContent;
-      })
-      .catch(async () => {
-        this.logger.debug(
-          '[IdentifierService] No identifier file found. Creating a new one...',
-        );
-        this.machineId = crypto.randomUUID();
-        await fs.writeFile(identifierFilePath, this.machineId);
+
+    if (data?.machineId) {
+      this.machineId = data.machineId;
+    } else {
+      this.logger.debug(
+        '[IdentifierService] No identifier file found. Creating a new one...',
+      );
+      this.machineId = crypto.randomUUID();
+      await writePersistedData('identity', identitySchema, {
+        machineId: this.machineId,
       });
+    }
   }
 
-  public static async create(
-    globalDataService: GlobalDataPathService,
-    logger: Logger,
-  ): Promise<IdentifierService> {
-    const instance = new IdentifierService(globalDataService, logger);
+  public static async create(logger: Logger): Promise<IdentifierService> {
+    const instance = new IdentifierService(logger);
     await instance.initialize();
     return instance;
   }

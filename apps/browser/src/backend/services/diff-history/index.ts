@@ -1,7 +1,6 @@
 import { DisposableService } from '@/services/disposable';
 import type { FileResult } from '@shared/karton-contracts/ui/shared-types';
 import { isBinaryFile } from 'isbinaryfile';
-import path from 'node:path';
 import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
 import { type Client, createClient } from '@libsql/client';
 import * as schema from './schema';
@@ -9,7 +8,7 @@ import chokidar, { type FSWatcher } from 'chokidar';
 import type { Logger } from '@/services/logger';
 import fs from 'node:fs/promises';
 import type { KartonService } from '@/services/karton';
-import type { GlobalDataPathService } from '@/services/global-data-path';
+import { getDiffHistoryDbPath, getDiffHistoryBlobsDir } from '@/utils/paths';
 import {
   type FileDiff,
   MAX_DIFF_TEXT_FILE_SIZE,
@@ -63,7 +62,6 @@ type AgentFileEdit = {
 export class DiffHistoryService extends DisposableService {
   private readonly logger: Logger;
   private readonly uiKarton: KartonService;
-  private readonly globalDataPathsService: GlobalDataPathService;
   private watcher: FSWatcher | null = null;
   private filesIgnoredByWatcher: Set<string> = new Set();
   private currentlyWatchedFiles: Set<string> = new Set();
@@ -73,38 +71,22 @@ export class DiffHistoryService extends DisposableService {
   private blobsDir: string;
   private readonly boundOnStateChange: () => void;
 
-  private constructor(
-    logger: Logger,
-    uiKarton: KartonService,
-    globalDataPathService: GlobalDataPathService,
-  ) {
+  private constructor(logger: Logger, uiKarton: KartonService) {
     super();
     this.logger = logger;
     this.uiKarton = uiKarton;
-    this.globalDataPathsService = globalDataPathService;
-    const dbPath = path.join(
-      globalDataPathService.globalDataPath,
-      'DiffHistory',
-    );
+    const dbPath = getDiffHistoryDbPath();
     this.dbDriver = createClient({ url: `file:${dbPath}`, intMode: 'bigint' });
     this.db = drizzle(this.dbDriver, { schema });
-    this.blobsDir = path.join(
-      globalDataPathService.globalDataPath,
-      'diff-history-blobs',
-    );
+    this.blobsDir = getDiffHistoryBlobsDir();
     this.boundOnStateChange = this.onKartonStateChange.bind(this);
   }
 
   public static async create(
     logger: Logger,
     uiKarton: KartonService,
-    globalDataPathService: GlobalDataPathService,
   ): Promise<DiffHistoryService> {
-    const instance = new DiffHistoryService(
-      logger,
-      uiKarton,
-      globalDataPathService,
-    );
+    const instance = new DiffHistoryService(logger, uiKarton);
     await instance.initialize();
     logger.debug('[DiffHistoryService] Created service');
     return instance;

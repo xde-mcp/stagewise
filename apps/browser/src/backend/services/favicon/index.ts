@@ -2,10 +2,9 @@ import type { Logger } from '../logger';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { drizzle } from 'drizzle-orm/libsql';
-import type { GlobalDataPathService } from '../global-data-path';
-import path from 'node:path';
 import { createClient } from '@libsql/client';
 import { net } from 'electron';
+import { getDbPath } from '@/utils/paths';
 import { toWebKitTimestamp } from '../chrome-db-utils';
 import type { FaviconBitmapResult } from '@shared/karton-contracts/pages-api/types';
 import initSql from './schema.sql?raw';
@@ -38,9 +37,9 @@ export class FaviconService {
   private dbDriver;
   private db;
 
-  private constructor(logger: Logger, paths: GlobalDataPathService) {
+  private constructor(logger: Logger) {
     this.logger = logger;
-    const dbPath = path.join(paths.globalDataPath, 'Favicons');
+    const dbPath = getDbPath('favicon');
     this.dbDriver = createClient({
       url: `file:${dbPath}`,
       intMode: 'bigint',
@@ -48,11 +47,8 @@ export class FaviconService {
     this.db = drizzle(this.dbDriver, { schema });
   }
 
-  public static async create(
-    logger: Logger,
-    globalDataPathService: GlobalDataPathService,
-  ): Promise<FaviconService> {
-    const instance = new FaviconService(logger, globalDataPathService);
+  public static async create(logger: Logger): Promise<FaviconService> {
+    const instance = new FaviconService(logger);
     await instance.initialize();
     logger.debug('[FaviconService] Created service');
     return instance;

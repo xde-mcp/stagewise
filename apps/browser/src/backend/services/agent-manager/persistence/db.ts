@@ -3,8 +3,6 @@ import * as schema from './schema';
 import { and, notInArray, ilike, desc, isNull, eq, sql } from 'drizzle-orm';
 import type { LibSQLDatabase } from 'drizzle-orm/libsql';
 import { createClient, type Client } from '@libsql/client';
-import path from 'node:path';
-import type { GlobalDataPathService } from '@/services/global-data-path';
 import { migrateDatabase } from '@/utils/migrate-database';
 import initSql from './schema.sql?raw';
 import { registry, schemaVersion } from './migrations';
@@ -13,24 +11,20 @@ import {
   AgentTypes,
   type AgentHistoryEntry,
 } from '@shared/karton-contracts/ui/agent';
+import { getAgentDbPath } from '@/utils/paths';
 
 export class AgentPersistenceDB {
   private _dbDriver: Client;
   private _db: LibSQLDatabase<typeof schema>;
-  private _globalDataPathService: GlobalDataPathService;
   private _logger: Logger;
 
-  private constructor(
-    globalDataPathService: GlobalDataPathService,
-    logger: Logger,
-  ) {
-    const dbPath = path.join(globalDataPathService.globalDataPath, 'Agents');
+  private constructor(logger: Logger) {
+    const dbPath = getAgentDbPath();
     logger.debug(
       `[AgentPersistenceDB] Creating agent persistence DB at path: ${dbPath}`,
     );
     this._dbDriver = createClient({ url: `file:${dbPath}` });
     this._db = drizzle(this._dbDriver, { schema });
-    this._globalDataPathService = globalDataPathService;
     this._logger = logger;
   }
 
@@ -39,10 +33,9 @@ export class AgentPersistenceDB {
   }
 
   public static async create(
-    globalDataPathService: GlobalDataPathService,
     logger: Logger,
   ): Promise<AgentPersistenceDB | null> {
-    const instance = new AgentPersistenceDB(globalDataPathService, logger);
+    const instance = new AgentPersistenceDB(logger);
 
     try {
       logger.debug(`[AgentPersistenceDB] Migrating database...`);

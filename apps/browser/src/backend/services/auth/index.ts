@@ -23,7 +23,7 @@ import {
   type ApiKeysInput,
 } from '../../utils/validate-api-keys';
 
-const CREDENTIALS_KEY = 'credentials';
+const CREDENTIALS_KEY = 'auth-session' as const;
 
 const credentialsSchema = z
   .object({

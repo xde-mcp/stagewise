@@ -31,7 +31,7 @@ type PreferencesListener = (
 /**
  * Service that manages user preferences with persistence and reactive Karton sync.
  *
- * Preferences are stored in Preferences.json in the global data directory.
+ * Preferences are stored in preferences.json in the global data directory.
  * Updates are synced to both UI and Pages Karton contracts.
  *
  * ## Creating Patches (Client-side)
@@ -105,7 +105,7 @@ export class PreferencesService extends DisposableService {
 
     // Load preferences from disk
     this.preferences = await readPersistedData(
-      'Preferences',
+      'preferences',
       userPreferencesSchema,
       defaultUserPreferences,
     );
@@ -332,7 +332,7 @@ export class PreferencesService extends DisposableService {
 
   private async save(): Promise<void> {
     await writePersistedData(
-      'Preferences',
+      'preferences',
       userPreferencesSchema,
       this.preferences,
     );

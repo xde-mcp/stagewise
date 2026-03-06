@@ -2,12 +2,10 @@ import { BaseWindow, app, ipcMain, nativeTheme, session } from 'electron';
 import path from 'node:path';
 import type { SelectedElement } from '@shared/karton-contracts/ui';
 import { getHotkeyDefinitionForEvent } from '@shared/hotkeys';
-import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import type { KartonService } from '../karton';
 import type { Logger } from '../logger';
 import type { TelemetryService } from '../telemetry';
-import type { GlobalDataPathService } from '../global-data-path';
 import type { HistoryService } from '../history';
 import type { FaviconService } from '../favicon';
 import type { ThumbnailService } from '../thumbnail';
@@ -36,19 +34,25 @@ import {
 } from './utils/search-utils';
 import { HOME_PAGE_URL } from '@shared/internal-urls';
 import { SessionPermissionRegistry } from './tab-permission-handler/session-registry';
+import { z } from 'zod';
+import {
+  readPersistedDataSync,
+  writePersistedDataSync,
+} from '@/utils/persisted-data';
 
-interface WindowState {
-  width: number;
-  height: number;
-  x?: number;
-  y?: number;
-  isMaximized: boolean;
-  isFullScreen: boolean;
-}
+const windowStateSchema = z.object({
+  width: z.number(),
+  height: z.number(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  isMaximized: z.boolean(),
+  isFullScreen: z.boolean(),
+});
+
+type WindowState = z.infer<typeof windowStateSchema>;
 
 export class WindowLayoutService extends DisposableService {
   private readonly logger: Logger;
-  private readonly globalDataPathService: GlobalDataPathService;
   private readonly historyService: HistoryService;
   private readonly faviconService: FaviconService;
   private readonly thumbnailService: ThumbnailService | null;
@@ -100,7 +104,6 @@ export class WindowLayoutService extends DisposableService {
 
   private constructor(
     logger: Logger,
-    globalDataPathService: GlobalDataPathService,
     historyService: HistoryService,
     faviconService: FaviconService,
     pagesService: PagesService,
@@ -110,7 +113,6 @@ export class WindowLayoutService extends DisposableService {
   ) {
     super();
     this.logger = logger;
-    this.globalDataPathService = globalDataPathService;
     this.historyService = historyService;
     this.faviconService = faviconService;
     this.thumbnailService = thumbnailService ?? null;
@@ -121,7 +123,6 @@ export class WindowLayoutService extends DisposableService {
 
   public static async create(
     logger: Logger,
-    globalDataPathService: GlobalDataPathService,
     historyService: HistoryService,
     faviconService: FaviconService,
     pagesService: PagesService,
@@ -131,7 +132,6 @@ export class WindowLayoutService extends DisposableService {
   ): Promise<WindowLayoutService> {
     const instance = new WindowLayoutService(
       logger,
-      globalDataPathService,
       historyService,
       faviconService,
       pagesService,
@@ -161,7 +161,6 @@ export class WindowLayoutService extends DisposableService {
     this.uiController = await UIController.create(
       this.logger,
       this.telemetryService ?? undefined,
-      this.globalDataPathService.globalDataPath,
     );
     this.uiController.setCheckFrameValidityHandler(
       this.handleCheckFrameValidity.bind(this),
@@ -1691,28 +1690,14 @@ export class WindowLayoutService extends DisposableService {
     );
   };
 
-  // Window State Management (same as before)
-  private get windowStatePath(): string {
-    return path.join(
-      this.globalDataPathService.globalDataPath,
-      'window-state.json',
-    );
-  }
-
+  // Window State Management
   private loadWindowState(): WindowState | null {
-    try {
-      const statePath = this.windowStatePath;
-      if (fs.existsSync(statePath)) {
-        const data = fs.readFileSync(statePath, 'utf-8');
-        return JSON.parse(data) as WindowState;
-      }
-    } catch (error) {
-      this.logger.error(
-        '[WindowLayoutService] Failed to load window state',
-        error,
-      );
-    }
-    return null;
+    const state = readPersistedDataSync(
+      'window-state',
+      windowStateSchema,
+      null as unknown as WindowState,
+    );
+    return state ?? null;
   }
 
   private scheduleWindowStateSave() {
@@ -1745,7 +1730,7 @@ export class WindowLayoutService extends DisposableService {
         isFullScreen,
       };
 
-      fs.writeFileSync(this.windowStatePath, JSON.stringify(state));
+      writePersistedDataSync('window-state', windowStateSchema, state);
     } catch (error) {
       this.logger.error(
         '[WindowLayoutService] Failed to save window state',

@@ -20,6 +20,7 @@ import {
 import { getBlobPath, blobExists } from '@/utils/attachment-blobs';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { inferMimeType } from '@shared/mime-utils';
+import { getAgentAppsDir } from '@/utils/paths';
 
 const UI_SESSION_PARTITION = 'persist:stagewise-ui';
 
@@ -201,7 +202,6 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
   private telemetryService: TelemetryService | null;
   private crashCount = 0;
   public readonly uiKarton: KartonService;
-  private globalDataPath: string;
   private checkFrameValidityHandler?: (
     tabId: string,
     frameId: string,
@@ -221,26 +221,19 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
   public static async create(
     logger: Logger,
     telemetryService?: TelemetryService,
-    globalDataPath?: string,
   ): Promise<UIController> {
-    // Install React DevTools on the UI session BEFORE creating the WebContentsView
     await installReactDevToolsOnUISession(logger);
-    return new UIController(logger, telemetryService, globalDataPath);
+    return new UIController(logger, telemetryService);
   }
 
   /**
    * Creates a new UIController instance.
    * Use the static `create()` method instead of calling this directly.
    */
-  private constructor(
-    logger: Logger,
-    telemetryService?: TelemetryService,
-    globalDataPath?: string,
-  ) {
+  private constructor(logger: Logger, telemetryService?: TelemetryService) {
     super();
     this.logger = logger;
     this.telemetryService = telemetryService ?? null;
-    this.globalDataPath = globalDataPath ?? app.getPath('userData');
     this.uiKarton = new KartonService(logger);
 
     this.registerBlobProtocol();
@@ -268,11 +261,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
           return new Response('Invalid blob URL', { status: 400 });
         }
 
-        const exists = await blobExists(
-          this.globalDataPath,
-          agentId,
-          attachmentId,
-        );
+        const exists = await blobExists(agentId, attachmentId);
         if (!exists) {
           return new Response('Blob not found', { status: 404 });
         }
@@ -282,11 +271,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
           attachmentId,
         );
 
-        const filePath = getBlobPath(
-          this.globalDataPath,
-          agentId,
-          attachmentId,
-        );
+        const filePath = getBlobPath(agentId, attachmentId);
         const fileUrl = pathToFileURL(filePath).href;
         const fileResponse = await net.fetch(fileUrl);
 
@@ -352,27 +337,34 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
    * Register the app-runtime:// protocol handler on the UI session so
    * agent-created custom apps can be served in iframes.
    * URL format: app-runtime://{appId}/{relativePath}
-   * Files are served from {userData}/custom-apps/{appId}/{relativePath}.
+   * Files are served from agents/{agentId}/apps/{appId}/{relativePath}.
+   * URL format: app-runtime://{agentId}/{appId}/{relativePath}
    */
   private registerAppRuntimeProtocol(): void {
     const uiSession = session.fromPartition(UI_SESSION_PARTITION);
-    const customAppsRoot = path.join(this.globalDataPath, 'custom-apps');
 
     uiSession.protocol.handle('app-runtime', async (request) => {
       try {
         const url = new URL(request.url);
-        const appId = url.hostname;
-        const relativePath = decodeURIComponent(
+        const agentId = url.hostname;
+        const pathParts = decodeURIComponent(
           url.pathname.replace(/^\//, ''),
-        );
+        ).split('/');
 
-        if (!appId || !relativePath)
+        const appId = pathParts[0];
+        const relativePath = pathParts.slice(1).join('/');
+
+        if (!agentId || !appId || !relativePath)
           return new Response('Invalid app-runtime URL', { status: 400 });
 
-        const appRoot = path.join(customAppsRoot, appId);
-        const absolutePath = path.resolve(appRoot, relativePath);
+        const appRoot = getAgentAppsDir(agentId);
+        const absolutePath = path.resolve(
+          path.join(appRoot, appId),
+          relativePath,
+        );
 
-        if (!absolutePath.startsWith(appRoot + path.sep))
+        const appDir = path.join(appRoot, appId);
+        if (!absolutePath.startsWith(appDir + path.sep))
           return new Response('Path traversal denied', { status: 400 });
 
         try {

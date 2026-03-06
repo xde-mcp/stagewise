@@ -5,7 +5,7 @@ import { environmentDiffSnapshotSchema } from '../shared-types';
 /**
  * Schema for file attachments.
  * Lightweight metadata only — binary content is stored on disk at
- * `{globalDataPath}/attachment-blobs/{agentId}/{attachmentId}`.
+ * `<dataRoot>/agents/<agentId>/data-attachments/<attachmentId>`.
  * The backend reads blobs from disk when building LLM prompts.
  * Agents access attachments via `fs.readFile('att/{id}')` in the sandbox.
  */

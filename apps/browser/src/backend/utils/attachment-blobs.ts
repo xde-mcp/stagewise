@@ -2,26 +2,14 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createReadStream, type ReadStream } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { getAgentAttachmentsDir, getAgentAttachmentPath } from './paths';
 
-const BLOB_ROOT_DIR = 'attachment-blobs';
-
-export function getAttachmentBlobDir(globalDataPath: string): string {
-  return path.join(globalDataPath, BLOB_ROOT_DIR);
+export function getAgentBlobDir(agentId: string): string {
+  return getAgentAttachmentsDir(agentId);
 }
 
-export function getAgentBlobDir(
-  globalDataPath: string,
-  agentId: string,
-): string {
-  return path.join(globalDataPath, BLOB_ROOT_DIR, agentId);
-}
-
-export function getBlobPath(
-  globalDataPath: string,
-  agentId: string,
-  attachmentId: string,
-): string {
-  return path.join(globalDataPath, BLOB_ROOT_DIR, agentId, attachmentId);
+export function getBlobPath(agentId: string, attachmentId: string): string {
+  return getAgentAttachmentPath(agentId, attachmentId);
 }
 
 /**
@@ -30,15 +18,14 @@ export function getBlobPath(
  * (for direct copy from a dropped file).
  */
 export async function writeBlob(
-  globalDataPath: string,
   agentId: string,
   attachmentId: string,
   source: Buffer | string,
 ): Promise<void> {
-  const dir = getAgentBlobDir(globalDataPath, agentId);
+  const dir = getAgentAttachmentsDir(agentId);
   await fs.mkdir(dir, { recursive: true });
 
-  const finalPath = getBlobPath(globalDataPath, agentId, attachmentId);
+  const finalPath = getAgentAttachmentPath(agentId, attachmentId);
   const tempPath = path.join(dir, `tmp-${randomUUID()}`);
 
   try {
@@ -49,45 +36,38 @@ export async function writeBlob(
     }
     await fs.rename(tempPath, finalPath);
   } catch (err) {
-    // Clean up temp file on failure
     await fs.unlink(tempPath).catch(() => {});
     throw err;
   }
 }
 
 export async function readBlob(
-  globalDataPath: string,
   agentId: string,
   attachmentId: string,
 ): Promise<Buffer> {
-  const filePath = getBlobPath(globalDataPath, agentId, attachmentId);
+  const filePath = getAgentAttachmentPath(agentId, attachmentId);
   return fs.readFile(filePath);
 }
 
 export function readBlobStream(
-  globalDataPath: string,
   agentId: string,
   attachmentId: string,
 ): ReadStream {
-  const filePath = getBlobPath(globalDataPath, agentId, attachmentId);
+  const filePath = getAgentAttachmentPath(agentId, attachmentId);
   return createReadStream(filePath);
 }
 
-export async function deleteAgentBlobs(
-  globalDataPath: string,
-  agentId: string,
-): Promise<void> {
-  const dir = getAgentBlobDir(globalDataPath, agentId);
+export async function deleteAgentBlobs(agentId: string): Promise<void> {
+  const dir = getAgentAttachmentsDir(agentId);
   await fs.rm(dir, { recursive: true, force: true });
 }
 
 export async function blobExists(
-  globalDataPath: string,
   agentId: string,
   attachmentId: string,
 ): Promise<boolean> {
   try {
-    await fs.access(getBlobPath(globalDataPath, agentId, attachmentId));
+    await fs.access(getAgentAttachmentPath(agentId, attachmentId));
     return true;
   } catch {
     return false;

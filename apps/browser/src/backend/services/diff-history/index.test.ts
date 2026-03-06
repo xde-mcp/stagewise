@@ -2,11 +2,24 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DiffHistoryService } from '.';
 import { Logger } from '@/services/logger';
 import type { KartonService } from '@/services/karton';
-import type { GlobalDataPathService } from '@/services/global-data-path';
 import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+
+vi.mock('@/utils/paths', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/utils/paths')>('@/utils/paths');
+  return {
+    ...actual,
+    getDiffHistoryDbPath: () =>
+      path.join(testTempDir, 'diff-history', 'data.sqlite'),
+    getDiffHistoryBlobsDir: () =>
+      path.join(testTempDir, 'diff-history', 'data-blobs'),
+  };
+});
+
+let testTempDir: string;
 
 // =============================================================================
 // Test Utilities & Mocks
@@ -84,15 +97,10 @@ function createMockKartonService() {
 }
 
 /**
- * Creates a mock GlobalDataPathService with temp directories.
+ * Sets up the temp directory for path mocking.
  */
-function createMockGlobalDataPathService(
-  tempDir: string,
-): GlobalDataPathService {
-  return {
-    globalDataPath: tempDir,
-    globalTempPath: path.join(tempDir, 'temp'),
-  } as GlobalDataPathService;
+function initTestTempDir(dir: string): void {
+  testTempDir = dir;
 }
 
 // Temp directory management
@@ -162,7 +170,6 @@ async function waitFor(
 describe('DiffHistoryService (E2E)', () => {
   let logger: Logger;
   let mockKarton: ReturnType<typeof createMockKartonService>;
-  let mockGlobalDataPath: GlobalDataPathService;
   let service: DiffHistoryService;
   let testFilesDir: string;
 
@@ -172,7 +179,8 @@ describe('DiffHistoryService (E2E)', () => {
     testFilesDir = path.join(tempDir, 'test-files');
     await fs.mkdir(testFilesDir, { recursive: true });
     mockKarton = createMockKartonService();
-    mockGlobalDataPath = createMockGlobalDataPathService(tempDir);
+    initTestTempDir(tempDir);
+    await fs.mkdir(path.join(tempDir, 'diff-history'), { recursive: true });
   });
 
   afterEach(async () => {
@@ -191,11 +199,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('service lifecycle', () => {
     it('creates service and initializes database', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       expect(service).toBeDefined();
       // Should register procedure handlers
@@ -211,11 +215,7 @@ describe('DiffHistoryService (E2E)', () => {
 
     it('initializes toolbox state for active agent instances', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       expect(mockKarton._getToolboxState('1')).toEqual({
         workspace: { mounts: [] },
@@ -232,11 +232,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('teardown cleans up resources', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       await service.teardown();
 
@@ -256,11 +252,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('registerAgentEdit', () => {
     it('registers text file creation (new file)', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'new-file.txt');
 
@@ -279,11 +271,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('registers text file modification', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'existing.txt');
       await createTempFile(filePath, 'original content');
@@ -308,11 +296,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('registers text file deletion', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'to-delete.txt');
       await createTempFile(filePath, 'content to delete');
@@ -337,11 +321,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('skips init baseline when pending edits already exist', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'multi-edit.txt');
 
@@ -377,11 +357,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('registers multiple files', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const file1 = path.join(testFilesDir, 'file1.txt');
       const file2 = path.join(testFilesDir, 'file2.txt');
@@ -416,11 +392,7 @@ describe('DiffHistoryService (E2E)', () => {
   describe('pending diffs', () => {
     it('returns pending diffs for agent that made edits', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'test.txt');
 
@@ -443,11 +415,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('returns empty when all edits are accepted', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'test.txt');
 
@@ -482,11 +450,7 @@ describe('DiffHistoryService (E2E)', () => {
 
     it('includes all contributors in pending diffs for same file', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'shared.txt');
 
@@ -525,11 +489,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('edit summary', () => {
     it('returns edit summary for agent with edits', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'summary.txt');
 
@@ -548,11 +508,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('includes completed sessions in edit summary', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'sessions.txt');
 
@@ -594,11 +550,7 @@ describe('DiffHistoryService (E2E)', () => {
 
     it('edit summary excludes sessions where agent did not contribute', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'exclusive.txt');
 
@@ -624,11 +576,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('accept and reject hunks', () => {
     it('accept hunk updates baseline', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'accept.txt');
 
@@ -658,11 +606,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('reject hunk reverts current to baseline and writes to disk', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'reject.txt');
       await createTempFile(filePath, 'modified by agent');
@@ -700,11 +644,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('reject file creation deletes the file', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'new-to-reject.txt');
       await createTempFile(filePath, 'newly created');
@@ -737,11 +677,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('reject file deletion restores the file', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'deleted-to-restore.txt');
 
@@ -775,11 +711,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('partial accept keeps remaining hunks as pending', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'partial.txt');
 
@@ -818,11 +750,7 @@ describe('DiffHistoryService (E2E)', () => {
   describe('multi-agent contributions', () => {
     it('multiple agents edit same file in same session', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'multi-agent.txt');
 
@@ -860,11 +788,7 @@ describe('DiffHistoryService (E2E)', () => {
 
     it('contributor attribution in line changes', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'attributed.txt');
 
@@ -905,11 +829,7 @@ describe('DiffHistoryService (E2E)', () => {
 
     it('edit summary shows contributions from multiple agents', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const file1 = path.join(testFilesDir, 'agent1-file.txt');
       const file2 = path.join(testFilesDir, 'agent2-file.txt');
@@ -952,11 +872,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('undoToolCalls', () => {
     it('reverts to state before specified tool call', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'undo.txt');
       await createTempFile(filePath, 'tool-1 content');
@@ -996,11 +912,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('undo multiple tool calls', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'undo-multi.txt');
       await createTempFile(filePath, 'tool-2 content');
@@ -1037,11 +949,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('undo affects multiple files', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const file1 = path.join(testFilesDir, 'undo-file1.txt');
       const file2 = path.join(testFilesDir, 'undo-file2.txt');
@@ -1079,11 +987,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('undo updates Karton state', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'undo-state.txt');
 
@@ -1108,11 +1012,7 @@ describe('DiffHistoryService (E2E)', () => {
       expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
     });
     it('redo after undo (re-apply agent edit)', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'redo.txt');
       await createTempFile(filePath, 'tool-1 content');
@@ -1171,11 +1071,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('external/binary files', () => {
     it('registers external file creation', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const blobPath = path.join(testFilesDir, 'binary.bin');
       const tempBlobPath = path.join(tempDir, 'temp-blob.bin');
@@ -1200,11 +1096,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('registers external file modification', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const blobPath = path.join(testFilesDir, 'existing-binary.bin');
       const tempBeforePath = path.join(tempDir, 'before-blob.bin');
@@ -1228,11 +1120,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('registers external file deletion', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const blobPath = path.join(testFilesDir, 'delete-binary.bin');
       const tempBeforePath = path.join(tempDir, 'delete-before.bin');
@@ -1258,11 +1146,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('accept external file updates baseline oid', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const blobPath = path.join(testFilesDir, 'accept-binary.bin');
       const tempAfterPath = path.join(tempDir, 'accept-after.bin');
@@ -1296,11 +1180,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('reject external file restores baseline', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const blobPath = path.join(testFilesDir, 'reject-binary.bin');
       const tempBeforePath = path.join(tempDir, 'reject-before.bin');
@@ -1354,11 +1234,7 @@ describe('DiffHistoryService (E2E)', () => {
     // with temp directories). These tests pass when run individually but time out
     // when run in the full suite due to event propagation delays.
     it.skip('watches files with pending edits', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'watched.txt');
       await createTempFile(filePath, 'agent content');
@@ -1400,11 +1276,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('ignores changes during agent lock period', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'locked.txt');
       await createTempFile(filePath, 'agent content');
@@ -1442,11 +1314,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it.skip('detects file deletion', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'to-watch-delete.txt');
       await createTempFile(filePath, 'agent content');
@@ -1488,11 +1356,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('stops watching files after acceptance', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'watch-accept.txt');
       await createTempFile(filePath, 'agent content');
@@ -1539,11 +1403,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('session handling', () => {
     it('new session starts after previous is fully accepted', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'sessions.txt');
 
@@ -1591,11 +1451,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('operations correctly segmented into generations after file deletion', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'generations.txt');
 
@@ -1662,11 +1518,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('session end detection when baseline equals edit', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'session-end.txt');
 
@@ -1703,11 +1555,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('edge cases', () => {
     it('handles empty file', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'empty.txt');
 
@@ -1725,11 +1573,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('handles content becoming empty', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'to-empty.txt');
 
@@ -1753,11 +1597,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('handles files with special characters in path', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'file with spaces & stuff.txt');
 
@@ -1776,11 +1616,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('handles unicode content', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'unicode.txt');
 
@@ -1804,11 +1640,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('handles rapid sequential edits', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'rapid.txt');
 
@@ -1835,11 +1667,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('handles many files simultaneously', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const fileCount = 20;
 
@@ -1866,11 +1694,7 @@ describe('DiffHistoryService (E2E)', () => {
 
   describe('acceptAllPendingEditsForAgent', () => {
     it('accepts all pending hunks for a single file', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const filePath = path.join(testFilesDir, 'accept-all-single.txt');
 
@@ -1893,11 +1717,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('accepts all pending hunks across multiple files', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const file1 = path.join(testFilesDir, 'accept-all-multi-1.txt');
       const file2 = path.join(testFilesDir, 'accept-all-multi-2.txt');
@@ -1940,11 +1760,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('no-op when there are no pending edits', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const toolboxState = mockKarton._getToolboxState('1');
       expect(toolboxState?.pendingFileDiffs).toHaveLength(0);
@@ -1956,11 +1772,7 @@ describe('DiffHistoryService (E2E)', () => {
 
     it('only accepts hunks for the specified agent (multi-agent isolation)', async () => {
       mockKarton._setAgentInstances(['1', '2']);
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const file1 = path.join(testFilesDir, 'agent1-only.txt');
       const file2 = path.join(testFilesDir, 'agent2-only.txt');
@@ -1997,11 +1809,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('accepts external file pending edits', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const blobPath = path.join(testFilesDir, 'accept-all-blob.bin');
       const tempAfterPath = path.join(tempDir, 'accept-all-after.bin');
@@ -2027,11 +1835,7 @@ describe('DiffHistoryService (E2E)', () => {
     });
 
     it('accepts mixed text and external pending edits', async () => {
-      service = await DiffHistoryService.create(
-        logger,
-        mockKarton,
-        mockGlobalDataPath,
-      );
+      service = await DiffHistoryService.create(logger, mockKarton);
 
       const textFile = path.join(testFilesDir, 'accept-all-mixed.txt');
       const blobFile = path.join(testFilesDir, 'accept-all-mixed.bin');

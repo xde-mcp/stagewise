@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import { DisposableService } from '../disposable';
 import type { Logger } from '../logger';
-import type { GlobalDataPathService } from '../global-data-path';
 import {
   readPersistedData,
   writePersistedData,
@@ -15,7 +14,7 @@ import {
   type ResolvedCredential,
 } from '@shared/credential-types';
 
-const STORAGE_NAME = 'AgentCredentials';
+const STORAGE_NAME = 'credentials' as const;
 
 /**
  * Zod schema for the on-disk credentials store.
@@ -39,7 +38,7 @@ function generateNonce(): string {
 /**
  * Manages encrypted credential storage and placeholder-based resolution.
  *
- * Credentials are stored in a single encrypted JSON file (`AgentCredentials.json`)
+ * Credentials are stored in a single encrypted JSON file (`credentials.json`)
  * using Electron's safeStorage (OS keychain integration). Each credential
  * conforms to a registered `CredentialTypeDefinition` that declares its schema,
  * which fields are secrets, and an optional refresh/validation hook.
@@ -50,26 +49,18 @@ function generateNonce(): string {
  */
 export class CredentialsService extends DisposableService {
   private readonly logger: Logger;
-  private readonly globalDataPathService: GlobalDataPathService;
 
   private store: CredentialsStore = {};
   private saveQueue: Promise<void> = Promise.resolve();
   private accessTokenProvider?: () => string | undefined;
 
-  private constructor(
-    logger: Logger,
-    globalDataPathService: GlobalDataPathService,
-  ) {
+  private constructor(logger: Logger) {
     super();
     this.logger = logger;
-    this.globalDataPathService = globalDataPathService;
   }
 
-  public static async create(
-    logger: Logger,
-    globalDataPathService: GlobalDataPathService,
-  ): Promise<CredentialsService> {
-    const instance = new CredentialsService(logger, globalDataPathService);
+  public static async create(logger: Logger): Promise<CredentialsService> {
+    const instance = new CredentialsService(logger);
     await instance.initialize();
     return instance;
   }

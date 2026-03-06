@@ -15,7 +15,6 @@ import type { ModelProviderService } from '@/agents/model-provider';
 import type { ModelId } from '@shared/available-models';
 import type { z } from 'zod';
 import { AgentPersistenceDB } from './persistence/db';
-import type { GlobalDataPathService } from '../global-data-path';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
 import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { writeBlob } from '@/utils/attachment-blobs';
@@ -38,7 +37,6 @@ export class AgentManagerService extends DisposableService {
   >();
 
   private readonly karton: KartonService;
-  private readonly globalDataPathService: GlobalDataPathService;
   private readonly telemetryService: TelemetryService;
   private readonly toolbox: ToolboxService;
   private readonly logger: Logger;
@@ -49,7 +47,6 @@ export class AgentManagerService extends DisposableService {
 
   public constructor(
     karton: KartonService,
-    globalDataPathService: GlobalDataPathService,
     telemetryService: TelemetryService,
     toolbox: ToolboxService,
     logger: Logger,
@@ -57,7 +54,6 @@ export class AgentManagerService extends DisposableService {
   ) {
     super();
     this.karton = karton;
-    this.globalDataPathService = globalDataPathService;
     this.telemetryService = telemetryService;
     this.toolbox = toolbox;
     this.logger = logger;
@@ -66,10 +62,7 @@ export class AgentManagerService extends DisposableService {
     this.registerKartonHandlers();
 
     // Initialize the DB and store the promise so we can await it in handlers
-    this.dbReadyPromise = AgentPersistenceDB.create(
-      globalDataPathService,
-      logger,
-    )
+    this.dbReadyPromise = AgentPersistenceDB.create(logger)
       .then((db) => {
         this.agentPersistenceDB = db;
         return db;
@@ -374,12 +367,7 @@ export class AgentManagerService extends DisposableService {
         data: string,
       ) => {
         const buffer = Buffer.from(data, 'base64');
-        await writeBlob(
-          this.globalDataPathService.globalDataPath,
-          agentId,
-          attachmentId,
-          buffer,
-        );
+        await writeBlob(agentId, attachmentId, buffer);
       },
     );
     this.karton.registerServerProcedureHandler(
@@ -393,12 +381,7 @@ export class AgentManagerService extends DisposableService {
         _sizeBytes: number,
         filePath: string,
       ) => {
-        await writeBlob(
-          this.globalDataPathService.globalDataPath,
-          agentId,
-          attachmentId,
-          filePath,
-        );
+        await writeBlob(agentId, attachmentId, filePath);
       },
     );
     this.karton.registerServerProcedureHandler(

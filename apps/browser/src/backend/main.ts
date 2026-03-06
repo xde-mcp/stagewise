@@ -10,7 +10,6 @@ import { FilePickerService } from './services/file-picker';
 import { AppMenuService } from './services/app-menu';
 import { URIHandlerService } from './services/uri-handler';
 import { IdentifierService } from './services/identifier';
-import { GlobalDataPathService } from './services/global-data-path';
 import { Logger } from './services/logger';
 import { TelemetryService } from './services/telemetry';
 import { GlobalConfigService } from './services/global-config';
@@ -34,6 +33,8 @@ import { ModelProviderService } from './agents/model-provider';
 import { wireDownloads } from './wiring/downloads-wiring';
 import { wirePagesStateSync } from './wiring/pages-state-sync';
 import { wirePagesHandlers } from './wiring/pages-handler-wiring';
+import { ensureDataDirectories, getRipgrepBasePath } from './utils/paths';
+import { migrateLegacyPaths } from './utils/migrate-legacy-paths';
 
 export type MainParameters = {
   launchOptions: {
@@ -46,15 +47,14 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   // code. You can also put them in separate files and import them here.
   const logger = new Logger(verbose ?? false);
 
-  const globalDataPathService = await GlobalDataPathService.create(logger);
+  migrateLegacyPaths(logger);
+
+  await ensureDataDirectories();
 
   // Create PreferencesService, IdentifierService, and TelemetryService first
   // so telemetryService can be passed to all downstream services
   const preferencesService = await PreferencesService.create(logger);
-  const identifierService = await IdentifierService.create(
-    globalDataPathService,
-    logger,
-  );
+  const identifierService = await IdentifierService.create(logger);
   const telemetryService = new TelemetryService(
     identifierService,
     preferencesService,
@@ -81,24 +81,14 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   // Create database services early so they can be passed to other services
   // WebDataService must be created first as HistoryService depends on it
   // for search term extraction (keyword IDs reference the keywords table)
-  const webDataService = await WebDataService.create(
-    logger,
-    globalDataPathService,
-  );
+  const webDataService = await WebDataService.create(logger);
   const historyService = await HistoryService.create(
     logger,
-    globalDataPathService,
     webDataService,
     telemetryService,
   );
-  const faviconService = await FaviconService.create(
-    logger,
-    globalDataPathService,
-  );
-  const thumbnailService = await ThumbnailService.create(
-    logger,
-    globalDataPathService,
-  );
+  const faviconService = await FaviconService.create(logger);
+  const thumbnailService = await ThumbnailService.create(logger);
 
   // Evict thumbnails older than 30 days (fire-and-forget)
   thumbnailService.evictStaleThumbnails(30).catch((err) => {
@@ -139,7 +129,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   // This also applies the startup page preference during initialization
   const windowLayoutService = await WindowLayoutService.create(
     logger,
-    globalDataPathService,
     historyService,
     faviconService,
     pagesService,
@@ -149,11 +138,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   );
   const uiKarton = windowLayoutService.uiKarton;
 
-  const diffHistoryService = await DiffHistoryService.create(
-    logger,
-    uiKarton,
-    globalDataPathService,
-  );
+  const diffHistoryService = await DiffHistoryService.create(logger, uiKarton);
 
   // Connect PreferencesService to Karton for reactive sync
   preferencesService.connectKarton(uiKarton, pagesService);
@@ -195,15 +180,12 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   );
 
   const globalConfigService = await GlobalConfigService.create(
-    globalDataPathService,
     logger,
     uiKarton,
   );
 
-  // Ensure ripgrep is installed for improved grep/glob performance
-  // If installation fails, the app will continue with Node.js fallback implementations
   ensureRipgrepInstalled({
-    rgBinaryBasePath: globalDataPathService.globalDataPath,
+    rgBinaryBasePath: getRipgrepBasePath(),
     onLog: logger.debug,
   })
     .then((result) => {
@@ -256,7 +238,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   const userExperienceService = await UserExperienceService.create(
     logger,
     uiKarton,
-    globalDataPathService,
     telemetryService,
   );
 
@@ -268,7 +249,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     windowLayoutService,
     authService,
     telemetryService,
-    globalDataPathService,
     filePickerService,
     userExperienceService,
   );
@@ -287,7 +267,6 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
 
   const agentManagerService = new AgentManagerService(
     uiKarton,
-    globalDataPathService,
     telemetryService,
     toolboxService,
     logger,

@@ -13,10 +13,10 @@ import type { DiffHistoryService } from '@/services/diff-history';
 import type { WindowLayoutService } from '@/services/window-layout';
 import type { AuthService } from '@/services/auth';
 import type { TelemetryService } from '@/services/telemetry';
-import type { GlobalDataPathService } from '@/services/global-data-path';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import { createFileDiffHandler } from './utils/sandbox-callbacks';
 import { deleteAgentBlobs, getAgentBlobDir } from '@/utils/attachment-blobs';
+import { getDataRoot, getTempRoot } from '@/utils/paths';
 import { mkdirSync } from 'node:fs';
 import type { ApiClient } from '@stagewise/api-client';
 import {
@@ -96,7 +96,6 @@ export class ToolboxService extends DisposableService {
   private readonly windowLayoutService: WindowLayoutService;
   private readonly authService: AuthService;
   private readonly telemetryService: TelemetryService;
-  private readonly globalDataPathService: GlobalDataPathService;
   private readonly filePickerService: FilePickerService;
   private readonly userExperienceService: UserExperienceService;
 
@@ -109,15 +108,12 @@ export class ToolboxService extends DisposableService {
   private apiClient: ApiClient | null = null;
 
   public get globalDataPath(): string {
-    return this.globalDataPathService.globalDataPath;
+    return getDataRoot();
   }
 
   /** Temp directory for capturing file state (external/binary files) */
   private get tempDir(): string {
-    return path.join(
-      this.globalDataPathService.globalTempPath,
-      'agent-temp-files',
-    );
+    return path.join(getTempRoot(), 'agent-temp-files');
   }
 
   private constructor(
@@ -128,7 +124,6 @@ export class ToolboxService extends DisposableService {
     windowLayoutService: WindowLayoutService,
     authService: AuthService,
     telemetryService: TelemetryService,
-    globalDataPathService: GlobalDataPathService,
     filePickerService: FilePickerService,
     userExperienceService: UserExperienceService,
   ) {
@@ -140,7 +135,6 @@ export class ToolboxService extends DisposableService {
     this.windowLayoutService = windowLayoutService;
     this.authService = authService;
     this.telemetryService = telemetryService;
-    this.globalDataPathService = globalDataPathService;
     this.filePickerService = filePickerService;
     this.userExperienceService = userExperienceService;
   }
@@ -153,7 +147,6 @@ export class ToolboxService extends DisposableService {
     windowLayoutService: WindowLayoutService,
     authService: AuthService,
     telemetryService: TelemetryService,
-    globalDataPathService: GlobalDataPathService,
     filePickerService: FilePickerService,
     userExperienceService: UserExperienceService,
   ): Promise<ToolboxService> {
@@ -165,7 +158,6 @@ export class ToolboxService extends DisposableService {
       windowLayoutService,
       authService,
       telemetryService,
-      globalDataPathService,
       filePickerService,
       userExperienceService,
     );
@@ -449,10 +441,7 @@ export class ToolboxService extends DisposableService {
         permissions: m.permissions,
       })) ?? [];
 
-    const attDir = getAgentBlobDir(
-      this.globalDataPathService.globalDataPath,
-      agentInstanceId,
-    );
+    const attDir = getAgentBlobDir(agentInstanceId);
     mkdirSync(attDir, { recursive: true });
     mounts.push({
       prefix: 'att',
@@ -549,10 +538,7 @@ export class ToolboxService extends DisposableService {
       ...workspaceMounts,
       {
         prefix: 'att',
-        path: getAgentBlobDir(
-          this.globalDataPathService.globalDataPath,
-          agentInstanceId,
-        ),
+        path: getAgentBlobDir(agentInstanceId),
         permissions: [...APPEND_ONLY_PERMISSIONS] as MountPermission[],
       },
     ];
@@ -810,10 +796,7 @@ export class ToolboxService extends DisposableService {
     this.mountManagerService?.clearAgentMounts(agentInstanceId);
     this.sandboxService?.destroyAgent(agentInstanceId);
     this.shellService?.destroyAgent(agentInstanceId);
-    void deleteAgentBlobs(
-      this.globalDataPathService.globalDataPath,
-      agentInstanceId,
-    );
+    void deleteAgentBlobs(agentInstanceId);
     this.cancelPendingQuestions(agentInstanceId);
   }
 
@@ -826,7 +809,6 @@ export class ToolboxService extends DisposableService {
     this.mountManagerService = await MountManagerService.create(
       this.logger,
       this.filePickerService,
-      this.globalDataPathService,
       this.userExperienceService,
       this.uiKarton,
       this.telemetryService,

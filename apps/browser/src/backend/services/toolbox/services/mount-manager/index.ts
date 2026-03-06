@@ -6,7 +6,6 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import chokidar, { type FSWatcher } from 'chokidar';
 import type { FilePickerService } from '@/services/file-picker';
-import type { GlobalDataPathService } from '@/services/global-data-path';
 import type { KartonService } from '@/services/karton';
 import type { UserExperienceService } from '@/services/experience';
 import type { TelemetryService } from '@/services/telemetry';
@@ -23,6 +22,7 @@ import {
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
 import { getSkills } from '@/agents/shared/prompts/utils/get-skills';
 import { isGitRepo } from '@/utils/git-tools';
+import { getRipgrepBasePath } from '@/utils/paths';
 
 type AgentInstanceId = string;
 type MountPrefix = string;
@@ -42,7 +42,6 @@ export type MountedLspServices = Map<MountPrefix, LspService>;
 export class MountManagerService extends DisposableService {
   private readonly logger: Logger;
   private readonly filePickerService: FilePickerService;
-  private readonly globalDataPathService: GlobalDataPathService;
   private readonly userExperienceService: UserExperienceService;
   private readonly uiKarton: KartonService;
   private readonly telemetryService: TelemetryService;
@@ -71,7 +70,6 @@ export class MountManagerService extends DisposableService {
   public constructor(
     logger: Logger,
     filePickerService: FilePickerService,
-    globalDataPathService: GlobalDataPathService,
     userExperienceService: UserExperienceService,
     uiKarton: KartonService,
     telemetryService: TelemetryService,
@@ -79,7 +77,6 @@ export class MountManagerService extends DisposableService {
     super();
     this.logger = logger;
     this.filePickerService = filePickerService;
-    this.globalDataPathService = globalDataPathService;
     this.userExperienceService = userExperienceService;
     this.uiKarton = uiKarton;
     this.telemetryService = telemetryService;
@@ -104,7 +101,6 @@ export class MountManagerService extends DisposableService {
   public static async create(
     logger: Logger,
     filePickerService: FilePickerService,
-    globalDataPathService: GlobalDataPathService,
     userExperienceService: UserExperienceService,
     uiKarton: KartonService,
     telemetryService: TelemetryService,
@@ -112,7 +108,6 @@ export class MountManagerService extends DisposableService {
     const instance = new MountManagerService(
       logger,
       filePickerService,
-      globalDataPathService,
       userExperienceService,
       uiKarton,
       telemetryService,
@@ -193,7 +188,7 @@ export class MountManagerService extends DisposableService {
         resolvedWorkspacePath,
         new ClientRuntimeNode({
           workingDirectory: resolvedWorkspacePath,
-          rgBinaryBasePath: this.globalDataPathService.globalDataPath,
+          rgBinaryBasePath: getRipgrepBasePath(),
         }),
       );
       const lspPromise = LspService.create(

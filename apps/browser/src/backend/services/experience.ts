@@ -15,7 +15,6 @@ import {
 } from '@shared/karton-contracts/ui';
 import type { KartonService } from './karton';
 import type { Logger } from './logger';
-import type { GlobalDataPathService } from './global-data-path';
 import type { PagesService } from './pages';
 import { type ApiClient, createApiClient } from '@stagewise/api-client';
 import { API_URL } from './auth/server-interop';
@@ -26,7 +25,6 @@ import type { TelemetryService } from './telemetry';
 export class UserExperienceService extends DisposableService {
   private readonly logger: Logger;
   private readonly uiKarton: KartonService;
-  private readonly globalDataPathService: GlobalDataPathService;
   private readonly telemetryService: TelemetryService;
   private pagesService?: PagesService;
   private inspirationSeed = crypto.randomUUID();
@@ -52,13 +50,11 @@ export class UserExperienceService extends DisposableService {
   private constructor(
     logger: Logger,
     uiKarton: KartonService,
-    globalDataPathService: GlobalDataPathService,
     telemetryService: TelemetryService,
   ) {
     super();
     this.logger = logger;
     this.uiKarton = uiKarton;
-    this.globalDataPathService = globalDataPathService;
     this.telemetryService = telemetryService;
 
     // Bind once and store reference for later unregistration
@@ -81,14 +77,12 @@ export class UserExperienceService extends DisposableService {
   public static async create(
     logger: Logger,
     uiKarton: KartonService,
-    globalDataPathService: GlobalDataPathService,
     telemetryService: TelemetryService,
   ) {
     logger.debug('[UserExperienceService] Creating service');
     const instance = new UserExperienceService(
       logger,
       uiKarton,
-      globalDataPathService,
       telemetryService,
     );
     await instance.initialize();

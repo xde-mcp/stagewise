@@ -915,15 +915,13 @@ export abstract class BaseAgent<
   ): Promise<ModelMessage[]> {
     const activeModelId = this.state.get().activeModelId;
     const capabilities = getModelCapabilities(activeModelId);
-    const globalDataPath = this.toolbox.globalDataPath;
     return convertAgentMessagesToModelMessages(
       messages,
       systemPrompt,
       await this.getToolsForStep(),
       Math.max(this.config.minUncompressedMessages ?? 0, 5),
       this.instanceId,
-      (agentId, attachmentId) =>
-        readBlob(globalDataPath, agentId, attachmentId),
+      (agentId, attachmentId) => readBlob(agentId, attachmentId),
       capabilities,
       (err, ctx) => {
         const error = err instanceof Error ? err : new Error(String(err));

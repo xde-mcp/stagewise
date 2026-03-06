@@ -4,11 +4,10 @@ import { migrateDatabase } from '../../utils/migrate-database';
 import { eq, sql } from 'drizzle-orm';
 import * as schema from './schema';
 import { drizzle } from 'drizzle-orm/libsql';
-import type { GlobalDataPathService } from '../global-data-path';
-import path from 'node:path';
 import { createClient } from '@libsql/client';
 import initSql from './schema.sql?raw';
 import type { SearchEngine } from '@shared/karton-contracts/ui/shared-types';
+import { getDbPath } from '@/utils/paths';
 
 /**
  * Result of extracting a search term from a URL.
@@ -44,9 +43,9 @@ export class WebDataService {
   private keywordsCache: CachedKeyword[] | null = null;
   private keywordsCacheExpiry = 0;
 
-  private constructor(logger: Logger, paths: GlobalDataPathService) {
+  private constructor(logger: Logger) {
     this.logger = logger;
-    const dbPath = path.join(paths.globalDataPath, 'Web Data');
+    const dbPath = getDbPath('web-data');
     this.dbDriver = createClient({
       url: `file:${dbPath}`,
       intMode: 'bigint',
@@ -54,11 +53,8 @@ export class WebDataService {
     this.db = drizzle(this.dbDriver, { schema });
   }
 
-  public static async create(
-    logger: Logger,
-    globalDataPathService: GlobalDataPathService,
-  ): Promise<WebDataService> {
-    const instance = new WebDataService(logger, globalDataPathService);
+  public static async create(logger: Logger): Promise<WebDataService> {
+    const instance = new WebDataService(logger);
     await instance.initialize();
     logger.debug('[WebDataService] Created service');
     return instance;

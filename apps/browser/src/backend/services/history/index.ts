@@ -17,8 +17,6 @@ import {
 } from 'drizzle-orm';
 import * as schema from './migrations/schema';
 import { drizzle } from 'drizzle-orm/libsql';
-import type { GlobalDataPathService } from '../global-data-path';
-import path from 'node:path';
 import { createClient } from '@libsql/client';
 import {
   PageTransition,
@@ -32,6 +30,7 @@ import initSql from './schema.sql?raw';
 import { migrateDatabase } from '@/utils/migrate-database';
 import { registry, schemaVersion } from './migrations';
 import type { WebDataService } from '../webdata';
+import { getDbPath } from '@/utils/paths';
 
 // Internal result type without favicon (added by PagesService)
 export interface HistoryQueryResult {
@@ -78,14 +77,13 @@ export class HistoryService {
 
   private constructor(
     logger: Logger,
-    paths: GlobalDataPathService,
     webDataService: WebDataService | null,
     telemetryService: TelemetryService,
   ) {
     this.logger = logger;
     this.webDataService = webDataService;
     this.telemetryService = telemetryService;
-    const dbPath = path.join(paths.globalDataPath, 'History');
+    const dbPath = getDbPath('history');
     this.dbDriver = createClient({
       url: `file:${dbPath}`,
       intMode: 'bigint', // WebKit timestamps exceed Number.MAX_SAFE_INTEGER
@@ -109,13 +107,11 @@ export class HistoryService {
 
   public static async create(
     logger: Logger,
-    globalDataPathService: GlobalDataPathService,
     webDataService: WebDataService | null,
     telemetryService: TelemetryService,
   ): Promise<HistoryService> {
     const instance = new HistoryService(
       logger,
-      globalDataPathService,
       webDataService,
       telemetryService,
     );
