@@ -258,11 +258,9 @@ async function buildSyntheticUserMessageForAttachments(
     if (check.canConsume) {
       try {
         const buf = await blobReader(agentInstanceId, f.id);
-        const base64 = buf.toString('base64');
-        const dataUrl = `data:${f.mediaType};base64,${base64}`;
         content.push({
           type: 'file',
-          data: dataUrl,
+          data: new Uint8Array(buf),
           mediaType: f.mediaType,
           filename: f.fileName,
         });
@@ -421,11 +419,9 @@ export const convertAgentMessagesToModelMessages = async (
           if (check.canConsume) {
             try {
               const content = await blobReader(agentInstanceId, f.id);
-              const base64 = content.toString('base64');
-              const dataUrl = `data:${f.mediaType};base64,${base64}`;
               parts.push({
                 type: 'file',
-                url: dataUrl,
+                url: content.toString('base64'),
                 mediaType: f.mediaType,
                 filename: f.fileName,
               });
