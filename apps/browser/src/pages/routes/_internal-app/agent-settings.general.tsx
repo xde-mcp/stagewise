@@ -101,13 +101,6 @@ function Page() {
       <OverlayScrollbar className="flex-1" contentClassName="px-6 pt-6 pb-24">
         <div className="mx-auto max-w-4xl space-y-8">
           <section className="space-y-6">
-            <div>
-              <h2 className="font-medium text-foreground text-lg">Editor</h2>
-              <p className="text-muted-foreground text-sm">
-                Configure how the agent interacts with your development
-                environment.
-              </p>
-            </div>
             <IdeSelectionSetting />
           </section>
         </div>
