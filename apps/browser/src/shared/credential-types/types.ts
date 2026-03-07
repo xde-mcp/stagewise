@@ -56,6 +56,13 @@ export interface CredentialTypeDefinition<
   /** Zod object schema. Secret fields use `credentialField()`, plain fields use `z.string()`. */
   schema: z.ZodObject<TShape>;
   /**
+   * Origins (scheme + host + optional port) to which the fetch proxy is
+   * allowed to send secret field values, e.g. `['https://api.figma.com']`.
+   * Requests to any other origin that contain credential placeholders will
+   * be rejected at the proxy level.
+   */
+  allowedOrigins: string[];
+  /**
    * UI metadata keyed by credential (secret) field name.
    * Only secret fields need entries here; plain fields are rendered without extra metadata.
    */
@@ -101,6 +108,14 @@ export function extractSecretFieldNames<T extends z.ZodRawShape>(
 }
 
 /**
+ * A single secret entry resolved for fetch proxy substitution.
+ */
+export interface SecretEntry {
+  value: string;
+  allowedOrigins: string[];
+}
+
+/**
  * Result of resolving a credential via `CredentialsService.resolve()`.
  */
 export interface ResolvedCredential {
@@ -110,8 +125,8 @@ export interface ResolvedCredential {
    */
   data: Record<string, string>;
   /**
-   * Maps each placeholder string to the real secret value.
+   * Maps each placeholder string to its real value and allowed origins.
    * The sandbox worker stores this for fetch proxy substitution.
    */
-  secretMap: Map<string, string>;
+  secretMap: Map<string, SecretEntry>;
 }

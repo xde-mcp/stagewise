@@ -12,6 +12,7 @@ export const figmaPatCredentialType: CredentialTypeDefinition<FigmaPatShape> = {
   description:
     'Personal Access Token for the Figma REST API. Allows reading files, components, images, styles, and project metadata.',
   schema,
+  allowedOrigins: ['https://api.figma.com'],
   fieldMetadata: {
     token: {
       description: 'Personal Access Token',

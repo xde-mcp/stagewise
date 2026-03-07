@@ -8,6 +8,7 @@ export {
   type CredentialFieldMetadata,
   type CredentialTypeDefinition,
   type ResolvedCredential,
+  type SecretEntry,
 } from './types';
 
 import { figmaPatCredentialType } from './figma-pat';

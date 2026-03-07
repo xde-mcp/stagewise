@@ -12,6 +12,7 @@ import {
   type CredentialTypeId,
   type CredentialInputData,
   type ResolvedCredential,
+  type SecretEntry,
 } from '@shared/credential-types';
 
 const STORAGE_NAME = 'credentials' as const;
@@ -192,9 +193,9 @@ export class CredentialsService extends DisposableService {
       return null;
     }
 
-    const refreshed = (await typeDef.onGet(
-      current as Parameters<typeof typeDef.onGet>[0],
-    )) as Record<string, string> | null;
+    const refreshed = (await (
+      typeDef.onGet as (arg: unknown) => Promise<unknown>
+    )(current)) as Record<string, string> | null;
     if (refreshed === null) {
       this.logger.warn(
         `[CredentialsService] onGet returned null for ${typeId} (invalid/expired)`,
@@ -210,16 +211,21 @@ export class CredentialsService extends DisposableService {
       );
     }
 
-    const secretFields = new Set(extractSecretFieldNames(typeDef.schema));
+    const secretFields = new Set(
+      extractSecretFieldNames(typeDef.schema as z.ZodObject<z.ZodRawShape>),
+    );
     const data: Record<string, string> = {};
-    const secretMap = new Map<string, string>();
+    const secretMap = new Map<string, SecretEntry>();
 
     for (const [field, value] of Object.entries(refreshed)) {
       if (secretFields.has(field)) {
         const nonce = generateNonce();
         const placeholder = `{{CRED:${typeId}:${field}:${nonce}}}`;
         data[field] = placeholder;
-        secretMap.set(placeholder, value);
+        secretMap.set(placeholder, {
+          value,
+          allowedOrigins: typeDef.allowedOrigins,
+        });
       } else {
         data[field] = value;
       }
@@ -232,10 +238,14 @@ export class CredentialsService extends DisposableService {
     const token = this.accessTokenProvider?.();
     if (!token) return null;
 
+    const typeDef = credentialTypeRegistry['stagewise-auth'];
     const nonce = generateNonce();
     const placeholder = `{{CRED:stagewise-auth:accessToken:${nonce}}}`;
-    const secretMap = new Map<string, string>();
-    secretMap.set(placeholder, token);
+    const secretMap = new Map<string, SecretEntry>();
+    secretMap.set(placeholder, {
+      value: token,
+      allowedOrigins: typeDef.allowedOrigins,
+    });
 
     return {
       data: { accessToken: placeholder },
