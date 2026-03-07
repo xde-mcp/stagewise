@@ -133,6 +133,7 @@ export function InternalAppFrame() {
       )}
       style={{
         height: activeApp.height ?? 300,
+        maxHeight: '50vh',
         marginBottom: 'calc(var(--status-card-height, 0px) + 0.5rem)',
       }}
     >

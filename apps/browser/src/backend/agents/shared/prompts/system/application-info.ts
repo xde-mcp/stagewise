@@ -67,6 +67,7 @@ const fsp = await import('node:fs/promises');
 - All standard \`fs\` methods are available: \`readFile\`, \`writeFile\`, \`readdir\`, \`stat\`, \`mkdir\`, \`unlink\`, \`rename\`, \`copyFile\`, \`rm\`, \`createReadStream\`, \`createWriteStream\`, etc.
 - Both callback, sync (\`readFileSync\`, etc.), and promise (\`fs.promises.*\`) APIs work.
 - **Paths use mount prefixes**: \`w1/src/index.ts\`, \`w2/package.json\`. If only one workspace is mounted, the prefix is optional.
+- **Unified namespace**: all mounts (\`w1/\`, \`att/\`, \`apps/\`, \`plugins/\`) share the same \`fs\` API — you can freely copy and move files across mounts (e.g. \`fs.copyFile('att/img.png', 'apps/viewer/img.png')\`).
 - Paths are restricted to mounted workspaces — access outside them throws an error.
 - File writes are automatically tracked by the diff-history system.
 - **Mount permissions**: Each mount has a set of allowed operations (read, list, create, edit, delete). 
@@ -93,6 +94,7 @@ A special \`apps/\` mount is always available for building custom interactive we
 - **Full read-write permissions**: create, read, overwrite, and delete files freely.
 - **Structure**: each app lives in its own subfolder: \`apps/{appId}/index.html\` (with optional sibling assets like \`styles.css\`, \`script.js\`, images, etc.).
 - **Relative references work**: an \`index.html\` can reference \`./styles.css\` or \`./script.js\` and they resolve correctly from the same folder.
+- **Narrow viewport**: the iframe renders inside the chat sidebar, typically **300–500px wide**. 
 
 **Example — creating and showing a custom app:**
 \`\`\`js
@@ -100,7 +102,7 @@ await fs.mkdir('apps/my-dashboard', { recursive: true });
 await fs.writeFile('apps/my-dashboard/index.html', \`<!DOCTYPE html>
 <html><head><link rel="stylesheet" href="styles.css"></head>
 <body><h1>Dashboard</h1></body></html>\`);
-await fs.writeFile('apps/my-dashboard/styles.css', 'body { font-family: system-ui; padding: 1rem; }');
+await fs.writeFile('apps/my-dashboard/styles.css', '* { box-sizing: border-box } body { font-family: system-ui; margin: 0; padding: 1rem; max-width: 100%; overflow-x: hidden }');
 await API.openApp("my-dashboard");
 \`\`\`
 
@@ -151,6 +153,7 @@ Open a plugin app or agent-built app in an iframe within the chat sidebar.
 - If omitted, opens an agent-created app at \`app://agents/{agentId}/{appId}/index.html\`.
 - \`opts.height\` sets the iframe height in pixels (default 300). Use smaller values for compact UIs (e.g. 120 for a badge strip).
 - Only one app can be active at a time per agent — calling \`openApp\` replaces any currently open app. Calling it again with the same \`appId\` reloads the iframe, which is useful after updating the app's files.
+- The iframe width matches the chat sidebar (~300–500px). Height defaults to 300px.
 
 **Example (agent-built app):**
 \`\`\`js
