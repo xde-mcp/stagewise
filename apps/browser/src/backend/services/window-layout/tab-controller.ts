@@ -252,8 +252,10 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   >();
   private isCdpEventDispatcherSetup = false;
 
-  // Tracks whether the initial page load has completed.
-  // Used to suppress CDP re-enable on subframe/SPA loading events (prevents feedback loop).
+  // Tracks whether the initial page load has completed for the current navigation.
+  // Reset by navigation methods (loadURL, reload, goBack, goForward) before
+  // triggering navigation; set to true once did-stop-loading completes setup.
+  // Subframe/SPA loading events see this as true and are ignored.
   private initialLoadCompleted = false;
 
   // Error handling
@@ -567,6 +569,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       transition: finalTransition,
       referrerVisitId: this.lastVisitId || undefined,
     };
+    this.initialLoadCompleted = false;
     this.updateState({ url });
     this.webContentsView.webContents.loadURL(url);
   }
@@ -618,6 +621,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       transition: PageTransition.RELOAD,
       referrerVisitId: this.lastVisitId || undefined,
     };
+    this.initialLoadCompleted = false;
     this.webContentsView.webContents.reload();
   }
 
@@ -683,6 +687,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
         ),
         referrerVisitId: this.lastVisitId || undefined,
       };
+      this.initialLoadCompleted = false;
       navHistory.goToOffset(offset);
       return;
     }
@@ -696,6 +701,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
         ),
         referrerVisitId: this.lastVisitId || undefined,
       };
+      this.initialLoadCompleted = false;
       navHistory.goBack();
     }
   }
@@ -718,6 +724,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
         ),
         referrerVisitId: this.lastVisitId || undefined,
       };
+      this.initialLoadCompleted = false;
       navHistory.goToOffset(offset);
       return;
     }
@@ -745,6 +752,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
         ),
         referrerVisitId: this.lastVisitId || undefined,
       };
+      this.initialLoadCompleted = false;
       navHistory.goForward();
     }
   }
@@ -1380,9 +1388,6 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.on('did-navigate', (_event, url, _httpResponseCode, _httpStatusText) => {
-      // Reset so the next did-stop-loading runs full setup (CDP enable, screenshot, etc.)
-      this.initialLoadCompleted = false;
-
       this.stopSearch(); // Clear search on navigation
 
       // Don't update URL in UI if navigating to an error page - keep showing the failed URL
@@ -1438,14 +1443,16 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     });
 
     wc.on('did-start-loading', () => {
-      // After initial load, suppress UI flicker and CDP flag reset.
-      // Real navigations (did-navigate) reset initialLoadCompleted first.
+      // Only show loading UI for top-level navigations. Navigation methods
+      // (loadURL, reload, goBack, goForward) reset initialLoadCompleted
+      // before triggering navigation, so this fires while the flag is false.
+      // Subframe/SPA loading events fire while initialLoadCompleted is true
+      // and are correctly ignored to prevent UI flicker.
       if (!this.initialLoadCompleted) {
         this.updateState({
           isLoading: true,
           error: null,
         });
-        // Reset Runtime enabled flags - will be re-enabled on did-stop-loading
         this.isRuntimeEnabled = false;
         this.isEnablingCdpDomains = false;
       }
@@ -1453,19 +1460,30 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
 
     wc.on('did-stop-loading', () => {
       if (!this.initialLoadCompleted) {
-        // First load after navigation — run all setup work
+        // Top-level navigation completed — run all setup work
         this.initialLoadCompleted = true;
 
-        // If no title was set by the page, use domain as fallback
-        if (!this.pageTitleWasSet) {
-          const fallbackTitle = this.getDomainFromUrl(this.currentState.url);
-          this.updateState({ title: fallbackTitle });
-        }
+        const audibleState = {
+          isPlayingAudio: wc.isCurrentlyAudible(),
+          isMuted: wc.audioMuted,
+        };
 
-        this.updateState({ isLoading: false, error: null });
-        this.updateAudioState();
+        // If no title was set by the page, use domain as fallback
+        const titleUpdate = !this.pageTitleWasSet
+          ? { title: this.getDomainFromUrl(this.currentState.url) }
+          : {};
+
+        // Single batched state push to avoid UI flicker
+        this.updateState({
+          ...titleUpdate,
+          ...audibleState,
+          isLoading: false,
+          error: null,
+        });
+
         const currentZoom = this.getZoomPercentage();
         this.updateState({ zoomPercentage: currentZoom });
+
         this.captureScreenshot().catch((err) => {
           this.logger.debug(
             `[TabController] Failed to capture screenshot on page load: ${err}`,
@@ -1483,12 +1501,8 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
             );
           });
         }
-      } else {
-        // Subsequent stops (subframes/SPA) — only clear loading state.
-        // Skip CDP re-enable (which caused the feedback loop),
-        // skip screenshot/audio/zoom (wasted work on subframe events).
-        this.updateState({ isLoading: false });
       }
+      // Subframe/SPA stop events are intentionally ignored — no state updates.
     });
 
     // Note: Error handling UI is managed by TabErrorHandler (setupErrorHandler)
