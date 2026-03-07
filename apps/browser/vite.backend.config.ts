@@ -33,8 +33,9 @@ export default defineConfig({
       POSTHOG_HOST: process.env.POSTHOG_HOST ?? 'https://eu.i.posthog.com',
       STAGEWISE_CONSOLE_URL:
         process.env.STAGEWISE_CONSOLE_URL ?? 'https://console.stagewise.io',
-      API_URL: process.env.API_URL ?? 'https://v1.api.stagewise.io',
-      LLM_PROXY_URL: process.env.LLM_PROXY_URL ?? 'https://llm.stagewise.io',
+      API_URL: process.env.API_URL ?? 'https://api.stagewise.io',
+      LLM_PROXY_URL:
+        process.env.LLM_PROXY_URL ?? 'https://api.stagewise.io/v1/ai',
       UPDATE_SERVER_ORIGIN: process.env.UPDATE_SERVER_ORIGIN,
       SUPABASE_URL: process.env.SUPABASE_URL,
       SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
