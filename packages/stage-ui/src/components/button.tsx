@@ -18,6 +18,7 @@ export const buttonVariants = cva(
           'border border-derived bg-success-solid font-normal text-solid-foreground not-disabled:hover:bg-hover-derived not-disabled:focus-visible:bg-hover-derived not-disabled:active:bg-active-derived',
         ghost:
           'bg-transparent font-normal text-muted-foreground not-disabled:hover:text-foreground not-disabled:focus-visible:text-foreground not-disabled:active:text-foreground/l-4_c-3',
+        link: 'text-primary-foreground hover:text-hover-derived active:text-active-derived',
       },
       size: {
         xs: 'h-6 gap-1 rounded-md px-2.5 py-1 text-xs',

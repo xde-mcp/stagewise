@@ -7,6 +7,8 @@ import {
 } from '@stagewise/stage-ui/components/radio';
 import { produceWithPatches, enablePatches } from 'immer';
 import type { UpdateChannel } from '@shared/karton-contracts/ui/shared-types';
+import { cn } from '@stagewise/stage-ui/lib/utils';
+import { buttonVariants } from '@stagewise/stage-ui/components/button';
 
 enablePatches();
 
@@ -181,7 +183,10 @@ function Page() {
                   href={appInfo.homepage}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="break-all text-primary-foreground text-sm hover:text-hover-derived active:text-active-derived"
+                  className={cn(
+                    buttonVariants({ variant: 'link', size: 'sm' }),
+                    'w-min p-0',
+                  )}
                 >
                   {appInfo.homepage}
                 </a>
