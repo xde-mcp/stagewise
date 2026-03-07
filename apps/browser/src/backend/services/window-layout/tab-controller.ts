@@ -245,6 +245,13 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private isRuntimeEnabled = false;
   private isEnablingCdpDomains = false; // Prevents concurrent enableCdpDomainsForConsole calls
 
+  // CDP event subscriptions (external consumers subscribing to specific CDP events)
+  private cdpEventSubscribers = new Map<
+    string,
+    Set<(params: unknown) => void>
+  >();
+  private isCdpEventDispatcherSetup = false;
+
   // Tracks whether the initial page load has completed.
   // Used to suppress CDP re-enable on subframe/SPA loading events (prevents feedback loop).
   private initialLoadCompleted = false;
@@ -1299,6 +1306,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       this.webContentsView.webContents.close({ waitForBeforeUnload: false });
     }
 
+    this.cdpEventSubscribers.clear();
     this.removeAllListeners();
   }
 
@@ -2334,6 +2342,53 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
     if (!wc.debugger.isAttached()) throw new Error('Debugger not attached');
 
     return await wc.debugger.sendCommand(method, params);
+  }
+
+  /**
+   * Subscribes to a CDP event on this tab's debugger.
+   * The callback is invoked whenever the specified CDP event fires.
+   *
+   * @param event - The CDP event name (e.g., 'Runtime.bindingCalled')
+   * @param callback - Invoked with the event params when the event fires
+   * @returns An unsubscribe function that removes this callback
+   */
+  public subscribeCDPEvent(
+    event: string,
+    callback: (params: unknown) => void,
+  ): () => void {
+    this.ensureCdpEventDispatcher();
+
+    let subscribers = this.cdpEventSubscribers.get(event);
+    if (!subscribers) {
+      subscribers = new Set();
+      this.cdpEventSubscribers.set(event, subscribers);
+    }
+    subscribers.add(callback);
+
+    return () => {
+      subscribers.delete(callback);
+      if (subscribers.size === 0) {
+        this.cdpEventSubscribers.delete(event);
+      }
+    };
+  }
+
+  private ensureCdpEventDispatcher() {
+    if (this.isCdpEventDispatcherSetup) return;
+    this.isCdpEventDispatcherSetup = true;
+
+    const wc = this.webContentsView.webContents;
+    wc.debugger.on('message', (_event, method, params) => {
+      const subscribers = this.cdpEventSubscribers.get(method);
+      if (!subscribers || subscribers.size === 0) return;
+      for (const cb of subscribers) {
+        try {
+          cb(params);
+        } catch {
+          // Prevent one failing subscriber from breaking others
+        }
+      }
+    });
   }
 
   /**

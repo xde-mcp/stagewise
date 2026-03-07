@@ -1870,6 +1870,24 @@ export class WindowLayoutService extends DisposableService {
   }
 
   /**
+   * Subscribes to a CDP event on the specified tab.
+   * Returns an unsubscribe function to remove the listener.
+   */
+  public subscribeCDPEvent(
+    tabHandleOrId: string,
+    event: string,
+    callback: (params: unknown) => void,
+  ): () => void {
+    const tab = this.resolveTabByHandleOrId(tabHandleOrId);
+    if (!tab)
+      throw new Error(
+        `Tab not found: "${tabHandleOrId}". Check browser-information for available tabs.`,
+      );
+
+    return tab.subscribeCDPEvent(event, callback);
+  }
+
+  /**
    * Executes a JavaScript expression in the console of the specified tab.
    *
    * @param expression - The JavaScript expression to execute

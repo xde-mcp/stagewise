@@ -88,6 +88,9 @@ export class SandboxService extends DisposableService {
   private outputFlushTimers = new Map<string, NodeJS.Timeout>();
   private outputMaxIntervalTimers = new Map<string, NodeJS.Timeout>();
 
+  /** Per-agent CDP event subscriptions. Outer key = agentId, inner key = "tabId\0event", value = unsubscribe fn from WindowLayoutService. */
+  private cdpSubscriptions = new Map<string, Map<string, () => void>>();
+
   constructor(
     windowLayoutService: WindowLayoutService,
     logger: Logger,
@@ -229,6 +232,8 @@ export class SandboxService extends DisposableService {
     this.agentToolCallIds.delete(agentId);
     this.fileWriteCountPerExecution.delete(agentId);
     this.sandboxSessionIds.delete(agentId);
+
+    this.cleanupCdpSubscriptions(agentId);
   }
 
   async execute(
@@ -357,9 +362,52 @@ export class SandboxService extends DisposableService {
         this.scheduleFlush(msg.agentId, toolCallId);
         break;
       }
+      case 'subscribe-cdp-event': {
+        try {
+          const key = `${msg.tabId}\0${msg.event}`;
+          let agentSubs = this.cdpSubscriptions.get(msg.agentId);
+          if (!agentSubs) {
+            agentSubs = new Map();
+            this.cdpSubscriptions.set(msg.agentId, agentSubs);
+          }
+          if (agentSubs.has(key)) break;
+
+          const unsubscribe = this.windowLayoutService.subscribeCDPEvent(
+            msg.tabId,
+            msg.event,
+            (params) => {
+              this.safeSend(worker, {
+                type: 'cdp-event',
+                agentId: msg.agentId,
+                tabId: msg.tabId,
+                event: msg.event,
+                params,
+              });
+            },
+          );
+          agentSubs.set(key, unsubscribe);
+        } catch (err) {
+          this.logger.warn(
+            `[SandboxService] Failed to subscribe CDP event: ${err}`,
+          );
+        }
+        break;
+      }
+      case 'unsubscribe-cdp-event': {
+        const key = `${msg.tabId}\0${msg.event}`;
+        const agentSubs = this.cdpSubscriptions.get(msg.agentId);
+        const unsub = agentSubs?.get(key);
+        if (unsub) {
+          unsub();
+          agentSubs!.delete(key);
+          if (agentSubs!.size === 0) {
+            this.cdpSubscriptions.delete(msg.agentId);
+          }
+        }
+        break;
+      }
     }
   }
-
   private static readonly FLUSH_DEBOUNCE_MS = 100;
   private static readonly FLUSH_MAX_INTERVAL_MS = 300;
   private static readonly MAX_STREAMING_BYTES = 51_200;
@@ -498,6 +546,7 @@ export class SandboxService extends DisposableService {
     this.workers.push(replacement);
 
     for (const agentId of crashed.agentIds) {
+      this.cleanupCdpSubscriptions(agentId);
       replacement.agentIds.add(agentId);
       replacement.load++;
       this.agentToWorker.set(agentId, replacement);
@@ -536,6 +585,19 @@ export class SandboxService extends DisposableService {
     return this.workers.reduce((a, b) => (a.load <= b.load ? a : b));
   }
 
+  private cleanupCdpSubscriptions(agentId: string) {
+    const agentSubs = this.cdpSubscriptions.get(agentId);
+    if (!agentSubs) return;
+    for (const unsub of agentSubs.values()) {
+      try {
+        unsub();
+      } catch {
+        // Tab may already be destroyed
+      }
+    }
+    this.cdpSubscriptions.delete(agentId);
+  }
+
   protected onTeardown(): Promise<void> | void {
     for (const worker of this.workers) worker.process.kill();
 
@@ -545,6 +607,9 @@ export class SandboxService extends DisposableService {
     this.agentToolCallIds.clear();
     this.fileWriteCountPerExecution.clear();
     this.sandboxSessionIds.clear();
+
+    for (const agentId of this.cdpSubscriptions.keys())
+      this.cleanupCdpSubscriptions(agentId);
 
     for (const timer of this.outputFlushTimers.values()) clearTimeout(timer);
     this.outputFlushTimers.clear();

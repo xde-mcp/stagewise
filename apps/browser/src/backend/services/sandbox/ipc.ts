@@ -40,6 +40,13 @@ export type MainToWorkerMessage =
       type: 'update-mounts';
       agentId: string;
       mounts: MountDescriptor[];
+    }
+  | {
+      type: 'cdp-event';
+      agentId: string;
+      tabId: string;
+      event: string;
+      params: unknown;
     };
 
 export type WorkerToMainMessage =
@@ -87,6 +94,18 @@ export type WorkerToMainMessage =
         fileName?: string;
         sizeBytes: number;
       };
+    }
+  | {
+      type: 'subscribe-cdp-event';
+      agentId: string;
+      tabId: string;
+      event: string;
+    }
+  | {
+      type: 'unsubscribe-cdp-event';
+      agentId: string;
+      tabId: string;
+      event: string;
     };
 
 /** Main-side: typed send + onMessage for a UtilityProcess child */

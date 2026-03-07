@@ -95,6 +95,15 @@ const BLOCKED_NODE_MODULES = new Set([
 let cdpReqId = 0;
 
 /**
+ * Per-agent CDP event listeners keyed by "tabId\0event".
+ * Each key maps to a set of callbacks registered via API.onCDPEvent().
+ */
+const agentCdpListeners = new Map<
+  string,
+  Map<string, Set<(params: unknown) => void>>
+>();
+
+/**
  * Create or update the isolated fs instances for an agent based on its
  * current mounts. Also invalidates the module cache entries for `node:fs`
  * and `node:fs/promises` so the next import picks up the new mounts.
@@ -147,6 +156,46 @@ function getSandboxAPI(agentId: string) {
         pendingCdp.set(id, { resolve, reject });
         ipc.send({ type: 'cdp', id, tabId, method, params });
       });
+    },
+    onCDPEvent(
+      tabId: string,
+      event: string,
+      callback: (params: unknown) => void,
+    ): () => void {
+      if (!agentCdpListeners.has(agentId)) {
+        agentCdpListeners.set(agentId, new Map());
+      }
+      const listeners = agentCdpListeners.get(agentId)!;
+      const key = `${tabId}\0${event}`;
+      const isFirst = !listeners.has(key) || listeners.get(key)!.size === 0;
+
+      if (!listeners.has(key)) listeners.set(key, new Set());
+
+      listeners.get(key)!.add(callback);
+
+      if (isFirst) {
+        ipc.send({
+          type: 'subscribe-cdp-event',
+          agentId,
+          tabId,
+          event,
+        });
+      }
+
+      return () => {
+        const cbs = listeners.get(key);
+        if (!cbs) return;
+        cbs.delete(callback);
+        if (cbs.size === 0) {
+          listeners.delete(key);
+          ipc.send({
+            type: 'unsubscribe-cdp-event',
+            agentId,
+            tabId,
+            event,
+          });
+        }
+      };
     },
     output(data: any): void {
       const str = typeof data === 'string' ? data : JSON.stringify(data);
@@ -449,6 +498,7 @@ ipc.onMessage(async (msg) => {
       moduleCaches.delete(msg.agentId);
       agentMounts.delete(msg.agentId);
       agentIsolatedFs.delete(msg.agentId);
+      agentCdpListeners.delete(msg.agentId);
       timerResetCallbacks.delete(msg.agentId);
       break;
     }
@@ -566,6 +616,21 @@ ipc.onMessage(async (msg) => {
       if (!p) return;
       pendingCdp.delete(msg.id);
       msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
+      break;
+    }
+    case 'cdp-event': {
+      const listeners = agentCdpListeners.get(msg.agentId);
+      if (!listeners) break;
+      const key = `${msg.tabId}\0${msg.event}`;
+      const cbs = listeners.get(key);
+      if (!cbs) return;
+      for (const cb of cbs) {
+        try {
+          cb(msg.params);
+        } catch {
+          // Prevent one failing callback from breaking others
+        }
+      }
       break;
     }
   }
