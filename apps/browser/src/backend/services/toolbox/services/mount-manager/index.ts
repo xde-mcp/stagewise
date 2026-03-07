@@ -412,7 +412,7 @@ export class MountManagerService extends DisposableService {
     content: string,
   ): Promise<void> {
     const wsPath = this.findWorkspaceForFile(agentInstanceId, filePath);
-    if (!wsPath) throw new Error('No workspace connected');
+    if (!wsPath) return;
     const lsp = await this.lspReady.get(wsPath);
     if (!lsp) return;
 
@@ -438,7 +438,7 @@ export class MountManagerService extends DisposableService {
     filePath: string,
   ): Promise<void> {
     const wsPath = this.findWorkspaceForFile(agentInstanceId, filePath);
-    if (!wsPath) throw new Error('No workspace connected');
+    if (!wsPath) return;
     const lsp = await this.lspReady.get(wsPath);
     if (!lsp) return;
     try {

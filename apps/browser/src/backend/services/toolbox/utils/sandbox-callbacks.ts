@@ -44,9 +44,33 @@ export function createFileDiffHandler(
       } else {
         // Sync with LSP for text content
         if (after !== null) {
-          void deps.mountManager.syncFileWithLsp(agentId, absolutePath, after);
+          deps.mountManager
+            .syncFileWithLsp(agentId, absolutePath, after)
+            .catch((err) => {
+              deps.logger.error('[ToolboxService] LSP sync failed', {
+                error: err,
+                path: absolutePath,
+              });
+              deps.telemetryService.captureException(err as Error, {
+                service: 'toolbox',
+                operation: 'syncFileWithLsp',
+                path: absolutePath,
+              });
+            });
         } else if (before !== null) {
-          void deps.mountManager.syncFileCloseWithLsp(agentId, absolutePath);
+          deps.mountManager
+            .syncFileCloseWithLsp(agentId, absolutePath)
+            .catch((err) => {
+              deps.logger.error('[ToolboxService] LSP file close failed', {
+                error: err,
+                path: absolutePath,
+              });
+              deps.telemetryService.captureException(err as Error, {
+                service: 'toolbox',
+                operation: 'syncFileCloseWithLsp',
+                path: absolutePath,
+              });
+            });
         }
 
         await deps.diffHistoryService.registerAgentEdit({
