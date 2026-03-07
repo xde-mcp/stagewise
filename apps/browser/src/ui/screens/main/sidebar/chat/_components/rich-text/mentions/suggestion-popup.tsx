@@ -69,7 +69,7 @@ function deriveSidePanel(
 
     if (!entry.variants.expanded || entry.id === 'video') return null;
 
-    const src = `sw-file://${meta.mountPrefix}/${encodeURIComponent(meta.relativePath)}`;
+    const src = `workspace://${meta.mountPrefix}/${encodeURIComponent(meta.relativePath)}`;
     return {
       type: 'file',
       key: `file:${meta.mountedPath}`,

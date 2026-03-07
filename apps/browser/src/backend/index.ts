@@ -62,7 +62,7 @@ protocol.registerSchemesAsPrivileged([
     },
   },
   {
-    scheme: 'sw-blob',
+    scheme: 'attachment',
     privileges: {
       standard: true,
       secure: true,
@@ -72,7 +72,7 @@ protocol.registerSchemesAsPrivileged([
     },
   },
   {
-    scheme: 'sw-file',
+    scheme: 'workspace',
     privileges: {
       standard: true,
       secure: true,
@@ -82,7 +82,7 @@ protocol.registerSchemesAsPrivileged([
     },
   },
   {
-    scheme: 'app-runtime',
+    scheme: 'app',
     privileges: {
       standard: true,
       secure: true,

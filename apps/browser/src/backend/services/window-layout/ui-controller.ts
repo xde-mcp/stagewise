@@ -236,34 +236,34 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
     this.telemetryService = telemetryService ?? null;
     this.uiKarton = new KartonService(logger);
 
-    this.registerBlobProtocol();
-    this.registerFileProtocol();
-    this.registerAppRuntimeProtocol();
+    this.registerAttachmentProtocol();
+    this.registerWorkspaceFileProtocol();
+    this.registerAppProtocol();
     this.view = this.createView();
     this.loadApp();
     this.registerKartonProcedures();
   }
 
   /**
-   * Register the sw-blob:// protocol handler on the UI session so
-   * renderer components can display attachment blobs via simple URLs.
-   * URL format: sw-blob://{agentId}/{attachmentId}
+   * Register the attachment:// protocol handler on the UI session so
+   * renderer components can display agent attachments via simple URLs.
+   * URL format: attachment://{agentId}/{attachmentId}
    */
-  private registerBlobProtocol(): void {
+  private registerAttachmentProtocol(): void {
     const uiSession = session.fromPartition(UI_SESSION_PARTITION);
-    uiSession.protocol.handle('sw-blob', async (request) => {
+    uiSession.protocol.handle('attachment', async (request) => {
       try {
         const url = new URL(request.url);
         const agentId = url.hostname;
         const attachmentId = url.pathname.replace(/^\//, '');
 
         if (!agentId || !attachmentId) {
-          return new Response('Invalid blob URL', { status: 400 });
+          return new Response('Invalid attachment URL', { status: 400 });
         }
 
         const exists = await blobExists(agentId, attachmentId);
         if (!exists) {
-          return new Response('Blob not found', { status: 404 });
+          return new Response('Attachment not found', { status: 404 });
         }
 
         const mediaType = this.resolveAttachmentMediaType(
@@ -280,7 +280,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
           headers: { 'Content-Type': mediaType },
         });
       } catch (err) {
-        this.logger.error('[UIController] sw-blob protocol error', {
+        this.logger.error('[UIController] attachment protocol error', {
           error: err,
           url: request.url,
         });
@@ -290,13 +290,13 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
   }
 
   /**
-   * Register the sw-file:// protocol handler on the UI session so
+   * Register the workspace:// protocol handler on the UI session so
    * renderer components can display workspace file previews via URLs.
-   * URL format: sw-file://{mountPrefix}/{relativePath}
+   * URL format: workspace://{mountPrefix}/{relativePath}
    */
-  private registerFileProtocol(): void {
+  private registerWorkspaceFileProtocol(): void {
     const uiSession = session.fromPartition(UI_SESSION_PARTITION);
-    uiSession.protocol.handle('sw-file', async (request) => {
+    uiSession.protocol.handle('workspace', async (request) => {
       try {
         const url = new URL(request.url);
         const mountPrefix = url.hostname;
@@ -305,7 +305,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
         );
 
         if (!mountPrefix || !relativePath)
-          return new Response('Invalid file URL', { status: 400 });
+          return new Response('Invalid workspace URL', { status: 400 });
 
         const workspaceRoot = this.findMountPath(mountPrefix);
         if (!workspaceRoot)
@@ -324,7 +324,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
           headers: { 'Content-Type': mime },
         });
       } catch (err) {
-        this.logger.error('[UIController] sw-file protocol error', {
+        this.logger.error('[UIController] workspace protocol error', {
           error: err,
           url: request.url,
         });
@@ -334,36 +334,41 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
   }
 
   /**
-   * Register the app-runtime:// protocol handler on the UI session so
-   * agent-created custom apps can be served in iframes.
-   * URL format: app-runtime://{appId}/{relativePath}
-   * Files are served from agents/{agentId}/apps/{appId}/{relativePath}.
-   * URL format: app-runtime://{agentId}/{appId}/{relativePath}
+   * Register the app:// protocol handler on the UI session so
+   * agent-created and plugin-provided apps can be served in iframes.
+   *
+   * URL format:
+   *   app://agents/{agentId}/{appId}/{relativePath}
+   *   app://plugins/{pluginId}/{appId}/{relativePath}
    */
-  private registerAppRuntimeProtocol(): void {
+  private registerAppProtocol(): void {
     const uiSession = session.fromPartition(UI_SESSION_PARTITION);
 
-    uiSession.protocol.handle('app-runtime', async (request) => {
+    uiSession.protocol.handle('app', async (request) => {
       try {
         const url = new URL(request.url);
-        const agentId = url.hostname;
+        const namespace = url.hostname;
         const pathParts = decodeURIComponent(
           url.pathname.replace(/^\//, ''),
         ).split('/');
 
-        const appId = pathParts[0];
-        const relativePath = pathParts.slice(1).join('/');
+        const entityId = pathParts[0];
+        const appId = pathParts[1];
+        const relativePath = pathParts.slice(2).join('/');
 
-        if (!agentId || !appId || !relativePath)
-          return new Response('Invalid app-runtime URL', { status: 400 });
+        if (!entityId || !appId || !relativePath)
+          return new Response('Invalid app URL', { status: 400 });
 
-        const appRoot = getAgentAppsDir(agentId);
-        const absolutePath = path.resolve(
-          path.join(appRoot, appId),
-          relativePath,
-        );
+        let appDir: string;
+        if (namespace === 'agents')
+          appDir = path.join(getAgentAppsDir(entityId), appId);
+        else if (namespace === 'plugins')
+          return new Response('Plugins apps are not supported yet', {
+            status: 501,
+          });
+        else return new Response('Unknown app namespace', { status: 400 });
 
-        const appDir = path.join(appRoot, appId);
+        const absolutePath = path.resolve(appDir, relativePath);
         if (!absolutePath.startsWith(appDir + path.sep))
           return new Response('Path traversal denied', { status: 400 });
 
@@ -382,7 +387,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
           headers: { 'Content-Type': mime },
         });
       } catch (err) {
-        this.logger.error('[UIController] app-runtime protocol error', {
+        this.logger.error('[UIController] app protocol error', {
           error: err,
           url: request.url,
         });

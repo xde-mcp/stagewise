@@ -25,7 +25,7 @@ export function AttachmentRegistryNodeView(props: InlineNodeViewProps) {
   const mediaType = attachment?.mediaType ?? attrs.mediaType;
   const fileName = attachment?.fileName ?? attrs.label;
   const sizeBytes = attachment?.sizeBytes ?? 0;
-  const blobUrl = openAgent ? `sw-blob://${openAgent}/${attrs.id}` : '';
+  const blobUrl = openAgent ? `attachment://${openAgent}/${attrs.id}` : '';
 
   const renderer = getRenderer(mediaType);
 

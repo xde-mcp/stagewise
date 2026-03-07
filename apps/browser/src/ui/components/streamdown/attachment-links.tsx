@@ -416,7 +416,7 @@ const AttachmentRendererLink = ({
       ? metadata.mediaType
       : 'application/octet-stream';
   const renderer = getRenderer(mediaType);
-  const blobUrl = openAgent ? `sw-blob://${openAgent}/${id}` : '';
+  const blobUrl = openAgent ? `attachment://${openAgent}/${id}` : '';
   const isExpanded = params.display === 'expanded';
   const rendererProps: RendererProps = {
     attachmentId: id,

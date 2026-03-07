@@ -403,7 +403,9 @@ const AttachmentPreviewCards = ({
     <div className="scrollbar-hover-only flex flex-row gap-2 overflow-x-auto px-1 py-2 [&_embed]:max-h-38 [&_img]:max-h-38 [&_video]:max-h-38">
       {attachments.map((att) => {
         const renderer = getRenderer(att.mediaType);
-        const blobUrl = openAgentId ? `sw-blob://${openAgentId}/${att.id}` : '';
+        const blobUrl = openAgentId
+          ? `attachment://${openAgentId}/${att.id}`
+          : '';
         const rendererProps: RendererProps = {
           attachmentId: att.id,
           mediaType: att.mediaType,
