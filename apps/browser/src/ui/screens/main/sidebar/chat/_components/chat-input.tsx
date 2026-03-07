@@ -428,6 +428,7 @@ export const ChatInput = ({
           editor={editor}
           className={cn(
             'h-full w-full',
+            '[&_.tiptap]:cursor-text [&_.tiptap]:select-text [&_.tiptap]:caret-foreground',
             // Editable mode: scrollbar and max-height constraints
             !disabled && 'scrollbar-subtle max-h-64 overflow-y-auto',
             // View mode: no overflow/scroll styling, natural content flow
