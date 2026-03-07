@@ -1,7 +1,6 @@
 import { useEditor, EditorContent, type Content } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Markdown } from '@tiptap/markdown';
 import { ModelSelect } from './model-select';
 import { WorkspaceSelect } from './workspace-select';
 import { ContextUsageRing } from './context-usage-ring';
@@ -169,13 +168,10 @@ export const ChatInput = ({
 
   // TipTap editor setup
   const editor = useEditor({
-    // Disable standard markdown parsing - treat **bold**, *italic*, etc. as literal characters
-    // but keep our custom attachment link parsing via Markdown extension
     enableInputRules: false,
     enablePasteRules: false,
     extensions: [
       StarterKit.configure({
-        // Disable block-level features we don't need for chat input
         heading: false,
         dropcursor: false,
         bulletList: false,
@@ -183,7 +179,10 @@ export const ChatInput = ({
         codeBlock: false,
         blockquote: false,
         horizontalRule: false,
-        // Keep paragraph for line breaks
+        bold: false,
+        italic: false,
+        strike: false,
+        code: false,
         paragraph: {
           HTMLAttributes: {
             class: 'min-h-[1.5em]',
@@ -197,8 +196,6 @@ export const ChatInput = ({
         onNodeDeleted: onAttachmentRemoved,
       }),
       MentionExtension,
-      // Add Markdown extension for parsing/serializing attachment links
-      Markdown,
     ],
     content: internalValue,
     editable: !disabled,
