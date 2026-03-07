@@ -560,6 +560,17 @@ export type AppState = {
         }>
       >;
       pendingShellOutputs?: Record<string, string[]>;
+      activeApp?: {
+        appId: string;
+        pluginId?: string;
+        src: string;
+        height?: number;
+      } | null;
+      pendingAppMessage?: {
+        appId: string;
+        pluginId?: string;
+        data: unknown;
+      } | null;
     };
   };
   userAccount: {
@@ -789,6 +800,14 @@ export type KartonContract = {
         agentInstanceId: string,
         query: string,
       ) => Promise<MentionFileCandidate[]>;
+      dismissActiveApp: (agentInstanceId: string) => Promise<void>;
+      forwardAppMessage: (
+        agentInstanceId: string,
+        appId: string,
+        pluginId: string | undefined,
+        data: unknown,
+      ) => Promise<void>;
+      clearPendingAppMessage: (agentInstanceId: string) => Promise<void>;
     };
     userAccount: {
       sendOtp: (email: string) => Promise<{ error?: string }>;

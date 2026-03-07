@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { ChatHistory } from './chat-history';
 import { ChatPanelFooter } from './panel-footer';
+import { InternalAppFrame } from './internal-app-frame';
 import { useKartonState } from '@/hooks/use-karton';
 import { cn } from '@/utils';
 import { useOpenAgent, OpenAgentContext } from '@/hooks/use-open-chat';
@@ -120,6 +121,7 @@ export function ChatPanel() {
           <ChatHistory />
         )}
       </OpenAgentContext.Provider>
+      <InternalAppFrame />
       <ChatPanelFooter key={openAgent} />
     </div>
   );

@@ -27,6 +27,7 @@ function makeSnapshot(
     },
     fileDiffs: { pending: [], summary: [] },
     sandboxSessionId: 'test-session-id',
+    activeApp: null,
     ...overrides,
   };
 }

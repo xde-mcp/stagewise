@@ -1,5 +1,5 @@
 import vm from 'node:vm';
-import { createWorkerIPC } from './ipc';
+import { createWorkerIPC, NON_WORKSPACE_PREFIXES } from './ipc';
 import type { MountDescriptor } from './ipc';
 import { createIsolatedFs } from './utils/isolated-fs';
 import {
@@ -113,6 +113,26 @@ const BLOCKED_NODE_MODULES = new Set([
 
 let cdpReqId = 0;
 let credReqId = 0;
+let appReqId = 0;
+
+const pendingAppRequests = new Map<
+  string,
+  { resolve: () => void; reject: (reason: unknown) => void }
+>();
+
+const pendingSendMessage = new Map<
+  string,
+  { resolve: () => void; reject: (reason: unknown) => void }
+>();
+
+/**
+ * Per-agent message listeners keyed by "appId\0pluginId" (pluginId may be empty).
+ * Each key maps to an array of callbacks registered via API.onMessage().
+ */
+const agentMessageListeners = new Map<
+  string,
+  Map<string, Array<(data: unknown) => void>>
+>();
 
 /**
  * Per-agent CDP event listeners keyed by "tabId\0event".
@@ -123,6 +143,10 @@ const agentCdpListeners = new Map<
   Map<string, Set<(params: unknown) => void>>
 >();
 
+function messageListenerKey(appId: string, pluginId?: string): string {
+  return `${appId}\0${pluginId ?? ''}`;
+}
+
 /**
  * Create or update the isolated fs instances for an agent based on its
  * current mounts. Also invalidates the module cache entries for `node:fs`
@@ -130,7 +154,9 @@ const agentCdpListeners = new Map<
  */
 function refreshIsolatedFs(agentId: string) {
   const mounts = agentMounts.get(agentId) ?? [];
-  const attMount = mounts.find((m) => m.prefix === 'att');
+  const nonWorkspaceMounts = mounts.filter((m) =>
+    NON_WORKSPACE_PREFIXES.has(m.prefix),
+  );
 
   const notifyDiff = (
     absolutePath: string,
@@ -139,7 +165,8 @@ function refreshIsolatedFs(agentId: string) {
     isExternal: boolean,
     bytesWritten: number,
   ) => {
-    if (attMount && absolutePath.startsWith(attMount.absolutePath)) return;
+    if (nonWorkspaceMounts.some((m) => absolutePath.startsWith(m.absolutePath)))
+      return;
     ipc.send({
       type: 'file-diff-notification',
       agentId,
@@ -272,6 +299,69 @@ function getSandboxAPI(agentId: string) {
         },
       });
       timerResetCallbacks.get(agentId)?.();
+    },
+    openApp(
+      appId: string,
+      opts?: { pluginId?: string; height?: number },
+    ): Promise<void> {
+      const id = `app_${appReqId++}`;
+      return new Promise((resolve, reject) => {
+        pendingAppRequests.set(id, { resolve, reject });
+        ipc.send({
+          type: 'open-app',
+          id,
+          agentId,
+          appId,
+          pluginId: opts?.pluginId,
+          height: opts?.height,
+        });
+      });
+    },
+    closeApp(): Promise<void> {
+      const id = `app_${appReqId++}`;
+      return new Promise((resolve, reject) => {
+        pendingAppRequests.set(id, { resolve, reject });
+        ipc.send({ type: 'close-app', id, agentId });
+      });
+    },
+    sendMessage(
+      appId: string,
+      data: unknown,
+      opts?: { pluginId?: string },
+    ): Promise<void> {
+      const id = `msg_${appReqId++}`;
+      return new Promise((resolve, reject) => {
+        pendingSendMessage.set(id, { resolve, reject });
+        ipc.send({
+          type: 'send-app-message',
+          id,
+          agentId,
+          appId,
+          pluginId: opts?.pluginId,
+          data,
+        });
+      });
+    },
+    onMessage(
+      appId: string,
+      callback: (data: unknown) => void,
+      opts?: { pluginId?: string },
+    ): () => void {
+      if (!agentMessageListeners.has(agentId))
+        agentMessageListeners.set(agentId, new Map());
+
+      const listeners = agentMessageListeners.get(agentId)!;
+      const key = messageListenerKey(appId, opts?.pluginId);
+      if (!listeners.has(key)) listeners.set(key, []);
+
+      listeners.get(key)!.push(callback);
+      return () => {
+        const cbs = listeners.get(key);
+        if (!cbs) return;
+        const idx = cbs.indexOf(callback);
+        if (idx >= 0) cbs.splice(idx, 1);
+        if (cbs.length === 0) listeners.delete(key);
+      };
     },
   };
 }
@@ -538,6 +628,7 @@ ipc.onMessage(async (msg) => {
       agentMounts.delete(msg.agentId);
       agentIsolatedFs.delete(msg.agentId);
       agentSecretMaps.delete(msg.agentId);
+      agentMessageListeners.delete(msg.agentId);
       agentCdpListeners.delete(msg.agentId);
       timerResetCallbacks.delete(msg.agentId);
       break;
@@ -688,6 +779,40 @@ ipc.onMessage(async (msg) => {
             secrets.set(placeholder, { value: real, allowedOrigins });
         }
         p.resolve(msg.data);
+      }
+      break;
+    }
+    case 'open-app-result':
+    case 'close-app-result': {
+      const p = pendingAppRequests.get(msg.id);
+      if (!p) return;
+      pendingAppRequests.delete(msg.id);
+      if (msg.success) p.resolve();
+      else p.reject(new Error(msg.error ?? 'App operation failed'));
+
+      break;
+    }
+    case 'send-app-message-result': {
+      const p = pendingSendMessage.get(msg.id);
+      if (!p) return;
+      pendingSendMessage.delete(msg.id);
+      if (msg.success) p.resolve();
+      else p.reject(new Error(msg.error ?? 'Failed to send message to app'));
+
+      break;
+    }
+    case 'app-message-received': {
+      const listeners = agentMessageListeners.get(msg.agentId);
+      if (!listeners) break;
+      const key = messageListenerKey(msg.appId, msg.pluginId);
+      const cbs = listeners.get(key);
+      if (!cbs) return;
+      for (const cb of cbs) {
+        try {
+          cb(msg.data);
+        } catch {
+          // listener errors are silently swallowed
+        }
       }
       break;
     }

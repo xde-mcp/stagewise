@@ -237,6 +237,27 @@ export class SandboxService extends DisposableService {
     }
   }
 
+  /**
+   * Forward a message from the iframe back to the sandbox worker
+   * so registered onMessage callbacks can fire.
+   */
+  forwardAppMessage(
+    agentId: string,
+    appId: string,
+    pluginId: string | undefined,
+    data: unknown,
+  ) {
+    const worker = this.agentToWorker.get(agentId);
+    if (!worker) return;
+    this.safeSend(worker, {
+      type: 'app-message-received',
+      agentId,
+      appId,
+      pluginId,
+      data,
+    });
+  }
+
   destroyAgent(agentId: string) {
     const worker = this.agentToWorker.get(agentId);
     if (!worker) return;
@@ -250,6 +271,18 @@ export class SandboxService extends DisposableService {
     this.sandboxSessionIds.delete(agentId);
 
     this.cleanupCdpSubscriptions(agentId);
+
+    if (this.kartonService) {
+      const hasActiveApp =
+        this.kartonService.state.toolbox[agentId]?.activeApp != null;
+      if (hasActiveApp) {
+        this.kartonService.setState((draft) => {
+          if (draft.toolbox[agentId]) {
+            draft.toolbox[agentId].activeApp = null;
+          }
+        });
+      }
+    }
   }
 
   async execute(
@@ -406,7 +439,120 @@ export class SandboxService extends DisposableService {
         }
         break;
       }
+      case 'open-app': {
+        try {
+          const base = msg.pluginId
+            ? `app://plugins/${msg.pluginId}/${msg.appId}/index.html`
+            : `app://agents/${msg.agentId}/${msg.appId}/index.html`;
+          const src = `${base}?_t=${Date.now()}`;
 
+          if (this.kartonService) {
+            this.kartonService.setState((draft) => {
+              if (!draft.toolbox[msg.agentId]) {
+                draft.toolbox[msg.agentId] = {
+                  workspace: { mounts: [] },
+                  pendingFileDiffs: [],
+                  editSummary: [],
+                  pendingUserQuestion: null,
+                };
+              }
+              draft.toolbox[msg.agentId].activeApp = {
+                appId: msg.appId,
+                pluginId: msg.pluginId,
+                src,
+                height: msg.height,
+              };
+            });
+          }
+          this.safeSend(worker, {
+            type: 'open-app-result',
+            id: msg.id,
+            success: true,
+          });
+        } catch (err) {
+          this.safeSend(worker, {
+            type: 'open-app-result',
+            id: msg.id,
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        break;
+      }
+      case 'close-app': {
+        try {
+          if (this.kartonService) {
+            this.kartonService.setState((draft) => {
+              if (draft.toolbox[msg.agentId]) {
+                draft.toolbox[msg.agentId].activeApp = null;
+              }
+            });
+          }
+          this.safeSend(worker, {
+            type: 'close-app-result',
+            id: msg.id,
+            success: true,
+          });
+        } catch (err) {
+          this.safeSend(worker, {
+            type: 'close-app-result',
+            id: msg.id,
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        break;
+      }
+      case 'send-app-message': {
+        try {
+          if (!this.kartonService) {
+            this.safeSend(worker, {
+              type: 'send-app-message-result',
+              id: msg.id,
+              success: false,
+              error: 'No Karton service configured',
+            });
+            return;
+          }
+          const activeApp =
+            this.kartonService.state.toolbox[msg.agentId]?.activeApp;
+          if (
+            !activeApp ||
+            activeApp.appId !== msg.appId ||
+            activeApp.pluginId !== msg.pluginId
+          ) {
+            this.safeSend(worker, {
+              type: 'send-app-message-result',
+              id: msg.id,
+              success: false,
+              error: 'Target app is not active',
+            });
+            return;
+          }
+          this.kartonService.setState((draft) => {
+            if (draft.toolbox[msg.agentId]) {
+              draft.toolbox[msg.agentId].pendingAppMessage = {
+                appId: msg.appId,
+                pluginId: msg.pluginId,
+                data: msg.data,
+              };
+            }
+          });
+          this.safeSend(worker, {
+            type: 'send-app-message-result',
+            id: msg.id,
+            success: true,
+          });
+        } catch (err) {
+          this.safeSend(worker, {
+            type: 'send-app-message-result',
+            id: msg.id,
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        break;
+      }
       case 'subscribe-cdp-event': {
         try {
           const key = `${msg.tabId}\0${msg.event}`;

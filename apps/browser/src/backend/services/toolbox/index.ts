@@ -4,7 +4,12 @@ import type { FilePickerService } from '@/services/file-picker';
 import type { UserExperienceService } from '@/services/experience';
 import { SandboxService } from '../sandbox';
 import { ShellService } from './services/shell';
-import { APPEND_ONLY_PERMISSIONS, type MountDescriptor } from '../sandbox/ipc';
+import {
+  APPEND_ONLY_PERMISSIONS,
+  FULL_PERMISSIONS,
+  NON_WORKSPACE_PREFIXES,
+  type MountDescriptor,
+} from '../sandbox/ipc';
 import type { WorkspaceAgentSettings } from '@shared/karton-contracts/ui/shared-types';
 import type { KartonService } from '@/services/karton';
 import type { GlobalConfigService } from '@/services/global-config';
@@ -18,7 +23,12 @@ import type { CredentialTypeId } from '@shared/credential-types';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import { createFileDiffHandler } from './utils/sandbox-callbacks';
 import { deleteAgentBlobs, getAgentBlobDir } from '@/utils/attachment-blobs';
-import { getDataRoot, getTempRoot } from '@/utils/paths';
+import {
+  getDataRoot,
+  getTempRoot,
+  getAgentAppsDir,
+  getRipgrepBasePath,
+} from '@/utils/paths';
 import { mkdirSync } from 'node:fs';
 import type { ApiClient } from '@stagewise/api-client';
 import {
@@ -86,6 +96,8 @@ import {
   type Skill,
 } from '@/agents/shared/prompts/utils/get-skills';
 import { resolveMountedRelativePath } from './utils/path-mounting';
+import { normalizePath } from '@shared/path-utils';
+import { ClientRuntimeNode } from '@stagewise/agent-runtime-node';
 
 type MountedPrefix = string;
 type MountedPath = string;
@@ -104,6 +116,7 @@ export class ToolboxService extends DisposableService {
 
   private sandboxService: SandboxService | null = null;
   private shellService: ShellService | null = null;
+  private appsRuntimes = new Map<string, ClientRuntimeNode>();
 
   private mountManagerService: MountManagerService | null = null;
 
@@ -112,6 +125,33 @@ export class ToolboxService extends DisposableService {
 
   public get globalDataPath(): string {
     return getDataRoot();
+  }
+
+  /**
+   * Returns the mounted runtimes for the agent, including the
+   * read-only plugins runtime and the per-agent apps runtime.
+   */
+  private getAllMountedRuntimes(
+    agentInstanceId: string,
+  ): MountedClientRuntimes | undefined {
+    const runtimes =
+      this.mountManagerService?.getMountedRuntimes(agentInstanceId);
+    if (!runtimes) return undefined;
+    runtimes.set('apps', this.getOrCreateAppsRuntime(agentInstanceId));
+    return runtimes;
+  }
+
+  private getOrCreateAppsRuntime(agentInstanceId: string): ClientRuntimeNode {
+    const existing = this.appsRuntimes.get(agentInstanceId);
+    if (existing) return existing;
+    const appsDir = getAgentAppsDir(agentInstanceId);
+    mkdirSync(appsDir, { recursive: true });
+    const runtime = new ClientRuntimeNode({
+      workingDirectory: appsDir,
+      rgBinaryBasePath: getRipgrepBasePath(),
+    });
+    this.appsRuntimes.set(agentInstanceId, runtime);
+    return runtime;
   }
 
   /** Temp directory for capturing file state (external/binary files) */
@@ -208,9 +248,13 @@ export class ToolboxService extends DisposableService {
       description,
       inputSchema: inputSchema as z.ZodType<TParams>,
       execute: async (params, options) => {
-        const mountedRuntimes =
-          this.mountManagerService?.getMountedRuntimes(agentInstanceId);
+        const mountedRuntimes = this.getAllMountedRuntimes(agentInstanceId);
         if (!mountedRuntimes) throw new Error('No mounted workspaces found');
+
+        const mountPrefix = normalizePath(params.relative_path).split('/')[0];
+        if (NON_WORKSPACE_PREFIXES.has(mountPrefix))
+          return executeFn(params, mountedRuntimes);
+
         const { clientRuntime, relativePath } = resolveMountedRelativePath(
           mountedRuntimes,
           params.relative_path,
@@ -314,8 +358,7 @@ export class ToolboxService extends DisposableService {
     tool: TToolName,
     agentInstanceId: string,
   ): Promise<Tool | null> {
-    const mountedRuntimes =
-      this.mountManagerService?.getMountedRuntimes(agentInstanceId);
+    const mountedRuntimes = this.getAllMountedRuntimes(agentInstanceId);
     if (!mountedRuntimes) return null;
 
     const mountedLspServices =
@@ -456,6 +499,14 @@ export class ToolboxService extends DisposableService {
       permissions: APPEND_ONLY_PERMISSIONS,
     });
 
+    const appsDir = getAgentAppsDir(agentInstanceId);
+    mkdirSync(appsDir, { recursive: true });
+    mounts.push({
+      prefix: 'apps',
+      absolutePath: appsDir,
+      permissions: FULL_PERMISSIONS,
+    });
+
     return mounts;
   }
 
@@ -548,6 +599,11 @@ export class ToolboxService extends DisposableService {
         path: getAgentBlobDir(agentInstanceId),
         permissions: [...APPEND_ONLY_PERMISSIONS] as MountPermission[],
       },
+      {
+        prefix: 'apps',
+        path: getAgentAppsDir(agentInstanceId),
+        permissions: [...FULL_PERMISSIONS] as MountPermission[],
+      },
     ];
 
     const snapshot: EnvironmentSnapshot = {
@@ -568,31 +624,36 @@ export class ToolboxService extends DisposableService {
         : { pending: [], summary: [] },
       sandboxSessionId:
         this.sandboxService?.getSandboxSessionId(agentInstanceId) ?? null,
+      activeApp: toolboxState?.activeApp
+        ? {
+            appId: toolboxState.activeApp.appId,
+            pluginId: toolboxState.activeApp.pluginId,
+          }
+        : null,
     };
 
     return snapshot;
   }
 
   public async getSkillsList(agentInstanceId: string): Promise<Skill[]> {
-    const mounts =
-      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
-    if (!mounts) return [];
-    if (mounts.length === 0) return [];
-
     const result: Skill[] = [];
 
-    for (const mount of mounts) {
-      const settings = this.uiKarton.state.preferences?.agent
-        ?.workspaceSettings?.[mount.path] ?? {
-        respectAgentsMd: false,
-        disabledSkills: [],
-      };
-      const disabled = new Set(settings.disabledSkills);
-      const skills = await getSkills(mount.clientRuntime);
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    if (mounts && mounts.length > 0) {
+      for (const mount of mounts) {
+        const settings = this.uiKarton.state.preferences?.agent
+          ?.workspaceSettings?.[mount.path] ?? {
+          respectAgentsMd: false,
+          disabledSkills: [],
+        };
+        const disabled = new Set(settings.disabledSkills);
+        const skills = await getSkills(mount.clientRuntime);
 
-      for (const skill of skills) {
-        if (disabled.has(skill.name)) continue;
-        result.push(skill);
+        for (const skill of skills) {
+          if (disabled.has(skill.name)) continue;
+          result.push(skill);
+        }
       }
     }
 
@@ -803,6 +864,7 @@ export class ToolboxService extends DisposableService {
     this.mountManagerService?.clearAgentMounts(agentInstanceId);
     this.sandboxService?.destroyAgent(agentInstanceId);
     this.shellService?.destroyAgent(agentInstanceId);
+    this.appsRuntimes.delete(agentInstanceId);
     void deleteAgentBlobs(agentInstanceId);
     this.cancelPendingQuestions(agentInstanceId);
   }
@@ -913,6 +975,46 @@ export class ToolboxService extends DisposableService {
         toolCallId: string,
       ) => {
         this.cancelShellCommand(toolCallId);
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.dismissActiveApp',
+      async (_callingClientId: string, agentInstanceId: string) => {
+        this.uiKarton.setState((draft) => {
+          if (draft.toolbox[agentInstanceId]) {
+            draft.toolbox[agentInstanceId].activeApp = null;
+          }
+        });
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.forwardAppMessage',
+      async (
+        _callingClientId: string,
+        agentInstanceId: string,
+        appId: string,
+        pluginId: string | undefined,
+        data: unknown,
+      ) => {
+        this.sandboxService?.forwardAppMessage(
+          agentInstanceId,
+          appId,
+          pluginId,
+          data,
+        );
+      },
+    );
+
+    this.uiKarton.registerServerProcedureHandler(
+      'toolbox.clearPendingAppMessage',
+      async (_callingClientId: string, agentInstanceId: string) => {
+        this.uiKarton.setState((draft) => {
+          if (draft.toolbox[agentInstanceId]) {
+            draft.toolbox[agentInstanceId].pendingAppMessage = null;
+          }
+        });
       },
     );
   }

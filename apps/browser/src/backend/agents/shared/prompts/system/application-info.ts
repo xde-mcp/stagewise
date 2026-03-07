@@ -81,10 +81,34 @@ A special \`att/\` mount is always available, separate from workspace mounts. It
 - Writes to \`att/\` are **not** tracked by the diff-history system.
 - The \`att/\` directory has **append-only** permissions: you can read existing attachments and create new ones, but **cannot overwrite or delete** existing attachments.
 
+#### Apps directory (\`apps/\`)
+
+A special \`apps/\` mount is always available for building custom interactive web apps that can be displayed to the user in an iframe.
+
+- **Full read-write permissions**: create, read, overwrite, and delete files freely.
+- **Structure**: each app lives in its own subfolder: \`apps/{appId}/index.html\` (with optional sibling assets like \`styles.css\`, \`script.js\`, images, etc.).
+- **Relative references work**: an \`index.html\` can reference \`./styles.css\` or \`./script.js\` and they resolve correctly from the same folder.
+
+**Example — creating and showing a custom app:**
+\`\`\`js
+await fs.mkdir('apps/my-dashboard', { recursive: true });
+await fs.writeFile('apps/my-dashboard/index.html', \`<!DOCTYPE html>
+<html><head><link rel="stylesheet" href="styles.css"></head>
+<body><h1>Dashboard</h1></body></html>\`);
+await fs.writeFile('apps/my-dashboard/styles.css', 'body { font-family: system-ui; padding: 1rem; }');
+await API.openApp("my-dashboard");
+\`\`\`
+
 ### Sandbox API (\`API.*\`)
 
 #### \`API.sendCDP(tabId: string, method: string, params?: any): Promise<any>\`
 Send a CDP command to a specific tab debugger.
+
+#### \`API.onCDPEvent(tabId: string, event: string, callback: (params) => void): () => void\`
+Subscribe to a CDP event on a specific tab. The callback fires whenever the specified CDP event occurs.
+- Returns an unsubscribe function to remove the listener.
+- Listeners persist across IIFE executions (long-lived context). Use \`globalThis\` to accumulate events.
+- The relevant CDP domain must be enabled first (e.g. \`Runtime.enable\` for \`Runtime.*\` events). Pre-enabled domains (Runtime, DOM, CSS, Page, Log, Console) work immediately.
 
 #### \`API.output(data: any)\`
 Append data to the tool result. \`data\` is stringified (JSON if not already a string). Can be called multiple times; outputs appear in order. The script's \`return\` value is appended last.
@@ -115,6 +139,53 @@ Request a stored credential by type ID (e.g. \`"figma-pat"\`).
 Returns the credential data object or \`null\` if not configured by the user.
 Secret fields contain opaque placeholder values that are **automatically substituted in outgoing \`fetch\` calls** — do not attempt to decode or transform them.
 Plain (non-secret) fields contain real values you can read directly.
+
+#### \`API.openApp(appId: string, opts?: { pluginId?: string; height?: number }): Promise<void>\`
+Open a plugin app or agent-built app in an iframe within the chat sidebar.
+- If \`opts.pluginId\` is provided, opens the plugin's app at \`app://plugins/{pluginId}/{appId}/index.html\`.
+- If omitted, opens an agent-created app at \`app://agents/{agentId}/{appId}/index.html\`.
+- \`opts.height\` sets the iframe height in pixels (default 300). Use smaller values for compact UIs (e.g. 120 for a badge strip).
+- Only one app can be active at a time per agent — calling \`openApp\` replaces any currently open app. Calling it again with the same \`appId\` reloads the iframe, which is useful after updating the app's files.
+
+**Example (agent-built app):**
+\`\`\`js
+// Write app files to apps/{appId}/ then open it
+await fs.writeFile('apps/my-dashboard/index.html', htmlContent);
+await API.openApp("my-dashboard");
+\`\`\`
+
+#### \`API.sendMessage(appId: string, data: unknown, opts?: { pluginId?: string }): Promise<void>\`
+Send a message to a specific open app. The message is delivered via \`postMessage\` into the app's iframe.
+- Requires that the targeted app (\`appId\` + \`pluginId\`) is currently active. Rejects if it is not.
+- \`data\` can be any JSON-serializable value (object, string, array, etc.).
+
+\`\`\`js
+await API.sendMessage("figma-app", { action: "showNode", nodeId: "1:23" }, { pluginId: "figma" });
+\`\`\`
+
+#### \`API.onMessage(appId: string, callback: (data) => void, opts?: { pluginId?: string }): () => void\`
+Register a listener for messages sent from an app's iframe back to the agent.
+- The callback fires whenever the app calls \`window.parent.postMessage(data, "*")\`.
+- Returns an unsubscribe function to remove the listener.
+- Listeners persist across IIFE executions (the sandbox context is long-lived). Use \`globalThis\` to accumulate messages between script runs.
+
+**Accumulation pattern (recommended):**
+\`\`\`js
+// IIFE 1: register listener
+globalThis.figmaMessages = globalThis.figmaMessages || [];
+globalThis._unsub = API.onMessage("figma-app", (msg) => {
+  globalThis.figmaMessages.push(msg);
+}, { pluginId: "figma" });
+\`\`\`
+\`\`\`js
+// IIFE 2: read collected messages
+return globalThis.figmaMessages;
+\`\`\`
+\`\`\`js
+// IIFE 3: unsubscribe when done
+if (globalThis._unsub) globalThis._unsub();
+\`\`\`
+
 
 ### Available Runtime
 

@@ -25,6 +25,8 @@ export const APPEND_ONLY_PERMISSIONS: MountPermission[] = [
   'create',
 ];
 
+export const NON_WORKSPACE_PREFIXES = new Set(['att', 'plugins', 'apps']);
+
 export interface MountDescriptor {
   prefix: string;
   absolutePath: string;
@@ -48,6 +50,31 @@ export type MainToWorkerMessage =
       /** [placeholder, value, allowedOrigins][] */
       secretEntries?: [string, string, string[]][];
       error?: string;
+    }
+  | {
+      type: 'open-app-result';
+      id: string;
+      success: boolean;
+      error?: string;
+    }
+  | {
+      type: 'close-app-result';
+      id: string;
+      success: boolean;
+      error?: string;
+    }
+  | {
+      type: 'send-app-message-result';
+      id: string;
+      success: boolean;
+      error?: string;
+    }
+  | {
+      type: 'app-message-received';
+      agentId: string;
+      appId: string;
+      pluginId?: string;
+      data: unknown;
     }
   | {
       type: 'cdp-event';
@@ -108,6 +135,27 @@ export type WorkerToMainMessage =
       id: string;
       agentId: string;
       typeId: string;
+    }
+  | {
+      type: 'open-app';
+      id: string;
+      agentId: string;
+      appId: string;
+      pluginId?: string;
+      height?: number;
+    }
+  | {
+      type: 'close-app';
+      id: string;
+      agentId: string;
+    }
+  | {
+      type: 'send-app-message';
+      id: string;
+      agentId: string;
+      appId: string;
+      pluginId?: string;
+      data: unknown;
     }
   | {
       type: 'subscribe-cdp-event';

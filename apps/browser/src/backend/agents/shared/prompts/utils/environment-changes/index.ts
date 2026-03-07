@@ -1,9 +1,11 @@
 import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import { computeAppChanges } from './app-changes';
 import { computeBrowserChanges } from './browser-changes';
 import { computeFileDiffChanges } from './file-diff-changes';
 import { computeSandboxChanges } from './sandbox-changes';
 import { computeWorkspaceChanges } from './workspace-changes';
 
+export { computeAppChanges } from './app-changes';
 export { computeBrowserChanges } from './browser-changes';
 export { computeFileDiffChanges } from './file-diff-changes';
 export { computeSandboxChanges } from './sandbox-changes';
@@ -40,5 +42,6 @@ export function computeAllEnvironmentChanges(
       current.fileDiffs,
       agentInstanceId,
     ),
+    ...computeAppChanges(previous.activeApp, current.activeApp),
   ];
 }

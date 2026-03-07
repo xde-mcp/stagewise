@@ -129,11 +129,21 @@ export const mentionFileCandidateSchema = fileMentionMetaSchema.extend({
 
 export type MentionFileCandidate = z.infer<typeof mentionFileCandidateSchema>;
 
+export const activeAppSnapshotSchema = z
+  .object({
+    appId: z.string(),
+    pluginId: z.string().optional(),
+  })
+  .nullable();
+
+export type ActiveAppSnapshot = z.infer<typeof activeAppSnapshotSchema>;
+
 export const environmentSnapshotSchema = z.object({
   browser: browserSnapshotSchema.optional(),
   workspace: workspaceSnapshotSchema.optional(),
   fileDiffs: environmentDiffSnapshotSchema.optional(),
   sandboxSessionId: z.string().nullable().optional(),
+  activeApp: activeAppSnapshotSchema.optional(),
 });
 
 export type EnvironmentSnapshot = z.infer<typeof environmentSnapshotSchema>;

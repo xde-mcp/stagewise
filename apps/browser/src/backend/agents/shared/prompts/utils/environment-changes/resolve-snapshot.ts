@@ -1,5 +1,6 @@
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type {
+  ActiveAppSnapshot,
   EnvironmentSnapshot,
   FullEnvironmentSnapshot,
   BrowserSnapshot,
@@ -23,6 +24,7 @@ export function resolveEffectiveSnapshot(
   let workspace: WorkspaceSnapshot | undefined;
   let fileDiffs: EnvironmentDiffSnapshot | undefined;
   let sandboxSessionId: string | null | undefined;
+  let activeApp: ActiveAppSnapshot | undefined;
 
   for (let i = upToIndex; i >= 0; i--) {
     const snap = messages[i]?.metadata?.environmentSnapshot;
@@ -35,11 +37,14 @@ export function resolveEffectiveSnapshot(
       fileDiffs = snap.fileDiffs;
     if (sandboxSessionId === undefined && snap.sandboxSessionId !== undefined)
       sandboxSessionId = snap.sandboxSessionId;
+    if (activeApp === undefined && snap.activeApp !== undefined)
+      activeApp = snap.activeApp;
     if (
       browser !== undefined &&
       workspace !== undefined &&
       fileDiffs !== undefined &&
-      sandboxSessionId !== undefined
+      sandboxSessionId !== undefined &&
+      activeApp !== undefined
     )
       break;
   }
@@ -48,11 +53,12 @@ export function resolveEffectiveSnapshot(
     browser === undefined ||
     workspace === undefined ||
     fileDiffs === undefined ||
-    sandboxSessionId === undefined
+    sandboxSessionId === undefined ||
+    activeApp === undefined
   )
     return null;
 
-  return { browser, workspace, fileDiffs, sandboxSessionId };
+  return { browser, workspace, fileDiffs, sandboxSessionId, activeApp };
 }
 
 /**
@@ -79,6 +85,8 @@ export function sparsifySnapshot(
     sparse.fileDiffs = full.fileDiffs;
   if (full.sandboxSessionId !== previous.sandboxSessionId)
     sparse.sandboxSessionId = full.sandboxSessionId;
+  if (JSON.stringify(full.activeApp) !== JSON.stringify(previous.activeApp))
+    sparse.activeApp = full.activeApp;
 
   return sparse;
 }
