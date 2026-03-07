@@ -32,6 +32,7 @@ import type {
 import type { ApiKeyValidationResult, AuthStatus } from '../ui';
 import type { FileDiff } from '../ui/shared-types';
 import { defaultUserPreferences } from '../ui/shared-types';
+import type { PluginDefinition } from '../../plugins';
 
 export type WorkspaceMountInfo = {
   path: string;
@@ -79,6 +80,8 @@ export type PagesApiState = {
   workspaceMdGenerating: Record<string, boolean>;
   /** Credential type IDs that have stored data (synced after set/delete) */
   configuredCredentialIds: string[];
+  /** Bundled plugin definitions (static, pushed once at startup) */
+  plugins: PluginDefinition[];
   // Current stagewise app runtime information
   appInfo: {
     baseName: string; // Base name (e.g., 'stagewise-dev', 'stagewise-prerelease', 'stagewise').
@@ -252,6 +255,7 @@ export const defaultState: PagesApiState = {
   workspaceMounts: [],
   workspaceMdGenerating: {},
   configuredCredentialIds: [],
+  plugins: [],
   homePage: {
     storedExperienceData: {
       recentlyOpenedWorkspaces: [],

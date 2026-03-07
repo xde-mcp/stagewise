@@ -1,20 +1,12 @@
-import path from 'node:path';
 import fs from 'node:fs/promises';
 import { app } from 'electron';
-
-// ---------------------------------------------------------------------------
-// Root directories
-// ---------------------------------------------------------------------------
+import path from 'node:path';
 
 export const getDataRoot = (): string =>
   path.join(app.getPath('userData'), 'stagewise');
 
 export const getTempRoot = (): string =>
   path.join(app.getPath('temp'), 'stagewise');
-
-// ---------------------------------------------------------------------------
-// SQLite database paths
-// ---------------------------------------------------------------------------
 
 export type DbName = 'favicon' | 'web-data' | 'history' | 'thumbnails';
 
@@ -26,10 +18,6 @@ export const getAgentDbPath = (): string =>
 
 export const getDiffHistoryDbPath = (): string =>
   path.join(getDataRoot(), 'diff-history', 'data.sqlite');
-
-// ---------------------------------------------------------------------------
-// JSON persisted-data paths
-// ---------------------------------------------------------------------------
 
 export type JsonName =
   | 'config'
@@ -44,10 +32,6 @@ export type JsonName =
 
 export const getJsonPath = (name: JsonName): string =>
   path.join(getDataRoot(), `${name}.json`);
-
-// ---------------------------------------------------------------------------
-// Agent-scoped directories
-// ---------------------------------------------------------------------------
 
 export const getAgentsDir = (): string => path.join(getDataRoot(), 'agents');
 
@@ -66,25 +50,13 @@ export const getAgentAttachmentPath = (
 export const getAgentAppsDir = (agentId: string): string =>
   path.join(getDataRoot(), 'agents', agentId, 'apps');
 
-// ---------------------------------------------------------------------------
-// Diff-history directories
-// ---------------------------------------------------------------------------
-
 export const getDiffHistoryDir = (): string =>
   path.join(getDataRoot(), 'diff-history');
 
 export const getDiffHistoryBlobsDir = (): string =>
   path.join(getDataRoot(), 'diff-history', 'data-blobs');
 
-// ---------------------------------------------------------------------------
-// Binary paths (e.g. ripgrep)
-// ---------------------------------------------------------------------------
-
 export const getRipgrepBasePath = (): string => path.join(getDataRoot(), 'bin');
-
-// ---------------------------------------------------------------------------
-// Directory bootstrapping
-// ---------------------------------------------------------------------------
 
 export async function ensureDataDirectories(): Promise<void> {
   await Promise.all([
@@ -95,3 +67,9 @@ export async function ensureDataDirectories(): Promise<void> {
     fs.mkdir(getRipgrepBasePath(), { recursive: true }),
   ]);
 }
+
+export const getPluginsPath = (): string => {
+  if (app.isPackaged)
+    return path.join(process.resourcesPath, 'bundled', 'plugins');
+  return path.join(app.getAppPath(), 'bundled', 'plugins');
+};

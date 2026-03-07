@@ -51,6 +51,8 @@ import type {
 } from '@shared/karton-contracts/pages-api/types';
 import { DisposableService } from './disposable';
 import type { TelemetryService } from './telemetry';
+import { discoverPlugins } from '@/utils/discover-plugins';
+import { getPluginsPath } from '@/utils/paths';
 
 declare const PAGES_VITE_DEV_SERVER_URL: string;
 declare const PAGES_VITE_NAME: string;
@@ -149,6 +151,15 @@ export class PagesService extends DisposableService {
     });
     this.kartonServer.setState((draft) => {
       draft.appInfo.otherVersions = { ...process.versions, modules: undefined };
+    });
+
+    discoverPlugins(getPluginsPath()).then((plugins) => {
+      this.kartonServer.setState((draft) => {
+        draft.plugins = plugins;
+      });
+      this.logger.debug(
+        `[PagesService] Discovered ${plugins.length} bundled plugins`,
+      );
     });
 
     // Set up callback to push active downloads state changes

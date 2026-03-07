@@ -9,7 +9,7 @@ export interface Skill {
   path: string;
 }
 
-function parseFrontmatter(content: string): {
+export function parseFrontmatter(content: string): {
   name?: string;
   description?: string;
 } {
@@ -27,7 +27,7 @@ function parseFrontmatter(content: string): {
   return result;
 }
 
-async function discoverSkills(skillsDir: string): Promise<Skill[]> {
+export async function discoverSkills(skillsDir: string): Promise<Skill[]> {
   if (!existsSync(skillsDir)) return [];
 
   const entries = await readdir(skillsDir, { withFileTypes: true });

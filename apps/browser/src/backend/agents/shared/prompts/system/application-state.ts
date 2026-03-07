@@ -56,6 +56,7 @@ ${formatMountedWorkspaces(workspaceSnapshot)}
 These mounts are always present regardless of whether a workspace is connected:
 
 - att/: Agent attachment directory (use 'att/...' to read/write attachments). Append-only permissions.
+- plugins/: Installed plugin files and skills (use 'plugins/...' to read plugin data). Read-only permissions.
 ${shellSection}
     `.trim();
 };

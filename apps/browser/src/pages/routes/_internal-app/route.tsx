@@ -7,7 +7,7 @@ import {
   IconCircleInfoFillDuo18,
   IconDatabaseKeyFillDuo18,
   IconUserUpdateFillDuo18,
-  // IconSpace3dFillDuo18,
+  IconSpace3dFillDuo18,
   IconNoteFillDuo18,
   IconGear3FillDuo18,
 } from 'nucleo-ui-fill-duo-18';
@@ -78,12 +78,12 @@ function Sidebar() {
             >
               Skills & Context files
             </SidebarNav.Item>
-            {/* <SidebarNav.Item
-              to="/"
+            <SidebarNav.Item
+              to="/agent-settings/plugins"
               icon={<IconSpace3dFillDuo18 className="size-4 rotate-180" />}
             >
               Plugins
-            </SidebarNav.Item> */}
+            </SidebarNav.Item>
           </SidebarNav.Group>
           <hr className="ml-1 border-derived-strong bg-base-100 dark:bg-base-900" />
           <SidebarNav.Group label="Browsing">

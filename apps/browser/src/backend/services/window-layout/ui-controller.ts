@@ -21,6 +21,7 @@ import { getBlobPath, blobExists } from '@/utils/attachment-blobs';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { inferMimeType } from '@shared/mime-utils';
 import { getAgentAppsDir } from '@/utils/paths';
+import { getPluginsPath } from '@/utils/paths';
 
 const UI_SESSION_PARTITION = 'persist:stagewise-ui';
 
@@ -363,9 +364,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
         if (namespace === 'agents')
           appDir = path.join(getAgentAppsDir(entityId), appId);
         else if (namespace === 'plugins')
-          return new Response('Plugins apps are not supported yet', {
-            status: 501,
-          });
+          appDir = path.join(getPluginsPath(), entityId, 'apps', appId);
         else return new Response('Unknown app namespace', { status: 400 });
 
         const absolutePath = path.resolve(appDir, relativePath);

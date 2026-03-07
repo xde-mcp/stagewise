@@ -92,5 +92,5 @@ typings/
 out/
 
 # Generated ESLint server bundle
-bundled/
+bundled/eslint-server/
 .eslint-build-temp/

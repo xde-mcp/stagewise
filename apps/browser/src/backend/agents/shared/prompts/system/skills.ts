@@ -18,7 +18,9 @@ A skill is a folder containing structured instructions in a \`SKILL.md\` file, p
 
 ## Skill Locations
 
-Skills are located inside the currently opened workspace:
+Skills come from two sources: mounted workspaces and the always-available \`plugins/\` directory.
+
+### Workspace skills (require a mounted workspace)
 
 - \`.stagewise/skills/*\`  
   Stagewise-exclusive skills.  
@@ -27,7 +29,9 @@ Skills are located inside the currently opened workspace:
 - \`.agents/skills/*\`  
   Skills shared with other agents.
 
-Each subfolder containing a \`SKILL.md\` file is an available skill.
+
+- \`plugins/{plugin-id}/SKILL.md\`  
+  Skills provided by installed plugins. The \`plugins/\` mount is always present with read-only access, even when no workspace is connected.
 
 ## How to Use Skills
 

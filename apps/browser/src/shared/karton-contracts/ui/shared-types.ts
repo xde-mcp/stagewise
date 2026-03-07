@@ -363,8 +363,14 @@ export const userPreferencesSchema = z.object({
         .default({}),
       /** Model IDs the user has chosen to hide from the model selector */
       disabledModelIds: z.array(z.string()).default([]),
+      /** Plugin IDs the user has chosen to disable */
+      disabledPluginIds: z.array(z.string()).default([]),
     })
-    .default({ workspaceSettings: {}, disabledModelIds: [] }),
+    .default({
+      workspaceSettings: {},
+      disabledModelIds: [],
+      disabledPluginIds: [],
+    }),
   /** LLM provider endpoint configurations (API keys, custom URLs) */
   providerConfigs: providerConfigsSchema.default({
     anthropic: { mode: 'stagewise' },
@@ -451,7 +457,11 @@ export const defaultUserPreferences: UserPreferences = {
   permissions: defaultPermissionsForUserPrefs,
   devToolbar: defaultDevToolbarForUserPrefs,
   sidebar: { showActiveAgents: true },
-  agent: { workspaceSettings: {}, disabledModelIds: [] },
+  agent: {
+    workspaceSettings: {},
+    disabledModelIds: [],
+    disabledPluginIds: [],
+  },
   providerConfigs: {
     anthropic: { mode: 'stagewise' },
     openai: { mode: 'stagewise' },

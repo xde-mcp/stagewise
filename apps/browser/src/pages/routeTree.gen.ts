@@ -22,6 +22,7 @@ import { Route as InternalAppAboutRouteImport } from './routes/_internal-app/abo
 import { Route as InternalAppBrowsingSettingsIndexRouteImport } from './routes/_internal-app/browsing-settings.index'
 import { Route as InternalAppBrowsingSettingsWebsitePermissionsRouteImport } from './routes/_internal-app/browsing-settings.website-permissions'
 import { Route as InternalAppAgentSettingsSkillsContextRouteImport } from './routes/_internal-app/agent-settings.skills-context'
+import { Route as InternalAppAgentSettingsPluginsRouteImport } from './routes/_internal-app/agent-settings.plugins'
 import { Route as InternalAppAgentSettingsModelsProvidersRouteImport } from './routes/_internal-app/agent-settings.models-providers'
 import { Route as InternalAppAgentSettingsGeneralRouteImport } from './routes/_internal-app/agent-settings.general'
 import { Route as InternalAppAgentSettingsCustomProvidersRouteImport } from './routes/_internal-app/agent-settings.custom-providers'
@@ -97,6 +98,12 @@ const InternalAppAgentSettingsSkillsContextRoute =
     path: '/skills-context',
     getParentRoute: () => InternalAppAgentSettingsRoute,
   } as any)
+const InternalAppAgentSettingsPluginsRoute =
+  InternalAppAgentSettingsPluginsRouteImport.update({
+    id: '/plugins',
+    path: '/plugins',
+    getParentRoute: () => InternalAppAgentSettingsRoute,
+  } as any)
 const InternalAppAgentSettingsModelsProvidersRoute =
   InternalAppAgentSettingsModelsProvidersRouteImport.update({
     id: '/models-providers',
@@ -136,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/agent-settings/custom-providers': typeof InternalAppAgentSettingsCustomProvidersRoute
   '/agent-settings/general': typeof InternalAppAgentSettingsGeneralRoute
   '/agent-settings/models-providers': typeof InternalAppAgentSettingsModelsProvidersRoute
+  '/agent-settings/plugins': typeof InternalAppAgentSettingsPluginsRoute
   '/agent-settings/skills-context': typeof InternalAppAgentSettingsSkillsContextRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
   '/browsing-settings/': typeof InternalAppBrowsingSettingsIndexRoute
@@ -153,6 +161,7 @@ export interface FileRoutesByTo {
   '/agent-settings/custom-providers': typeof InternalAppAgentSettingsCustomProvidersRoute
   '/agent-settings/general': typeof InternalAppAgentSettingsGeneralRoute
   '/agent-settings/models-providers': typeof InternalAppAgentSettingsModelsProvidersRoute
+  '/agent-settings/plugins': typeof InternalAppAgentSettingsPluginsRoute
   '/agent-settings/skills-context': typeof InternalAppAgentSettingsSkillsContextRoute
   '/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
   '/browsing-settings': typeof InternalAppBrowsingSettingsIndexRoute
@@ -173,6 +182,7 @@ export interface FileRoutesById {
   '/_internal-app/agent-settings/custom-providers': typeof InternalAppAgentSettingsCustomProvidersRoute
   '/_internal-app/agent-settings/general': typeof InternalAppAgentSettingsGeneralRoute
   '/_internal-app/agent-settings/models-providers': typeof InternalAppAgentSettingsModelsProvidersRoute
+  '/_internal-app/agent-settings/plugins': typeof InternalAppAgentSettingsPluginsRoute
   '/_internal-app/agent-settings/skills-context': typeof InternalAppAgentSettingsSkillsContextRoute
   '/_internal-app/browsing-settings/website-permissions': typeof InternalAppBrowsingSettingsWebsitePermissionsRoute
   '/_internal-app/browsing-settings/': typeof InternalAppBrowsingSettingsIndexRoute
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/agent-settings/custom-providers'
     | '/agent-settings/general'
     | '/agent-settings/models-providers'
+    | '/agent-settings/plugins'
     | '/agent-settings/skills-context'
     | '/browsing-settings/website-permissions'
     | '/browsing-settings/'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/agent-settings/custom-providers'
     | '/agent-settings/general'
     | '/agent-settings/models-providers'
+    | '/agent-settings/plugins'
     | '/agent-settings/skills-context'
     | '/browsing-settings/website-permissions'
     | '/browsing-settings'
@@ -229,6 +241,7 @@ export interface FileRouteTypes {
     | '/_internal-app/agent-settings/custom-providers'
     | '/_internal-app/agent-settings/general'
     | '/_internal-app/agent-settings/models-providers'
+    | '/_internal-app/agent-settings/plugins'
     | '/_internal-app/agent-settings/skills-context'
     | '/_internal-app/browsing-settings/website-permissions'
     | '/_internal-app/browsing-settings/'
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalAppAgentSettingsSkillsContextRouteImport
       parentRoute: typeof InternalAppAgentSettingsRoute
     }
+    '/_internal-app/agent-settings/plugins': {
+      id: '/_internal-app/agent-settings/plugins'
+      path: '/plugins'
+      fullPath: '/agent-settings/plugins'
+      preLoaderRoute: typeof InternalAppAgentSettingsPluginsRouteImport
+      parentRoute: typeof InternalAppAgentSettingsRoute
+    }
     '/_internal-app/agent-settings/models-providers': {
       id: '/_internal-app/agent-settings/models-providers'
       path: '/models-providers'
@@ -369,6 +389,7 @@ interface InternalAppAgentSettingsRouteChildren {
   InternalAppAgentSettingsCustomProvidersRoute: typeof InternalAppAgentSettingsCustomProvidersRoute
   InternalAppAgentSettingsGeneralRoute: typeof InternalAppAgentSettingsGeneralRoute
   InternalAppAgentSettingsModelsProvidersRoute: typeof InternalAppAgentSettingsModelsProvidersRoute
+  InternalAppAgentSettingsPluginsRoute: typeof InternalAppAgentSettingsPluginsRoute
   InternalAppAgentSettingsSkillsContextRoute: typeof InternalAppAgentSettingsSkillsContextRoute
 }
 
@@ -379,6 +400,7 @@ const InternalAppAgentSettingsRouteChildren: InternalAppAgentSettingsRouteChildr
     InternalAppAgentSettingsGeneralRoute: InternalAppAgentSettingsGeneralRoute,
     InternalAppAgentSettingsModelsProvidersRoute:
       InternalAppAgentSettingsModelsProvidersRoute,
+    InternalAppAgentSettingsPluginsRoute: InternalAppAgentSettingsPluginsRoute,
     InternalAppAgentSettingsSkillsContextRoute:
       InternalAppAgentSettingsSkillsContextRoute,
   }

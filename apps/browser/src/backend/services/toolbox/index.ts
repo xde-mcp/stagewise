@@ -1,4 +1,9 @@
 import type { Logger } from '@/services/logger';
+import {
+  getPluginsPath,
+  getRipgrepBasePath,
+  getAgentAppsDir,
+} from '@/utils/paths';
 import { MountManagerService } from './services/mount-manager';
 import type { FilePickerService } from '@/services/file-picker';
 import type { UserExperienceService } from '@/services/experience';
@@ -8,6 +13,7 @@ import {
   APPEND_ONLY_PERMISSIONS,
   FULL_PERMISSIONS,
   NON_WORKSPACE_PREFIXES,
+  READ_ONLY_PERMISSIONS,
   type MountDescriptor,
 } from '../sandbox/ipc';
 import type { WorkspaceAgentSettings } from '@shared/karton-contracts/ui/shared-types';
@@ -23,12 +29,7 @@ import type { CredentialTypeId } from '@shared/credential-types';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import { createFileDiffHandler } from './utils/sandbox-callbacks';
 import { deleteAgentBlobs, getAgentBlobDir } from '@/utils/attachment-blobs';
-import {
-  getDataRoot,
-  getTempRoot,
-  getAgentAppsDir,
-  getRipgrepBasePath,
-} from '@/utils/paths';
+import { getDataRoot, getTempRoot } from '@/utils/paths';
 import { mkdirSync } from 'node:fs';
 import type { ApiClient } from '@stagewise/api-client';
 import {
@@ -93,6 +94,7 @@ import {
 import type { ContextFilesResult } from '@shared/karton-contracts/pages-api/types';
 import {
   getSkills,
+  discoverSkills,
   type Skill,
 } from '@/agents/shared/prompts/utils/get-skills';
 import { resolveMountedRelativePath } from './utils/path-mounting';
@@ -116,6 +118,7 @@ export class ToolboxService extends DisposableService {
 
   private sandboxService: SandboxService | null = null;
   private shellService: ShellService | null = null;
+  private pluginsRuntime: ClientRuntimeNode | null = null;
   private appsRuntimes = new Map<string, ClientRuntimeNode>();
 
   private mountManagerService: MountManagerService | null = null;
@@ -137,6 +140,7 @@ export class ToolboxService extends DisposableService {
     const runtimes =
       this.mountManagerService?.getMountedRuntimes(agentInstanceId);
     if (!runtimes) return undefined;
+    if (this.pluginsRuntime) runtimes.set('plugins', this.pluginsRuntime);
     runtimes.set('apps', this.getOrCreateAppsRuntime(agentInstanceId));
     return runtimes;
   }
@@ -499,6 +503,12 @@ export class ToolboxService extends DisposableService {
       permissions: APPEND_ONLY_PERMISSIONS,
     });
 
+    mounts.push({
+      prefix: 'plugins',
+      absolutePath: getPluginsPath(),
+      permissions: READ_ONLY_PERMISSIONS,
+    });
+
     const appsDir = getAgentAppsDir(agentInstanceId);
     mkdirSync(appsDir, { recursive: true });
     mounts.push({
@@ -600,6 +610,11 @@ export class ToolboxService extends DisposableService {
         permissions: [...APPEND_ONLY_PERMISSIONS] as MountPermission[],
       },
       {
+        prefix: 'plugins',
+        path: getPluginsPath(),
+        permissions: [...READ_ONLY_PERMISSIONS] as MountPermission[],
+      },
+      {
         prefix: 'apps',
         path: getAgentAppsDir(agentInstanceId),
         permissions: [...FULL_PERMISSIONS] as MountPermission[],
@@ -640,21 +655,33 @@ export class ToolboxService extends DisposableService {
 
     const mounts =
       this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
-    if (mounts && mounts.length > 0) {
-      for (const mount of mounts) {
-        const settings = this.uiKarton.state.preferences?.agent
-          ?.workspaceSettings?.[mount.path] ?? {
-          respectAgentsMd: false,
-          disabledSkills: [],
-        };
-        const disabled = new Set(settings.disabledSkills);
-        const skills = await getSkills(mount.clientRuntime);
+    if (!mounts || mounts.length === 0) return result;
+    for (const mount of mounts) {
+      const settings = this.uiKarton.state.preferences?.agent
+        ?.workspaceSettings?.[mount.path] ?? {
+        respectAgentsMd: false,
+        disabledSkills: [],
+      };
+      const disabled = new Set(settings.disabledSkills);
+      const skills = await getSkills(mount.clientRuntime);
 
-        for (const skill of skills) {
-          if (disabled.has(skill.name)) continue;
-          result.push(skill);
-        }
+      for (const skill of skills) {
+        if (disabled.has(skill.name)) continue;
+        result.push(skill);
       }
+    }
+
+    const disabledPlugins = new Set(
+      this.uiKarton.state.preferences?.agent?.disabledPluginIds ?? [],
+    );
+    const pluginSkills = await discoverSkills(getPluginsPath());
+    for (const skill of pluginSkills) {
+      const pluginId = path.basename(skill.path);
+      if (disabledPlugins.has(pluginId)) continue;
+      result.push({
+        ...skill,
+        path: `plugins/${pluginId}/SKILL.md`,
+      });
     }
 
     return result;
@@ -871,6 +898,12 @@ export class ToolboxService extends DisposableService {
 
   private async initialize(): Promise<void> {
     this.logger.debug('[ToolboxService] Initializing...');
+
+    const pluginsDir = getPluginsPath();
+    this.pluginsRuntime = new ClientRuntimeNode({
+      workingDirectory: pluginsDir,
+      rgBinaryBasePath: getRipgrepBasePath(),
+    });
 
     // Eagerly initialize the API client if auth is already available
     this.apiClient = this.getOrCreateApiClient();

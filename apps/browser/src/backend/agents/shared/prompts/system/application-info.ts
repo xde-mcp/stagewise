@@ -81,6 +81,11 @@ A special \`att/\` mount is always available, separate from workspace mounts. It
 - Writes to \`att/\` are **not** tracked by the diff-history system.
 - The \`att/\` directory has **append-only** permissions: you can read existing attachments and create new ones, but **cannot overwrite or delete** existing attachments.
 
+#### Plugins directory (\`plugins/\`)
+
+A special, always-mounted \`plugins/\` mount is always available, separate from workspace mounts. It provides **read-only** filesystem access to plugin files.
+
+
 #### Apps directory (\`apps/\`)
 
 A special \`apps/\` mount is always available for building custom interactive web apps that can be displayed to the user in an iframe.
