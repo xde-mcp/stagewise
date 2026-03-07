@@ -77,6 +77,8 @@ export type PagesApiState = {
   workspaceMounts: WorkspaceMountInfo[];
   /** Workspace paths where a WORKSPACE.md agent is currently running */
   workspaceMdGenerating: Record<string, boolean>;
+  /** Credential type IDs that have stored data (synced after set/delete) */
+  configuredCredentialIds: string[];
   // Current stagewise app runtime information
   appInfo: {
     baseName: string; // Base name (e.g., 'stagewise-dev', 'stagewise-prerelease', 'stagewise').
@@ -222,6 +224,15 @@ export type PagesApiContract = {
     getUsageHistory: (params: {
       days?: number;
     }) => Promise<UsageHistoryResponse>;
+    /** Store credential data for a registered type (encrypted at rest) */
+    setCredential: (
+      typeId: string,
+      data: Record<string, string>,
+    ) => Promise<void>;
+    /** Remove stored credential data for a type */
+    deleteCredential: (typeId: string) => Promise<void>;
+    /** Return the list of credential type IDs that have stored data */
+    getConfiguredCredentialIds: () => Promise<string[]>;
   };
 };
 
@@ -240,6 +251,7 @@ export const defaultState: PagesApiState = {
   searchEngines: [],
   workspaceMounts: [],
   workspaceMdGenerating: {},
+  configuredCredentialIds: [],
   homePage: {
     storedExperienceData: {
       recentlyOpenedWorkspaces: [],

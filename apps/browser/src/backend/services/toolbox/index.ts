@@ -13,6 +13,8 @@ import type { DiffHistoryService } from '@/services/diff-history';
 import type { WindowLayoutService } from '@/services/window-layout';
 import type { AuthService } from '@/services/auth';
 import type { TelemetryService } from '@/services/telemetry';
+import type { CredentialsService } from '@/services/credentials';
+import type { CredentialTypeId } from '@shared/credential-types';
 import { createAuthenticatedClient } from './utils/create-authenticated-client';
 import { createFileDiffHandler } from './utils/sandbox-callbacks';
 import { deleteAgentBlobs, getAgentBlobDir } from '@/utils/attachment-blobs';
@@ -98,6 +100,7 @@ export class ToolboxService extends DisposableService {
   private readonly telemetryService: TelemetryService;
   private readonly filePickerService: FilePickerService;
   private readonly userExperienceService: UserExperienceService;
+  private readonly credentialsService: CredentialsService;
 
   private sandboxService: SandboxService | null = null;
   private shellService: ShellService | null = null;
@@ -126,6 +129,7 @@ export class ToolboxService extends DisposableService {
     telemetryService: TelemetryService,
     filePickerService: FilePickerService,
     userExperienceService: UserExperienceService,
+    credentialsService: CredentialsService,
   ) {
     super();
     this.logger = logger;
@@ -137,6 +141,7 @@ export class ToolboxService extends DisposableService {
     this.telemetryService = telemetryService;
     this.filePickerService = filePickerService;
     this.userExperienceService = userExperienceService;
+    this.credentialsService = credentialsService;
   }
 
   public static async create(
@@ -149,6 +154,7 @@ export class ToolboxService extends DisposableService {
     telemetryService: TelemetryService,
     filePickerService: FilePickerService,
     userExperienceService: UserExperienceService,
+    credentialsService: CredentialsService,
   ): Promise<ToolboxService> {
     const instance = new ToolboxService(
       logger,
@@ -160,6 +166,7 @@ export class ToolboxService extends DisposableService {
       telemetryService,
       filePickerService,
       userExperienceService,
+      credentialsService,
     );
     await instance.initialize();
     return instance;
@@ -830,6 +837,23 @@ export class ToolboxService extends DisposableService {
       this.logger,
       fileDiffHandler,
       (agentId) => this.getSandboxMounts(agentId),
+      async (typeId) => {
+        const resolved = await this.credentialsService.resolve(
+          typeId as CredentialTypeId,
+        );
+        if (!resolved) return null;
+        return {
+          data: resolved.data,
+          secretEntries: [...resolved.secretMap.entries()].map(
+            ([placeholder, entry]) =>
+              [placeholder, entry.value, entry.allowedOrigins] as [
+                string,
+                string,
+                string[],
+              ],
+          ),
+        };
+      },
       this.uiKarton,
     );
 

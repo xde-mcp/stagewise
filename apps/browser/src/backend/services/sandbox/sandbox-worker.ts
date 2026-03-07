@@ -2,6 +2,10 @@ import vm from 'node:vm';
 import { createWorkerIPC } from './ipc';
 import type { MountDescriptor } from './ipc';
 import { createIsolatedFs } from './utils/isolated-fs';
+import {
+  createCredentialFetch,
+  type SecretMapEntry,
+} from './utils/credential-fetch';
 
 const contexts = new Map<string, vm.Context>();
 /** Per-agent cache of fetched ESM modules for dynamic import() resolution. */
@@ -10,10 +14,25 @@ const pendingCdp = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
 >();
+const pendingCredential = new Map<
+  string,
+  {
+    agentId: string;
+    resolve: (value: Record<string, string> | null) => void;
+    reject: (reason: unknown) => void;
+  }
+>();
 const ipc = createWorkerIPC();
 
 /** Per-agent mount descriptors, updated via `update-mounts` IPC. */
 const agentMounts = new Map<string, MountDescriptor[]>();
+
+/**
+ * Per-agent accumulated secret maps (placeholder -> value + allowed origins).
+ * Populated by `API.getCredential()` responses and consumed by the
+ * fetch proxy to perform origin-gated substitution at network time.
+ */
+const agentSecretMaps = new Map<string, Map<string, SecretMapEntry>>();
 
 /** Per-agent isolated fs instances, recreated when mounts change. */
 const agentIsolatedFs = new Map<
@@ -93,6 +112,7 @@ const BLOCKED_NODE_MODULES = new Set([
 ]);
 
 let cdpReqId = 0;
+let credReqId = 0;
 
 /**
  * Per-agent CDP event listeners keyed by "tabId\0event".
@@ -197,6 +217,18 @@ function getSandboxAPI(agentId: string) {
         }
       };
     },
+    getCredential(typeId: string): Promise<Record<string, string> | null> {
+      const id = `cred_${credReqId++}`;
+      return new Promise((resolve, reject) => {
+        pendingCredential.set(id, { agentId, resolve, reject });
+        ipc.send({
+          type: 'resolve-credential',
+          id,
+          agentId,
+          typeId,
+        });
+      });
+    },
     output(data: any): void {
       const str = typeof data === 'string' ? data : JSON.stringify(data);
       const outputs = pendingOutputs.get(agentId);
@@ -244,12 +276,19 @@ function getSandboxAPI(agentId: string) {
   };
 }
 
+const emptySecretMap = new Map<string, SecretMapEntry>();
+
 /**
  * Node.js globals that are NOT provided by vm.createContext() by default.
  * V8 built-ins (JSON, Promise, Map, Set, Array, Object, Math, RegExp,
  * Date, Error, typed arrays, etc.) are already available automatically.
  */
-function getContextGlobals() {
+function getContextGlobals(agentId: string) {
+  const proxiedFetch = createCredentialFetch(
+    fetch,
+    () => agentSecretMaps.get(agentId) ?? emptySecretMap,
+  );
+
   const globals: Record<string, unknown> = {
     // Timers
     setTimeout,
@@ -260,7 +299,7 @@ function getContextGlobals() {
       setTimeout(fn, 0, ...args),
     clearImmediate: clearTimeout,
     // Networking
-    fetch,
+    fetch: proxiedFetch,
     Headers,
     Request,
     Response,
@@ -487,7 +526,7 @@ ipc.onMessage(async (msg) => {
     case 'create-context': {
       const ctx = vm.createContext({
         API: getSandboxAPI(msg.agentId),
-        ...getContextGlobals(),
+        ...getContextGlobals(msg.agentId),
       });
       contexts.set(msg.agentId, ctx);
       moduleCaches.set(msg.agentId, new Map());
@@ -498,6 +537,7 @@ ipc.onMessage(async (msg) => {
       moduleCaches.delete(msg.agentId);
       agentMounts.delete(msg.agentId);
       agentIsolatedFs.delete(msg.agentId);
+      agentSecretMaps.delete(msg.agentId);
       agentCdpListeners.delete(msg.agentId);
       timerResetCallbacks.delete(msg.agentId);
       break;
@@ -630,6 +670,24 @@ ipc.onMessage(async (msg) => {
         } catch {
           // Prevent one failing callback from breaking others
         }
+      }
+      break;
+    }
+    case 'credential-result': {
+      const p = pendingCredential.get(msg.id);
+      if (!p) return;
+      pendingCredential.delete(msg.id);
+      if (msg.error) p.reject(new Error(msg.error));
+      else {
+        if (msg.data && msg.secretEntries) {
+          if (!agentSecretMaps.has(p.agentId))
+            agentSecretMaps.set(p.agentId, new Map());
+
+          const secrets = agentSecretMaps.get(p.agentId)!;
+          for (const [placeholder, real, allowedOrigins] of msg.secretEntries)
+            secrets.set(placeholder, { value: real, allowedOrigins });
+        }
+        p.resolve(msg.data);
       }
       break;
     }

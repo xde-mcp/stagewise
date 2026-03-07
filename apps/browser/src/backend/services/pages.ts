@@ -1443,6 +1443,54 @@ export class PagesService extends DisposableService {
   }
 
   /**
+   * Register handlers for credential CRUD operations.
+   * Called by main.ts after CredentialsService is available.
+   */
+  public registerCredentialHandlers(
+    setHandler: (typeId: string, data: Record<string, string>) => Promise<void>,
+    deleteHandler: (typeId: string) => Promise<void>,
+    listConfiguredHandler: () => string[],
+  ): void {
+    this.kartonServer.registerServerProcedureHandler(
+      'setCredential',
+      async (
+        _callingClientId: string,
+        typeId: string,
+        data: Record<string, string>,
+      ) => {
+        await setHandler(typeId, data);
+        this.syncConfiguredCredentialIds(listConfiguredHandler);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'deleteCredential',
+      async (_callingClientId: string, typeId: string) => {
+        await deleteHandler(typeId);
+        this.syncConfiguredCredentialIds(listConfiguredHandler);
+      },
+    );
+
+    this.kartonServer.registerServerProcedureHandler(
+      'getConfiguredCredentialIds',
+      async (_callingClientId: string) => {
+        return listConfiguredHandler();
+      },
+    );
+
+    this.syncConfiguredCredentialIds(listConfiguredHandler);
+    this.logger.debug('[PagesService] Credential handlers registered');
+  }
+
+  private syncConfiguredCredentialIds(
+    listConfiguredHandler: () => string[],
+  ): void {
+    this.kartonServer.setState((draft) => {
+      draft.configuredCredentialIds = listConfiguredHandler();
+    });
+  }
+
+  /**
    * Set the UserExperienceService for home page functionality.
    * This should be called by main.ts after UserExperienceService is created.
    */
@@ -1737,6 +1785,11 @@ export class PagesService extends DisposableService {
     this.kartonServer.removeServerProcedureHandler('getMostVisitedOrigins');
     this.kartonServer.removeServerProcedureHandler('getUsageCurrent');
     this.kartonServer.removeServerProcedureHandler('getUsageHistory');
+    this.kartonServer.removeServerProcedureHandler('setCredential');
+    this.kartonServer.removeServerProcedureHandler('deleteCredential');
+    this.kartonServer.removeServerProcedureHandler(
+      'getConfiguredCredentialIds',
+    );
 
     // Unregister the protocol handler from the browsing session
     const ses = session.fromPartition('persist:browser-content');

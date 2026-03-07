@@ -86,13 +86,6 @@ A special \`att/\` mount is always available, separate from workspace mounts. It
 #### \`API.sendCDP(tabId: string, method: string, params?: any): Promise<any>\`
 Send a CDP command to a specific tab debugger.
 
-
-#### \`API.onCDPEvent(tabId: string, event: string, callback: (params) => void): () => void\`
-Subscribe to a CDP event on a specific tab. 
-The callback fires whenever the specified CDP event occurs. Returns an unsubscribe function to remove the listener. 
-Listeners persist across IIFE executions (long-lived context). Use \`globalThis\` to accumulate events.
-
-
 #### \`API.output(data: any)\`
 Append data to the tool result. \`data\` is stringified (JSON if not already a string). Can be called multiple times; outputs appear in order. The script's \`return\` value is appended last.
 **Also resets the inactivity timeout** — use as a keep-alive heartbeat in long-running scripts.
@@ -116,6 +109,12 @@ The script's text output (\`API.output\` / \`return\`) is unaffected — the att
   fileName?: string    // optional display name
 }
 \`\`\`
+
+#### \`API.getCredential(typeId: string): Promise<Record<string, string> | null>\`
+Request a stored credential by type ID (e.g. \`"figma-pat"\`).
+Returns the credential data object or \`null\` if not configured by the user.
+Secret fields contain opaque placeholder values that are **automatically substituted in outgoing \`fetch\` calls** — do not attempt to decode or transform them.
+Plain (non-secret) fields contain real values you can read directly.
 
 ### Available Runtime
 

@@ -36,6 +36,17 @@ export type FileDiffHandler = (
 export type MountResolver = (agentId: string) => MountDescriptor[];
 
 /**
+ * Callback that resolves a credential by type ID.
+ * Returns agent-safe data (secrets replaced with placeholders) plus the
+ * serialized secret map entries with allowed origins, or `null` if the
+ * credential is not configured.
+ */
+export type CredentialResolver = (typeId: string) => Promise<{
+  data: Record<string, string>;
+  secretEntries: [string, string, string[]][];
+} | null>;
+
+/**
  * Resolve the path to the compiled sandbox worker script.
  * The worker is built as a separate CJS entry by Vite (see vite.sandbox-worker.config.ts)
  * and lives alongside main.js in .vite/build/.
@@ -74,6 +85,7 @@ export class SandboxService extends DisposableService {
   private readonly logger: Logger;
   private readonly fileDiffHandler?: FileDiffHandler;
   private readonly mountResolver?: MountResolver;
+  private readonly credentialResolver?: CredentialResolver;
   private readonly kartonService?: KartonService;
   private workers: WorkerInfo[] = [];
   private agentToWorker = new Map<string, WorkerInfo>();
@@ -96,6 +108,7 @@ export class SandboxService extends DisposableService {
     logger: Logger,
     fileDiffHandler?: FileDiffHandler,
     mountResolver?: MountResolver,
+    credentialResolver?: CredentialResolver,
     kartonService?: KartonService,
     private poolSize = 4,
   ) {
@@ -104,6 +117,7 @@ export class SandboxService extends DisposableService {
     this.logger = logger;
     this.fileDiffHandler = fileDiffHandler;
     this.mountResolver = mountResolver;
+    this.credentialResolver = credentialResolver;
     this.kartonService = kartonService;
   }
 
@@ -112,6 +126,7 @@ export class SandboxService extends DisposableService {
     logger: Logger,
     fileDiffHandler?: FileDiffHandler,
     mountResolver?: MountResolver,
+    credentialResolver?: CredentialResolver,
     kartonService?: KartonService,
   ): Promise<SandboxService> {
     const instance = new SandboxService(
@@ -119,6 +134,7 @@ export class SandboxService extends DisposableService {
       logger,
       fileDiffHandler,
       mountResolver,
+      credentialResolver,
       kartonService,
     );
     await instance.initialize();
@@ -362,6 +378,35 @@ export class SandboxService extends DisposableService {
         this.scheduleFlush(msg.agentId, toolCallId);
         break;
       }
+      case 'resolve-credential': {
+        if (!this.credentialResolver) {
+          this.safeSend(worker, {
+            type: 'credential-result',
+            id: msg.id,
+            data: null,
+            error: 'No credential resolver configured',
+          });
+          return;
+        }
+        try {
+          const resolved = await this.credentialResolver(msg.typeId);
+          this.safeSend(worker, {
+            type: 'credential-result',
+            id: msg.id,
+            data: resolved?.data ?? null,
+            secretEntries: resolved?.secretEntries,
+          });
+        } catch (err) {
+          this.safeSend(worker, {
+            type: 'credential-result',
+            id: msg.id,
+            data: null,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        break;
+      }
+
       case 'subscribe-cdp-event': {
         try {
           const key = `${msg.tabId}\0${msg.event}`;
@@ -608,8 +653,9 @@ export class SandboxService extends DisposableService {
     this.fileWriteCountPerExecution.clear();
     this.sandboxSessionIds.clear();
 
-    for (const agentId of this.cdpSubscriptions.keys())
+    for (const agentId of this.cdpSubscriptions.keys()) {
       this.cleanupCdpSubscriptions(agentId);
+    }
 
     for (const timer of this.outputFlushTimers.values()) clearTimeout(timer);
     this.outputFlushTimers.clear();

@@ -29,6 +29,8 @@ import { DevToolAPIService } from './services/dev-tool-api';
 import { OmniboxSuggestionsService } from './services/omnibox-suggestions';
 import { ensureRipgrepInstalled } from '@stagewise/agent-runtime-node';
 import { ToolboxService } from './services/toolbox';
+import { CredentialsService } from './services/credentials';
+import type { CredentialTypeId } from '@shared/credential-types';
 import { ModelProviderService } from './agents/model-provider';
 import { wireDownloads } from './wiring/downloads-wiring';
 import { wirePagesStateSync } from './wiring/pages-state-sync';
@@ -241,6 +243,10 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     telemetryService,
   );
 
+  const credentialsService = await CredentialsService.create(logger);
+
+  credentialsService.setAccessTokenProvider(() => authService.accessToken);
+
   const toolboxService = await ToolboxService.create(
     logger,
     uiKarton,
@@ -251,6 +257,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     telemetryService,
     filePickerService,
     userExperienceService,
+    credentialsService,
   );
 
   const _appMenuService = new AppMenuService(
@@ -298,6 +305,20 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     userExperienceService,
     logger,
   });
+
+  // Wire credential CRUD operations from CredentialsService to PagesService
+  pagesService.registerCredentialHandlers(
+    async (typeId, data) => {
+      await credentialsService.set(
+        typeId as CredentialTypeId,
+        data as Parameters<typeof credentialsService.set>[1],
+      );
+    },
+    async (typeId) => {
+      await credentialsService.delete(typeId as CredentialTypeId);
+    },
+    () => credentialsService.listConfigured(),
+  );
 
   logger.debug('[Main] Normal operation services bootstrapped');
 

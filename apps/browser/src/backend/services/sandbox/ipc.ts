@@ -42,6 +42,14 @@ export type MainToWorkerMessage =
       mounts: MountDescriptor[];
     }
   | {
+      type: 'credential-result';
+      id: string;
+      data: Record<string, string> | null;
+      /** [placeholder, value, allowedOrigins][] */
+      secretEntries?: [string, string, string[]][];
+      error?: string;
+    }
+  | {
       type: 'cdp-event';
       agentId: string;
       tabId: string;
@@ -94,6 +102,12 @@ export type WorkerToMainMessage =
         fileName?: string;
         sizeBytes: number;
       };
+    }
+  | {
+      type: 'resolve-credential';
+      id: string;
+      agentId: string;
+      typeId: string;
     }
   | {
       type: 'subscribe-cdp-event';
