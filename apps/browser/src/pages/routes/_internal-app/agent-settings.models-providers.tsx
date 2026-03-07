@@ -68,7 +68,13 @@ export const Route = createFileRoute(
 // Model Provider Configuration
 // =============================================================================
 
-const PROVIDERS: ModelProvider[] = ['anthropic', 'openai', 'google'];
+const PROVIDERS: ModelProvider[] = [
+  'anthropic',
+  'openai',
+  'google',
+  'moonshotai',
+  'alibaba',
+];
 
 function ProviderConfigCard({ provider }: { provider: ModelProvider }) {
   const navigate = useNavigate();
@@ -436,6 +442,8 @@ function CustomModelDialog({
       { value: 'anthropic', label: 'Anthropic', group: 'Built-in' },
       { value: 'openai', label: 'OpenAI', group: 'Built-in' },
       { value: 'google', label: 'Google', group: 'Built-in' },
+      { value: 'moonshotai', label: 'Moonshot AI', group: 'Built-in' },
+      { value: 'alibaba', label: 'Alibaba Cloud', group: 'Built-in' },
     ];
     const custom = customEndpoints.map((ep) => ({
       value: ep.id,
@@ -884,6 +892,8 @@ function CustomModelsSection() {
       if (endpointId === 'anthropic') return 'Anthropic';
       if (endpointId === 'openai') return 'OpenAI';
       if (endpointId === 'google') return 'Google';
+      if (endpointId === 'moonshotai') return 'Moonshot AI';
+      if (endpointId === 'alibaba') return 'Alibaba Cloud';
       return (
         customEndpoints.find((ep) => ep.id === endpointId)?.name ?? 'Unknown'
       );

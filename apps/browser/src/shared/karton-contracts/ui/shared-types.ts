@@ -9,7 +9,13 @@ import type { GoogleGenerativeAIProviderOptions } from '@ai-sdk/google';
 // ============================================================================
 
 /** Supported LLM provider identifiers */
-export const modelProviderSchema = z.enum(['anthropic', 'openai', 'google']);
+export const modelProviderSchema = z.enum([
+  'anthropic',
+  'openai',
+  'google',
+  'moonshotai',
+  'alibaba',
+]);
 export type ModelProvider = z.infer<typeof modelProviderSchema>;
 
 /** Endpoint mode for a provider */
@@ -38,6 +44,8 @@ export const providerConfigsSchema = z.object({
   anthropic: providerConfigSchema.default({ mode: 'stagewise' }),
   openai: providerConfigSchema.default({ mode: 'stagewise' }),
   google: providerConfigSchema.default({ mode: 'stagewise' }),
+  moonshotai: providerConfigSchema.default({ mode: 'stagewise' }),
+  alibaba: providerConfigSchema.default({ mode: 'stagewise' }),
 });
 export type ProviderConfigs = z.infer<typeof providerConfigsSchema>;
 
@@ -173,6 +181,8 @@ export const PROVIDER_OFFICIAL_URLS: Record<ModelProvider, string> = {
   anthropic: 'https://api.anthropic.com/v1',
   openai: 'https://api.openai.com/v1',
   google: 'https://generativelanguage.googleapis.com/v1beta',
+  moonshotai: 'https://api.moonshot.ai/v1',
+  alibaba: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
 };
 
 /** Display info for each provider (for UI) */
@@ -191,6 +201,14 @@ export const PROVIDER_DISPLAY_INFO: Record<
   google: {
     name: 'Google',
     description: 'Gemini models',
+  },
+  moonshotai: {
+    name: 'Moonshot AI',
+    description: 'Kimi models',
+  },
+  alibaba: {
+    name: 'Alibaba Cloud',
+    description: 'Qwen models',
   },
 };
 
@@ -376,6 +394,8 @@ export const userPreferencesSchema = z.object({
     anthropic: { mode: 'stagewise' },
     openai: { mode: 'stagewise' },
     google: { mode: 'stagewise' },
+    moonshotai: { mode: 'stagewise' },
+    alibaba: { mode: 'stagewise' },
   }),
   /** User-defined API endpoints */
   customEndpoints: z.array(customEndpointSchema).default([]),
@@ -466,6 +486,8 @@ export const defaultUserPreferences: UserPreferences = {
     anthropic: { mode: 'stagewise' },
     openai: { mode: 'stagewise' },
     google: { mode: 'stagewise' },
+    moonshotai: { mode: 'stagewise' },
+    alibaba: { mode: 'stagewise' },
   },
   customEndpoints: [],
   customModels: [],

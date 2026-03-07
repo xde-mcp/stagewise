@@ -818,10 +818,14 @@ export type KartonContract = {
         anthropic?: string;
         openai?: string;
         google?: string;
+        moonshotai?: string;
+        alibaba?: string;
       }) => Promise<{
         anthropic: ApiKeyValidationResult;
         openai: ApiKeyValidationResult;
         google: ApiKeyValidationResult;
+        moonshotai: ApiKeyValidationResult;
+        alibaba: ApiKeyValidationResult;
       }>;
     };
     userExperience: {

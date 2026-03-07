@@ -126,7 +126,13 @@ export class PreferencesService extends DisposableService {
    * create a custom endpoint and link to it.
    */
   private async migrateCustomBaseUrlToProviderId(): Promise<void> {
-    const providers = ['anthropic', 'openai', 'google'] as const;
+    const providers = [
+      'anthropic',
+      'openai',
+      'google',
+      'moonshotai',
+      'alibaba',
+    ] as const;
     let needsSave = false;
 
     for (const provider of providers) {

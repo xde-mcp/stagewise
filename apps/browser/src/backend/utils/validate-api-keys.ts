@@ -3,7 +3,12 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
-export type ApiKeyProvider = 'anthropic' | 'openai' | 'google';
+export type ApiKeyProvider =
+  | 'anthropic'
+  | 'openai'
+  | 'google'
+  | 'moonshotai'
+  | 'alibaba';
 
 export type ApiKeyValidationResult =
   | null
@@ -26,9 +31,20 @@ const providerConfigs: Record<
 > = {
   anthropic: (apiKey, baseURL) =>
     createAnthropic({ apiKey, baseURL })('claude-haiku-4-5'),
-  openai: (apiKey, baseURL) => createOpenAI({ apiKey, baseURL })('gpt-4o-mini'),
+  openai: (apiKey, baseURL) => createOpenAI({ apiKey, baseURL })('gpt-5-nano'),
   google: (apiKey, baseURL) =>
     createGoogleGenerativeAI({ apiKey, baseURL })('gemini-2.5-flash-lite'),
+  moonshotai: (apiKey, baseURL) =>
+    createOpenAI({
+      apiKey,
+      baseURL: baseURL ?? 'https://api.moonshot.ai/v1',
+    })('kimi-k2.5'),
+  alibaba: (apiKey, baseURL) =>
+    createOpenAI({
+      apiKey,
+      baseURL:
+        baseURL ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    })('qwen-turbo'),
 };
 
 /**
@@ -46,6 +62,8 @@ export async function validateApiKeys(
     anthropic: null,
     openai: null,
     google: null,
+    moonshotai: null,
+    alibaba: null,
   };
 
   const promises: Promise<void>[] = [];

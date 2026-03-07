@@ -16,7 +16,7 @@ import type { ApiKeyValidationResult } from '@shared/karton-contracts/ui';
 
 type AuthMode = 'stagewise' | 'api-keys';
 type AuthPhase = 'form-input' | 'waiting-for-otp' | 'authentication-validated';
-type ProviderKey = 'anthropic' | 'openai' | 'google';
+type ProviderKey = 'anthropic' | 'openai' | 'google' | 'moonshotai' | 'alibaba';
 type FieldErrors = Record<ProviderKey, string | null>;
 
 export function StepAuth({
@@ -57,10 +57,14 @@ export function StepAuth({
   const [apiKey1, setApiKey1] = useState('');
   const [apiKey2, setApiKey2] = useState('');
   const [apiKey3, setApiKey3] = useState('');
+  const [apiKey4, setApiKey4] = useState('');
+  const [apiKey5, setApiKey5] = useState('');
   const emptyErrors: FieldErrors = {
     anthropic: null,
     openai: null,
     google: null,
+    moonshotai: null,
+    alibaba: null,
   };
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>(emptyErrors);
 
@@ -104,7 +108,7 @@ export function StepAuth({
     }
   }, [mode]);
 
-  const hasAnyKey = !!(apiKey1 || apiKey2 || apiKey3);
+  const hasAnyKey = !!(apiKey1 || apiKey2 || apiKey3 || apiKey4 || apiKey5);
   const isValid = phase === 'authentication-validated';
 
   const handleSubmitApiKeys = useCallback(() => {
@@ -115,6 +119,8 @@ export function StepAuth({
       anthropic: apiKey1,
       openai: apiKey2,
       google: apiKey3,
+      moonshotai: apiKey4,
+      alibaba: apiKey5,
     })
       .then(async (results) => {
         const next: FieldErrors = { ...emptyErrors };
@@ -129,6 +135,8 @@ export function StepAuth({
               ['anthropic', apiKey1],
               ['openai', apiKey2],
               ['google', apiKey3],
+              ['moonshotai', apiKey4],
+              ['alibaba', apiKey5],
             ] as [ProviderKey, string][]
           ).filter(([, v]) => !!v);
           for (const [provider, key] of keysToSave) {
@@ -151,6 +159,8 @@ export function StepAuth({
     apiKey1,
     apiKey2,
     apiKey3,
+    apiKey4,
+    apiKey5,
     validateApiKeys,
     setProviderApiKey,
     preferencesUpdate,
@@ -434,6 +444,70 @@ export function StepAuth({
               <TruncatedErrorText
                 id="api-key-3-error"
                 text={fieldErrors.google}
+              />
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="api-key-4"
+              className="text-muted-foreground text-xs"
+            >
+              Moonshot AI
+            </label>
+            <Input
+              id="api-key-4"
+              placeholder="sk-..."
+              size="sm"
+              className="app-no-drag"
+              value={apiKey4}
+              aria-invalid={!!fieldErrors.moonshotai}
+              aria-describedby={
+                fieldErrors.moonshotai ? 'api-key-4-error' : undefined
+              }
+              onValueChange={(v) => {
+                setApiKey4(v);
+                setFieldErrors((prev) => ({ ...prev, moonshotai: null }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmitApiKeys();
+              }}
+            />
+            {fieldErrors.moonshotai && (
+              <TruncatedErrorText
+                id="api-key-4-error"
+                text={fieldErrors.moonshotai}
+              />
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="api-key-5"
+              className="text-muted-foreground text-xs"
+            >
+              Alibaba Cloud
+            </label>
+            <Input
+              id="api-key-5"
+              placeholder="sk-..."
+              size="sm"
+              className="app-no-drag"
+              value={apiKey5}
+              aria-invalid={!!fieldErrors.alibaba}
+              aria-describedby={
+                fieldErrors.alibaba ? 'api-key-5-error' : undefined
+              }
+              onValueChange={(v) => {
+                setApiKey5(v);
+                setFieldErrors((prev) => ({ ...prev, alibaba: null }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmitApiKeys();
+              }}
+            />
+            {fieldErrors.alibaba && (
+              <TruncatedErrorText
+                id="api-key-5-error"
+                text={fieldErrors.alibaba}
               />
             )}
           </div>

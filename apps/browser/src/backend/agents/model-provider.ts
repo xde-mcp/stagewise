@@ -131,13 +131,17 @@ export class ModelProviderService {
     if (
       endpointId === 'anthropic' ||
       endpointId === 'openai' ||
-      endpointId === 'google'
+      endpointId === 'google' ||
+      endpointId === 'moonshotai' ||
+      endpointId === 'alibaba'
     ) {
       const { apiKey, baseURL } = this.resolveProviderEndpoint(endpointId);
       const apiSpecMap: Record<ModelProvider, ApiSpec> = {
         anthropic: 'anthropic',
         openai: 'openai-responses',
         google: 'google',
+        moonshotai: 'openai-chat-completions',
+        alibaba: 'openai-chat-completions',
       };
       return { apiKey, baseURL, apiSpec: apiSpecMap[endpointId] };
     }
@@ -358,6 +362,41 @@ export class ModelProviderService {
       }
       case 'google': {
         const p = createGoogleGenerativeAI({ apiKey, baseURL });
+        return {
+          model: this.telemetryService.withTracing(
+            p(modelId as any),
+            posthogConfig,
+          ),
+          headers,
+          providerOptions: providerOptions as Parameters<
+            typeof streamText
+          >[0]['providerOptions'],
+          contextWindowSize,
+        };
+      }
+      case 'moonshotai': {
+        const p = createOpenAI({
+          apiKey,
+          baseURL: baseURL ?? 'https://api.moonshot.ai/v1',
+        });
+        return {
+          model: this.telemetryService.withTracing(
+            p(modelId as any),
+            posthogConfig,
+          ),
+          headers,
+          providerOptions: providerOptions as Parameters<
+            typeof streamText
+          >[0]['providerOptions'],
+          contextWindowSize,
+        };
+      }
+      case 'alibaba': {
+        const p = createOpenAI({
+          apiKey,
+          baseURL:
+            baseURL ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+        });
         return {
           model: this.telemetryService.withTracing(
             p(modelId as any),
