@@ -25,6 +25,7 @@
   "dependencies": {
     "@bokuweb/zstd-wasm": "^0.0.27",
     "@libsql/client": "^0.15.15",
+    "@streamdown/math": "^1.0.2",
     "@tiptap/extension-mention": "^3.20.0",
     "@tiptap/extension-placeholder": "^3.20.0",
     "@tiptap/markdown": "^3.20.0",

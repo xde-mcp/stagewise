@@ -1,5 +1,7 @@
 import posthog from 'posthog-js';
 import { defaultRehypePlugins, Streamdown as StreamdownBase } from 'streamdown';
+import { math } from '@streamdown/math';
+import 'katex/dist/katex.min.css';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { CodeBlock } from '../ui/code-block';
 import { StreamingCodeBlock } from '../ui/streaming-code-block';
@@ -259,6 +261,9 @@ export const Streamdown = ({
           code: false,
           mermaid: false,
           table: false,
+        }}
+        plugins={{
+          math,
         }}
         components={{
           code: MemoCode,

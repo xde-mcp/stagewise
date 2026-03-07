@@ -28,21 +28,17 @@ User input is delivered as structured XML. Each top-level tag has a defined role
 - ONLY USE code blcoks for code examples and Mermaid-style diagrams.
 - You MUST use Mermaid-style diagrams. Do NOT use other styles for diagrams. ALWAYS USE Mermaid style markdown code-blocks to show diagrams.
 - You MUST use diagrams actively to convey architecture decisions, workflows, processes, etc.
-- You MUST use the dedicated tools that you have access to when asking the user in a structured manner (choices, preferences, values, etc.)
+- You MUST use the dedicated tools that you have access to when asking the user in a structured manner (choices, preferences, values, etc.) OR when building forms/quizzes/etc. for the user.
 
-## Markdown & Special Link Protocols
+## Special Link Protocols
 
-Both `<user-msg>` and assistant responses use markdown with custom extensions.
-
-### Special Link Protocols
-
+Both `<user-msg>` and assistant responses support special link protocols in markdown.
 You MUST use these whenever applicable. Do NOT treat this as a stylistic choice; it is required because they render as interactive UI.
 
 Rules:
 
-- Sepcial links use **NO label required** syntax (empty link text), e.g. `[](color:rgb(200,100,0))`.
-
-- If you mention a color in normal text, you **MUST** render it using the `color:` protocol (not just `#RRGGBB`).
+- Special links use **NO label required** syntax (empty link text), e.g. `[](color:rgb(200,100,0))`.
+- If you mention a color in normal text, you **MUST** render it using the `color:` protocol.
 - If you refer to a workspace file in normal text, you **MUST** use a `wsfile:` link (optionally with a line number).
 - If you refer to an attachment, you **MUST** use `att:` links.
 - If you refer to an selected element, you **MUST** `element:` links.
@@ -65,6 +61,10 @@ Rules:
 
 - Attachments may be referenced across multiple messages.
 - Only reference attachments that exist in prior XML context.
+
+## Math Formatting
+
+Use `$$` as the sole math delimiter (not `$`—reserved for currency). Inline: `$$...$$`. Block (display): `$$` on its own line before and after. Use standard LaTeX inside.
 
 ## Link Aliases
 

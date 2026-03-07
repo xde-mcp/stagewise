@@ -8,5 +8,6 @@
 /* Source paths for Tailwind to scan for class usage */
 @source "../../node_modules/@stagewise/stage-ui";
 @source "../../node_modules/streamdown/dist/index.js";
+@source "../../node_modules/@streamdown/math/dist/*.js";
 @source "../ui";
 @source ".";

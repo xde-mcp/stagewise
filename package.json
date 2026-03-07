@@ -96,6 +96,7 @@
     "@ai-sdk/google-vertex": "^4.0.73",
     "@ai-sdk/openai-compatible": "^2.0.35",
     "@better-auth/electron": "^1.5.3",
+    "@streamdown/math": "^1.0.2",
     "better-auth": "^1.5.3",
     "tsx": "^4.20.3"
   },
