@@ -12,6 +12,7 @@ export {
 } from './types';
 
 import { figmaPatCredentialType } from './figma-pat';
+import { googleAiKeyCredentialType } from './google-ai-key';
 import { stagewiseAuthCredentialType } from './stagewise-auth';
 
 /**
@@ -26,6 +27,7 @@ import { stagewiseAuthCredentialType } from './stagewise-auth';
  */
 export const credentialTypeRegistry = {
   'figma-pat': figmaPatCredentialType,
+  'google-ai-key': googleAiKeyCredentialType,
   'stagewise-auth': stagewiseAuthCredentialType,
 } as const;
 
