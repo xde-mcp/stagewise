@@ -655,19 +655,20 @@ export class ToolboxService extends DisposableService {
 
     const mounts =
       this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
-    if (!mounts || mounts.length === 0) return result;
-    for (const mount of mounts) {
-      const settings = this.uiKarton.state.preferences?.agent
-        ?.workspaceSettings?.[mount.path] ?? {
-        respectAgentsMd: false,
-        disabledSkills: [],
-      };
-      const disabled = new Set(settings.disabledSkills);
-      const skills = await getSkills(mount.clientRuntime);
+    if (mounts) {
+      for (const mount of mounts) {
+        const settings = this.uiKarton.state.preferences?.agent
+          ?.workspaceSettings?.[mount.path] ?? {
+          respectAgentsMd: false,
+          disabledSkills: [],
+        };
+        const disabled = new Set(settings.disabledSkills);
+        const skills = await getSkills(mount.clientRuntime);
 
-      for (const skill of skills) {
-        if (disabled.has(skill.name)) continue;
-        result.push(skill);
+        for (const skill of skills) {
+          if (disabled.has(skill.name)) continue;
+          result.push(skill);
+        }
       }
     }
 
