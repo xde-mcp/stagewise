@@ -1,0 +1,5 @@
+{
+  "displayName": "Figma Plugin",
+  "description": "Teaches the agent how to work with Figma designs and components.",
+  "requiredCredentials": ["figma-pat"]
+}
