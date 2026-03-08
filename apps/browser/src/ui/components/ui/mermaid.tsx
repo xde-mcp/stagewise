@@ -1,7 +1,8 @@
 import posthog from 'posthog-js';
 import type { MermaidConfig } from 'mermaid';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/utils';
+import { getMermaidCache } from '@/hooks/use-mermaid-cache';
 
 const initializeMermaid = async (customConfig?: MermaidConfig) => {
   const defaultConfig: MermaidConfig = {
@@ -17,11 +18,12 @@ const initializeMermaid = async (customConfig?: MermaidConfig) => {
   const mermaidModule = await import('mermaid');
   const mermaid = mermaidModule.default;
 
-  // Always reinitialize with the current config to support different configs per component
   mermaid.initialize(config);
 
   return mermaid;
 };
+
+const mermaidCache = getMermaidCache();
 
 type MermaidProps = {
   chart: string;
@@ -30,21 +32,40 @@ type MermaidProps = {
 };
 
 export const Mermaid = ({ chart, className, config }: MermaidProps) => {
+  const cachedEntry = mermaidCache.get(chart, config);
+
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [svgContent, setSvgContent] = useState<string>('');
-  const [lastValidSvg, setLastValidSvg] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(!cachedEntry);
+  const [svgContent, setSvgContent] = useState<string>(
+    cachedEntry?.svgHtml ?? '',
+  );
+  const [lastValidSvg, setLastValidSvg] = useState<string>(
+    cachedEntry?.svgHtml ?? '',
+  );
+
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+
+    const cached = mermaidCache.get(chart, config);
+    if (cached) {
+      setSvgContent(cached.svgHtml);
+      setLastValidSvg(cached.svgHtml);
+      setIsLoading(false);
+      setError(null);
+      return () => {
+        mountedRef.current = false;
+      };
+    }
+
     const renderChart = async () => {
       try {
         setError(null);
         setIsLoading(true);
 
-        // Initialize mermaid with optional custom config
         const mermaid = await initializeMermaid(config);
 
-        // Use a stable ID based on chart content hash and timestamp to ensure uniqueness
         const chartHash = chart.split('').reduce((acc, char) => {
           return ((acc << 5) - acc + char.charCodeAt(0)) | 0;
         }, 0);
@@ -52,19 +73,19 @@ export const Mermaid = ({ chart, className, config }: MermaidProps) => {
 
         const { svg } = await mermaid.render(uniqueId, chart);
 
-        // Update both current and last valid SVG
-        setSvgContent(svg);
-        setLastValidSvg(svg);
+        mermaidCache.set(chart, config, svg);
+
+        if (mountedRef.current) {
+          setSvgContent(svg);
+          setLastValidSvg(svg);
+        }
       } catch (err) {
-        // Silently fail and keep the last valid SVG
-        // Don't update svgContent here - just keep what we have
         posthog.captureException(
           err instanceof Error ? err : new Error(String(err)),
           { source: 'renderer', operation: 'mermaidRender' },
         );
 
-        // Only set error if we don't have any valid SVG
-        if (!(lastValidSvg || svgContent)) {
+        if (mountedRef.current && !(lastValidSvg || svgContent)) {
           const errorMessage =
             err instanceof Error
               ? err.message
@@ -72,14 +93,19 @@ export const Mermaid = ({ chart, className, config }: MermaidProps) => {
           setError(errorMessage);
         }
       } finally {
-        setIsLoading(false);
+        if (mountedRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
     renderChart();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, [chart, config]);
 
-  // Show loading only on initial load when we have no content
   if (isLoading && !svgContent && !lastValidSvg) {
     return (
       <div className={cn('my-4 flex justify-center p-4', className)}>
@@ -91,7 +117,6 @@ export const Mermaid = ({ chart, className, config }: MermaidProps) => {
     );
   }
 
-  // Only show error if we have no valid SVG to display
   if (error && !svgContent && !lastValidSvg) {
     return (
       <div
@@ -113,7 +138,6 @@ export const Mermaid = ({ chart, className, config }: MermaidProps) => {
     );
   }
 
-  // Always render the SVG if we have content (either current or last valid)
   const displaySvg = svgContent || lastValidSvg;
 
   return (
