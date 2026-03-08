@@ -67,7 +67,7 @@ function PluginCard({
 
     if (plugin.requiredCredentials?.length > 0) {
       if (text.length > 0) text += ', ';
-      text += `${plugin.requiredCredentials.length} ${plugin.requiredCredentials.length === 1 ? 'credential' : 'credentials'}`;
+      text += 'credentials';
     }
 
     return text;

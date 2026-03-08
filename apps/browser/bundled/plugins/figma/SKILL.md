@@ -20,7 +20,7 @@ decode or transform it.
 ```js
 const cred = await API.getCredential('figma-pat');
 if (!cred) {
-  return 'Figma credential is not configured. Ask the user to add a Figma Personal Access Token in Settings → Plugins.';
+  return 'Figma credential is not configured. Ask the user to add a Figma Personal Access Token in Settings → Security → Personal access tokens.';
 }
 ```
 

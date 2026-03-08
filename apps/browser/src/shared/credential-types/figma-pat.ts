@@ -17,7 +17,7 @@ export const figmaPatCredentialType: CredentialTypeDefinition<FigmaPatShape> = {
     token: {
       description: 'Personal Access Token',
       helpText:
-        'Create one at figma.com \u2192 Settings \u2192 Account \u2192 Personal access tokens',
+        'Create one at figma.com \u2192 Settings \u2192 Security \u2192 Personal access tokens',
       helpUrl:
         'https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens',
     },
