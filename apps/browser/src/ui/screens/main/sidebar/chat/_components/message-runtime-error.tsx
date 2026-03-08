@@ -2,7 +2,12 @@ import { useState, useMemo } from 'react';
 import { cn } from '@/utils';
 import { IconTriangleWarning } from 'nucleo-micro-bold';
 import { Button } from '@stagewise/stage-ui/components/button';
-import { RefreshCcwIcon, CopyIcon, CopyCheckIcon } from 'lucide-react';
+import {
+  RefreshCcwIcon,
+  CopyIcon,
+  CopyCheckIcon,
+  ArrowUpRightIcon,
+} from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,15 +18,15 @@ import { useKartonState } from '@/hooks/use-karton';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { availableModels } from '@shared/available-models';
 import type { ModelProvider } from '@shared/karton-contracts/ui/shared-types';
+import type { AgentRuntimeError } from '@shared/karton-contracts/ui/agent';
 
-type RuntimeError = {
-  code?: number;
-  message: string;
-  stack?: string;
-};
+const consoleUrl =
+  import.meta.env.VITE_STAGEWISE_CONSOLE_URL || 'https://console.stagewise.io';
+
+type GenericRuntimeError = Extract<AgentRuntimeError, { kind?: undefined }>;
 
 /** Check if an error message indicates an API authorization failure */
-function isAuthorizationError(error: RuntimeError): boolean {
+function isAuthorizationError(error: GenericRuntimeError): boolean {
   const msg = error.message.toLowerCase();
   const code = error.code;
   if (code === 401 || code === 403) return true;
@@ -41,6 +46,19 @@ function isAuthorizationError(error: RuntimeError): boolean {
   );
 }
 
+function formatRelativeTime(isoDate: string): string {
+  const diff = new Date(isoDate).getTime() - Date.now();
+  if (diff <= 0) return 'shortly';
+  const minutes = Math.ceil(diff / 60_000);
+  if (minutes < 60) return `in ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+
+  const hours = Math.ceil(minutes / 60);
+  if (hours < 24) return `in ${hours} hour${hours !== 1 ? 's' : ''}`;
+
+  const days = Math.ceil(hours / 24);
+  return `in ${days} day${days !== 1 ? 's' : ''}`;
+}
+
 export function MessageRuntimeError({
   agentInstanceId,
   error,
@@ -48,9 +66,109 @@ export function MessageRuntimeError({
   canRetry,
 }: {
   agentInstanceId: string;
-  error: RuntimeError;
+  error: AgentRuntimeError;
   onRetry: () => void;
   canRetry: boolean;
+}) {
+  if (error.kind === 'plan-limit-exceeded') {
+    return (
+      <PlanLimitExceededError
+        error={error}
+        canRetry={canRetry}
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  return (
+    <GenericError
+      agentInstanceId={agentInstanceId}
+      error={error}
+      canRetry={canRetry}
+      onRetry={onRetry}
+    />
+  );
+}
+
+function PlanLimitExceededError({
+  error,
+  canRetry,
+  onRetry,
+}: {
+  error: Extract<AgentRuntimeError, { kind: 'plan-limit-exceeded' }>;
+  canRetry: boolean;
+  onRetry: () => void;
+}) {
+  const subscription = useKartonState((s) => s.userAccount.subscription);
+  const plan = subscription?.plan;
+
+  const resetsAt = error.exceededWindows[0]?.resetsAt;
+  const resetLabel = resetsAt ? formatRelativeTime(resetsAt) : null;
+
+  const { heading, description, ctaLabel, ctaHref } = useMemo(() => {
+    const resetSuffix = resetLabel ? ` Your limit resets ${resetLabel}.` : '';
+
+    switch (plan) {
+      case 'ultra':
+        return {
+          heading: 'Usage limit reached',
+          description: `You've used all your included credits.${resetSuffix}`,
+          ctaLabel: 'Get more credits',
+          ctaHref: `${consoleUrl}/billing/checkout-extra-credits`,
+        };
+      case 'pro':
+        return {
+          heading: 'Usage limit reached',
+          description: `You've reached your Pro plan limit.${resetSuffix}`,
+          ctaLabel: 'Upgrade to Ultra',
+          ctaHref: `${consoleUrl}/billing/checkout`,
+        };
+      default:
+        return {
+          heading: 'Usage limit reached',
+          description: `You've reached your free plan limit.${resetSuffix}`,
+          ctaLabel: 'Set up a subscription',
+          ctaHref: `${consoleUrl}/billing/checkout`,
+        };
+    }
+  }, [plan, resetLabel]);
+
+  return (
+    <div className="mt-6 flex w-full flex-col gap-2 rounded-lg border border-derived bg-surface-1 p-3 text-sm">
+      <span className="font-medium text-foreground">{heading}</span>
+
+      <span className="text-muted-foreground text-xs">{description}</span>
+
+      <div className="flex flex-row items-center justify-end gap-2 pt-0.5">
+        {canRetry && (
+          <Button variant="ghost" size="xs" onClick={onRetry}>
+            <RefreshCcwIcon className="size-3" />
+            Retry
+          </Button>
+        )}
+        <Button
+          variant="primary"
+          size="xs"
+          onClick={() => window.open(ctaHref, '_blank', 'noopener,noreferrer')}
+        >
+          {ctaLabel}
+          <ArrowUpRightIcon className="size-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function GenericError({
+  agentInstanceId,
+  error,
+  canRetry,
+  onRetry,
+}: {
+  agentInstanceId: string;
+  error: GenericRuntimeError;
+  canRetry: boolean;
+  onRetry: () => void;
 }) {
   const [helpExpanded, setHelpExpanded] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
@@ -66,7 +184,6 @@ export function MessageRuntimeError({
     if (!isAuthorizationError(error)) return false;
     if (!activeModelId || !providerConfigs) return false;
 
-    // Find the built-in model to get its provider
     const builtInModel = availableModels.find(
       (m) => m.modelId === activeModelId,
     );
@@ -86,7 +203,6 @@ export function MessageRuntimeError({
 
   return (
     <div className="mt-6 flex w-full flex-col gap-1.5 rounded-lg border border-derived-strong p-2 text-sm">
-      {/* Error Header */}
       <div className="flex flex-row items-center gap-1.5">
         <IconTriangleWarning className="size-3.5 shrink-0 text-error-foreground" />
         <span className="font-medium text-error-foreground">Error</span>
@@ -104,7 +220,6 @@ export function MessageRuntimeError({
         </Button>
       </div>
 
-      {/* Error Message */}
       <div className="text-foreground">
         {error.message}{' '}
         {error.code && (
@@ -114,7 +229,6 @@ export function MessageRuntimeError({
         )}
       </div>
 
-      {/* Sign-in link for stagewise auth errors */}
       {showSignInLink && (
         <div className="text-muted-foreground text-xs">
           Please{' '}
@@ -128,7 +242,6 @@ export function MessageRuntimeError({
         </div>
       )}
 
-      {/* Help Section */}
       <Collapsible open={helpExpanded} onOpenChange={setHelpExpanded}>
         <CollapsibleTrigger
           size="condensed"
@@ -159,7 +272,6 @@ export function MessageRuntimeError({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Retry Button */}
       {canRetry && (
         <div className="-mt-1 flex flex-row justify-end">
           <Button variant="ghost" size="xs" onClick={onRetry}>

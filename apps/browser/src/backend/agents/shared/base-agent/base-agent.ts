@@ -16,6 +16,7 @@ import type {
   AgentMessage,
   AgentTypes,
   AgentState,
+  AgentRuntimeError,
 } from '@shared/karton-contracts/ui/agent';
 import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
@@ -1304,10 +1305,12 @@ export abstract class BaseAgent<
           `[BaseAgent:${this.instanceId}] Error in 'streamText': ${this.formatError(error)}`,
         );
         this.report(error, 'streamText');
+
+        const parsedError = this.parsePlanLimitError(error);
         this.state.set((draft) => {
           draft.isWorking = false;
           draft.unread = true;
-          draft.error = {
+          draft.error = parsedError ?? {
             message: `LLM provider error: ${error.message}`,
             stack: error.stack,
           };
@@ -1603,6 +1606,8 @@ export abstract class BaseAgent<
     this.state.set((draft) => {
       draft.usedTokens = result.usage.totalTokens ?? 0;
     });
+
+    this.updateUsageWarning(result);
 
     // Save the agent state for recovery
     await this.saveState();
@@ -1913,6 +1918,59 @@ export abstract class BaseAgent<
       parts.push(`response=${(ctx.responseBody as string).slice(0, 500)}`);
     if (ctx.causeMessage) parts.push(`cause=${ctx.causeMessage}`);
     return parts.join(', ');
+  }
+
+  private parsePlanLimitError(error: Error): AgentRuntimeError | null {
+    const ctx = BaseAgent.extractApiErrorContext(error);
+    if (typeof ctx.responseBody !== 'string') return null;
+    try {
+      const body = JSON.parse(ctx.responseBody);
+      if (body?.error !== 'PLAN_LIMIT_EXCEEDED') return null;
+      const exceededWindows =
+        body.details?.exceededWindows
+          ?.filter(
+            (w: Record<string, unknown>) =>
+              typeof w.type === 'string' && typeof w.resetsAt === 'string',
+          )
+          .map((w: { type: string; resetsAt: string }) => ({
+            type: w.type,
+            resetsAt: w.resetsAt,
+          })) ?? [];
+      return {
+        kind: 'plan-limit-exceeded',
+        message: body.message ?? 'Usage limit exceeded',
+        exceededWindows,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private updateUsageWarning(result: StepResult<StagewiseToolSet>): void {
+    const pm = result.providerMetadata as
+      | Record<string, Record<string, unknown>>
+      | undefined;
+    const limits = pm?.stagewise?.limits as
+      | Array<{
+          type: string;
+          usedPercent: number;
+          resetsAt: string;
+        }>
+      | undefined;
+    if (!Array.isArray(limits)) return;
+
+    const warned = limits.find(
+      (w) => typeof w.usedPercent === 'number' && w.usedPercent >= 80,
+    );
+    this.state.set((draft) => {
+      draft.usageWarning = warned
+        ? {
+            windowType: warned.type,
+            usedPercent: warned.usedPercent,
+            resetsAt: warned.resetsAt,
+          }
+        : undefined;
+    });
   }
 
   private report(

@@ -16,6 +16,19 @@ export type AgentMessage = UIMessage<
 
 export type AgentToolUIPart = ToolUIPart<UIAgentTools>;
 
+export type ExceededWindow = {
+  type: string;
+  resetsAt: string;
+};
+
+export type AgentRuntimeError =
+  | { kind?: undefined; code?: number; message: string; stack?: string }
+  | {
+      kind: 'plan-limit-exceeded';
+      message: string;
+      exceededWindows: ExceededWindow[];
+    };
+
 export type AgentState = {
   title: string; // The title of the agent - may not be necessary
   isWorking: boolean; // Whether the agent is currently working on a task or if it's idling (either finished or waiting for user input).
@@ -24,8 +37,13 @@ export type AgentState = {
   activeModelId: ModelId; // The model ID that the agent last used
   inputState: string; // Serialized input state - may be simple text or some stringified object if our input field needs that.
   usedTokens: number;
-  error?: { code?: number; message: string; stack?: string }; // Current error state (not persisted, only available during runtime for UI display)
+  error?: AgentRuntimeError; // Current error state (not persisted, only available during runtime for UI display)
   unread?: boolean; // Whether the agent has unseen output (not persisted, set on finish/error, cleared by markAsRead)
+  usageWarning?: {
+    windowType: string;
+    usedPercent: number;
+    resetsAt: string;
+  };
 };
 
 export type ToolboxState = {

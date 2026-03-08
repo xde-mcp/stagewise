@@ -137,14 +137,6 @@ export type ChatSummary = {
   updatedAt: Date;
 };
 
-export enum AgentErrorType {
-  INSUFFICIENT_CREDITS = 'insufficient-credits-message',
-  PLAN_LIMITS_EXCEEDED = 'plan-limits-exceeded',
-  CONTEXT_LIMIT_EXCEEDED = 'context-limit-exceeded',
-  AGENT_ERROR = 'agent-error',
-  OTHER = 'other',
-}
-
 /**
  * Known AI SDK error types for classification
  */
@@ -156,22 +148,6 @@ export type AISDKErrorType =
   | 'AI_NoContentGeneratedError'
   | 'NetworkError'
   | 'UnknownError';
-
-/**
- * Structured error info for detailed error display
- */
-export type StructuredAgentErrorInfo = {
-  /** Human-readable error message */
-  message: string;
-  /** HTTP status code or error code (e.g., "400", "ECONNREFUSED", "VALIDATION_ERROR") */
-  code: string;
-  /** The type of AI SDK error for UI classification */
-  errorType: AISDKErrorType;
-  /** Anthropic-specific error type (e.g., "invalid_request_error", "rate_limit_error") */
-  anthropicType?: string;
-  /** Request ID for support/debugging */
-  requestId?: string;
-};
 
 export const recentlyOpenedWorkspaceSchema = z.object({
   path: z.string(),
@@ -219,33 +195,6 @@ export type StoredExperienceData = z.infer<typeof storedExperienceDataSchema>;
 export type RecentlyOpenedWorkspace = z.infer<
   typeof recentlyOpenedWorkspaceSchema
 >;
-
-export type AgentError =
-  | {
-      type: AgentErrorType.INSUFFICIENT_CREDITS;
-      error: { name: string; message: string };
-    }
-  | {
-      type: AgentErrorType.PLAN_LIMITS_EXCEEDED;
-      error: {
-        name: string;
-        message: string;
-        isPaidPlan: boolean;
-        cooldownMinutes?: number;
-      };
-    }
-  | {
-      type: AgentErrorType.CONTEXT_LIMIT_EXCEEDED;
-      error: { name: string; message: string };
-    }
-  | {
-      type: AgentErrorType.AGENT_ERROR;
-      error: StructuredAgentErrorInfo;
-    }
-  | {
-      type: AgentErrorType.OTHER;
-      error: { name: string; message: string };
-    };
 
 export type ColorScheme = 'system' | 'light' | 'dark';
 

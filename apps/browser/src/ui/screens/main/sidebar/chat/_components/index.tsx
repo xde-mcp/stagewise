@@ -10,6 +10,7 @@ import {
 import { ChatHistory } from './chat-history';
 import { ChatPanelFooter } from './panel-footer';
 import { InternalAppFrame } from './internal-app-frame';
+import { UsageWarningBadge } from './usage-warning-badge';
 import { useKartonState } from '@/hooks/use-karton';
 import { cn } from '@/utils';
 import { useOpenAgent, OpenAgentContext } from '@/hooks/use-open-chat';
@@ -122,6 +123,7 @@ export function ChatPanel() {
         )}
       </OpenAgentContext.Provider>
       <InternalAppFrame />
+      <UsageWarningBadge />
       <ChatPanelFooter key={openAgent} />
     </div>
   );
