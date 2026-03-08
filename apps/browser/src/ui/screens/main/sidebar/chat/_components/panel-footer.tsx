@@ -262,6 +262,9 @@ export function ChatPanelFooter() {
             | undefined,
         });
         updateChatInputState(tiptapContent);
+        requestAnimationFrame(() => {
+          chatInputRef.current?.focus();
+        });
       }
 
       // Restore file attachments state (used by handleSubmit for the message)
