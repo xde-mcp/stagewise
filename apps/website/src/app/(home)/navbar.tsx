@@ -6,7 +6,7 @@ import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { MenuIcon, XIcon } from 'lucide-react';
-import { IconUserSettingsFillDuo18 } from 'nucleo-ui-fill-duo-18';
+import { IconUserUpdateFillDuo18 } from 'nucleo-ui-fill-duo-18';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -86,11 +86,11 @@ export function Navbar() {
             href="https://console.stagewise.io"
             className={buttonVariants({
               size: 'sm',
-              variant: 'secondary',
+              variant: 'ghost',
             })}
           >
             Account
-            <IconUserSettingsFillDuo18 className="size-4" />
+            <IconUserUpdateFillDuo18 className="size-4" />
           </Link>
           {/* {!isMobile && isOsSupported && (
             <Link
