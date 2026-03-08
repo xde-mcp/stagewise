@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { cn } from '@/utils';
 import { IconTriangleWarning } from 'nucleo-micro-bold';
-import { Button } from '@stagewise/stage-ui/components/button';
+import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import {
   RefreshCcwIcon,
   CopyIcon,
@@ -139,13 +139,14 @@ function PlanLimitExceededError({
 
       <span className="text-muted-foreground text-xs">{description}</span>
 
-      <div className="flex flex-row items-center justify-end gap-2 pt-0.5">
-        {canRetry && (
-          <Button variant="ghost" size="xs" onClick={onRetry}>
-            <RefreshCcwIcon className="size-3" />
-            Retry
-          </Button>
-        )}
+      <div className="flex flex-row items-center justify-end gap-2 pt-2">
+        <a
+          href="stagewise://internal/agent-settings/models-providers"
+          className={buttonVariants({ variant: 'ghost', size: 'xs' })}
+        >
+          Configure API keys
+        </a>
+
         <Button
           variant="primary"
           size="xs"

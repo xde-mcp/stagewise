@@ -160,7 +160,9 @@ export function ActiveAgentsGrid() {
               isWaitingForUser: hasPendingQuestion,
               activityText: activity.text,
               activityIsUserInput: activity.isUserInput,
-              hasError: !!agent.state.error,
+              hasError:
+                !!agent.state.error &&
+                agent.state.error.kind !== 'plan-limit-exceeded',
               unread: !!agent.state.unread,
               lastMessageAt: lastMsg?.metadata?.createdAt
                 ? new Date(lastMsg.metadata.createdAt).getTime()
