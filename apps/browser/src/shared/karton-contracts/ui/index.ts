@@ -137,18 +137,6 @@ export type ChatSummary = {
   updatedAt: Date;
 };
 
-/**
- * Known AI SDK error types for classification
- */
-export type AISDKErrorType =
-  | 'AI_APICallError'
-  | 'AI_InvalidArgumentError'
-  | 'AI_TypeValidationError'
-  | 'AI_InvalidPromptError'
-  | 'AI_NoContentGeneratedError'
-  | 'NetworkError'
-  | 'UnknownError';
-
 export const recentlyOpenedWorkspaceSchema = z.object({
   path: z.string(),
   name: z.string(),
@@ -173,14 +161,6 @@ export const downloadsStateSchema = z.object({
 });
 
 export type DownloadsState = z.infer<typeof downloadsStateSchema>;
-
-/** Schema for agent preferences persisted data */
-export const agentPreferencesSchema = z.object({
-  /** The model ID that was last selected by the user */
-  selectedModelId: z.string().optional(),
-});
-
-export type AgentPreferences = z.infer<typeof agentPreferencesSchema>;
 
 export const lastViewedChatsSchema = z.record(z.string(), z.number());
 
