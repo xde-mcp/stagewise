@@ -22,6 +22,7 @@ import {
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { InternalPageBreadcrumbs } from './internal-page-breadcrumbs';
+import { dispatchArrowFromCtrl } from '@ui/utils/keyboard-nav';
 
 export interface OmniboxRef {
   focus: () => void;
@@ -183,36 +184,8 @@ export const Omnibox = ({
     }, 0);
   }, []);
 
-  // Handle Ctrl+N/P for omnibox navigation (Chrome-like behavior)
-  // Uses physical Ctrl key on all platforms (including Mac)
   const onInputKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
-    // Ctrl+N to move down (like ArrowDown)
-    if (e.ctrlKey && e.key === 'n' && !e.metaKey && !e.shiftKey && !e.altKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      // Dispatch a synthetic ArrowDown event to trigger Base UI's navigation
-      const arrowEvent = new window.KeyboardEvent('keydown', {
-        key: 'ArrowDown',
-        code: 'ArrowDown',
-        bubbles: true,
-        cancelable: true,
-      });
-      e.currentTarget.dispatchEvent(arrowEvent);
-    }
-
-    // Ctrl+P to move up (like ArrowUp)
-    if (e.ctrlKey && e.key === 'p' && !e.metaKey && !e.shiftKey && !e.altKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      // Dispatch a synthetic ArrowUp event to trigger Base UI's navigation
-      const arrowEvent = new window.KeyboardEvent('keydown', {
-        key: 'ArrowUp',
-        code: 'ArrowUp',
-        bubbles: true,
-        cancelable: true,
-      });
-      e.currentTarget.dispatchEvent(arrowEvent);
-    }
+    dispatchArrowFromCtrl(e);
   }, []);
 
   const showDefaultBrowserInfo = false; // TODO

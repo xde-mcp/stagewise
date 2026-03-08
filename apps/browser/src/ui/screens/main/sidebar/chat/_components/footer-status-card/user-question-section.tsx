@@ -24,6 +24,7 @@ import type {
   QuestionAnswerValue,
 } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { PendingUserQuestion } from '@shared/karton-contracts/ui/index';
+import { dispatchArrowFromCtrl } from '@ui/utils/keyboard-nav';
 
 /**
  * Module-level store for the current form draft answers.
@@ -482,6 +483,7 @@ function FieldRenderer({
           onFocus={handleQuestionFocus}
           onBlur={handleQuestionBlur}
           onKeyDown={(e) => {
+            if (dispatchArrowFromCtrl(e)) return;
             // Auto-switch to "Other" when typing a printable char on a radio
             if (
               showOther &&
@@ -556,6 +558,7 @@ function FieldRenderer({
                       onChange(`__other__:${otherTextRef.current}`);
                   }}
                   onKeyDown={(e) => {
+                    if (dispatchArrowFromCtrl(e)) return;
                     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                       // Select the adjacent option and focus its radio
                       e.preventDefault();
