@@ -107,7 +107,7 @@ export type AttachmentLinkData =
       lineNumber?: string;
       incomplete?: boolean;
     }
-  | { type: 'mention'; providerType: string; id: string };
+  | { type: 'mention'; providerType: string; id: string; label?: string };
 
 const ATTACHMENT_LINK_PATTERNS: Array<{
   prefix: string;
@@ -183,7 +183,7 @@ export type MessageSegment =
 
 export function parseMessageSegments(text: string): MessageSegment[] {
   const segments: MessageSegment[] = [];
-  const linkStartRegex = /\[(?:[^\]]*)\]\(/g;
+  const linkStartRegex = /\[([^\]]*)\]\(/g;
   const prefixes = ATTACHMENT_LINK_PATTERNS.map((p) => p.prefix);
   let lastEnd = 0;
   let match = linkStartRegex.exec(text);
@@ -216,6 +216,11 @@ export function parseMessageSegments(text: string): MessageSegment[] {
     if (!parsed) {
       match = linkStartRegex.exec(text);
       continue;
+    }
+
+    const bracketLabel = match[1];
+    if (parsed.type === 'mention' && bracketLabel) {
+      parsed.label = bracketLabel;
     }
 
     if (match.index > lastEnd) {
@@ -483,7 +488,7 @@ export const AttachmentLinkRouter = ({
           node={{
             attrs: {
               id: linkData.id,
-              label: linkData.id,
+              label: linkData.label ?? linkData.id,
               providerType: linkData.providerType,
             },
           }}
