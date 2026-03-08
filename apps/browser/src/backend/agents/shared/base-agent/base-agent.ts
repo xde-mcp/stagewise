@@ -488,6 +488,38 @@ export abstract class BaseAgent<
 
     this.logger.debug(`[BaseAgent:${this.instanceId}] Sending user message`);
 
+    // Auto-deny any pending approval requests before the user message enters
+    // history. Without this, a user message would sit after the assistant's
+    // tool call but before any tool result, causing canRunStep() to block and
+    // later approve/deny clicks to produce duplicate tool parts.
+    this.state.set((draft) => {
+      for (const historyMsg of draft.history) {
+        if (historyMsg.role !== 'assistant') continue;
+        for (let i = 0; i < historyMsg.parts.length; i++) {
+          const p = historyMsg.parts[i];
+          if (
+            (p.type.startsWith('tool-') || p.type === 'dynamic-tool') &&
+            (p as AgentToolUIPart | DynamicToolUIPart).state ===
+              'approval-requested'
+          ) {
+            const toolPart = p as AgentToolUIPart | DynamicToolUIPart;
+            const updatedToolPart: AgentToolUIPart | DynamicToolUIPart = {
+              ...toolPart,
+              state: 'output-denied' as const,
+              approval: {
+                ...toolPart.approval!,
+                approved: false,
+                reason:
+                  this.config.flushQueueToolCallRequestApprovalReason ??
+                  'User sent new message before tool call approval was granted.',
+              },
+            } as AgentToolUIPart | DynamicToolUIPart;
+            historyMsg.parts[i] = updatedToolPart;
+          }
+        }
+      }
+    });
+
     // If the agent is not running, we add the message to the history and immediately send it to the model.
     this.state.set((draft) => {
       draft.history.push(msg);
@@ -558,7 +590,7 @@ export abstract class BaseAgent<
       }
     });
 
-    this.runStep();
+    this.runStep(true);
 
     return;
   }
@@ -1157,7 +1189,7 @@ export abstract class BaseAgent<
   /**
    * Should be executed after a user or tool approval message was added to the agent
    */
-  private async runStep(): Promise<void> {
+  private async runStep(isApprovalContinuation = false): Promise<void> {
     // Check canRunStep BEFORE setting isWorking to avoid deadlock
     if (!this.canRunStep()) return;
 
@@ -1368,21 +1400,18 @@ export abstract class BaseAgent<
         .reverse()
         .find((m) => m.role === 'assistant');
 
-      const hasApprovalResponse = lastAssistantMessage?.parts.some(
-        (p) =>
-          (p.type.startsWith('tool-') || p.type === 'dynamic-tool') &&
-          (p as AgentToolUIPart | DynamicToolUIPart).state ===
-            'approval-responded',
-      );
-
       // When resuming after a tool-approval response, pass originalMessages
       // so toUIMessageStream correlates the new stream's tool-result parts
       // with the existing assistant message (avoids duplicate tool parts).
       // On normal steps, omit it to prevent the SDK from appending parts
       // from prior turns into the new message.
+      // Important: this decision is driven by the explicit `isApprovalContinuation`
+      // flag from the call site — NOT by scanning history for part states.
+      // Auto-denied approvals (e.g. from sendUserMessage) set parts to
+      // output-denied but must use the normal (non-bridging) stream path.
       const uiStream = stream.toUIMessageStream<AgentMessage>({
         generateMessageId: randomUUID,
-        originalMessages: hasApprovalResponse
+        originalMessages: isApprovalContinuation
           ? this.state.get().history
           : undefined,
       });
@@ -1393,7 +1422,7 @@ export abstract class BaseAgent<
       await Promise.all([
         this.handleUiStream(
           uiStream,
-          hasApprovalResponse ? lastAssistantMessage : undefined,
+          isApprovalContinuation ? lastAssistantMessage : undefined,
         ),
         stream.consumeStream(),
       ]);
@@ -1855,7 +1884,7 @@ export abstract class BaseAgent<
             // All tool call approvals should be rejected with the configured reason for abort.
             const updatedToolPart: AgentToolUIPart | DynamicToolUIPart = {
               ...toolPart,
-              state: 'approval-responded',
+              state: 'output-denied',
               approval: {
                 ...toolPart.approval,
                 approved: false,
