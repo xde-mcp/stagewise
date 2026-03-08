@@ -92,8 +92,6 @@ export function MessageRuntimeError({
 
 function PlanLimitExceededError({
   error,
-  canRetry,
-  onRetry,
 }: {
   error: Extract<AgentRuntimeError, { kind: 'plan-limit-exceeded' }>;
   canRetry: boolean;
