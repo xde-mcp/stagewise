@@ -318,9 +318,9 @@ export const availableModels = [
     modelContextRaw: 200000,
     headers: openaiHeaders,
     providerOptions: {
-      stagewise: { reasoning: { enabled: true, effort: 'high' } },
+      stagewise: { reasoning: { enabled: true, effort: 'medium' } },
       openai: {
-        reasoningEffort: 'high',
+        reasoningEffort: 'medium',
         reasoningSummary: 'auto',
         parallelToolCalls: true,
         strictJsonSchema: true,
