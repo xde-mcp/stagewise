@@ -9,6 +9,11 @@ const openaiHeaders = {};
 
 const googleHeaders = {};
 
+export const PRICING_REFERENCE = {
+  inputPerMillion: 1.0,
+  outputPerMillion: 5.0,
+};
+
 import type { ModalityConstraint } from '@shared/karton-contracts/ui/shared-types';
 
 type InputConstraints = {
@@ -74,6 +79,11 @@ export const availableModels = [
       },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 5.0,
+      outputPerMillion: 25.0,
+      relativeMultiplier: 5.3,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -112,6 +122,11 @@ export const availableModels = [
       },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 2.5,
+      outputPerMillion: 15.0,
+      relativeMultiplier: 3.1,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -147,6 +162,11 @@ export const availableModels = [
       },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 2.0,
+      outputPerMillion: 12.0,
+      relativeMultiplier: 2.5,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -185,6 +205,11 @@ export const availableModels = [
       },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 1.75,
+      outputPerMillion: 14.0,
+      relativeMultiplier: 2.9,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -219,6 +244,11 @@ export const availableModels = [
       anthropic: { thinking: { type: 'adaptive' }, effort: 'medium' },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 3.0,
+      outputPerMillion: 15.0,
+      relativeMultiplier: 3.2,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -255,6 +285,11 @@ export const availableModels = [
       },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 0.45,
+      outputPerMillion: 2.2,
+      relativeMultiplier: 0.5,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -292,6 +327,11 @@ export const availableModels = [
       },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 1.1,
+      outputPerMillion: 14.0,
+      relativeMultiplier: 2.8,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -325,6 +365,11 @@ export const availableModels = [
       anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 0.5,
+      outputPerMillion: 3.0,
+      relativeMultiplier: 0.6,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -358,6 +403,11 @@ export const availableModels = [
       anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 1.0,
+      outputPerMillion: 5.0,
+      relativeMultiplier: 1.0,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -391,6 +441,11 @@ export const availableModels = [
       anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 0.25,
+      outputPerMillion: 1.5,
+      relativeMultiplier: 0.3,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -424,6 +479,11 @@ export const availableModels = [
       anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 0.08,
+      outputPerMillion: 0.24,
+      relativeMultiplier: 0.05,
+    },
     capabilities: {
       inputModalities: {
         text: true,
@@ -457,6 +517,11 @@ export const availableModels = [
       anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
     },
     thinkingEnabled: true,
+    pricing: {
+      inputPerMillion: 0.07,
+      outputPerMillion: 0.27,
+      relativeMultiplier: 0.06,
+    },
     capabilities: {
       inputModalities: {
         text: true,

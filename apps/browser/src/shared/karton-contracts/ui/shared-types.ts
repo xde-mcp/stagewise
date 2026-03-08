@@ -240,6 +240,11 @@ export type ModelSettings = {
     anthropic?: AnthropicProviderOptions;
     openai?: OpenAIResponsesProviderOptions;
   } & Record<string, unknown>;
+  pricing?: {
+    inputPerMillion: number;
+    outputPerMillion: number;
+    relativeMultiplier: number;
+  };
   thinkingEnabled: boolean; // Shows an thinking icon in the model card
   capabilities: {
     inputModalities: {

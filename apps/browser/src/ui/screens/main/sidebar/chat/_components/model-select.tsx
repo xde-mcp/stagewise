@@ -1,5 +1,10 @@
 import { Combobox as ComboboxBase } from '@base-ui/react/combobox';
 import {
+  IconArrowUpOutline18,
+  IconArrowDownOutline18,
+  IconXmarkOutline18,
+} from 'nucleo-ui-outline-18';
+import {
   Combobox,
   ComboboxGroup,
   ComboboxGroupLabel,
@@ -31,6 +36,7 @@ interface ModelOption {
   description: string;
   context: string;
   thinkingEnabled: boolean;
+  pricingMultiplier?: number;
   group?: string;
 }
 
@@ -38,16 +44,29 @@ function ModelTooltipContent({
   model,
   description,
   context,
+  pricingMultiplier,
 }: {
   model: string;
   description: string;
   context: string;
+  pricingMultiplier?: number;
 }): React.ReactNode {
   return (
     <div className="flex w-48 flex-col gap-1.5">
       <div className="font-semibold">{model}</div>
       <div className="text-muted-foreground">{description}</div>
-      <div className="text-[10px] text-muted-foreground/70">{context}</div>
+      <div className="text-[10px] text-muted-foreground/70">
+        {context}
+        {pricingMultiplier != null && (
+          <>
+            {' · '}
+            <span className="inline-inline-flex items-center">
+              {pricingMultiplier}
+              <IconXmarkOutline18 className="inline size-2" />$
+            </span>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -82,6 +101,7 @@ export const ModelSelect = memo(function ModelSelect({
         description: model.modelDescription,
         context: model.modelContext,
         thinkingEnabled: 'thinkingEnabled' in model && !!model.thinkingEnabled,
+        pricingMultiplier: model.pricing?.relativeMultiplier,
       }));
 
     const custom: ModelOption[] = customModels
@@ -322,6 +342,7 @@ export const ModelSelect = memo(function ModelSelect({
                   model={hoveredModel.displayName}
                   description={hoveredModel.description}
                   context={hoveredModel.context}
+                  pricingMultiplier={hoveredModel.pricingMultiplier}
                 />
               </div>
             )}
@@ -342,6 +363,14 @@ const ModelItem = memo(function ModelItem({
     event: React.MouseEvent<HTMLDivElement>,
   ) => void;
 }) {
+  const PriceIcon =
+    model.pricingMultiplier != null
+      ? model.pricingMultiplier < 0.5
+        ? IconArrowDownOutline18
+        : model.pricingMultiplier > 2.0
+          ? IconArrowUpOutline18
+          : null
+      : null;
   return (
     <ComboboxItem
       value={model.modelId}
@@ -350,7 +379,15 @@ const ModelItem = memo(function ModelItem({
     >
       <ComboboxItemIndicator />
       <span className="col-start-2 flex min-w-0 flex-row items-center justify-between gap-4 text-xs">
-        <span className="truncate">{model.displayName}</span>
+        <div className="flex flex-row items-center gap-1.5">
+          <span className="truncate">{model.displayName}</span>
+          {PriceIcon && (
+            <span className="inline-flex items-center text-subtle-foreground">
+              $
+              <PriceIcon className="size-2.75" />
+            </span>
+          )}
+        </div>
         {model.thinkingEnabled && (
           <div className="flex size-4 shrink-0 items-center justify-center">
             <IconBrainOutline18 className="size-3 text-muted-foreground" />

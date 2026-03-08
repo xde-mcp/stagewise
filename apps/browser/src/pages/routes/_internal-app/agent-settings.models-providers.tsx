@@ -47,6 +47,8 @@ import {
   IconPlusOutline18,
   IconPenOutline18,
   IconTrashOutline18,
+  IconArrowUpOutline18,
+  IconArrowDownOutline18,
 } from 'nucleo-ui-outline-18';
 
 enablePatches();
@@ -780,6 +782,21 @@ function BuiltInModelCard({
               ? PROVIDER_DISPLAY_INFO[model.officialProvider].name
               : 'Unknown'}{' '}
             &middot; {model.modelContext}
+            {model.pricing &&
+              (model.pricing.relativeMultiplier < 0.5 ||
+                model.pricing.relativeMultiplier > 2.0) && (
+                <>
+                  {' · '}
+                  <span className="inline-flex items-center">
+                    $
+                    {model.pricing.relativeMultiplier < 0.5 ? (
+                      <IconArrowDownOutline18 className="size-2.5" />
+                    ) : (
+                      <IconArrowUpOutline18 className="size-2.5" />
+                    )}
+                  </span>
+                </>
+              )}
           </p>
         </div>
         <div
