@@ -492,11 +492,18 @@ function WorkspacePreviewCardContent({
             {name}
           </span>
           {mount.isGitRepo && (
-            <IconCodeBranchOutline18 className="size-3 shrink-0 text-muted-foreground" />
+            <>
+              <IconCodeBranchOutline18 className="size-3 shrink-0 text-muted-foreground" />
+              {mount.gitBranch && (
+                <span className="max-w-24 truncate text-2xs text-subtle-foreground leading-normal">
+                  {mount.gitBranch}
+                </span>
+              )}
+            </>
           )}
         </div>
         <span
-          className="max-w-full truncate text-[10px] text-subtle-foreground leading-normal"
+          className="max-w-full truncate text-2xs text-subtle-foreground leading-normal"
           dir="rtl"
         >
           <span dir="ltr">{mount.path}</span>

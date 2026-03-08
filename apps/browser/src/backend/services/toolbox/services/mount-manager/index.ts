@@ -21,7 +21,7 @@ import {
 } from '@/agents/shared/prompts/utils/read-workspace-md';
 import { readAgentsMd } from '@/agents/shared/prompts/utils/read-agents-md';
 import { getSkills } from '@/agents/shared/prompts/utils/get-skills';
-import { isGitRepo } from '@/utils/git-tools';
+import { isGitRepo, getGitBranch } from '@/utils/git-tools';
 import { getRipgrepBasePath } from '@/utils/paths';
 
 type AgentInstanceId = string;
@@ -246,12 +246,14 @@ export class MountManagerService extends DisposableService {
       getSkills(clientRuntime),
     ]);
     const gitRepo = isGitRepo(resolvedWorkspacePath);
+    const gitBranch = getGitBranch(resolvedWorkspacePath);
 
     this.uiKarton.setState((draft) => {
       draft.toolbox[agentInstanceId].workspace.mounts.push({
         prefix,
         path: resolvedWorkspacePath,
         isGitRepo: gitRepo,
+        gitBranch,
         skills: skills.map((s) => ({
           name: s.name,
           description: s.description,
@@ -472,10 +474,16 @@ export class MountManagerService extends DisposableService {
   ): void {
     if (this.watchersPerPath.has(wsPath)) return;
 
-    const allowedTopLevel = new Set(['.stagewise', '.agents', 'AGENTS.md']);
+    const allowedTopLevel = new Set([
+      '.stagewise',
+      '.agents',
+      '.git',
+      'AGENTS.md',
+    ]);
     const allowedChildren: Record<string, Set<string>> = {
       '.stagewise': new Set(['skills', WORKSPACE_MD_FILENAME]),
       '.agents': new Set(['skills']),
+      '.git': new Set(['HEAD']),
     };
 
     const watcher = chokidar.watch(wsPath, {
@@ -564,11 +572,14 @@ export class MountManagerService extends DisposableService {
         description: s.description,
       }));
 
+      const gitBranch = getGitBranch(wsPath);
+
       this.uiKarton.setState((draft) => {
         for (const agentId in draft.toolbox) {
           for (const mount of draft.toolbox[agentId].workspace.mounts) {
             if (mount.path !== wsPath) continue;
             mount.skills = skillEntries;
+            mount.gitBranch = gitBranch;
             mount.workspaceMdContent = workspaceMdContent;
             mount.agentsMdContent = agentsMdContent;
           }

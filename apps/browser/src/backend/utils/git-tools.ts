@@ -17,6 +17,20 @@ export function isGitRepo(workspacePath: string): boolean {
   }
 }
 
+export function getGitBranch(workspacePath: string): string | null {
+  try {
+    return (
+      execSync('git rev-parse --abbrev-ref HEAD', {
+        cwd: workspacePath,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }).trim() || null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export const getRepoRootForPath = (path: string) => {
   try {
     // Execute the git command, starting from the given directory
