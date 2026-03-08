@@ -8,7 +8,11 @@ import chokidar, { type FSWatcher } from 'chokidar';
 import type { Logger } from '@/services/logger';
 import fs from 'node:fs/promises';
 import type { KartonService } from '@/services/karton';
-import { getDiffHistoryDbPath, getDiffHistoryBlobsDir } from '@/utils/paths';
+import {
+  getDiffHistoryDbPath,
+  getDiffHistoryBlobsDir,
+  getAgentAppsDir,
+} from '@/utils/paths';
 import {
   type FileDiff,
   MAX_DIFF_TEXT_FILE_SIZE,
@@ -332,13 +336,17 @@ export class DiffHistoryService extends DisposableService {
         };
       });
 
-    const pendingFileDiffs =
-      await this.getPendingFileDiffsForAgentInstanceId(agentInstanceId);
+    const appsDir = getAgentAppsDir(agentInstanceId);
+
+    const pendingFileDiffs = (
+      await this.getPendingFileDiffsForAgentInstanceId(agentInstanceId)
+    ).filter((d) => !d.path.startsWith(appsDir));
     this.uiKarton.setState((draft) => {
       draft.toolbox[agentInstanceId].pendingFileDiffs = pendingFileDiffs;
     });
-    const editSummary =
-      await this.getEditSummaryForAgentInstanceId(agentInstanceId);
+    const editSummary = (
+      await this.getEditSummaryForAgentInstanceId(agentInstanceId)
+    ).filter((d) => !d.path.startsWith(appsDir));
     this.uiKarton.setState((draft) => {
       draft.toolbox[agentInstanceId].editSummary = editSummary;
     });
