@@ -10,6 +10,25 @@ This plugin provides three capabilities:
 2. **Real-time selection monitoring** — watch which nodes the user selects in a Figma tab via CDP.
 3. **figma-app** — an interactive UI in the chat sidebar that displays the current selection as live badges.
 
+## Querying the Current Selection (IMPORTANT)
+
+The user's Figma selection is **not** automatically attached to their
+message. Before acting on any Figma-related request, **always** query
+the latest selection so you know which nodes the user is referring to:
+
+```js
+const selectedNodes = globalThis.figmaSelection || [];
+return selectedNodes;
+```
+
+If the result is an empty array and the user clearly expects a
+selection, remind them to select elements in the Figma tab first.
+
+Do this at the **start** of every Figma-related turn — even if you
+set up monitoring earlier, the selection may have changed since then.
+
+---
+
 ## Authentication
 
 Request the stored Figma credential. The `token` field is an opaque
