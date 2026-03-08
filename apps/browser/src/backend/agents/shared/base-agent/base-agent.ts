@@ -106,7 +106,7 @@ export type BaseAgentConfig<TFinishToolOutputSchema extends z.ZodType | null> =
      *
      * @note You can customize summarization logic by overriding the `summarizeChatHistory` method.
      *
-     * @default 0.5
+     * @default 0.65
      */
     historyCompressionThreshold?: number;
 
@@ -1643,7 +1643,7 @@ export abstract class BaseAgent<
 
     // Check the current token usage. If necessary, summarize the chat history.
     // We always check the token usage in relation to the currently selected model.
-    const compactionThreshold = this.config.historyCompressionThreshold ?? 0.5;
+    const compactionThreshold = this.config.historyCompressionThreshold ?? 0.65;
     try {
       if (
         compactionThreshold >= 0 &&
