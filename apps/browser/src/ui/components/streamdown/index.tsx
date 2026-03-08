@@ -351,7 +351,6 @@ const CodeComponent = ({
       </div>
       {language === 'mermaid' ? (
         <OverlayScrollbar
-          className="overscroll-contain"
           contentClassName="p-2"
           options={{ overflow: { x: 'scroll', y: 'scroll' } }}
         >
