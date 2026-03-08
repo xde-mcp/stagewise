@@ -383,7 +383,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
 
         return new Response(fileResponse.body, {
           status: 200,
-          headers: { 'Content-Type': mime },
+          headers: { 'Content-Type': mime, 'Cache-Control': 'no-store' },
         });
       } catch (err) {
         this.logger.error('[UIController] app protocol error', {
