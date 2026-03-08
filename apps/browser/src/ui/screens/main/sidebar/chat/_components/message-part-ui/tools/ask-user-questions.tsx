@@ -153,10 +153,10 @@ export const AskUserQuestionsToolPart = ({
               const displayValue = formatAnswerValue(field, answerValue);
               return (
                 <div key={questionId} className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground text-sm">
+                  <span className="font-medium text-muted-foreground text-xs">
                     <InlineMarkdown>{label}</InlineMarkdown>
                   </span>
-                  <span className="text-muted-foreground text-sm">
+                  <span className="text-foreground text-sm">
                     {displayValue}
                   </span>
                 </div>
