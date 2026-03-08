@@ -189,6 +189,36 @@ export class AgentPersistenceDB {
   }
 
   /**
+   * Returns the mountedWorkspaces of the most recently persisted chat agent,
+   * or null if no chat agents exist.
+   */
+  public async getLastChatWorkspacePaths(): Promise<
+    schema.StoredAgentInstance['mountedWorkspaces'] | null
+  > {
+    const results = await this._db
+      .select({
+        mountedWorkspaces: schema.agentInstances.mountedWorkspaces,
+      })
+      .from(schema.agentInstances)
+      .where(
+        and(
+          isNull(schema.agentInstances.parentAgentInstanceId),
+          eq(schema.agentInstances.type, AgentTypes.CHAT),
+        ),
+      )
+      .orderBy(desc(schema.agentInstances.lastMessageAt))
+      .limit(1)
+      .catch((error) => {
+        this._logger.error(
+          `[AgentPersistenceDB] Failed to fetch last chat workspace paths: ${error}`,
+        );
+        return null;
+      });
+
+    return results?.[0]?.mountedWorkspaces ?? null;
+  }
+
+  /**
    * Deletes an agent instance from the persistence layer.
    *
    * @param id The id of the agent instance to delete

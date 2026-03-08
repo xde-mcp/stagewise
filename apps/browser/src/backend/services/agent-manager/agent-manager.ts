@@ -74,8 +74,25 @@ export class AgentManagerService extends DisposableService {
 
     // Create an empty default agent only after the DB is ready
     // This ensures that when there's an active agent, the DB is guaranteed to be initialized
-    this.dbReadyPromise.then(() => {
-      this.createAgent(AgentTypes.CHAT, undefined);
+    this.dbReadyPromise.then(async () => {
+      const agent = await this.createAgent(AgentTypes.CHAT, undefined);
+      const lastWorkspaces =
+        await this.agentPersistenceDB?.getLastChatWorkspacePaths();
+      if (!lastWorkspaces) return;
+      for (const ws of lastWorkspaces) {
+        try {
+          await this.toolbox.handleMountWorkspace(
+            agent.instanceId,
+            ws.path,
+            ws.permissions,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `[AgentManager] Failed to mount workspace ${ws.path} on startup`,
+            { error },
+          );
+        }
+      }
     });
   }
 
