@@ -1,30 +1,57 @@
-import type { JSONObject } from '@ai-sdk/provider';
+import type { JSONObject, SharedV3ProviderMetadata } from '@ai-sdk/provider';
 import {
   createOpenAICompatible,
   type MetadataExtractor,
   type OpenAICompatibleProvider,
 } from '@ai-sdk/openai-compatible';
+import { deepMergeProviderOptions } from './model-provider';
 
 /**
  * Metadata extractor that captures the full response body as provider
  * metadata, preserving all keys from the API response as-is.
  */
 const stagewiseMetadataExtractor: MetadataExtractor = {
-  extractMetadata: async ({ parsedBody }) =>
-    (parsedBody as Record<string, JSONObject>) ?? {},
+  extractMetadata: async ({ parsedBody }) => {
+    const body = parsedBody as Record<string, unknown> | undefined;
+    const choices = body?.choices as unknown[] | undefined;
+    const message = (choices?.[0] as Record<string, unknown>)?.message as
+      | Record<string, unknown>
+      | undefined;
+    const providerMetadata = message?.provider_metadata as
+      | SharedV3ProviderMetadata
+      | undefined;
+    return providerMetadata;
+  },
   createStreamExtractor: () => {
-    const accumulated: Record<string, JSONObject> = {};
+    const accumulated: SharedV3ProviderMetadata = {};
     return {
       processChunk(parsedChunk: unknown) {
-        const chunk = parsedChunk as Record<string, unknown>;
-        for (const [key, value] of Object.entries(chunk)) {
-          if (value != null && typeof value === 'object') {
-            accumulated[key] = {
-              ...(accumulated[key] ?? {}),
-              ...(value as JSONObject),
-            };
+        const chunk = parsedChunk as Record<string, unknown> | undefined;
+        const choices = chunk?.choices as unknown[] | undefined;
+        const delta = (choices?.[0] as Record<string, unknown>)?.delta as
+          | Record<string, unknown>
+          | undefined;
+        const chunkProviderMetadata = delta?.provider_metadata as
+          | SharedV3ProviderMetadata
+          | undefined;
+
+        if (!chunkProviderMetadata) return;
+
+        for (const [key, value] of Object.entries(chunkProviderMetadata)) {
+          const currentValue = accumulated[key];
+          if (
+            value != null &&
+            typeof value === 'object' &&
+            typeof currentValue === 'object'
+          ) {
+            accumulated[key] = deepMergeProviderOptions(
+              currentValue as JSONObject,
+              value as JSONObject,
+            ) as JSONObject;
           } else if (value != null) {
-            accumulated[key] = value as JSONObject;
+            accumulated[key] = value;
+          } else if (value == null) {
+            delete accumulated[key];
           }
         }
       },
@@ -57,5 +84,7 @@ export function createStagewise(
     apiKey: settings.apiKey,
     baseURL: settings.baseURL,
     metadataExtractor: stagewiseMetadataExtractor,
+    supportsStructuredOutputs: true,
+    includeUsage: true,
   });
 }

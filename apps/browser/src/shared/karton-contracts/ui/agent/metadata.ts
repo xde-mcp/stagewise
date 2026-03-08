@@ -155,6 +155,14 @@ export type EnvironmentSnapshot = z.infer<typeof environmentSnapshotSchema>;
  */
 export type FullEnvironmentSnapshot = Required<EnvironmentSnapshot>;
 
+const stagewiseProviderSchema = z.object({
+  finalProvider: z.string().optional(),
+  finalModel: z.string().optional(),
+  limits: z.object({}),
+});
+
+export type StagewiseProviderMeta = z.infer<typeof stagewiseProviderSchema>;
+
 const metadataSchema = z.object({
   createdAt: z.date(),
   /** Mounted workspace paths captured at message creation time for persistent file links. */
@@ -175,6 +183,8 @@ const metadataSchema = z.object({
   environmentSnapshot: environmentSnapshotSchema.optional(),
   /** @-mentions of files, tabs, or other items the user referenced inline */
   mentions: z.array(mentionSchema).optional(),
+  /** Provider routing metadata returned by the stagewise gateway. */
+  stagewiseProvider: stagewiseProviderSchema.optional(),
 });
 
 export type UserMessageMetadata = z.infer<typeof metadataSchema>;
