@@ -329,7 +329,7 @@ export function ActiveAgentsGrid() {
   if (!showActiveAgents || visibleCount < 2) return null;
 
   return (
-    <div className="flex shrink-0 flex-col border-border-subtle border-b px-1 pt-2 group-data-[collapsed=true]:hidden">
+    <div className="flex shrink-0 flex-col overflow-x-visible border-border-subtle border-b px-1 pt-2 group-data-[collapsed=true]:hidden">
       <div className="flex items-center justify-between">
         <span className="px-0.5 font-medium text-muted-foreground text-sm">
           Active agents
@@ -348,6 +348,7 @@ export function ActiveAgentsGrid() {
         ref={scrollRef}
         className="max-h-[15vh] min-h-5"
         contentClassName="grid auto-rows-max @[400px]:grid-cols-2 grid-cols-1 gap-2 pt-2 pb-3.5"
+        options={{ overflow: { x: 'visible' } }}
       >
         {orderedAgents.map((agent) => {
           const isOpen = agent.id === openAgent;
