@@ -287,11 +287,8 @@ export function ChatPanelFooter() {
     setFileAttachments,
   ]);
 
-  const abortAgent = useCallback(async () => {
-    // Snapshot history before stop
+  const isEarlyAbortEligible = useCallback(() => {
     const currentHistory = historyRef.current ?? [];
-
-    // Find last user message
     let lastUserMsgIndex = -1;
     for (let i = currentHistory.length - 1; i >= 0; i--) {
       if (currentHistory[i].role === 'user') {
@@ -299,37 +296,54 @@ export function ChatPanelFooter() {
         break;
       }
     }
+    if (lastUserMsgIndex === -1) return false;
+    const assistantParts = currentHistory
+      .slice(lastUserMsgIndex + 1)
+      .flatMap((m) => m.parts);
+    const hasToolCall = assistantParts.some(
+      (p) => p.type.startsWith('tool-') || p.type === 'dynamic-tool',
+    );
+    const textLength = assistantParts
+      .filter((p) => p.type === 'text')
+      .reduce((sum, p) => sum + (p.type === 'text' ? p.text.length : 0), 0);
+    return !hasToolCall && textLength < 200;
+  }, []);
 
-    // Check early abort condition before stopping: no tool calls AND text < 200 chars
-    if (lastUserMsgIndex !== -1) {
-      const assistantParts = currentHistory
-        .slice(lastUserMsgIndex + 1)
-        .flatMap((m) => m.parts);
-
-      const hasToolCall = assistantParts.some(
-        (p) => p.type.startsWith('tool-') || p.type === 'dynamic-tool',
-      );
-      const textLength = assistantParts
-        .filter((p) => p.type === 'text')
-        .reduce((sum, p) => sum + (p.type === 'text' ? p.text.length : 0), 0);
-
-      if (!hasToolCall && textLength < 200) {
-        const userMessage = currentHistory[lastUserMsgIndex];
-
-        // Schedule revert for when the stream is fully done (isWorking → false)
-        setPendingRevert({ messageId: userMessage.id, message: userMessage });
+  const abortAgent = useCallback(async () => {
+    if (isEarlyAbortEligible()) {
+      const currentHistory = historyRef.current ?? [];
+      for (let i = currentHistory.length - 1; i >= 0; i--) {
+        if (currentHistory[i].role === 'user') {
+          const userMessage = currentHistory[i];
+          setPendingRevert({
+            messageId: userMessage.id,
+            message: userMessage,
+          });
+          break;
+        }
       }
     }
 
     // Stop the agent (revert will fire once isWorking becomes false)
     if (openAgent) await stopAgent(openAgent);
-  }, [stopAgent, openAgent]);
+  }, [stopAgent, openAgent, isEarlyAbortEligible]);
 
   // Stable abort callback for ChatInputActions — avoids memo-busting when
   // abortAgent's reference changes (e.g. openAgent switches).
   const abortAgentRef = useRef(abortAgent);
   abortAgentRef.current = abortAgent;
   const stableAbortAgent = useCallback(() => abortAgentRef.current(), []);
+
+  const handleEscape = useCallback(() => {
+    if (elementSelectionActive) stopContextSelector();
+    else if (
+      isWorkingRef.current &&
+      isEarlyAbortEligible() &&
+      (chatInputRef.current?.getTextContent()?.trim().length ?? 0) === 0
+    )
+      void abortAgentRef.current();
+    else setChatInputActive(false);
+  }, [elementSelectionActive, stopContextSelector, isEarlyAbortEligible]);
 
   const isVerboseMode = useKartonState(
     (s) => s.appInfo.releaseChannel === 'dev',
@@ -785,6 +799,7 @@ export function ChatPanelFooter() {
           onFlushQueue={handleFlushQueue}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
+          onEscape={handleEscape}
           onPasteFiles={handlePasteFiles}
           onAttachmentRemoved={handleAttachmentRemoved}
           mentionContext={mentionContext}
