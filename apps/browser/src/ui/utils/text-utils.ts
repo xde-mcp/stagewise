@@ -12,7 +12,7 @@ export function stripMarkdown(text: string): string {
       // inline code
       .replace(/`([^`]+)`/g, '$1')
       // links [text](url)
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/\[([^\]]*)\]\([^)]+\)/g, '$1')
       // images ![alt](url)
       .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
       // blockquotes
