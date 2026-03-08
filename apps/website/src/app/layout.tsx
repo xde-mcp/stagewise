@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   description:
     'A purpose-built browser for web development. Build, preview, and iterate on your frontend with an AI agent built right in.',
   openGraph: {
-    title: 'stagewise · The browser for web developers',
+    title: 'stagewise · The coding agent built for the web',
     description:
       'A purpose-built browser for web development. Build, preview, and iterate on your frontend with an AI agent built right in.',
     type: 'website',
@@ -24,13 +24,13 @@ export const metadata: Metadata = {
         url: '/agent-thumbnail.png',
         width: 1200,
         height: 630,
-        alt: 'stagewise: The browser for web developers',
+        alt: 'stagewise: The coding agent built for the web',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'stagewise · The browser for web developers',
+    title: 'stagewise · The coding agent built for the web',
     description:
       'A purpose-built browser for web development. Build, preview, and iterate on your frontend with an AI agent built right in.',
     images: ['/agent-thumbnail.png'],

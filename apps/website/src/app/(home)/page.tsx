@@ -43,13 +43,13 @@ function FeatureSection() {
                   debugger access to all tabs
                 </span>
               </p>
-              <Link
+              {/* <Link
                 href="/features/stage"
                 className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
               >
                 Learn more about stage{' '}
                 <IconArrowRightFill18 className="inline size-4" />
-              </Link>
+              </Link> */}
             </div>
             <Image
               src={agentInBrowserImage}
@@ -70,13 +70,13 @@ function FeatureSection() {
                   permanent edits.
                 </span>
               </p>
-              <Link
+              {/* <Link
                 href="/features/code-changes"
                 className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
               >
                 Learn more about code changes{' '}
                 <IconArrowRightFill18 className="inline size-4" />
-              </Link>
+              </Link> */}
             </div>
             <Image
               src={agentInBrowserImage}
@@ -97,13 +97,13 @@ function FeatureSection() {
                   palettes from any website.
                 </span>
               </p>
-              <Link
+              {/* <Link
                 href="/features/reverse-engineering"
                 className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
               >
                 Learn more about reverse-engineering{' '}
                 <IconArrowRightFill18 className="inline size-4" />
-              </Link>
+              </Link> */}
             </div>
             {/* Light mode image */}
             <Image
@@ -131,13 +131,13 @@ function FeatureSection() {
                   IDE
                 </span>
               </p>
-              <Link
+              {/* <Link
                 href="/features/ide-integrations"
                 className="text-primary-foreground hover:text-hover-derived active:text-active-derived"
               >
                 Learn more about IDE integrations{' '}
                 <IconArrowRightFill18 className="inline size-4" />
-              </Link>
+              </Link> */}
             </div>
             {/* Light mode image */}
             <Image
@@ -272,11 +272,15 @@ export default function Home() {
           <div className="w-full max-w-7xl">
             <ScrollReveal>
               <div className="mt-4 mb-12 flex flex-col items-start px-4 text-left sm:px-0 md:mt-8 md:mb-20">
-                <h1 className="mb-8 font-medium text-3xl tracking-tight md:text-5xl">
+                <h1 className="mb-4 font-medium text-3xl tracking-tight md:text-5xl">
                   <span className="text-foreground">
-                    The browser for web developers.
+                    The coding agent built for the web
                   </span>
                 </h1>
+                <span className="mb-8 text-md text-muted-foreground">
+                  A purpose-built browser for developers. Iterate on your
+                  frontend with the best coding agent built right in.
+                </span>
 
                 <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                   <form
@@ -364,7 +368,7 @@ export default function Home() {
             <div className="w-full max-w-7xl pt-8 text-center">
               <h2 className="mb-8 font-medium text-3xl tracking-tight md:text-5xl">
                 <span className="text-foreground">
-                  The browser for web developers.
+                  The coding agent built for the web
                 </span>
               </h2>
 
