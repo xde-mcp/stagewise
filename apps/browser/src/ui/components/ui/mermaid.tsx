@@ -2,7 +2,7 @@ import posthog from 'posthog-js';
 import type { MermaidConfig } from 'mermaid';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/utils';
-import { getMermaidCache } from '@/hooks/use-mermaid-cache';
+import { getMermaidCache } from '@ui/hooks/use-mermaid-cache';
 
 const initializeMermaid = async (customConfig?: MermaidConfig) => {
   const defaultConfig: MermaidConfig = {
