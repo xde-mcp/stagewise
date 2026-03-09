@@ -98,6 +98,7 @@
     "@better-auth/electron": "^1.5.3",
     "@streamdown/math": "^1.0.2",
     "better-auth": "^1.5.3",
+    "gray-matter": "^4.0.3",
     "tsx": "^4.20.3"
   },
   "config": {

@@ -36,6 +36,9 @@ importers:
       better-auth:
         specifier: ^1.5.3
         version: 1.5.3(drizzle-kit@0.31.8)(drizzle-orm@0.45.1(@libsql/client@0.15.15(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@opentelemetry/api@1.9.0)(kysely@0.28.11))(next@16.1.6(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.15.2)(jiti@2.6.1)(jsdom@26.1.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
       tsx:
         specifier: ^4.20.3
         version: 4.21.0
@@ -176,6 +179,9 @@ importers:
       fzy.js:
         specifier: ^0.4.1
         version: 0.4.1
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
       immer:
         specifier: ^10.2.0
         version: 10.2.0
