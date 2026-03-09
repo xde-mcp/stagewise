@@ -1,85 +1,52 @@
 # <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
 
-# The frontend coding agent for production codebases
+# The coding agent built for the web
 
-![NPM Version](https://img.shields.io/npm/v/stagewise) ![NPM License](https://img.shields.io/npm/l/stagewise) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise)
+ ![NPM License](https://img.shields.io/npm/l/stagewise) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise)
 
 [![Join us on Discord](https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white)](https://discord.gg/gkdGsDYaKA) [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/stagewise_io)](https://x.com/stagewise_io)
 
-![stagewise demo](https://github.com/stagewise-io/assets/blob/main/media/demo.gif?raw=true)
+![stagewise demo](https://raw.githubusercontent.com/stagewise-io/stagewise/main/apps/browser/src/ui/assets/feature-images/full-demo-dark.png)
 
 ## About the project
 
-Welcome to **stagewise** —  The frontend coding agent for production codebases
+**stagewise** is a purpose-built browser for developers with a coding agent built right in.
 
-- 💬 Tell the agent what you want to change
-- 🧠 Click on element(s) to let the agent know where a change should happen
-- 💡 Let stagewise do the magic!
+- **Browse and build** in the same tool — no context switching
+- **Work with a coding agent** that has **full access to your tab's console and debugger**
+- **Make temporary test changes** or **connect a codebase** for permanent edits
+- **Reverse-engineer** any website's components, style systems, and color palettes
+- **IDE integration** to view and apply code changes in your favorite editor
+- **Bring your own API key** — fully supported for all AI providers
 
-> Perfect for devs tired of pasting element information and folder paths into prompts. stagewise uses real-time, browser-powered context.
+## Getting Started
 
-## Features
+Download stagewise from [stagewise.io](https://stagewise.io) and follow the short onboarding guide to set up your account.
 
-- ⚡ Works out of the box
-- 🧩 Customize and extend functionality with Plugins
-- 📖 Open source
-- ⛓️ Compatible with all kinds of frameworks
-- 🧠 Use our dedicated frontend agent - or any other compatible agent through our open agent interface!
+## Pricing
 
-## 📖 Getting Started
+**Bring Your Own Key (BYOK)** for unlimited access to all providers.
 
-### 1. Start your web app in development mode
+| **Plan** | **Price**     | **Limits**                      |
+| -------- | ------------- | ------------------------------- |
+| Free     | $0 / month    | Limited access to all models    |
+| Pro      | $20 / month   | 6x higher limits for all models |
+| Ultra    | $200 / month  | 75x higher limits for all models|
 
-The first thing you should do is to start your app in regular development mode
-
-### 2. Start stagewise
-
-stagewise can be integrated into your workflow without requiring you to install anything!
-
-Simply open another terminal window **in the root of your app under development** and enter the following:
-
-```bash
-npx stagewise@latest
-```
-
-or (if you're using pnpm):
-
-```bash
-pnpm dlx stagewise@latest
-```
-
-And simply follow the short guide of the CLI app to setup your stagewise account.
-
-## 🤖 Agent support
-
-| **Agent**      | **Supported**  |
-| -------------- | -------------- |
-| stagewise agent| ✅⭐️           |
-| Cursor         | ✅             |
-| GitHub Copilot | ✅             |
-| Windsurf       | ✅             |
-| Cline          | ✅             |
-| Roo Code       | ✅             |
-| Kilo Code      | ✅             |
-| Trae           | ✅             |
-
-## 📜 License
+## License
 
 stagewise is developed by stagewise GmbH and offered under the AGPLv3 license.
 
 For more information on the license model, visit the [FAQ about the GNU Licenses](https://www.gnu.org/licenses/gpl-faq.html).
 
-For use cases that fall outside the scope permitted by the AGPLv3 license, feel free to [📬 Contact Us](mailto:sales@stagewise.io).
+For use cases that fall outside the scope permitted by the AGPLv3 license, feel free to [contact us](mailto:sales@stagewise.io).
 
-## 🤝 Contributing
+## Issues 
 
-We love contributions! Check out our [CONTRIBUTING.md](https://github.com/stagewise-io/stagewise/blob/main/CONTRIBUTING.md) guide to get involved. For bugs and fresh ideas, take a look at our [open issues](https://github.com/stagewise-io/stagewise/issues) or [look at our community developments forum](https://discord.com/channels/1229378372141056010/1400917596727152701).
+Feel free to [open an issue](https://github.com/stagewise-io/stagewise/issues/new) if you found a bug or have a fresh idea.
 
-## 💻 Development guide
 
-Follow the guides in our docs -> [Developer guides](https://stagewise.io/docs/developer-guides/test-stagewise-locally).
+## Community & Support
 
-## 💬 Community & Support
-
-- 👾 [Join our Discord](https://discord.gg/gkdGsDYaKA)
-- 📖 Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues) for dev support.
+- [Join our Discord](https://discord.gg/gkdGsDYaKA)
+- Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues/new) for dev support.

@@ -17,9 +17,9 @@ export type {
   RPCExceptionData,
   StateSyncData,
   StatePatchData,
-  WebSocketMessageType,
-  WebSocketMessageData,
-  WebSocketMessage,
+  MessageType as WebSocketMessageType,
+  MessageData as WebSocketMessageData,
+  Message as WebSocketMessage,
   KartonServerConfig,
   KartonServer,
   KartonClientConfig,
@@ -32,3 +32,9 @@ export {
   KartonRPCErrorReason,
   KartonRPCException,
 } from './types.js';
+
+export type {
+  Transport,
+  ServerTransport,
+  KartonMessage,
+} from './transport.js';

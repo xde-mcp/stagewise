@@ -1,6 +1,7 @@
 import type { Draft } from 'immer';
 import type { Patch } from 'immer';
 import type { WebSocketServer } from 'ws';
+import type { Transport, ServerTransport } from './transport.js';
 
 // Deep validation helpers to ensure `state` does not contain functions or generator-like types
 type IsFunction<T> = T extends (...args: any[]) => any ? true : false;
@@ -183,6 +184,18 @@ export type KartonState<T> = T extends { state: infer S } ? S : never;
 
 export type AsyncFunction = (...args: any[]) => Promise<any>;
 
+/**
+ * Augments procedure types with a `.fire` accessor for fire-and-forget calls.
+ * `procedure.fire(args)` sends the RPC without waiting for a response.
+ */
+export type WithFireAndForget<T> = T extends (
+  ...args: infer A
+) => Promise<infer R>
+  ? ((...args: A) => Promise<R>) & { fire: (...args: A) => void }
+  : T extends object
+    ? { [K in keyof T]: WithFireAndForget<T[K]> }
+    : T;
+
 export type ProcedureTree = {
   [key: string]: AsyncFunction | ProcedureTree;
 };
@@ -192,7 +205,7 @@ export type ExtractProcedures<T> = T extends undefined
   : T;
 
 export type AddClientIdToFunction<T> = T extends (...args: infer P) => infer R
-  ? (...args: [...P, callingClientId: string]) => R
+  ? (callingClientId: string, ...args: P) => R
   : never;
 
 export type AddClientIdToImplementations<T> = T extends AsyncFunction
@@ -228,34 +241,66 @@ export type KartonClientProceduresWithClientId<T> = AddClientIdToCalls<
   KartonClientProcedures<T>
 >;
 
+// Extract only the full paths to procedures (not intermediate objects)
+type ProcedurePaths<T, D extends number = 10> = D extends 0
+  ? never
+  : T extends AsyncFunction
+    ? never // Functions at this level are already handled by parent
+    : T extends ProcedureTree
+      ? {
+          [K in keyof T]: K extends string
+            ? T[K] extends AsyncFunction
+              ? K // This is a procedure endpoint (leaf node)
+              : T[K] extends ProcedureTree
+                ? `${K}.${ProcedurePaths<T[K], DecDepth<D>>}` // Prepend parent path to children
+                : never
+            : never;
+        }[keyof T]
+      : never;
+
+// Get handler type for a path
+type GetHandlerForPath<T, Path> = Path extends keyof T
+  ? T[Path]
+  : Path extends `${infer First}.${infer Rest}`
+    ? First extends keyof T
+      ? GetHandlerForPath<T[First], Rest>
+      : never
+    : never;
+
 export enum KartonRPCErrorReason {
   CONNECTION_LOST = 'CONNECTION_LOST',
   CLIENT_NOT_FOUND = 'CLIENT_NOT_FOUND',
   SERVER_UNAVAILABLE = 'SERVER_UNAVAILABLE',
 }
 
+export class KartonProcedureError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'KartonProcedureError';
+  }
+}
+
 export class KartonRPCException extends Error {
   public readonly reason: KartonRPCErrorReason;
-  public readonly procedurePath: string[];
+  public readonly procedurePath: string;
   public readonly clientId?: string;
 
   constructor(
     reason: KartonRPCErrorReason,
-    procedurePath: string[],
+    procedurePath: string,
     clientId?: string,
   ) {
-    const procedureName = procedurePath.join('.');
     let message: string;
 
     switch (reason) {
       case KartonRPCErrorReason.CONNECTION_LOST:
-        message = `RPC call to '${procedureName}' failed: Connection lost`;
+        message = `RPC call to '${procedurePath}' failed: Connection lost`;
         break;
       case KartonRPCErrorReason.CLIENT_NOT_FOUND:
-        message = `RPC call to '${procedureName}' failed: Client '${clientId}' not found`;
+        message = `RPC call to '${procedurePath}' failed: Client '${clientId}' not found`;
         break;
       case KartonRPCErrorReason.SERVER_UNAVAILABLE:
-        message = `RPC call to '${procedureName}' failed: Server unavailable`;
+        message = `RPC call to '${procedurePath}' failed: Server unavailable`;
         break;
     }
 
@@ -269,8 +314,9 @@ export class KartonRPCException extends Error {
 
 export interface RPCCallData {
   rpcCallId: string;
-  procedurePath: string[];
+  procedurePath: string;
   parameters: any[];
+  fireAndForget?: boolean;
 }
 
 export interface RPCReturnData {
@@ -291,28 +337,29 @@ export interface StatePatchData {
   patch: Patch[];
 }
 
-export type WebSocketMessageType =
+export type MessageType =
   | 'rpc_call'
   | 'rpc_return'
   | 'rpc_exception'
   | 'state_sync'
   | 'state_patch';
 
-export type WebSocketMessageData =
+export type MessageData =
   | RPCCallData
   | RPCReturnData
   | RPCExceptionData
   | StateSyncData
   | StatePatchData;
 
-export interface WebSocketMessage {
-  type: WebSocketMessageType;
-  data: WebSocketMessageData;
+export interface Message {
+  type: MessageType;
+  data: MessageData;
 }
 
 export interface KartonServerConfig<T> {
-  procedures: KartonServerProcedureImplementations<T>;
+  procedures?: KartonServerProcedureImplementations<T>;
   initialState: KartonState<T>;
+  transport?: ServerTransport;
 }
 
 export interface KartonServer<T> {
@@ -320,11 +367,32 @@ export interface KartonServer<T> {
   setState: (recipe: (draft: Draft<KartonState<T>>) => void) => KartonState<T>;
   clientProcedures: KartonClientProceduresWithClientId<T>;
   connectedClients: ReadonlyArray<string>;
-  wss: WebSocketServer;
+  wss: WebSocketServer | undefined;
+  registerServerProcedureHandler: <
+    Path extends ProcedurePaths<KartonServerProcedures<T>>,
+  >(
+    path: Path,
+    handler: AddClientIdToFunction<
+      GetHandlerForPath<KartonServerProcedures<T>, Path>
+    >,
+  ) => void;
+  removeServerProcedureHandler: <
+    Path extends ProcedurePaths<KartonServerProcedures<T>>,
+  >(
+    path: Path,
+  ) => void;
+  registerStateChangeCallback: (
+    callback: (state: Readonly<KartonState<T>>) => void,
+  ) => void;
+  unregisterStateChangeCallback: (
+    callback: (state: Readonly<KartonState<T>>) => void,
+  ) => void;
+  onClose: (handler: (connectionId: string) => void) => () => void;
 }
 
 export interface KartonClientConfig<T> {
-  webSocketPath: string;
+  webSocketPath?: string;
+  transport?: Transport;
   procedures: KartonClientProcedureImplementations<T>;
   fallbackState: KartonState<T>;
   onStateChange?: () => void;
@@ -332,7 +400,7 @@ export interface KartonClientConfig<T> {
 
 export interface KartonClient<T> {
   state: Readonly<KartonState<T>>;
-  serverProcedures: KartonServerProcedures<T>;
+  serverProcedures: WithFireAndForget<KartonServerProcedures<T>>;
   isConnected: boolean;
 }
 

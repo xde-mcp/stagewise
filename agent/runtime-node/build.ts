@@ -10,7 +10,13 @@ const buildOptions: BuildOptions = {
   format: 'esm',
   platform: 'node',
   target: 'node16',
-  external: ['vscode'], // VSCode extension API should always be external
+  external: [
+    'vscode', // VSCode extension API should always be external
+    'chokidar', // Native bindings - must be external
+    'https-proxy-agent', // Contains dynamic requires - must be external
+    'proxy-from-env', // Dependency of download logic - must be external
+    'yauzl', // Native bindings for zip extraction - must be external
+  ],
   sourcemap: false, // Disable source maps for security
   minify: true, // Always minify for published packages
   treeShaking: true,

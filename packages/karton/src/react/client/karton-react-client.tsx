@@ -12,6 +12,7 @@ import type {
   KartonClientConfig,
   KartonState,
   KartonServerProcedures,
+  WithFireAndForget,
 } from '../../shared/types.js';
 import { shallow } from '../comparators.js';
 
@@ -22,7 +23,7 @@ interface KartonContextValue<T> {
 
 export interface SelectorData<T> {
   state: Readonly<KartonState<T>>;
-  serverProcedures: KartonServerProcedures<T>;
+  serverProcedures: WithFireAndForget<KartonServerProcedures<T>>;
   isConnected: boolean;
 }
 
@@ -35,7 +36,7 @@ export type EqualityFn<T> = (a: T, b: T) => boolean;
 
 export type StateSelector<T, R> = (state: Readonly<KartonState<T>>) => R;
 export type ProcedureSelector<T, R> = (
-  procedures: KartonServerProcedures<T>,
+  procedures: WithFireAndForget<KartonServerProcedures<T>>,
 ) => R;
 
 const fullStateSelector = <T,>(state: T): T => state;
@@ -51,41 +52,37 @@ export function createKartonReactClient<T>(
 ] {
   const KartonContext = createKartonContext<T>();
 
+  // Create listeners set at module scope so it survives React remounts (e.g., StrictMode)
+  const listeners = new Set<() => void>();
+
+  // Create subscribe function at module scope
+  const subscribe = (listener: () => void) => {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  };
+
+  // Create client at module scope so it survives React remounts (e.g., StrictMode)
+  // This prevents the state from resetting to fallbackState on remount
+  const client = createKartonClient({
+    ...config,
+    onStateChange: () => {
+      listeners.forEach((listener) => listener());
+    },
+  });
+
   const KartonProvider: React.FC<{ children?: React.ReactNode }> = ({
     children,
   }) => {
-    const clientRef = useRef<KartonClient<T> | null>(null);
-    const listenersRef = useRef(new Set<() => void>());
-    const subscribeRef = useRef<((listener: () => void) => () => void) | null>(
-      null,
-    );
-
-    if (!clientRef.current) {
-      clientRef.current = createKartonClient({
-        ...config,
-        onStateChange: () => {
-          listenersRef.current.forEach((listener) => listener());
-        },
-      });
-
-      // Create a stable subscribe function only once
-      subscribeRef.current = (listener: () => void) => {
-        listenersRef.current.add(listener);
-        return () => {
-          listenersRef.current.delete(listener);
-        };
-      };
-    }
-
-    const client = clientRef.current;
-
     // Memoize the context value to prevent unnecessary re-renders
+    // Client and subscribe are stable module-level references
     const value = useMemo<KartonContextValue<T>>(
       () => ({
         client,
-        subscribe: subscribeRef.current!,
+        subscribe,
       }),
-      [client], // Only recreate if client changes (which should never happen)
+      [], // Empty deps - client and subscribe are stable module-level values
     );
 
     return (
@@ -93,9 +90,12 @@ export function createKartonReactClient<T>(
     );
   };
 
-  const useKartonState = <R = KartonState<T>>(
+  // Overloaded function signatures for better type inference
+  function useKartonState(): KartonState<T>;
+  function useKartonState<R>(selector: StateSelector<T, R>): R;
+  function useKartonState<R = KartonState<T>>(
     selector: StateSelector<T, R> = fullStateSelector as any,
-  ): R => {
+  ): R {
     const context = useContext(KartonContext);
 
     if (!context) {
@@ -104,20 +104,22 @@ export function createKartonReactClient<T>(
 
     const { client, subscribe } = context;
 
+    const selectorFunc = useCallback(
+      () => selector(client.state),
+      [selector, client.state],
+    );
+
     // Use React's built-in store subscription hook
     const selectedValue = useSyncExternalStore(
       subscribe,
-      useCallback(() => selector(client.state), [selector, client.state]),
-      useCallback(
-        () => selector(config.fallbackState),
-        [selector, config.fallbackState],
-      ),
+      selectorFunc,
+      selectorFunc,
     );
 
     return selectedValue;
-  };
+  }
 
-  const useKartonProcedure = <R = KartonServerProcedures<T>>(
+  const useKartonProcedure = <R = WithFireAndForget<KartonServerProcedures<T>>>(
     selector: ProcedureSelector<T, R> = fullProcedureSelector as any,
   ): R => {
     const context = useContext(KartonContext);

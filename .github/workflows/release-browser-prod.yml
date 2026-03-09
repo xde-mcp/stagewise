@@ -7,10 +7,10 @@ run-name: "Release Browser Production"
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   release:
+    # Only run on main or release-tests branch
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release-tests'
     uses: ./.github/workflows/_release-browser.yml
     with:

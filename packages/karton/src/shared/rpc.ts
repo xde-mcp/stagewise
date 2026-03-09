@@ -1,6 +1,9 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { WebSocketMessage } from './types.js';
-import { KartonRPCException, KartonRPCErrorReason } from './types.js';
+import type { Message } from './types.js';
+import {
+  KartonRPCException,
+  KartonRPCErrorReason,
+  KartonProcedureError,
+} from './types.js';
 import {
   createRPCCallMessage,
   createRPCReturnMessage,
@@ -8,18 +11,19 @@ import {
   isRPCCallMessage,
   isRPCReturnMessage,
   isRPCExceptionMessage,
-} from './websocket-messages.js';
+} from './messages.js';
 
 export interface RPCCallOptions {
   timeout?: number;
   clientId?: string;
+  fireAndForget?: boolean;
 }
 
 interface PendingCall {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timeout: NodeJS.Timeout | number;
-  procedurePath: string[];
+  procedurePath: string;
   clientId?: string;
 }
 
@@ -28,19 +32,36 @@ type ProcedureHandler = (...args: any[]) => Promise<any>;
 export class RPCManager {
   private pendingCalls: Map<string, PendingCall> = new Map();
   private procedures: Map<string, ProcedureHandler> = new Map();
-  private sendMessage: (message: WebSocketMessage) => void;
+  private sendMessage: (message: Message) => void;
   private defaultTimeout = 30000; // 30 seconds
+  private callCounter = 0;
 
-  constructor(sendMessage: (message: WebSocketMessage) => void) {
+  constructor(sendMessage: (message: Message) => void) {
     this.sendMessage = sendMessage;
   }
 
-  public async call(
-    procedurePath: string[],
+  private nextCallId(): string {
+    return `c${++this.callCounter}`;
+  }
+
+  public call(
+    procedurePath: string,
     parameters: any[],
     options: RPCCallOptions = {},
-  ): Promise<unknown> {
-    const rpcCallId = uuidv4();
+  ): Promise<unknown> | undefined {
+    const rpcCallId = this.nextCallId();
+
+    if (options.fireAndForget) {
+      const message = createRPCCallMessage(
+        rpcCallId,
+        procedurePath,
+        parameters,
+        true,
+      );
+      this.sendMessage(message);
+      return undefined;
+    }
+
     const timeout = options.timeout ?? this.defaultTimeout;
 
     return new Promise((resolve, reject) => {
@@ -72,12 +93,19 @@ export class RPCManager {
     });
   }
 
-  public registerProcedure(path: string[], handler: ProcedureHandler): void {
-    const key = path.join('.');
-    this.procedures.set(key, handler);
+  public registerProcedure(path: string, handler: ProcedureHandler): void {
+    this.procedures.set(path, handler);
   }
 
-  public async handleMessage(message: WebSocketMessage): Promise<void> {
+  public unregisterProcedure(path: string): void {
+    this.procedures.delete(path);
+  }
+
+  public hasProcedure(path: string): boolean {
+    return this.procedures.has(path);
+  }
+
+  public async handleMessage(message: Message): Promise<void> {
     if (isRPCCallMessage(message)) {
       await this.handleRPCCall(message);
     } else if (isRPCReturnMessage(message)) {
@@ -87,17 +115,28 @@ export class RPCManager {
     }
   }
 
-  private async handleRPCCall(
-    message: WebSocketMessage & { data: any },
-  ): Promise<void> {
-    const { rpcCallId, procedurePath, parameters } = message.data;
-    const key = procedurePath.join('.');
-    const handler = this.procedures.get(key);
+  private async handleRPCCall(message: Message & { data: any }): Promise<void> {
+    const { rpcCallId, procedurePath, parameters, fireAndForget } =
+      message.data;
+    const handler = this.procedures.get(procedurePath);
 
     if (!handler) {
-      const error = new Error(`Procedure not found: ${key}`);
+      if (fireAndForget) return;
+      const error = new KartonProcedureError(
+        `Server procedure '${procedurePath}' is not registered`,
+      );
       const exceptionMessage = createRPCExceptionMessage(rpcCallId, error);
       this.sendMessage(exceptionMessage);
+      return;
+    }
+
+    if (fireAndForget) {
+      // Execute handler but skip sending any response
+      try {
+        await handler(...parameters);
+      } catch {
+        // Silently ignore — caller doesn't expect a response
+      }
       return;
     }
 
@@ -112,7 +151,7 @@ export class RPCManager {
     }
   }
 
-  private handleRPCReturn(message: WebSocketMessage & { data: any }): void {
+  private handleRPCReturn(message: Message & { data: any }): void {
     const { rpcCallId, value } = message.data;
     const pendingCall = this.pendingCalls.get(rpcCallId);
 
@@ -123,7 +162,7 @@ export class RPCManager {
     }
   }
 
-  private handleRPCException(message: WebSocketMessage & { data: any }): void {
+  private handleRPCException(message: Message & { data: any }): void {
     const { rpcCallId, error } = message.data;
     const pendingCall = this.pendingCalls.get(rpcCallId);
 

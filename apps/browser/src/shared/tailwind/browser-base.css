@@ -1,0 +1,124 @@
+/**
+ * Canonical Tailwind CSS configuration for the browser app.
+ * This file contains all shared theme, utilities, and animations used by both:
+ * - apps/browser/src/ui (Electron app)
+ * - apps/browser/src/pages (TanStack SPA)
+ *
+ * Each app's app.css should import this file and add its own @source directives.
+ */
+
+@import "tailwindcss";
+
+@config "../../../tailwind.config.js";
+
+@import "../../../../../packages/stage-ui/src/styles/index.css";
+@import "../../../assets/fonts/Geist/geist.css";
+@import "../../../assets/fonts/GeistMono/geist-mono.css";
+@import "../../../assets/fonts/RobotoMono/roboto-mono.css";
+
+@plugin 'tailwind-scrollbar';
+
+@theme default {
+  --font-sans: stagewise-builtin-geist, -apple-system, BlinkMacSystemFont,
+              "Segoe UI", "Ubuntu", "Roboto", "Noto Sans", "Cantarell",
+              "Helvetica Neue", "Inter", Arial, sans-serif;
+  --font-mono: "Roboto Mono", Menlo, Monaco, stagewise-builtin-roboto-mono, "Noto Sans Mono", ui-monospace, "SF Mono",
+              "Segoe UI Mono", "Ubuntu Mono",  "Noto Mono",
+              "Liberation Mono", "Inter Mono", Consolas, monospace;
+  --text-2xs: 0.625rem;
+}
+
+
+@layer base {
+  * {
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+  }
+
+  .root {
+    isolation: isolate;
+  }
+
+  :root {
+    background-color: transparent;
+    color-scheme: normal;
+    font-feature-settings: 'liga' 1, 'calt' 1;
+  }
+
+  body {
+    display: block;
+    background-color: transparent;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+    user-select: none;
+  }
+} 
+
+@layer components {
+  .markdown {
+    a {
+      @apply text-primary-foreground hover:text-hover-derived;
+    }
+
+    ul {
+      @apply list-disc;
+      @apply ml-4;
+    }
+
+    ol {
+      @apply list-decimal;
+      @apply ml-4;
+    }
+  }
+
+  /* Make all shapes inside a .seti-icon SVG use the parent text color */
+  .seti-icon svg * {
+    fill: currentColor;
+  }
+}
+
+@utility app-drag {
+  -webkit-app-region: drag !important;
+  app-region: drag !important;
+  user-select: none !important;
+}
+
+@utility app-no-drag {
+  -webkit-app-region: no-drag !important;
+  app-region: no-drag !important;
+}
+
+@utility non-interactive {
+  -electron-interaction: passthrough;
+}
+
+/* Scrollbar utilities */
+@utility scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-2) transparent;
+}
+
+@utility scrollbar-hover-only {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  &:hover {
+    scrollbar-color: var(--color-surface-2) transparent;
+  }
+}
+
+@utility scrollbar-visible {
+  @apply scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-muted-foreground/10;
+}
+
+/* For Virtuoso container to avoid flickering due to layout shifts */
+@utility virtuoso-contain {
+  & [data-item-index] {
+    contain: layout style;
+  }
+}

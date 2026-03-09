@@ -17,20 +17,15 @@ body:
       description: Please describe the feature as clear and concise as possible. Remember to add context as to why you believe this feature is needed.
     validations:
       required: true
-  - type: textarea
-    attributes:
-      label: What is the use case for this feature?
-      description: |
-        Please describe the use case for this feature. What are you trying to achieve?
-    validations:
-      required: false
-  - type: textarea
-    attributes:
-      label: Additional information
-      description: Add any other information related to the feature here.
   - type: checkboxes
     attributes:
       label: 👨‍👧‍👦 Contributing
       description: We love contributors in any shape or form. Would you be willing to implement this feature?
       options:
         - label: 🙋‍♂️ Yes, I'd be down to file a PR implementing this feature!
+  - type: input
+    id: app-version
+    attributes:
+      label: Current application version
+      description: If you are already using stagewise, please provide the version you're using.
+      placeholder: 1.0.0-alpha.1

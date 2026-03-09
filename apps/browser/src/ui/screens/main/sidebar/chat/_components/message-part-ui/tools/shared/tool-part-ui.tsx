@@ -1,0 +1,178 @@
+import { useState, useCallback, useMemo } from 'react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@stagewise/stage-ui/components/collapsible';
+import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
+import { cn } from '@/utils';
+import { ChevronDownIcon } from 'lucide-react';
+import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
+
+export const ToolPartUI = ({
+  trigger,
+  content,
+  contentClassName,
+  contentFooter,
+  contentFooterClassName,
+  expanded: controlledExpanded,
+  setExpanded: controlledSetExpanded,
+  showBorder = false,
+  autoScroll = true,
+  isShimmering = false,
+  hideChevron = false,
+}: {
+  trigger?: React.ReactNode;
+  content?: React.ReactNode;
+  contentClassName?: string;
+  contentFooter?: React.ReactNode;
+  contentFooterClassName?: string;
+  expanded?: boolean;
+  setExpanded?: (expanded: boolean) => void;
+  showBorder?: boolean;
+  autoScroll?: boolean;
+  isShimmering?: boolean;
+  hideChevron?: boolean;
+}) => {
+  // Internal state for uncontrolled mode
+  const [internalExpanded, setInternalExpanded] = useState(true);
+
+  // Use controlled props if provided, otherwise fall back to internal state
+  const expanded =
+    controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+  const setExpanded = controlledSetExpanded ?? setInternalExpanded;
+
+  // Auto-scroll hook with smaller threshold for compact container (max-h-32 = 128px)
+  const { scrollerRef } = useAutoScroll({
+    enabled: expanded && autoScroll,
+    scrollEndThreshold: 20,
+    initializeAtBottom: false,
+  });
+
+  // State for viewport reference (for fade effect detection)
+  const [viewport, setViewport] = useState<HTMLElement | null>(null);
+
+  // Callback to receive viewport ref from OverlayScrollbar
+  // Connects both auto-scroll hook and fade mask effect to the viewport element
+  const handleViewportRef = useCallback(
+    (vp: HTMLElement | null) => {
+      setViewport(vp);
+      scrollerRef(vp);
+    },
+    [scrollerRef],
+  );
+
+  // Create a ref-like object for useScrollFadeMask hook
+  const viewportRef = useMemo(
+    () => ({ current: viewport }),
+    [viewport],
+  ) as React.RefObject<HTMLElement>;
+
+  // Use the hook for scroll fade mask (both axes)
+  const { maskStyle } = useScrollFadeMask(viewportRef, {
+    axis: 'both',
+    fadeDistance: 16,
+  });
+
+  if (content === undefined) {
+    return (
+      <div
+        className={cn(
+          '-mx-1 flex h-6 w-full items-center gap-1 truncate font-normal text-muted-foreground',
+          showBorder &&
+            'rounded-lg border border-border bg-background px-2.5 dark:bg-surface-1',
+        )}
+      >
+        {trigger}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        'block w-full overflow-hidden',
+        showBorder &&
+          'rounded-lg border border-border-subtle bg-background dark:border-border dark:bg-surface-1',
+        showBorder && 'shadow-xs',
+      )}
+    >
+      <Collapsible open={expanded} onOpenChange={setExpanded}>
+        <CollapsibleTrigger
+          size="condensed"
+          className={cn(
+            `group/trigger gap-1 px-0 font-normal text-muted-foreground`,
+            content !== undefined
+              ? 'cursor-pointer'
+              : 'cursor-default hover:bg-transparent active:bg-transparent',
+            showBorder &&
+              'h-6 rounded-t-lg rounded-b-none border-b bg-background px-2.5 dark:bg-surface-1',
+            // Always have border-b, toggle color to avoid transition-all animating border
+            showBorder &&
+              (expanded
+                ? 'border-border/30 dark:border-border/70'
+                : 'border-transparent'),
+            !showBorder &&
+              'justify-start py-0 hover:bg-transparent active:bg-transparent',
+          )}
+          style={
+            showBorder
+              ? { transitionProperty: 'color, background-color' }
+              : undefined
+          }
+        >
+          {trigger}
+          {!hideChevron && (
+            <ChevronDownIcon
+              className={cn(
+                'size-3 shrink-0 transition-transform duration-150',
+                expanded && 'rotate-180',
+                !showBorder && !expanded && 'hidden group-hover/trigger:block',
+                showBorder && 'ml-auto',
+                isShimmering && 'text-primary-foreground',
+              )}
+            />
+          )}
+        </CollapsibleTrigger>
+        {content && (
+          <CollapsibleContent
+            className={cn(
+              'relative pb-0 text-xs duration-0!',
+              !showBorder && 'pt-1',
+            )}
+          >
+            <div
+              className={cn(
+                'mask-alpha',
+                showBorder ? 'max-h-64' : 'max-h-none',
+                contentFooter && 'mb-6',
+              )}
+              style={maskStyle}
+            >
+              <OverlayScrollbar
+                contentClassName={cn('py-0.5', contentClassName)}
+                options={{
+                  overflow: { x: 'scroll', y: 'scroll' },
+                }}
+                onViewportRef={handleViewportRef}
+              >
+                {content}
+              </OverlayScrollbar>
+            </div>
+            {contentFooter && (
+              <div
+                className={cn(
+                  'absolute right-0 bottom-0 left-0 flex h-6 flex-row items-center justify-start gap-1 rounded-b-lg border-border/30 border-t bg-background px-2 py-1 text-muted-foreground dark:border-border/70 dark:bg-surface-1',
+                  contentFooterClassName,
+                )}
+              >
+                {contentFooter}
+              </div>
+            )}
+          </CollapsibleContent>
+        )}
+      </Collapsible>
+    </div>
+  );
+};

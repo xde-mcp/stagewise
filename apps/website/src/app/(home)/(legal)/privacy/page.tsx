@@ -9,8 +9,8 @@ export default async function PrivacyPolicyPage() {
   const MDXContent = page.data.body;
 
   return (
-    <main className="prose mx-auto min-h-screen max-w-2xl bg-muted p-4 md:p-10">
+    <div className="prose mx-auto w-full max-w-7xl px-4">
       <MDXContent components={getMDXComponents({})} />
-    </main>
+    </div>
   );
 }

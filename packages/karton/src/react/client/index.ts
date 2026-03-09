@@ -1,8 +1,11 @@
 export {
   createKartonReactClient,
   type SelectorData,
+  type StateSelector,
+  type ProcedureSelector,
+  type EqualityFn,
   useComparingSelector,
-} from './karton-react-client';
+} from './karton-react-client.js';
 
 export type {
   KartonClient,

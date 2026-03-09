@@ -1,5 +1,9 @@
 {
-  "extends": "@stagewise/typescript-config/base.json",
-  "include": ["."],
-  "exclude": ["node_modules", "dist", "template-*"]
+  "files": [],
+  "references": [
+    { "path": "agent/runtime-node" },
+    { "path": "apps/website" },
+    { "path": "packages/stage-ui" },
+    { "path": "scripts/release" }
+  ]
 }

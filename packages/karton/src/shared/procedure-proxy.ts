@@ -2,33 +2,41 @@ import type { RPCCallOptions } from './rpc.js';
 import type { ProcedureTree, AsyncFunction } from './types.js';
 
 type CallFunction = (
-  procedurePath: string[],
+  procedurePath: string,
   parameters: any[],
   options?: RPCCallOptions,
-) => Promise<unknown>;
+) => Promise<unknown> | undefined;
 
 export function createProcedureProxy(
   call: CallFunction,
+  path?: string,
   options?: RPCCallOptions,
-  path: string[] = [],
 ): any {
   return new Proxy(() => {}, {
     get(_target, prop) {
       // Handle special properties
       if (prop === 'toString' || prop === 'valueOf') {
-        return () => `[Proxy: ${path.join('.')}]`;
+        return () => `[Proxy: ${path}]`;
       }
 
       if (typeof prop === 'symbol') {
         return undefined;
       }
 
-      const newPath = [...path, String(prop)];
-      return createProcedureProxy(call, options, newPath);
+      // .fire returns a proxy variant that uses fire-and-forget
+      if (prop === 'fire') {
+        return createProcedureProxy(call, path, {
+          ...options,
+          fireAndForget: true,
+        });
+      }
+
+      const newPath = path ? `${path}.${String(prop)}` : String(prop);
+      return createProcedureProxy(call, newPath, options);
     },
 
     apply(_target, _thisArg, args) {
-      return call(path, args, options);
+      return call(path ?? '', args, options);
     },
   });
 }
@@ -60,24 +68,4 @@ export function extractProceduresFromTree(
   }
 
   return procedures;
-}
-
-export function resolveProcedurePath(
-  tree: ProcedureTree,
-  path: string[],
-): AsyncFunction | undefined {
-  if (path.length === 0) {
-    return undefined;
-  }
-
-  let current: any = tree;
-
-  for (const segment of path) {
-    if (typeof current !== 'object' || current === null) {
-      return undefined;
-    }
-    current = current[segment];
-  }
-
-  return typeof current === 'function' ? current : undefined;
 }

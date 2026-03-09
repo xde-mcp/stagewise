@@ -2,46 +2,44 @@ import './global.css';
 import { RootProvider } from 'fumadocs-ui/provider';
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { GeistSans } from 'geist/font/sans';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
 import { PostHogProvider } from '@/components/posthog-provider';
 import { CookieBanner } from '@/components/cookie-banner';
 import { SystemThemeProvider } from '@/components/theme-switcher';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://stagewise.io'),
-  title: 'stagewise | The frontend coding agent for production codebases',
+  title: 'stagewise',
   description:
-    'Visually build your apps frontend right inside your browser on localhost. Compatible with any frontend framework.',
+    'A purpose-built browser for web development. Build, preview, and iterate on your frontend with an AI agent built right in.',
   openGraph: {
-    title: 'stagewise | The frontend coding agent for production codebases',
+    title: 'stagewise · The coding agent built for the web',
     description:
-      'Visually build your apps frontend right inside your browser on localhost. Compatible with any frontend framework.',
+      'A purpose-built browser for web development. Build, preview, and iterate on your frontend with an AI agent built right in.',
     type: 'website',
     images: [
       {
         url: '/agent-thumbnail.png',
         width: 1200,
         height: 630,
-        alt: 'stagewise: The frontend coding agent for production codebases',
+        alt: 'stagewise: The coding agent built for the web',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'stagewise | The frontend coding agent for production codebases',
+    title: 'stagewise · The coding agent built for the web',
     description:
-      'Visually build your apps frontend right inside your browser on localhost. Compatible with any frontend framework.',
+      'A purpose-built browser for web development. Build, preview, and iterate on your frontend with an AI agent built right in.',
     images: ['/agent-thumbnail.png'],
   },
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${GeistSans.className}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={inter.className} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

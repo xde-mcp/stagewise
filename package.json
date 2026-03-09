@@ -9,45 +9,99 @@
     "build:plugins": "turbo run build --filter='./plugins/*'",
     "clean": "git clean -xdf node_modules",
     "clean:workspaces": "turbo clean",
+    "clean:browser-data": "pnpm -F stagewise clean-data",
     "dev": "turbo watch dev --concurrency 20",
     "dev:playgrounds": "turbo watch dev --filter='./playgrounds/*' --concurrency 20",
     "dev:examples": "turbo watch dev --filter='./examples/*' --concurrency 20",
     "dev:toolbar": "turbo watch dev --filter='./toolbar/*' --concurrency 20",
     "dev:plugins": "turbo watch dev --filter='./plugins/*' --concurrency 20",
-    "changeset": "pnpm dlx @changesets/cli",
     "check": "biome check .",
     "check:fix": "biome check . --write",
     "sherif": "pnpm dlx sherif --fix",
     "typecheck": "turbo run typecheck",
+    "typecheck:scripts": "tsc --project scripts/release/tsconfig.json --noEmit",
     "test": "turbo run test",
     "copy-readme": "ts-node --esm scripts/copy-readme.ts",
-    "version-and-format": "pnpm changeset version && pnpm biome format --write ."
+    "version:browser": "tsx scripts/release/index.ts --package browser",
+    "version:browser:alpha": "tsx scripts/release/index.ts --package browser --channel alpha",
+    "version:browser:beta": "tsx scripts/release/index.ts --package browser --channel beta",
+    "version:browser:release": "tsx scripts/release/index.ts --package browser --channel release",
+    "version:karton": "tsx scripts/release/index.ts --package karton"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
-    "@changesets/cli": "^2.29.5",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
+    "@commitlint/config-pnpm-scopes": "^20.1.0",
     "@stagewise/typescript-config": "workspace:*",
     "@types/node": "22.15.2",
+    "@types/semver": "^7.7.1",
+    "conventional-changelog-cli": "^5.0.0",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
+    "conventional-recommended-bump": "^11.2.0",
+    "git-raw-commits": "^5.0.0",
     "lefthook": "^1.12.2",
+    "semver": "^7.7.3",
     "ts-node": "10.9.2",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
   },
-  "packageManager": "pnpm@10.10.0",
+  "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=18"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "@libsql/darwin-arm64",
+      "@libsql/darwin-x64",
+      "@libsql/linux-arm64-gnu",
+      "@libsql/linux-arm64-musl",
+      "@libsql/linux-x64-gnu",
+      "@libsql/linux-x64-musl",
+      "@libsql/win32-x64-msvc",
+      "@parcel/watcher",
+      "@posthog/cli",
+      "@swc/core",
+      "bufferutil",
+      "core-js",
+      "core-js-pure",
+      "electron",
+      "electron-winstaller",
+      "esbuild",
+      "fs-xattr",
+      "lefthook",
+      "libsql",
+      "macos-alias",
+      "nucleo-core-fill-24",
+      "nucleo-core-outline-24",
+      "nucleo-micro-bold",
+      "nucleo-ui-fill-18",
+      "nucleo-ui-fill-duo-18",
+      "nucleo-ui-outline-18",
+      "nucleo-ui-outline-duo-18",
+      "sharp",
+      "utf-8-validate"
     ],
-    "ignoredBuiltDependencies": [
-      "keytar"
-    ]
+    "overrides": {
+      "lucide-react": "0.554.0",
+      "@types/react": "19.2.7",
+      "@types/react-dom": "19.2.3",
+      "@types/glob": "8.1.0",
+      "@types/minimatch": "5.1.2"
+    }
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^4.0.73",
+    "@ai-sdk/azure": "^3.0.40",
+    "@ai-sdk/google-vertex": "^4.0.73",
+    "@ai-sdk/openai-compatible": "^2.0.35",
+    "@better-auth/electron": "^1.5.3",
+    "@streamdown/math": "^1.0.2",
+    "better-auth": "^1.5.3",
+    "gray-matter": "^4.0.3",
     "tsx": "^4.20.3"
+  },
+  "config": {
+    "forge": "./forge.config.mts"
   }
 }

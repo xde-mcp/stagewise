@@ -1,14 +1,16 @@
 'use client';
 
-import { AnimatedGradientBackground } from '@/components/landing/animated-gradient-background';
-import { Logo } from '@/components/landing/logo';
+import { LogoText } from '@stagewise/stage-ui/components/logo-text';
+import Image from 'next/image';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
+
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { MenuIcon, XIcon } from 'lucide-react';
+import { IconUserUpdateFillDuo18 } from 'nucleo-ui-fill-duo-18';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { SiDiscord, SiX } from 'react-icons/si';
 
 function NavbarButton({
   children,
@@ -23,8 +25,8 @@ function NavbarButton({
     <Link
       href={href}
       className={cn(
-        buttonVariants({ variant: 'ghost', size: 'lg' }),
-        'rounded-full px-5 font-normal text-muted-foreground hover:bg-zinc-500/5',
+        buttonVariants({ variant: 'ghost', size: 'md' }),
+        'pointer-events-auto',
         isActive && 'font-semibold text-foreground',
       )}
     >
@@ -37,23 +39,28 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="-translate-x-1/2 fixed top-4 left-1/2 z-50 w-full px-4 sm:w-fit">
+    <div className="fixed top-0 left-0 z-50 flex w-full justify-center bg-background/80 backdrop-blur-lg">
       <div
         className={cn(
-          'glass-body z-50 flex h-14 w-full max-w-2xl flex-col items-start justify-between gap-2 overflow-hidden rounded-3xl bg-white/60 p-2 shadow-black/5 shadow-xl backdrop-blur-md transition-all duration-150 ease-out sm:h-14 sm:w-fit sm:flex-row sm:items-center sm:rounded-full dark:bg-zinc-900/60 dark:shadow-white/5',
-          isOpen && 'h-[calc-size(auto,size)] h-auto',
+          'z-50 flex h-14 w-full max-w-7xl flex-col items-start justify-between gap-2 overflow-hidden px-4 py-3 transition-all duration-150 ease-out sm:h-14 sm:flex-row sm:items-center sm:py-0',
+          isOpen &&
+            'h-[calc-size(auto,size)] h-auto border-border border-b shadow-sm',
         )}
       >
-        <div className="flex w-full items-center justify-between sm:w-24">
+        <div className="flex w-full items-center justify-between sm:w-auto">
           <Link
             href="/"
-            className="relative size-10 scale-100 cursor-pointer overflow-hidden rounded-full shadow-lg ring-1 ring-black/20 ring-inset"
+            className="flex items-center gap-2"
+            aria-label="stagewise"
           >
-            <AnimatedGradientBackground className="absolute inset-0 size-full" />
-            <Logo
-              className="absolute top-[24%] left-[24%] z-10 size-1/2 drop-shadow-xs"
-              color="white"
+            <Image
+              src="/icon.png"
+              alt=""
+              width={28}
+              height={28}
+              className="size-7 rounded-full ring-1 ring-border"
             />
+            <LogoText className="h-6 text-foreground" />
           </Link>
           <Button
             variant="secondary"
@@ -68,36 +75,34 @@ export function Navbar() {
             )}
           </Button>
         </div>
-        <div className="flex flex-1 flex-col items-start justify-start sm:flex-row sm:items-center">
-          <NavbarButton href="/">Home</NavbarButton>
-          <NavbarButton href="/pricing">
-            <span>Pricing</span>
-            <span className="ml-1 rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground text-xs">
-              New
-            </span>
-          </NavbarButton>
-          <NavbarButton href="/docs">Docs</NavbarButton>
+        <div className="flex flex-col items-start justify-start sm:pointer-events-none sm:absolute sm:inset-x-0 sm:flex-row sm:items-center sm:justify-center">
+          <NavbarButton href="/pricing">Pricing</NavbarButton>
+          <NavbarButton href="https://docs.stagewise.io">Docs</NavbarButton>
           <NavbarButton href="/news">News</NavbarButton>
+          <NavbarButton href="/team">Team</NavbarButton>
         </div>
-        <div className="flex w-24 flex-row items-center justify-end gap-2">
+        <div className="flex flex-row items-center justify-end gap-2">
           <Link
+            href="https://console.stagewise.io"
             className={buttonVariants({
-              size: 'icon-md',
-              variant: 'secondary',
+              size: 'sm',
+              variant: 'ghost',
             })}
-            href="https://x.com/stagewise_io"
           >
-            <SiX className="size-5" />
+            Account
+            <IconUserUpdateFillDuo18 className="size-4" />
           </Link>
-          <Link
-            className={buttonVariants({
-              size: 'icon-md',
-              variant: 'secondary',
-            })}
-            href="https://discord.gg/gkdGsDYaKA"
-          >
-            <SiDiscord className="size-5" />
-          </Link>
+          {/* {!isMobile && isOsSupported && (
+            <Link
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ size: 'sm', variant: 'primary' })}
+            >
+              Download
+              <IconDownload4FillDuo18 className="size-4" />
+            </Link>
+          )} */}
         </div>
       </div>
     </div>

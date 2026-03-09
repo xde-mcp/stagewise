@@ -1,0 +1,26 @@
+/**
+ * Shared theme colors used throughout the application.
+ * These colors are used for window backgrounds and webcontents backgrounds
+ * to ensure consistent theming across light and dark modes.
+ *
+ * AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
+ * Run "pnpm generate:theme-colors" in packages/stage-ui to regenerate.
+ * Source: packages/stage-ui/src/palette.css and theme.css
+ */
+
+export const THEME_COLORS = {
+  light: {
+    background: '#e2e4e9', // theme.css: --color-app-background → --color-base-150
+    titleBarOverlay: {
+      color: '#e2e4e9', // theme.css: --color-app-background → --color-base-150
+      symbolColor: '#151617', // theme.css: --color-foreground → --color-base-900
+    },
+  },
+  dark: {
+    background: '#0d0d0e', // theme.css: --color-app-background → --color-base-950
+    titleBarOverlay: {
+      color: '#0d0d0e', // theme.css: --color-app-background → --color-base-950
+      symbolColor: '#d5d7dc', // theme.css: --color-foreground → --color-base-200
+    },
+  },
+} as const;
