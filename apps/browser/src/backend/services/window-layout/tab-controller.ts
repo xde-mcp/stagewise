@@ -1314,6 +1314,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
       this.webContentsView.webContents.close({ waitForBeforeUnload: false });
     }
 
+    this.kartonTransport.close();
     this.cdpEventSubscribers.clear();
     this.removeAllListeners();
   }

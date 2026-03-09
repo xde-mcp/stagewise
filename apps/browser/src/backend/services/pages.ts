@@ -73,7 +73,6 @@ export class PagesService extends DisposableService {
   private readonly webDataService?: WebDataService;
   private kartonServer: KartonServer<PagesApiContract>;
   private transport: ElectronServerTransport;
-  private currentPort?: MessagePortMain;
   private portCloseListeners = new Map<MessagePortMain, () => void>();
   private openTabHandler?: (url: string, setActive?: boolean) => Promise<void>;
   private markDownloadsSeenHandler?: () => Promise<void>;
@@ -1723,33 +1722,19 @@ export class PagesService extends DisposableService {
    * @returns The connection ID assigned to this port
    */
   public acceptPort(port: MessagePortMain): string {
-    // Remove listener from old port if it exists
-    if (this.currentPort) {
-      const oldListener = this.portCloseListeners.get(this.currentPort);
-      if (oldListener) {
-        this.currentPort.off('close', oldListener);
-        this.portCloseListeners.delete(this.currentPort);
-      }
-    }
-
-    // Store the new port
-    this.currentPort = port;
-
     // Setup close listener for connection monitoring
     const closeListener = () => {
       this.logger.warn('[PagesService] MessagePort closed - connection lost');
-      // Clean up the listener reference
-      if (this.currentPort) {
-        this.portCloseListeners.delete(this.currentPort);
-      }
+      this.portCloseListeners.delete(port);
     };
 
-    // Store the listener so we can remove it later
     this.portCloseListeners.set(port, closeListener);
     port.on('close', closeListener);
 
-    // Accept the port in the transport
-    const id = this.transport.setPort(port, 'pages-api');
+    // Each internal-page tab gets its own unique connection ID so multiple
+    // tabs on stagewise://internal/ pages can coexist without stealing each
+    // other's port. The karton server broadcasts state to all connections.
+    const id = this.transport.setPort(port);
     this.logger.debug(`[PagesService] Accepted port connection: ${id}`);
 
     return id;
@@ -1811,7 +1796,6 @@ export class PagesService extends DisposableService {
       port.off('close', listener);
     }
     this.portCloseListeners.clear();
-    this.currentPort = undefined;
     this.openTabHandler = undefined;
     this.userExperienceService = undefined;
     this.trustCertificateAndReloadHandler = undefined;

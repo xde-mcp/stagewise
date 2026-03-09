@@ -10,21 +10,113 @@ import { createKartonReactClient } from '@stagewise/karton/react/client';
 import type { KartonMessage } from '@stagewise/karton/shared';
 import { ipcRenderer } from 'electron';
 
-const msgChannel = new MessageChannel();
+const RECONNECT_CONFIG = {
+  MAX_ATTEMPTS: 10,
+  BASE_DELAY: 1000,
+  MAX_DELAY: 30000,
+};
 
-// Request the port from main process
+let reconnectAttempts = 0;
+let reconnectTimer: NodeJS.Timeout | null = null;
+let isReconnecting = false;
+let currentMessageHandler: ((message: KartonMessage) => void) | null = null;
+let currentPort: MessagePort;
+
+function setupPortListeners(port: MessagePort) {
+  port.onmessageerror = () => {
+    console.error('[Tab Karton] MessagePort error');
+    attemptReconnect();
+  };
+
+  if (currentMessageHandler) {
+    port.onmessage = (event) => {
+      currentMessageHandler!(event.data as KartonMessage);
+    };
+  }
+}
+
+function attemptReconnect() {
+  if (isReconnecting) return;
+  if (reconnectAttempts >= RECONNECT_CONFIG.MAX_ATTEMPTS) {
+    console.error('[Tab Karton] Max reconnection attempts reached');
+    return;
+  }
+
+  isReconnecting = true;
+  reconnectAttempts++;
+
+  const delay = Math.min(
+    RECONNECT_CONFIG.BASE_DELAY * 2 ** (reconnectAttempts - 1),
+    RECONNECT_CONFIG.MAX_DELAY,
+  );
+
+  console.log(
+    `[Tab Karton] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${RECONNECT_CONFIG.MAX_ATTEMPTS})`,
+  );
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    performReconnect();
+  }, delay);
+}
+
+function performReconnect() {
+  try {
+    const newChannel = new MessageChannel();
+    ipcRenderer.postMessage('karton-connect', 'tab', [newChannel.port2]);
+    currentPort = newChannel.port1;
+    setupPortListeners(currentPort);
+
+    console.log('[Tab Karton] Reconnection successful');
+    reconnectAttempts = 0;
+    isReconnecting = false;
+  } catch (error) {
+    console.error('[Tab Karton] Reconnection failed:', error);
+    isReconnecting = false;
+    attemptReconnect();
+  }
+}
+
+const msgChannel = new MessageChannel();
+currentPort = msgChannel.port1;
 ipcRenderer.postMessage('karton-connect', 'tab', [msgChannel.port2]);
 
 const kartonMessagePort: MessagePortProxy = {
   setOnMessage: (handler: (message: KartonMessage) => void) => {
-    msgChannel.port1.onmessage = (event) => {
+    currentMessageHandler = handler;
+
+    currentPort.onmessage = (event) => {
       handler(event.data as KartonMessage);
+    };
+
+    currentPort.onmessageerror = () => {
+      console.error('[Tab Karton] MessagePort error');
+      attemptReconnect();
     };
   },
   postMessage: (message: KartonMessage) => {
-    msgChannel.port1.postMessage(message);
+    try {
+      currentPort.postMessage(message);
+    } catch (error) {
+      console.error('[Tab Karton] Failed to post message:', error);
+      attemptReconnect();
+    }
   },
 };
+
+window.addEventListener('beforeunload', () => {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  isReconnecting = false;
+  reconnectAttempts = RECONNECT_CONFIG.MAX_ATTEMPTS;
+  try {
+    currentPort.close();
+  } catch {
+    // Port might already be closed
+  }
+});
 
 const [KartonProvider, useKartonState, useKartonProcedure, useKartonConnected] =
   createKartonReactClient<TabKartonContract>({

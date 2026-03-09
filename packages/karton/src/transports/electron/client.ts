@@ -68,6 +68,7 @@ export class ElectronClientTransport implements Transport {
   }
 
   close(): void {
+    this._isReady = false;
     this.unsubscribeMessage?.();
     this.closeHandler?.();
   }
