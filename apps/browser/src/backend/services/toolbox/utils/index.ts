@@ -55,6 +55,7 @@ function calculateJsonByteSize(value: unknown): number {
  * Handles arrays and objects with array properties
  */
 function countItems(value: unknown): number {
+  if (typeof value === 'string') return value.length > 0 ? 1 : 0;
   if (Array.isArray(value)) return value.length;
 
   if (typeof value === 'object' && value !== null) {
@@ -69,6 +70,37 @@ function countItems(value: unknown): number {
   }
 
   return 0;
+}
+
+const TRUNCATION_INDICATOR = '\n... [truncated]';
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+/**
+ * Truncate a string to fit within a target byte size (JSON-encoded).
+ * Uses byte-aware slicing so multi-byte UTF-8 characters are never split.
+ */
+function truncateStringToByteSize(
+  str: string,
+  targetJsonBytes: number,
+): string {
+  const indicatorBytes = encoder.encode(
+    JSON.stringify(TRUNCATION_INDICATOR),
+  ).length;
+  // JSON wraps strings in quotes + escaping; 2 bytes for the quotes themselves
+  const overhead = 2 + indicatorBytes;
+  const budget = Math.max(0, targetJsonBytes - overhead);
+
+  const encoded = encoder.encode(str);
+  if (encoded.length <= budget) return str;
+
+  // Slice raw bytes and decode; {fatal:false} replaces partial chars with U+FFFD
+  let sliced = decoder.decode(encoded.slice(0, budget));
+
+  // Drop trailing replacement character if the slice broke a multi-byte char
+  if (sliced.endsWith('\uFFFD')) sliced = sliced.slice(0, sliced.length - 1);
+
+  return sliced + TRUNCATION_INDICATOR;
 }
 
 /**
@@ -144,8 +176,13 @@ export function capToolOutput<T>(
 
   // PHASE 2: Apply byte size truncation if still over maxBytes
   if (currentSize > maxBytes) {
+    // Handle direct strings
+    if (typeof cappedResult === 'string') {
+      cappedResult = truncateStringToByteSize(cappedResult, maxBytes) as T;
+      currentSize = calculateJsonByteSize(cappedResult);
+    }
     // Handle direct arrays
-    if (Array.isArray(cappedResult)) {
+    else if (Array.isArray(cappedResult)) {
       // Binary search for the right number of items that fit in maxBytes
       let low = 0;
       let high = cappedResult.length;
@@ -196,6 +233,26 @@ export function capToolOutput<T>(
           currentSize = calculateJsonByteSize(cappedResult);
 
           // Check if we're under limit now
+          if (currentSize <= maxBytes) break;
+        }
+      }
+
+      // If still over limit, truncate string properties (largest first)
+      if (currentSize > maxBytes) {
+        const stringEntries = Object.entries(obj)
+          .filter(([, v]) => typeof v === 'string')
+          .map(([k, v]) => ({
+            key: k,
+            byteSize: encoder.encode(v as string).length,
+          }))
+          .sort((a, b) => b.byteSize - a.byteSize);
+
+        for (const { key } of stringEntries) {
+          const strValue = obj[key] as string;
+          const otherSize = currentSize - calculateJsonByteSize(strValue);
+          const budgetForProp = Math.max(0, maxBytes - otherSize);
+          obj[key] = truncateStringToByteSize(strValue, budgetForProp);
+          currentSize = calculateJsonByteSize(cappedResult);
           if (currentSize <= maxBytes) break;
         }
       }
