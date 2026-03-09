@@ -10,6 +10,7 @@ import {
 } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import {
   type StatusCardSection,
   type FormattedFileDiff,
@@ -171,18 +172,25 @@ export function StatusCard() {
     prevAgentStatesRef.current = next;
   }, [workspaceMdAgents, workspaceMounts]);
 
-  // Show file callback - navigates to agent settings, optionally targeting a specific workspace
+  const { getFileIDEHref, needsIdePicker } = useFileIDEHref();
+
   const handleShowFile = useCallback(
     (workspacePath?: string) => {
-      const params = workspacePath
-        ? `?workspace=${encodeURIComponent(workspacePath)}`
-        : '';
-      void createTab(
-        `stagewise://internal/agent-settings/skills-context${params}`,
-        true,
-      );
+      const filePath = workspacePath
+        ? `${workspacePath}/.stagewise/WORKSPACE.md`
+        : '.stagewise/WORKSPACE.md';
+      if (needsIdePicker) {
+        // Fall back to settings when no IDE has been configured yet
+        void createTab(
+          'stagewise://internal/agent-settings/skills-context',
+          true,
+        );
+        return;
+      }
+      const href = getFileIDEHref(filePath);
+      if (href && href !== '#') window.open(href, '_blank');
     },
-    [createTab],
+    [needsIdePicker, getFileIDEHref, createTab],
   );
 
   // Procedure to remove a queued message
