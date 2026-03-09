@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import * as buildConstants from './build-constants';
+import { licensePlugin } from './vite-plugins/license-plugin';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,6 +34,7 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
+    licensePlugin(),
   ],
   define: {
     'process.env': 'import.meta.env',

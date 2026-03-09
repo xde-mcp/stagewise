@@ -94,3 +94,6 @@ out/
 # Generated ESLint server bundle
 bundled/eslint-server/
 .eslint-build-temp/
+
+# Generated license data
+src/pages/generated/
