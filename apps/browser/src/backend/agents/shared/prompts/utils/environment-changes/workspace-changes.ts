@@ -1,4 +1,5 @@
 import type { WorkspaceSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type { EnvironmentChangeEntry } from './types';
 
 function formatPermissions(permissions?: string[]): string {
   if (!permissions || permissions.length === 0) return '';
@@ -14,10 +15,10 @@ function formatPermissions(permissions?: string[]): string {
 export function computeWorkspaceChanges(
   previous: WorkspaceSnapshot | null,
   current: WorkspaceSnapshot,
-): string[] {
+): EnvironmentChangeEntry[] {
   if (!previous) return [];
 
-  const changes: string[] = [];
+  const changes: EnvironmentChangeEntry[] = [];
 
   const prevMap = new Map(previous.mounts.map((m) => [m.prefix, m]));
   const currMap = new Map(current.mounts.map((m) => [m.prefix, m]));
@@ -25,27 +26,39 @@ export function computeWorkspaceChanges(
   for (const [prefix, mount] of currMap) {
     const prev = prevMap.get(prefix);
     if (!prev) {
-      changes.push(
-        `workspace mounted: ${prefix} -> ${mount.path}${formatPermissions(mount.permissions)}`,
-      );
+      changes.push({
+        type: 'workspace-mounted',
+        summary: `workspace mounted: ${prefix} -> ${mount.path}${formatPermissions(mount.permissions)}`,
+        attributes: { prefix },
+      });
     } else if (prev.path !== mount.path) {
-      changes.push(
-        `workspace ${prefix} changed: ${prev.path} -> ${mount.path}${formatPermissions(mount.permissions)}`,
-      );
+      changes.push({
+        type: 'workspace-path-changed',
+        summary: `workspace ${prefix} changed: ${prev.path} -> ${mount.path}${formatPermissions(mount.permissions)}`,
+        attributes: { prefix },
+      });
     } else {
       const prevPerms = (prev.permissions ?? []).join(',');
       const currPerms = (mount.permissions ?? []).join(',');
       if (prevPerms !== currPerms) {
-        changes.push(
-          `workspace ${prefix} permissions changed: [${prevPerms}] -> [${currPerms}]`,
-        );
+        changes.push({
+          type: 'workspace-permissions-changed',
+          summary: `workspace ${prefix} permissions changed: [${prevPerms}] -> [${currPerms}]`,
+          attributes: { prefix },
+        });
       }
     }
   }
 
-  for (const [prefix, mount] of prevMap)
-    if (!currMap.has(prefix))
-      changes.push(`workspace unmounted: ${prefix} (was ${mount.path})`);
+  for (const [prefix, mount] of prevMap) {
+    if (!currMap.has(prefix)) {
+      changes.push({
+        type: 'workspace-unmounted',
+        summary: `workspace unmounted: ${prefix} (was ${mount.path})`,
+        attributes: { prefix },
+      });
+    }
+  }
 
   return changes;
 }

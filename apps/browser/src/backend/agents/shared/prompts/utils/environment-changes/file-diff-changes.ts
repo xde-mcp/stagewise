@@ -2,6 +2,7 @@ import type {
   EnvironmentDiffSnapshot,
   FileDiffSnapshot,
 } from '@shared/karton-contracts/ui/shared-types';
+import type { EnvironmentChangeEntry } from './types';
 
 type FileChange = {
   modifiers: string[];
@@ -48,21 +49,29 @@ function formatFileChange(
   path: string,
   change: FileChange,
   agentInstanceId: string,
-): string | null {
+): EnvironmentChangeEntry | null {
   const hasModifiers = change.modifiers.length > 0;
   const formatted = change.modifiers.map((c) =>
     formatContributor(c, agentInstanceId),
   );
 
+  let summary: string | null = null;
   if (hasModifiers && change.editsGone)
-    return `${path} modified by: [${formatted.join(', ')}] (your edits no longer present)`;
-  if (hasModifiers && change.editsPartiallyRemoved)
-    return `${path} modified by: [${formatted.join(', ')}] (some of your edits were removed)`;
-  if (hasModifiers) return `${path} modified by: [${formatted.join(', ')}]`;
-  if (change.editsGone) return `${path}: your edits no longer present`;
-  if (change.editsPartiallyRemoved)
-    return `${path}: some of your edits were removed`;
-  return null;
+    summary = `${path} modified by: [${formatted.join(', ')}] (your edits no longer present)`;
+  else if (hasModifiers && change.editsPartiallyRemoved)
+    summary = `${path} modified by: [${formatted.join(', ')}] (some of your edits were removed)`;
+  else if (hasModifiers)
+    summary = `${path} modified by: [${formatted.join(', ')}]`;
+  else if (change.editsGone) summary = `${path}: your edits no longer present`;
+  else if (change.editsPartiallyRemoved)
+    summary = `${path}: some of your edits were removed`;
+
+  if (!summary) return null;
+  return {
+    type: 'file-diffs-changed',
+    summary,
+    attributes: { path },
+  };
 }
 
 /**
@@ -83,7 +92,7 @@ export function computeFileDiffChanges(
   previous: EnvironmentDiffSnapshot | null,
   current: EnvironmentDiffSnapshot,
   agentInstanceId: string,
-): string[] {
+): EnvironmentChangeEntry[] {
   if (!previous) return [];
 
   const selfKey = `agent-${agentInstanceId}`;
@@ -94,7 +103,6 @@ export function computeFileDiffChanges(
 
   const fileChanges = new Map<string, FileChange>();
 
-  // 1. Files that appeared in pending (new edits by others)
   for (const [path, curr] of currPending) {
     if (prevPending.has(path)) continue;
     const entry = getOrCreate(fileChanges, path);
@@ -122,14 +130,10 @@ export function computeFileDiffChanges(
     }
   }
 
-  // 2. Files that disappeared from pending (edits resolved)
   for (const [path, prev] of prevPending) {
     if (currPending.has(path)) continue;
     const selfWasContributor = prev.contributors.includes(selfKey);
 
-    // Check if the pending content survived by comparing OIDs:
-    // if the summary's current state still matches what was pending,
-    // the edits were accepted into the baseline — not reverted.
     const summarySnap = currSummary.get(path);
     const editsStillReflectedInSummary =
       summarySnap != null && summarySnap.currentOid === prev.currentOid;
@@ -140,7 +144,6 @@ export function computeFileDiffChanges(
     }
   }
 
-  // 3. Files still in pending but changed
   for (const [path, curr] of currPending) {
     const prev = prevPending.get(path);
     if (!prev) continue;
@@ -162,11 +165,6 @@ export function computeFileDiffChanges(
     const selfWasPrev = prev.contributors.includes(selfKey);
     const selfInCurr = curr.contributors.includes(selfKey);
     if (selfWasPrev && !selfInCurr) {
-      // Agent removed from pending contributors — check if the
-      // agent's edits were accepted (reflected in summary) rather
-      // than reverted. Use the same OID comparison as section 2,
-      // but against the current pending's currentOid since the
-      // file is still in pending with other contributors' changes.
       const summarySnap = currSummary.get(path);
       const editsStillReflected =
         summarySnap != null && summarySnap.currentOid === curr.currentOid;
@@ -176,10 +174,10 @@ export function computeFileDiffChanges(
     }
   }
 
-  const changes: string[] = [];
+  const changes: EnvironmentChangeEntry[] = [];
   for (const [path, change] of fileChanges) {
-    const line = formatFileChange(path, change, agentInstanceId);
-    if (line) changes.push(line);
+    const entry = formatFileChange(path, change, agentInstanceId);
+    if (entry) changes.push(entry);
   }
 
   return changes;

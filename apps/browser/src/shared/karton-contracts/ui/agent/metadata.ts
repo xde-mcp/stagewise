@@ -38,6 +38,16 @@ export const browserTabSnapshotSchema = z.object({
   handle: z.string(),
   url: z.string(),
   title: z.string(),
+  consoleErrorCount: z.number().optional(),
+  consoleLogCount: z.number().optional(),
+  error: z
+    .object({
+      code: z.number(),
+      message: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+  lastFocusedAt: z.number().optional(),
 });
 
 export type BrowserTabSnapshot = z.infer<typeof browserTabSnapshotSchema>;
@@ -138,12 +148,51 @@ export const activeAppSnapshotSchema = z
 
 export type ActiveAppSnapshot = z.infer<typeof activeAppSnapshotSchema>;
 
+export const agentsMdEntrySchema = z.object({
+  mountPrefix: z.string(),
+  content: z.string(),
+});
+
+export const agentsMdSnapshotSchema = z.object({
+  entries: z.array(agentsMdEntrySchema),
+  /** Mount prefixes where AGENTS.md is respected (user setting per workspace). */
+  respectedMounts: z.array(z.string()),
+});
+
+export type AgentsMdSnapshot = z.infer<typeof agentsMdSnapshotSchema>;
+
+export const workspaceMdEntrySchema = z.object({
+  mountPrefix: z.string(),
+  content: z.string(),
+});
+
+export const workspaceMdSnapshotSchema = z.object({
+  entries: z.array(workspaceMdEntrySchema),
+});
+
+export type WorkspaceMdSnapshot = z.infer<typeof workspaceMdSnapshotSchema>;
+
+export const enabledSkillsSnapshotSchema = z.object({
+  /**
+   * Mount-prefixed paths to enabled skill directories.
+   * Includes both workspace skills (e.g. "w1/.stagewise/skills/my-skill")
+   * and plugin skills (e.g. "plugins/my-plugin/SKILL.md").
+   * Content is read on demand by the agent.
+   */
+  paths: z.array(z.string()),
+});
+
+export type EnabledSkillsSnapshot = z.infer<typeof enabledSkillsSnapshotSchema>;
+
 export const environmentSnapshotSchema = z.object({
   browser: browserSnapshotSchema.optional(),
   workspace: workspaceSnapshotSchema.optional(),
   fileDiffs: environmentDiffSnapshotSchema.optional(),
   sandboxSessionId: z.string().nullable().optional(),
   activeApp: activeAppSnapshotSchema.optional(),
+  agentsMd: agentsMdSnapshotSchema.optional(),
+  workspaceMd: workspaceMdSnapshotSchema.optional(),
+  enabledSkills: enabledSkillsSnapshotSchema.optional(),
 });
 
 export type EnvironmentSnapshot = z.infer<typeof environmentSnapshotSchema>;

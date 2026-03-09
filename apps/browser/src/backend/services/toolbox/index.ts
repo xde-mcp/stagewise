@@ -593,9 +593,9 @@ export class ToolboxService extends DisposableService {
     };
   }
 
-  public captureEnvironmentSnapshot(
+  public async captureEnvironmentSnapshot(
     agentInstanceId: string,
-  ): EnvironmentSnapshot {
+  ): Promise<EnvironmentSnapshot> {
     const browserState = this.getBrowserSnapshot();
     const workspaceState =
       this.mountManagerService?.getWorkspaceSnapshot(agentInstanceId);
@@ -621,12 +621,38 @@ export class ToolboxService extends DisposableService {
       },
     ];
 
+    const [agentsMdEntries, workspaceMdEntries, skills] = await Promise.all([
+      this.getAllAgentsMdEntries(agentInstanceId),
+      this.getWorkspaceMd(agentInstanceId),
+      this.getSkillsList(agentInstanceId),
+    ]);
+
+    const mounts =
+      this.mountManagerService?.getMountedPathsWithRuntimes(agentInstanceId);
+    const respectedMounts: string[] = [];
+    if (mounts) {
+      for (const mount of mounts) {
+        const settings = this.uiKarton.state.preferences?.agent
+          ?.workspaceSettings?.[mount.path] ?? {
+          respectAgentsMd: false,
+          disabledSkills: [],
+        };
+        if (settings.respectAgentsMd) {
+          respectedMounts.push(mount.prefix);
+        }
+      }
+    }
+
     const snapshot: EnvironmentSnapshot = {
       browser: {
         tabs: browserState.tabs.map((t) => ({
           handle: t.handle,
           url: t.url,
           title: t.title,
+          consoleErrorCount: t.consoleErrorCount,
+          consoleLogCount: t.consoleLogCount,
+          error: t.error,
+          lastFocusedAt: t.lastFocusedAt,
         })),
         activeTabHandle: browserState.activeTab?.handle ?? null,
       },
@@ -645,6 +671,22 @@ export class ToolboxService extends DisposableService {
             pluginId: toolboxState.activeApp.pluginId,
           }
         : null,
+      agentsMd: {
+        entries: agentsMdEntries.map((e) => ({
+          mountPrefix: e.mountPrefix,
+          content: e.content,
+        })),
+        respectedMounts,
+      },
+      workspaceMd: {
+        entries: workspaceMdEntries.map((e) => ({
+          mountPrefix: e.mountPrefix,
+          content: e.content,
+        })),
+      },
+      enabledSkills: {
+        paths: skills.map((s) => s.path),
+      },
     };
 
     return snapshot;
@@ -664,10 +706,16 @@ export class ToolboxService extends DisposableService {
         };
         const disabled = new Set(settings.disabledSkills);
         const skills = await getSkills(mount.clientRuntime);
+        const wsRoot =
+          mount.clientRuntime.fileSystem.getCurrentWorkingDirectory();
 
         for (const skill of skills) {
           if (disabled.has(skill.name)) continue;
-          result.push(skill);
+          const relativePath = path.relative(wsRoot, skill.path);
+          result.push({
+            ...skill,
+            path: `${mount.prefix}/${relativePath}`,
+          });
         }
       }
     }
@@ -705,7 +753,7 @@ export class ToolboxService extends DisposableService {
     return result;
   }
 
-  public async getAgentsMd(
+  private async getAllAgentsMdEntries(
     agentInstanceId: string,
   ): Promise<Array<{ mountPrefix: string; content: string }>> {
     const mounts =
@@ -714,12 +762,6 @@ export class ToolboxService extends DisposableService {
     if (mounts.length === 0) return [];
     const results: Array<{ mountPrefix: string; content: string }> = [];
     for (const mount of mounts) {
-      const settings = this.uiKarton.state.preferences?.agent
-        ?.workspaceSettings?.[mount.path] ?? {
-        respectAgentsMd: false,
-        disabledSkills: [],
-      };
-      if (!settings.respectAgentsMd) continue;
       const content = await readAgentsMd(mount.clientRuntime);
       if (content) results.push({ mountPrefix: mount.prefix, content });
     }

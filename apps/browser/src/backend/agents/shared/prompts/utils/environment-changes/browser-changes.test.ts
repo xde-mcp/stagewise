@@ -9,6 +9,12 @@ function makeBrowser(
   return { tabs, activeTabHandle };
 }
 
+function summaries(
+  entries: ReturnType<typeof computeBrowserChanges>,
+): string[] {
+  return entries.map((e) => e.summary);
+}
+
 describe('computeBrowserChanges', () => {
   it('returns empty array when previous is null', () => {
     const current = makeBrowser(
@@ -34,7 +40,7 @@ describe('computeBrowserChanges', () => {
     const current = makeBrowser([
       { handle: 't_1', url: 'https://a.com', title: 'Tab A' },
     ]);
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain('tab closed: [t_2]');
   });
 
@@ -47,7 +53,7 @@ describe('computeBrowserChanges', () => {
     const current = makeBrowser([
       { handle: 't_1', url: 'https://a.com', title: 'A' },
     ]);
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain('tabs closed: [t_2, t_3]');
   });
 
@@ -59,7 +65,7 @@ describe('computeBrowserChanges', () => {
       { handle: 't_1', url: 'https://a.com', title: 'A' },
       { handle: 't_2', url: 'https://b.com', title: 'B' },
     ]);
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain('new tab opened: [t_2 (https://b.com)]');
   });
 
@@ -70,7 +76,7 @@ describe('computeBrowserChanges', () => {
     const current = makeBrowser([
       { handle: 't_1', url: 'https://b.com', title: 'B' },
     ]);
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain(
       'tab navigated: [t_1 (https://a.com -> https://b.com)]',
     );
@@ -91,7 +97,7 @@ describe('computeBrowserChanges', () => {
       ],
       't_2',
     );
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain('active tab: t_1 -> t_2');
   });
 
@@ -104,7 +110,7 @@ describe('computeBrowserChanges', () => {
       [{ handle: 't_1', url: 'https://a.com', title: 'A' }],
       't_1',
     );
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain('active tab: t_1');
   });
 
@@ -114,7 +120,7 @@ describe('computeBrowserChanges', () => {
       't_1',
     );
     const current = makeBrowser([], null);
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain('tab closed: [t_1]');
     expect(result.some((c) => c.startsWith('active tab'))).toBe(false);
   });
@@ -138,7 +144,7 @@ describe('computeBrowserChanges', () => {
       ],
       't_3',
     );
-    const result = computeBrowserChanges(previous, current);
+    const result = summaries(computeBrowserChanges(previous, current));
     expect(result).toContain('tab closed: [t_1]');
     expect(result).toContain('new tab opened: [t_3 (https://c.com)]');
     expect(result).toContain(

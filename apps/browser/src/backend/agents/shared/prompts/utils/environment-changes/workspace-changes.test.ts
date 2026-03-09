@@ -8,6 +8,12 @@ function makeWs(
   return { mounts };
 }
 
+function summaries(
+  entries: ReturnType<typeof computeWorkspaceChanges>,
+): string[] {
+  return entries.map((e) => e.summary);
+}
+
 describe('computeWorkspaceChanges', () => {
   it('returns empty array when previous is null', () => {
     const current = makeWs({ prefix: 'w1', path: '/home/user/project' });
@@ -28,14 +34,14 @@ describe('computeWorkspaceChanges', () => {
   it('detects single mount added', () => {
     const previous = makeWs();
     const current = makeWs({ prefix: 'w1', path: '/home/user/project' });
-    const result = computeWorkspaceChanges(previous, current);
+    const result = summaries(computeWorkspaceChanges(previous, current));
     expect(result).toEqual(['workspace mounted: w1 -> /home/user/project']);
   });
 
   it('detects single mount removed', () => {
     const previous = makeWs({ prefix: 'w1', path: '/home/user/project' });
     const current = makeWs();
-    const result = computeWorkspaceChanges(previous, current);
+    const result = summaries(computeWorkspaceChanges(previous, current));
     expect(result).toEqual([
       'workspace unmounted: w1 (was /home/user/project)',
     ]);
@@ -44,7 +50,7 @@ describe('computeWorkspaceChanges', () => {
   it('detects mount path changed', () => {
     const previous = makeWs({ prefix: 'w1', path: '/home/user/old' });
     const current = makeWs({ prefix: 'w1', path: '/home/user/new' });
-    const result = computeWorkspaceChanges(previous, current);
+    const result = summaries(computeWorkspaceChanges(previous, current));
     expect(result).toEqual([
       'workspace w1 changed: /home/user/old -> /home/user/new',
     ]);
@@ -61,7 +67,7 @@ describe('computeWorkspaceChanges', () => {
       { prefix: 'w3', path: '/home/user/changed-new' },
       { prefix: 'w4', path: '/home/user/added' },
     );
-    const result = computeWorkspaceChanges(previous, current);
+    const result = summaries(computeWorkspaceChanges(previous, current));
     expect(result).toEqual(
       expect.arrayContaining([
         'workspace w3 changed: /home/user/changed-old -> /home/user/changed-new',

@@ -1,24 +1,32 @@
 import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import { computeAgentsMdChanges } from './agents-md-changes';
 import { computeAppChanges } from './app-changes';
 import { computeBrowserChanges } from './browser-changes';
 import { computeFileDiffChanges } from './file-diff-changes';
 import { computeSandboxChanges } from './sandbox-changes';
+import { computeSkillsChanges } from './skills-changes';
+import type { EnvironmentChangeEntry } from './types';
 import { computeWorkspaceChanges } from './workspace-changes';
+import { computeWorkspaceMdChanges } from './workspace-md-changes';
 
+export { computeAgentsMdChanges } from './agents-md-changes';
 export { computeAppChanges } from './app-changes';
 export { computeBrowserChanges } from './browser-changes';
 export { computeFileDiffChanges } from './file-diff-changes';
 export { computeSandboxChanges } from './sandbox-changes';
+export { computeSkillsChanges } from './skills-changes';
 export { computeWorkspaceChanges } from './workspace-changes';
+export { computeWorkspaceMdChanges } from './workspace-md-changes';
 export {
   resolveEffectiveSnapshot,
   sparsifySnapshot,
 } from './resolve-snapshot';
+export type { EnvironmentChangeEntry } from './types';
+export { renderEnvironmentChangesXml } from './types';
 
 /**
  * Compares two fully-resolved environment snapshots and returns all
- * human-readable change descriptions across browser tabs,
- * workspace state, and file diffs.
+ * structured change entries across every domain.
  *
  * Returns an empty array when `previous` is null (first message)
  * or when nothing changed.
@@ -27,7 +35,7 @@ export function computeAllEnvironmentChanges(
   previous: FullEnvironmentSnapshot | null,
   current: FullEnvironmentSnapshot,
   agentInstanceId: string,
-): string[] {
+): EnvironmentChangeEntry[] {
   if (!previous) return [];
 
   return [
@@ -43,5 +51,8 @@ export function computeAllEnvironmentChanges(
       agentInstanceId,
     ),
     ...computeAppChanges(previous.activeApp, current.activeApp),
+    ...computeAgentsMdChanges(previous.agentsMd, current.agentsMd),
+    ...computeWorkspaceMdChanges(previous.workspaceMd, current.workspaceMd),
+    ...computeSkillsChanges(previous.enabledSkills, current.enabledSkills),
   ];
 }

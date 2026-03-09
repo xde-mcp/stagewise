@@ -1,14 +1,4 @@
-export type ApplicationInfoConfig = {
-  respectAgentsMd: boolean;
-};
-
-export function getApplicationInfo(config: ApplicationInfoConfig): string {
-  const agentsMdSection = config.respectAgentsMd
-    ? `
-- \`AGENTS.md\`: User-defined behavior ruleset and project information. May be outdated or not exist. Superseded by files in \`.stagewise\` folder.
-`.trim()
-    : '';
-
+export function getApplicationInfo(): string {
   return `# Application Environment
 
 You run inside **stagewise**, a browser application built by [stagewise Inc.](https://stagewise.io).
@@ -25,7 +15,7 @@ When connected to a workspace, you may create, read, modify, and delete all file
 
 - \`.stagewise\`: stagewise specific files for agent behavior and project information. Important to follow and respect.
 - \`.stagewise/\`: High-level project information. If not existing, it's being generated.
-${agentsMdSection}
+- \`AGENTS.md\`: User-defined behavior ruleset and project information. May be outdated or not exist. Ignore, if not explicitly listed in the chat. Superseded by files in \`.stagewise\` folder.
 
 ## Javascript sandbox
 

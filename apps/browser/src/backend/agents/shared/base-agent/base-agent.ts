@@ -34,9 +34,9 @@ import {
 import {
   convertAgentMessagesToModelMessages,
   capitalizeFirstLetter,
-  generateSimpleTitle,
-  generateSimpleCompressedHistory,
 } from './utils';
+import { generateSimpleTitle } from './title-generation';
+import { generateSimpleCompressedHistory } from './history-compression';
 import { readBlob } from '@/utils/attachment-blobs';
 import { randomUUID } from 'node:crypto';
 import {
@@ -948,10 +948,14 @@ export abstract class BaseAgent<
   protected async transformMessagesToModelMessages(
     messages: AgentMessage[],
     systemPrompt: string,
-    liveSnapshot?: FullEnvironmentSnapshot,
   ): Promise<ModelMessage[]> {
     const activeModelId = this.state.get().activeModelId;
     const capabilities = getModelCapabilities(activeModelId);
+
+    const shellInfo = this.toolbox.getShellInfo();
+    const skillsList = await this.toolbox.getSkillsList(this.instanceId);
+    const skillDetails = new Map(skillsList.map((s) => [s.path, s]));
+
     return convertAgentMessagesToModelMessages(
       messages,
       systemPrompt,
@@ -966,8 +970,9 @@ export abstract class BaseAgent<
           attachmentId: ctx.attachmentId,
         });
       },
-      liveSnapshot,
       activeModelId,
+      shellInfo,
+      skillDetails,
     );
   }
 
@@ -999,9 +1004,7 @@ export abstract class BaseAgent<
    *
    * @note Can be overridden by the inheriting class to return a different system prompt.
    */
-  protected abstract getSystemPrompt(
-    messages: AgentMessage[],
-  ): string | Promise<string>;
+  protected abstract getSystemPrompt(): string | Promise<string>;
 
   /**
    * Retrieves the tools that the agent can use.
@@ -1201,12 +1204,16 @@ export abstract class BaseAgent<
     // ignored. Capture it in a local const for the closures below.
     const stepGen = ++this._stepGeneration;
 
+    let queueFlushIndex = -1;
     this.state.set((draft) => {
       draft.isWorking = true;
       draft.error = undefined; // Reset error at the start of each step
       // Flush the queue into the history (single broadcast)
-      draft.history.push(...draft.queuedMessages);
-      draft.queuedMessages = [];
+      if (draft.queuedMessages.length > 0) {
+        queueFlushIndex = draft.history.length;
+        draft.history.push(...draft.queuedMessages);
+        draft.queuedMessages = [];
+      }
     });
 
     // Get the current model — wrapped in try-catch so a deleted custom model
@@ -1245,7 +1252,9 @@ export abstract class BaseAgent<
     let tools: Awaited<ReturnType<typeof this.getToolsForStep>>;
     let resolvedConfig: BaseAgentConfig<TFinishToolOutputSchema>;
     try {
-      modelMessages = await this.generateContextForNewStep();
+      modelMessages = await this.generateContextForNewStep(
+        queueFlushIndex >= 0 ? queueFlushIndex : undefined,
+      );
       tools = await this.getToolsForStep();
       resolvedConfig = {
         ...this.config,
@@ -1525,18 +1534,6 @@ export abstract class BaseAgent<
             `[BaseAgent:${this.instanceId}] Stored compressed history in message ${lastUncompactedMessageId}`,
           );
           lastUncompactedMessage.metadata.compressedHistory = compressedHistory;
-
-          const boundaryIndex = draft.history.findIndex(
-            (m) => m.id === lastUncompactedMessageId,
-          );
-          const effectiveAtBoundary = resolveEffectiveSnapshot(
-            draft.history,
-            boundaryIndex,
-          );
-          if (effectiveAtBoundary) {
-            lastUncompactedMessage.metadata.environmentSnapshot =
-              effectiveAtBoundary;
-          }
         } else {
           this.logger.warn(
             `[BaseAgent:${this.instanceId}] Last uncompacted message not found in history after compressing history. Maybe the user undid/manipulated messages while we were busy compressing the history.`,
@@ -1712,28 +1709,66 @@ export abstract class BaseAgent<
 
   /**
    * Handles the generation of context for a new step.
-   * Only used internally - calls all the configurable steps to got from History to Model Messages.
+   *
+   * Before converting history to model messages, this method captures a
+   * fresh environment snapshot and attaches it (sparsified) to the **last
+   * message in history** — regardless of whether it is a user or assistant
+   * message. This single capture point guarantees that:
+   *
+   * 1. Every step sees the most up-to-date environment state.
+   * 2. The conversion pipeline can diff consecutive snapshots to produce
+   *    accurate `<env-changes>` (or a full `<env-snapshot>` for the first
+   *    message / first after compression).
+   * 3. For a fresh chat where the first message has no prior snapshot,
+   *    the full snapshot is stored, so the conversion emits `<env-snapshot>`.
+   *
+   * When multiple queued messages are flushed at once, `queueFlushStart`
+   * points to the first flushed message so the snapshot is attached there
+   * rather than at the end — env-changes appear before user content.
    */
-  private async generateContextForNewStep(): Promise<ModelMessage[]> {
+  private async generateContextForNewStep(
+    queueFlushStart?: number,
+  ): Promise<ModelMessage[]> {
+    // ─── Capture & attach snapshot to last message ────────────────────
+    const fullSnapshot = (await this.toolbox.captureEnvironmentSnapshot(
+      this.instanceId,
+    )) as FullEnvironmentSnapshot;
+
+    this.state.set((draft) => {
+      // Attach snapshot to the first flushed message when a batch was
+      // queued, otherwise to the last message in history.
+      const targetIdx =
+        queueFlushStart !== undefined && queueFlushStart < draft.history.length
+          ? queueFlushStart
+          : draft.history.length - 1;
+      const target = draft.history[targetIdx];
+      if (!target) return;
+
+      const prevIdx = targetIdx - 1;
+      const previousEffective =
+        prevIdx >= 0 ? resolveEffectiveSnapshot(draft.history, prevIdx) : null;
+
+      target.metadata ??= {
+        createdAt: new Date(),
+        partsMetadata: [],
+      };
+      target.metadata.mountedPaths = fullSnapshot.workspace.mounts;
+      target.metadata.environmentSnapshot = sparsifySnapshot(
+        fullSnapshot,
+        previousEffective,
+      );
+    });
+
+    // ─── Build model messages from history ────────────────────────────
     const messages = this.state.get().history;
 
-    // First, we transform/filter the full history into UI messages we actually want
     const filteredUIMsgs = await this.transformMessagesBeforeStep(messages);
 
-    // Then, we fetch the system prompt
-    const systemPrompt = await this.getSystemPrompt(filteredUIMsgs);
+    const systemPrompt = await this.getSystemPrompt();
 
-    // Capture a live environment snapshot so the conversion can inject
-    // a tail env-change for anything that changed since the last message.
-    const liveSnapshot = this.toolbox.captureEnvironmentSnapshot(
-      this.instanceId,
-    ) as FullEnvironmentSnapshot;
-
-    // Then, we use the filtered UI messages and system prompt to transform to model messages
     const modelMessages = await this.transformMessagesToModelMessages(
       filteredUIMsgs,
       systemPrompt,
-      liveSnapshot,
     );
 
     // Then, we allow another step to modify the final model messages
@@ -1813,14 +1848,23 @@ export abstract class BaseAgent<
     });
   }
 
+  /**
+   * Drains the UI message stream and writes each chunk into history.
+   *
+   * This method only handles structural bookkeeping (adding the message,
+   * updating parts, tracking part timing). It does NOT capture environment
+   * snapshots — snapshots are attached to the last message in history by
+   * `generateContextForNewStep` right before the conversion pipeline runs.
+   *
+   * When resuming after tool-approval, `lastAssistantMessage` is passed
+   * so `readUIMessageStream` can append tool-result parts to the existing
+   * message instead of creating a new one. It is cloned because the SDK
+   * mutates it in-place, which would corrupt the stored history.
+   */
   private async handleUiStream(
     uiStream: AsyncIterableStream<InferUIMessageChunk<AgentMessage>>,
     lastAssistantMessage?: AgentMessage,
   ): Promise<void> {
-    // When resuming after tool-approval, pass the last assistant message so
-    // readUIMessageStream can append tool-result parts to it instead of
-    // creating a new message. Must be cloned because the SDK mutates it
-    // in-place, which would corrupt the stored history.
     for await (const uiMessage of readUIMessageStream<AgentMessage>({
       stream: uiStream,
       message: lastAssistantMessage
@@ -1837,28 +1881,12 @@ export abstract class BaseAgent<
 
         existingMessage.parts = uiMessage.parts;
 
-        // Add metadata for message creation
-        existingMessage.metadata ??= (() => {
-          const fullSnapshot = this.toolbox.captureEnvironmentSnapshot(
-            this.instanceId,
-          ) as FullEnvironmentSnapshot;
-          const prevIdx = draft.history.length - 2;
-          const previousEffective =
-            prevIdx >= 0
-              ? resolveEffectiveSnapshot(draft.history, prevIdx)
-              : null;
-          return {
-            createdAt: new Date(),
-            mountedPaths: fullSnapshot.workspace.mounts,
-            partsMetadata: [],
-            environmentSnapshot: sparsifySnapshot(
-              fullSnapshot,
-              previousEffective,
-            ),
-          };
-        })();
+        existingMessage.metadata ??= {
+          createdAt: new Date(),
+          mountedPaths: [],
+          partsMetadata: [],
+        };
 
-        // Add metadata for each part of the message
         uiMessage.parts.forEach(
           (part: (typeof uiMessage.parts)[number], index: number) => {
             if (part.type === 'text' || part.type === 'reasoning') {

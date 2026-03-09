@@ -16,14 +16,9 @@ import type { ModelId } from '@shared/available-models';
 import type { z } from 'zod';
 import { AgentPersistenceDB } from './persistence/db';
 import type { AgentState } from '@shared/karton-contracts/ui/agent';
-import type { FullEnvironmentSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
 import { writeBlob } from '@/utils/attachment-blobs';
 import type { QuestionAnswerValue } from '@shared/karton-contracts/ui/agent/tools/types';
 import { readWorkspaceMd } from '@/agents/shared/prompts/utils/read-workspace-md';
-import {
-  resolveEffectiveSnapshot,
-  sparsifySnapshot,
-} from '@/agents/shared/prompts/utils/environment-changes';
 
 /**
  * @note Due to the complex type inference for all this stuff, we sometimes explicitly define types here to avoid errors.
@@ -161,25 +156,6 @@ export class AgentManagerService extends DisposableService {
         instanceId: string,
         message: AgentMessage & { role: 'user' },
       ) => {
-        const fullSnapshot =
-          this.toolbox.captureEnvironmentSnapshot(instanceId);
-        const history =
-          this.karton.state.agents.instances[instanceId]?.state.history ?? [];
-        const previousEffective = resolveEffectiveSnapshot(
-          history,
-          history.length - 1,
-        );
-        const environmentSnapshot = sparsifySnapshot(
-          fullSnapshot as FullEnvironmentSnapshot,
-          previousEffective,
-        );
-
-        if (message.metadata)
-          message.metadata = {
-            ...message.metadata,
-            environmentSnapshot,
-          };
-
         await this.sendUserMessage(instanceId, message);
       },
     );
@@ -192,25 +168,6 @@ export class AgentManagerService extends DisposableService {
         message: AgentMessage & { role: 'user' },
         draftAnswers: Record<string, QuestionAnswerValue>,
       ) => {
-        const fullSnapshot =
-          this.toolbox.captureEnvironmentSnapshot(instanceId);
-        const history =
-          this.karton.state.agents.instances[instanceId]?.state.history ?? [];
-        const previousEffective = resolveEffectiveSnapshot(
-          history,
-          history.length - 1,
-        );
-        const environmentSnapshot = sparsifySnapshot(
-          fullSnapshot as FullEnvironmentSnapshot,
-          previousEffective,
-        );
-
-        if (message.metadata)
-          message.metadata = {
-            ...message.metadata,
-            environmentSnapshot,
-          };
-
         // Queue the message FIRST, then resolve the question — both in
         // one backend call so there's no race between separate RPCs.
         try {
@@ -294,15 +251,6 @@ export class AgentManagerService extends DisposableService {
         newMessage: AgentMessage & { role: 'user' },
         undoToolCalls: boolean,
       ) => {
-        const fullSnapshot =
-          this.toolbox.captureEnvironmentSnapshot(instanceId);
-
-        if (newMessage.metadata)
-          newMessage.metadata = {
-            ...newMessage.metadata,
-            environmentSnapshot: fullSnapshot,
-          };
-
         return await this.replaceUserMessage(
           instanceId,
           userMessageId,

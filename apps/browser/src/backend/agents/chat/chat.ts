@@ -34,8 +34,8 @@ export class ChatAgent extends BaseAgent<never, undefined> {
     minUncompressedMessages: 10, // We keep this relatively high to ensure we always have enough turns for full context for the agent
   } satisfies BaseAgentConfig<never>;
 
-  protected getSystemPrompt = async (): Promise<string> => {
-    return buildChatSystemPrompt(this.toolbox, this.instanceId);
+  protected getSystemPrompt = (): string => {
+    return buildChatSystemPrompt();
   };
 
   protected getTools = async () => {

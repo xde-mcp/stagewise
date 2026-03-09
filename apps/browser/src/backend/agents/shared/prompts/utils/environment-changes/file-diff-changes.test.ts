@@ -26,6 +26,12 @@ function makeEnv(
   return { pending, summary };
 }
 
+function summaries(
+  entries: ReturnType<typeof computeFileDiffChanges>,
+): string[] {
+  return entries.map((e) => e.summary);
+}
+
 const AGENT_ID = '1';
 const ABS = '/home/user/project/src/file.txt';
 
@@ -52,11 +58,11 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS, contributors: ['agent-99'] })],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS} modified by: [agent-99]`);
   });
-
-  // -- Self edits are never reported --
 
   it('does not report self edits when file first appears', () => {
     const previous = makeEnv([], []);
@@ -90,10 +96,8 @@ describe('computeFileDiffChanges', () => {
     );
     const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toEqual([]);
-    expect(result.join('')).not.toContain('you');
+    expect(summaries(result).join('')).not.toContain('you');
   });
-
-  // -- Other agents / user modifications --
 
   it('reports other agent when file appears in pending', () => {
     const previous = makeEnv([], []);
@@ -101,7 +105,9 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS, contributors: ['agent-99'] })],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS} modified by: [agent-99]`);
   });
 
@@ -111,7 +117,9 @@ describe('computeFileDiffChanges', () => {
       [makeSnapshot({ path: ABS, contributors: ['user'] })],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS} modified by: [user]`);
   });
 
@@ -126,7 +134,9 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS} modified by: [agent-42]`);
     expect(result.join('')).not.toContain('you');
   });
@@ -152,7 +162,9 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS} modified by: [agent-42]`);
   });
 
@@ -177,7 +189,9 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS} modified by: [user]`);
   });
 
@@ -200,11 +214,11 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS} modified by: [agent-42]`);
   });
-
-  // -- Your edits status --
 
   it('detects edits gone when file disappears from pending (rejected, summary reverted)', () => {
     const previous = makeEnv(
@@ -227,7 +241,9 @@ describe('computeFileDiffChanges', () => {
         }),
       ],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS}: your edits no longer present`);
   });
 
@@ -237,7 +253,9 @@ describe('computeFileDiffChanges', () => {
       [],
     );
     const current = makeEnv([], []);
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS}: your edits no longer present`);
   });
 
@@ -306,7 +324,9 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS}: your edits no longer present`);
   });
 
@@ -366,11 +386,11 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(`${ABS}: some of your edits were removed`);
   });
-
-  // -- Combined: modifiers + edits status --
 
   it('combines modifier and editsGone when file disappears with modifier context', () => {
     const previous = makeEnv(
@@ -393,7 +413,9 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(
       `${ABS} modified by: [user] (your edits no longer present)`,
     );
@@ -424,13 +446,13 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
-    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
     expect(result).toContain(
       `${ABS} modified by: [user] (some of your edits were removed)`,
     );
   });
-
-  // -- No change when currentOid unchanged in section 3 --
 
   it('ignores files in pending where content did not change', () => {
     const snap = makeSnapshot({

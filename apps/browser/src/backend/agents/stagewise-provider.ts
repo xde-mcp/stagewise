@@ -84,7 +84,6 @@ export function createStagewise(
     apiKey: settings.apiKey,
     baseURL: settings.baseURL,
     metadataExtractor: stagewiseMetadataExtractor,
-    supportsStructuredOutputs: true,
     includeUsage: true,
   });
 }

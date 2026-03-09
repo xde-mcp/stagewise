@@ -1,9 +1,12 @@
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type {
   ActiveAppSnapshot,
+  AgentsMdSnapshot,
+  BrowserSnapshot,
+  EnabledSkillsSnapshot,
   EnvironmentSnapshot,
   FullEnvironmentSnapshot,
-  BrowserSnapshot,
+  WorkspaceMdSnapshot,
   WorkspaceSnapshot,
 } from '@shared/karton-contracts/ui/agent/metadata';
 import type { EnvironmentDiffSnapshot } from '@shared/karton-contracts/ui/shared-types';
@@ -25,6 +28,9 @@ export function resolveEffectiveSnapshot(
   let fileDiffs: EnvironmentDiffSnapshot | undefined;
   let sandboxSessionId: string | null | undefined;
   let activeApp: ActiveAppSnapshot | undefined;
+  let agentsMd: AgentsMdSnapshot | undefined;
+  let workspaceMd: WorkspaceMdSnapshot | undefined;
+  let enabledSkills: EnabledSkillsSnapshot | undefined;
 
   for (let i = upToIndex; i >= 0; i--) {
     const snap = messages[i]?.metadata?.environmentSnapshot;
@@ -39,14 +45,24 @@ export function resolveEffectiveSnapshot(
       sandboxSessionId = snap.sandboxSessionId;
     if (activeApp === undefined && snap.activeApp !== undefined)
       activeApp = snap.activeApp;
+    if (agentsMd === undefined && snap.agentsMd !== undefined)
+      agentsMd = snap.agentsMd;
+    if (workspaceMd === undefined && snap.workspaceMd !== undefined)
+      workspaceMd = snap.workspaceMd;
+    if (enabledSkills === undefined && snap.enabledSkills !== undefined)
+      enabledSkills = snap.enabledSkills;
     if (
       browser !== undefined &&
       workspace !== undefined &&
       fileDiffs !== undefined &&
       sandboxSessionId !== undefined &&
-      activeApp !== undefined
-    )
+      activeApp !== undefined &&
+      agentsMd !== undefined &&
+      workspaceMd !== undefined &&
+      enabledSkills !== undefined
+    ) {
       break;
+    }
   }
 
   if (
@@ -58,7 +74,49 @@ export function resolveEffectiveSnapshot(
   )
     return null;
 
-  return { browser, workspace, fileDiffs, sandboxSessionId, activeApp };
+  return {
+    browser,
+    workspace,
+    fileDiffs,
+    sandboxSessionId,
+    activeApp,
+    agentsMd: agentsMd ?? { entries: [], respectedMounts: [] },
+    workspaceMd: workspaceMd ?? { entries: [] },
+    enabledSkills: enabledSkills ?? { paths: [] },
+  };
+}
+
+/**
+ * Shallow-recursive deep equality check that short-circuits on first
+ * difference. Avoids the string allocation overhead of JSON.stringify.
+ */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== 'object') return false;
+
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  if (Array.isArray(b)) return false;
+
+  const aObj = a as Record<string, unknown>;
+  const bObj = b as Record<string, unknown>;
+  const aKeys = Object.keys(aObj);
+  const bKeys = Object.keys(bObj);
+  if (aKeys.length !== bKeys.length) return false;
+
+  for (const key of aKeys) {
+    if (!Object.hasOwn(bObj, key)) return false;
+    if (!deepEqual(aObj[key], bObj[key])) return false;
+  }
+  return true;
 }
 
 /**
@@ -77,16 +135,21 @@ export function sparsifySnapshot(
 
   const sparse: EnvironmentSnapshot = {};
 
-  if (JSON.stringify(full.browser) !== JSON.stringify(previous.browser))
-    sparse.browser = full.browser;
-  if (JSON.stringify(full.workspace) !== JSON.stringify(previous.workspace))
+  if (!deepEqual(full.browser, previous.browser)) sparse.browser = full.browser;
+  if (!deepEqual(full.workspace, previous.workspace))
     sparse.workspace = full.workspace;
-  if (JSON.stringify(full.fileDiffs) !== JSON.stringify(previous.fileDiffs))
+  if (!deepEqual(full.fileDiffs, previous.fileDiffs))
     sparse.fileDiffs = full.fileDiffs;
   if (full.sandboxSessionId !== previous.sandboxSessionId)
     sparse.sandboxSessionId = full.sandboxSessionId;
-  if (JSON.stringify(full.activeApp) !== JSON.stringify(previous.activeApp))
+  if (!deepEqual(full.activeApp, previous.activeApp))
     sparse.activeApp = full.activeApp;
+  if (!deepEqual(full.agentsMd, previous.agentsMd))
+    sparse.agentsMd = full.agentsMd;
+  if (!deepEqual(full.workspaceMd, previous.workspaceMd))
+    sparse.workspaceMd = full.workspaceMd;
+  if (!deepEqual(full.enabledSkills, previous.enabledSkills))
+    sparse.enabledSkills = full.enabledSkills;
 
   return sparse;
 }

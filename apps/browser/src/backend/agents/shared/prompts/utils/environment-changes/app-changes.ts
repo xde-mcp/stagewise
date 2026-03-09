@@ -1,4 +1,5 @@
 import type { ActiveAppSnapshot } from '@shared/karton-contracts/ui/agent/metadata';
+import type { EnvironmentChangeEntry } from './types';
 
 function formatAppLabel(app: NonNullable<ActiveAppSnapshot>): string {
   return app.pluginId ? `${app.appId} (plugin: ${app.pluginId})` : app.appId;
@@ -12,18 +13,33 @@ function formatAppLabel(app: NonNullable<ActiveAppSnapshot>): string {
 export function computeAppChanges(
   prev: ActiveAppSnapshot,
   curr: ActiveAppSnapshot,
-): string[] {
+): EnvironmentChangeEntry[] {
   const same = prev?.appId === curr?.appId && prev?.pluginId === curr?.pluginId;
   if (same) return [];
 
   if (!prev && curr) {
-    return [`app opened: ${formatAppLabel(curr)}`];
+    return [
+      {
+        type: 'app-opened',
+        summary: `app opened: ${formatAppLabel(curr)}`,
+      },
+    ];
   }
   if (prev && !curr) {
-    return [`app closed: ${formatAppLabel(prev)}`];
+    return [
+      {
+        type: 'app-closed',
+        summary: `app closed: ${formatAppLabel(prev)}`,
+      },
+    ];
   }
   if (prev && curr) {
-    return [`app changed: ${formatAppLabel(prev)} -> ${formatAppLabel(curr)}`];
+    return [
+      {
+        type: 'app-changed',
+        summary: `app changed: ${formatAppLabel(prev)} -> ${formatAppLabel(curr)}`,
+      },
+    ];
   }
 
   return [];

@@ -1,16 +1,8 @@
-import type { ToolboxContextProvider } from '@/services/toolbox/types';
-
-export const getSkillsInformation = async (
-  toolbox: ToolboxContextProvider,
-  agentInstanceId: string,
-) => {
-  const skills = await toolbox.getSkillsList(agentInstanceId);
-  return `${prefix}
-  
-  <available_skills>${skills.map((skill) => `<skill name="${skill.name.replace(/[\n\r]/g, ' ').replace('"', '\"')}" description="${skill.description.replace(/[\n\r]/g, ' ').replace('"', '\"')}" path="${skill.path}" />`).join('')}</available_skills>`;
-};
-
-const prefix = `
+/**
+ * Static instructions on how to use skills.
+ * Included in the system prompt (no dynamic content).
+ */
+export const skillsUsageInstructions = `
 # Agent Skills
 
 You can extend your capabilities using **Agent Skills**.  
@@ -28,7 +20,6 @@ Skills come from two sources: mounted workspaces and the always-available \`plug
 
 - \`.agents/skills/*\`  
   Skills shared with other agents.
-
 
 - \`plugins/{plugin-id}/SKILL.md\`  
   Skills provided by installed plugins. The \`plugins/\` mount is always present with read-only access, even when no workspace is connected.
@@ -56,3 +47,22 @@ Skills come from two sources: mounted workspaces and the always-available \`plug
 
 Use skills to follow structured workflows, apply domain knowledge, and improve reliability.
 `.trim();
+
+export interface SkillInfo {
+  name: string;
+  description: string;
+  path: string;
+}
+
+/**
+ * Render the available skills list XML from skill metadata.
+ * Used by the env-snapshot renderer, NOT by the system prompt.
+ */
+export function renderAvailableSkillsList(skills: SkillInfo[]): string {
+  const esc = (s: string) =>
+    s
+      .replace(/[\n\r]/g, ' ')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;');
+  return `<available_skills>${skills.map((skill) => `<skill name="${esc(skill.name)}" description="${esc(skill.description)}" path="${esc(skill.path)}" />`).join('')}</available_skills>`;
+}
