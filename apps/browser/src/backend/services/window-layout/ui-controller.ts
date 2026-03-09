@@ -381,6 +381,19 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
         const fileUrl = pathToFileURL(absolutePath).href;
         const fileResponse = await net.fetch(fileUrl);
 
+        if (mime === 'text/html') {
+          const html = await fileResponse.text();
+          const snippet =
+            '<style>*,*::before,*::after{scrollbar-width:thin;scrollbar-color:var(--color-surface-2,rgba(255,255,255,.15)) transparent}</style>';
+          const patched = html.includes('</head>')
+            ? html.replace('</head>', `${snippet}</head>`)
+            : `${snippet}${html}`;
+          return new Response(patched, {
+            status: 200,
+            headers: { 'Content-Type': mime, 'Cache-Control': 'no-store' },
+          });
+        }
+
         return new Response(fileResponse.body, {
           status: 200,
           headers: { 'Content-Type': mime, 'Cache-Control': 'no-store' },

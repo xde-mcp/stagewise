@@ -128,7 +128,7 @@ export function InternalAppFrame() {
   return (
     <div
       className={cn(
-        'relative shrink-0 overflow-hidden rounded-md bg-background shadow-elevation-1 ring-1 ring-derived-strong dark:bg-surface-1',
+        'scrollbar-subtle relative shrink-0 overflow-hidden rounded-md bg-background shadow-elevation-1 ring-1 ring-derived-strong dark:bg-surface-1',
         statusCardVisible ? 'mx-3' : 'mx-1',
       )}
       style={{
