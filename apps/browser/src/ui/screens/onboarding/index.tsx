@@ -7,6 +7,7 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { IconArrowLeftFill18, IconArrowRightFill18 } from 'nucleo-ui-fill-18';
 import { useKartonProcedure } from '@/hooks/use-karton';
+import { useTrack } from '@/hooks/use-track';
 import { cn } from '@/utils';
 import { StepWelcome } from './steps/01-welcome';
 import { StepAuth } from './steps/02-auth';
@@ -28,6 +29,7 @@ export function OnboardingWizard() {
   const setHasSeenOnboardingFlow = useKartonProcedure(
     (p) => p.userExperience.setHasSeenOnboardingFlow,
   );
+  const track = useTrack();
 
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === stepIds.length - 1;
@@ -64,12 +66,16 @@ export function OnboardingWizard() {
 
   const handleSuggestionClick = useCallback(
     (suggestion: { id: string; url: string; prompt: string }) => {
+      track('suggestion-clicked', {
+        suggestion_id: suggestion.id,
+        context: 'onboarding',
+      });
       setFading(true);
       setTimeout(() => {
         setHasSeenOnboardingFlow(true, suggestion);
       }, 300);
     },
-    [setHasSeenOnboardingFlow],
+    [setHasSeenOnboardingFlow, track],
   );
 
   return (

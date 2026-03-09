@@ -786,6 +786,12 @@ export type KartonContract = {
     config: {
       set: (config: GlobalConfig) => Promise<void>;
     };
+    telemetry: {
+      capture: (
+        eventName: string,
+        properties?: Record<string, unknown>,
+      ) => Promise<void>;
+    };
     browser: {
       createTab: (url?: string, setActive?: boolean) => Promise<void>;
       closeTab: (tabId: string) => Promise<void>;

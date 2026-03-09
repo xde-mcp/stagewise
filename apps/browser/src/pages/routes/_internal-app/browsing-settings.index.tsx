@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { cn } from '@/utils';
 import {
   RadioGroup,
   Radio,
   RadioLabel,
 } from '@stagewise/stage-ui/components/radio';
+import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
@@ -653,9 +655,9 @@ function TelemetrySetting() {
 
   const telemetryMode = preferences.privacy.telemetryLevel;
 
-  const handleTelemetryChange = async (value: string) => {
+  const handleTelemetryChange = async (value: TelemetryLevel) => {
     const [, patches] = produceWithPatches(preferences, (draft) => {
-      draft.privacy.telemetryLevel = value as TelemetryLevel;
+      draft.privacy.telemetryLevel = value;
     });
     await updatePreferences(patches);
   };
@@ -669,37 +671,44 @@ function TelemetrySetting() {
         </p>
       </div>
 
-      <RadioGroup value={telemetryMode} onValueChange={handleTelemetryChange}>
-        <RadioLabel>
-          <Radio value="full" />
-          <div className="flex flex-col">
-            <span className="font-medium text-foreground">Full</span>
-            <span className="text-muted-foreground text-xs">
-              Send all telemetry data including usage patterns and diagnostics
-            </span>
-          </div>
-        </RadioLabel>
-
-        <RadioLabel>
-          <Radio value="anonymous" />
-          <div className="flex flex-col">
-            <span className="font-medium text-foreground">Anonymous</span>
-            <span className="text-muted-foreground text-xs">
-              Send anonymized telemetry data without personal identifiers
-            </span>
-          </div>
-        </RadioLabel>
-
-        <RadioLabel>
-          <Radio value="off" />
-          <div className="flex flex-col">
-            <span className="font-medium text-foreground">Off</span>
-            <span className="text-muted-foreground text-xs">
-              Don't send any telemetry data
-            </span>
-          </div>
-        </RadioLabel>
-      </RadioGroup>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          size="xs"
+          id="telemetry-anonymous-checkbox"
+          checked={telemetryMode === 'anonymous' || telemetryMode === 'full'}
+          onCheckedChange={(checked: boolean) => {
+            void handleTelemetryChange(checked ? 'anonymous' : 'off');
+          }}
+        />
+        <label
+          htmlFor="telemetry-anonymous-checkbox"
+          className="text-muted-foreground text-xs"
+        >
+          Help improve stagewise by sharing anonymized events.
+        </label>
+      </div>
+      <div
+        className={cn(
+          'flex items-center gap-2',
+          telemetryMode === 'off' && 'pointer-events-none opacity-50',
+        )}
+      >
+        <Checkbox
+          size="xs"
+          id="telemetry-full-checkbox"
+          checked={telemetryMode === 'full'}
+          disabled={telemetryMode === 'off'}
+          onCheckedChange={(checked: boolean) => {
+            void handleTelemetryChange(checked ? 'full' : 'anonymous');
+          }}
+        />
+        <label
+          htmlFor="telemetry-full-checkbox"
+          className="text-muted-foreground text-xs"
+        >
+          Share identifiable chat and usage data with stagewise.
+        </label>
+      </div>
     </div>
   );
 }

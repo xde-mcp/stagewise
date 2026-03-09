@@ -341,6 +341,8 @@ export abstract class BaseAgent<
    * after a new step has already started.
    */
   private _stepGeneration = 0;
+  private _stepStartTime = 0;
+  private _stepProviderMode = '';
 
   // Handler that get's called when the agent wants to spawn a child agent.
   private readonly spawnChildAgentHandler: <
@@ -593,6 +595,34 @@ export abstract class BaseAgent<
         }
       }
     });
+
+    // Find the tool name from the approval for telemetry
+    let toolName = 'unknown';
+    for (let i = this.state.get().history.length - 1; i >= 0; i--) {
+      const msg = this.state.get().history[i];
+      if (msg.role !== 'assistant') continue;
+      const part = msg.parts.find(
+        (p) =>
+          (p.type.startsWith('tool-') || p.type === 'dynamic-tool') &&
+          (p as AgentToolUIPart | DynamicToolUIPart).approval?.id ===
+            approvalId,
+      ) as AgentToolUIPart | DynamicToolUIPart | undefined;
+      if (part) {
+        toolName =
+          part.type === 'dynamic-tool'
+            ? 'dynamic-tool'
+            : part.type.replace('tool-', '');
+        break;
+      }
+    }
+    if (approved) {
+      this.telemetryService.capture('tool-approved', { tool_name: toolName });
+    } else {
+      this.telemetryService.capture('tool-denied', {
+        tool_name: toolName,
+        reason,
+      });
+    }
 
     this.runStep(true);
 
@@ -1203,6 +1233,7 @@ export abstract class BaseAgent<
     // Increment step generation so stale callbacks from previous steps are
     // ignored. Capture it in a local const for the closures below.
     const stepGen = ++this._stepGeneration;
+    this._stepStartTime = Date.now();
 
     let queueFlushIndex = -1;
     this.state.set((draft) => {
@@ -1230,6 +1261,7 @@ export abstract class BaseAgent<
           $ai_parent_id: this.instanceId,
         },
       );
+      this._stepProviderMode = modelWithOptions.providerMode;
     } catch (error) {
       const err = error as Error;
       this.logger.error(
@@ -1670,6 +1702,17 @@ export abstract class BaseAgent<
 
     // Save the agent state for recovery
     await this.saveState();
+
+    this.telemetryService.capture('agent-step-completed', {
+      agent_type: this.agentType,
+      model_id: this.state.get().activeModelId,
+      provider_mode: this._stepProviderMode,
+      input_tokens: result.usage.inputTokens ?? 0,
+      output_tokens: result.usage.outputTokens ?? 0,
+      tool_call_count: result.toolCalls.length,
+      finish_reason: result.finishReason ?? 'unknown',
+      duration_ms: Date.now() - this._stepStartTime,
+    });
 
     // Check the current token usage. If necessary, summarize the chat history.
     // We always check the token usage in relation to the currently selected model.

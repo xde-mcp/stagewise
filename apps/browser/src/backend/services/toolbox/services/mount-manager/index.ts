@@ -264,12 +264,20 @@ export class MountManagerService extends DisposableService {
     });
 
     this.onMountsChanged?.(agentInstanceId);
+
+    const agentType =
+      this.uiKarton.state.agents.instances[agentInstanceId]?.type ?? 'unknown';
+    this.telemetryService.capture('workspace-mounted', {
+      agent_type: agentType,
+    });
   }
 
   public async handleUnmountWorkspace(
     agentInstanceId: string,
     mountPrefix: string,
   ): Promise<void> {
+    const agentType =
+      this.uiKarton.state.agents.instances[agentInstanceId]?.type ?? 'unknown';
     const mounts = this.agentMounts.get(agentInstanceId);
     if (!mounts || !mounts.has(mountPrefix)) return;
 
@@ -298,6 +306,9 @@ export class MountManagerService extends DisposableService {
     });
 
     this.onMountsChanged?.(agentInstanceId);
+    this.telemetryService.capture('workspace-unmounted', {
+      agent_type: agentType,
+    });
   }
 
   public getMountedPathsWithRuntimes(agentInstanceId: string): Array<{

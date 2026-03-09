@@ -8,7 +8,59 @@ import type { Logger } from './logger';
 import { DisposableService } from './disposable';
 
 export type EventProperties = {
-  noop: undefined; // TODO: Figure out which events we want to capture later, after capturing all exceptions
+  // Lifecycle
+  'app-launched': { cold_start: boolean };
+  'app-closed': undefined;
+  'telemetry-level-changed': { from: TelemetryLevel; to: TelemetryLevel };
+  'onboarding-completed': { skipped: boolean; suggestion_id?: string };
+
+  // Workspace
+  'workspace-mounted': { agent_type: string };
+  'workspace-unmounted': { agent_type: string };
+
+  // Agent
+  'agent-created': { agent_type: string; model_id: string };
+  'agent-message-sent': {
+    agent_type: string;
+    model_id: string;
+    has_attachments: boolean;
+    attachment_count: number;
+  };
+  'agent-step-completed': {
+    agent_type: string;
+    model_id: string;
+    provider_mode: string;
+    input_tokens: number;
+    output_tokens: number;
+    tool_call_count: number;
+    finish_reason: string;
+    duration_ms: number;
+  };
+  'agent-stopped': { agent_type: string };
+  'agent-resumed': { agent_type: string };
+  'agent-deleted': { agent_type: string };
+  'agent-model-changed': {
+    agent_type: string;
+    from_model: string;
+    to_model: string;
+  };
+
+  // Tools
+  'tool-approved': { tool_name: string };
+  'tool-denied': { tool_name: string; reason?: string };
+
+  // Edits
+  'edits-accepted': { hunk_count: number };
+  'edits-rejected': { hunk_count: number };
+
+  // Suggestions
+  'suggestion-clicked': {
+    suggestion_id: string;
+    context: 'onboarding' | 'empty-chat';
+  };
+
+  // UI (routed via karton RPC)
+  'ui-interaction': { action: string; target: string; detail?: string };
 };
 
 export interface UserProperties {
@@ -48,8 +100,13 @@ export class TelemetryService extends DisposableService {
     this.identifyUser();
 
     this.preferencesService.addListener((newPrefs, oldPrefs) => {
-      if (newPrefs.privacy.telemetryLevel !== oldPrefs.privacy.telemetryLevel)
+      if (newPrefs.privacy.telemetryLevel !== oldPrefs.privacy.telemetryLevel) {
+        this.capture('telemetry-level-changed', {
+          from: oldPrefs.privacy.telemetryLevel,
+          to: newPrefs.privacy.telemetryLevel,
+        });
         this.syncTelemetryOptIn();
+      }
     });
 
     logger.debug('[TelemetryService] Telemetry initialized');
@@ -119,6 +176,7 @@ export class TelemetryService extends DisposableService {
       posthogDistinctId: distinctId,
       ...properties,
       posthogProperties: {
+        product: 'stagewise-browser',
         telemetry_level: telemetryLevel,
         app_version: __APP_VERSION__,
         app_release_channel: __APP_RELEASE_CHANNEL__,
@@ -153,13 +211,13 @@ export class TelemetryService extends DisposableService {
       );
       const telemetryLevel = this.getTelemetryLevel();
 
-      // TODO: Capture 'turning-telemetry-off' event when telemetry is turned off
       if (telemetryLevel === 'off' || !this.posthogClient) return;
 
       const distinctId = this.getDistinctId();
 
       const finalProperties = {
         ...(typeof properties === 'object' ? properties : {}),
+        product: 'stagewise-browser',
         telemetry_level: telemetryLevel,
         app_version: __APP_VERSION__,
         app_release_channel: __APP_RELEASE_CHANNEL__,
@@ -195,6 +253,7 @@ export class TelemetryService extends DisposableService {
       this.posthogClient.captureException(error, distinctId, {
         properties: {
           ...properties,
+          product: 'stagewise-browser',
           telemetry_level: telemetryLevel,
           app_version: __APP_VERSION__,
           app_release_channel: __APP_RELEASE_CHANNEL__,
@@ -217,6 +276,7 @@ export class TelemetryService extends DisposableService {
     this.logger.debug('[TelemetryService] Tearing down...');
     if (this.posthogClient) {
       try {
+        this.capture('app-closed', undefined);
         await this.posthogClient.shutdown();
       } catch (error) {
         this.logger.debug(`Failed to shutdown PostHog: ${error}`);

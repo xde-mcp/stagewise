@@ -63,6 +63,8 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     logger,
   );
 
+  telemetryService.capture('app-launched', { cold_start: true });
+
   // Global safety net: capture any unhandled errors/rejections to telemetry
   process.on('uncaughtException', (error) => {
     logger.error(`[Process] Uncaught exception: ${error.message}`);
@@ -140,7 +142,11 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
   );
   const uiKarton = windowLayoutService.uiKarton;
 
-  const diffHistoryService = await DiffHistoryService.create(logger, uiKarton);
+  const diffHistoryService = await DiffHistoryService.create(
+    logger,
+    uiKarton,
+    telemetryService,
+  );
 
   // Connect PreferencesService to Karton for reactive sync
   preferencesService.connectKarton(uiKarton, pagesService);
@@ -215,6 +221,21 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     });
 
   logger.debug('[Main] Global services bootstrapped');
+
+  // Register telemetry capture RPC so the UI can send events through the backend
+  uiKarton.registerServerProcedureHandler(
+    'telemetry.capture',
+    async (
+      _cid: string,
+      eventName: string,
+      properties?: Record<string, unknown>,
+    ) => {
+      telemetryService.capture(
+        eventName as keyof import('./services/telemetry').EventProperties,
+        properties as any,
+      );
+    },
+  );
 
   // Start remaining services that are irrelevant to non-regular operation of the app.
   const filePickerService = await FilePickerService.create(logger, uiKarton);

@@ -21,11 +21,14 @@ import type { streamText } from 'ai';
 
 type ProviderOptions = Parameters<typeof streamText>[0]['providerOptions'];
 
+export type ProviderMode = 'stagewise' | 'official' | 'custom';
+
 export type ModelWithOptions = {
   model: LanguageModelV3;
   providerOptions: Parameters<typeof streamText>[0]['providerOptions'];
   headers: Record<string, string>;
   contextWindowSize: number;
+  providerMode: ProviderMode;
 };
 
 /**
@@ -265,6 +268,7 @@ export class ModelProviderService {
           typeof streamText
         >[0]['providerOptions'],
         contextWindowSize: modelSettings.modelContextRaw,
+        providerMode: 'stagewise',
       };
     }
 
@@ -286,14 +290,17 @@ export class ModelProviderService {
             `Add a model ID mapping on the custom endpoint, or create a custom model with the correct ${resolved.customEndpoint.apiSpec} model identifier instead.`,
         );
       }
-      return this.createModelViaEndpoint(
-        resolved.customEndpoint,
-        remappedModelId,
-        modelSettings.providerOptions as Record<string, unknown>,
-        headers,
-        modelSettings.modelContextRaw,
-        posthogConfig,
-      );
+      return {
+        ...this.createModelViaEndpoint(
+          resolved.customEndpoint,
+          remappedModelId,
+          modelSettings.providerOptions as Record<string, unknown>,
+          headers,
+          modelSettings.modelContextRaw,
+          posthogConfig,
+        ),
+        providerMode: 'custom',
+      };
     }
 
     // Official mode — use native AI-SDK provider with the officialProvider
@@ -303,16 +310,19 @@ export class ModelProviderService {
       );
     }
 
-    return this.createOfficialModel(
-      officialProvider,
-      apiKey,
-      baseURL,
-      modelSettings.modelId,
-      modelSettings.providerOptions as Record<string, unknown>,
-      headers,
-      modelSettings.modelContextRaw,
-      posthogConfig,
-    );
+    return {
+      ...this.createOfficialModel(
+        officialProvider,
+        apiKey,
+        baseURL,
+        modelSettings.modelId,
+        modelSettings.providerOptions as Record<string, unknown>,
+        headers,
+        modelSettings.modelContextRaw,
+        posthogConfig,
+      ),
+      providerMode: 'official',
+    };
   }
 
   /**
@@ -330,7 +340,7 @@ export class ModelProviderService {
       posthogTraceId: string;
       posthogProperties: Record<string, unknown>;
     },
-  ): ModelWithOptions {
+  ): Omit<ModelWithOptions, 'providerMode'> {
     switch (provider) {
       case 'anthropic': {
         const p = createAnthropic({ apiKey, baseURL });
@@ -429,7 +439,7 @@ export class ModelProviderService {
       posthogTraceId: string;
       posthogProperties: Record<string, unknown>;
     },
-  ): ModelWithOptions {
+  ): Omit<ModelWithOptions, 'providerMode'> {
     const apiKey = this.preferencesService.decryptProviderApiKey(
       endpoint.encryptedApiKey,
     );
@@ -563,6 +573,19 @@ export class ModelProviderService {
     traceId: string,
     otherPostHogProperties?: Record<string, unknown>,
   ): ModelWithOptions {
+    const result = this.createCustomModelBase(
+      customModel,
+      traceId,
+      otherPostHogProperties,
+    );
+    return { ...result, providerMode: 'custom' };
+  }
+
+  private createCustomModelBase(
+    customModel: CustomModel,
+    traceId: string,
+    otherPostHogProperties?: Record<string, unknown>,
+  ): Omit<ModelWithOptions, 'providerMode'> {
     const { apiKey, baseURL, apiSpec, endpoint } = this.resolveCustomEndpoint(
       customModel.endpointId,
     );

@@ -12,6 +12,7 @@ import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
 import { MessageRuntimeError } from './message-runtime-error';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useTrack } from '@/hooks/use-track';
 import { cn } from '@ui/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
@@ -146,6 +147,7 @@ export const ChatHistory = () => {
   const { activeEditMessageId } = useMessageEditState();
   const createTab = useKartonProcedure((s) => s.browser.createTab);
   const sendUserMessage = useKartonProcedure((s) => s.agents.sendUserMessage);
+  const track = useTrack();
   const retryLastUserMessage = useKartonProcedure(
     (s) => s.agents.retryLastUserMessage,
   );
@@ -735,6 +737,10 @@ export const ChatHistory = () => {
             {...suggestion}
             onClick={async () => {
               if (!openAgent) return;
+              track('suggestion-clicked', {
+                suggestion_id: suggestion.id,
+                context: 'empty-chat',
+              });
               await createTab(suggestion.origin.url);
               await sendUserMessage(openAgent, {
                 id: crypto.randomUUID(),
@@ -752,7 +758,7 @@ export const ChatHistory = () => {
         ))}
       </div>
     );
-  }, [visibleSuggestions, createTab, sendUserMessage, paddingRight]);
+  }, [visibleSuggestions, createTab, sendUserMessage, paddingRight, track]);
 
   // If no messages, show empty state directly
   if (filteredMessages.length === 0) {

@@ -6,6 +6,7 @@ import { type Client, createClient } from '@libsql/client';
 import * as schema from './schema';
 import chokidar, { type FSWatcher } from 'chokidar';
 import type { Logger } from '@/services/logger';
+import type { TelemetryService } from '@/services/telemetry';
 import fs from 'node:fs/promises';
 import type { KartonService } from '@/services/karton';
 import {
@@ -66,6 +67,7 @@ type AgentFileEdit = {
 export class DiffHistoryService extends DisposableService {
   private readonly logger: Logger;
   private readonly uiKarton: KartonService;
+  private readonly telemetryService: TelemetryService;
   private watcher: FSWatcher | null = null;
   private filesIgnoredByWatcher: Set<string> = new Set();
   private currentlyWatchedFiles: Set<string> = new Set();
@@ -75,10 +77,15 @@ export class DiffHistoryService extends DisposableService {
   private blobsDir: string;
   private readonly boundOnStateChange: () => void;
 
-  private constructor(logger: Logger, uiKarton: KartonService) {
+  private constructor(
+    logger: Logger,
+    uiKarton: KartonService,
+    telemetryService: TelemetryService,
+  ) {
     super();
     this.logger = logger;
     this.uiKarton = uiKarton;
+    this.telemetryService = telemetryService;
     const dbPath = getDiffHistoryDbPath();
     this.dbDriver = createClient({ url: `file:${dbPath}`, intMode: 'bigint' });
     this.db = drizzle(this.dbDriver, { schema });
@@ -89,8 +96,9 @@ export class DiffHistoryService extends DisposableService {
   public static async create(
     logger: Logger,
     uiKarton: KartonService,
+    telemetryService: TelemetryService,
   ): Promise<DiffHistoryService> {
-    const instance = new DiffHistoryService(logger, uiKarton);
+    const instance = new DiffHistoryService(logger, uiKarton, telemetryService);
     await instance.initialize();
     logger.debug('[DiffHistoryService] Created service');
     return instance;
@@ -115,12 +123,18 @@ export class DiffHistoryService extends DisposableService {
       'toolbox.acceptHunks',
       async (_callingClientId: string, hunkIds: string[]) => {
         await this.acceptAndRejectHunks(hunkIds, []);
+        this.telemetryService.capture('edits-accepted', {
+          hunk_count: hunkIds.length,
+        });
       },
     );
     this.uiKarton.registerServerProcedureHandler(
       'toolbox.rejectHunks',
       async (_callingClientId: string, hunkIds: string[]) => {
         await this.acceptAndRejectHunks([], hunkIds);
+        this.telemetryService.capture('edits-rejected', {
+          hunk_count: hunkIds.length,
+        });
       },
     );
 

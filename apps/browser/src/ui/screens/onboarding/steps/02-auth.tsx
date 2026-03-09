@@ -13,6 +13,7 @@ import {
 import { useIsTruncated } from '@ui/hooks/use-is-truncated';
 import type { StepValidityCallback } from '../index';
 import type { ApiKeyValidationResult } from '@shared/karton-contracts/ui';
+import type { TelemetryLevel } from '@shared/karton-contracts/ui/shared-types';
 
 type AuthMode = 'stagewise' | 'api-keys';
 type AuthPhase = 'form-input' | 'waiting-for-otp' | 'authentication-validated';
@@ -49,7 +50,7 @@ export function StepAuth({
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [telemetry, setTelemetry] = useState(false);
+  const [telemetry, setTelemetry] = useState<TelemetryLevel>('anonymous');
   const emailRef = useRef<HTMLInputElement>(null);
   const otpRef = useRef<HTMLInputElement>(null);
   const anthropicKeyRef = useRef<HTMLInputElement>(null);
@@ -207,7 +208,7 @@ export function StepAuth({
 
   if (phase === 'authentication-validated' && mode === 'stagewise') {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5">
         <div className="flex flex-col items-center gap-2">
           <h1 className="font-medium text-foreground text-xl">
             You&apos;re signed in as{' '}
@@ -225,13 +226,42 @@ export function StepAuth({
             Use a different email
           </Button>
         </div>
-        <div className="app-no-drag flex items-center gap-2">
+        <div className="app-no-drag mt-2 flex items-center gap-2">
           <Checkbox
             size="xs"
-            id="telemetry-checkbox"
-            checked={telemetry}
+            id="telemetry-anonymous-checkbox"
+            checked={telemetry === 'anonymous' || telemetry === 'full'}
             onCheckedChange={(checked: boolean) => {
-              setTelemetry(checked);
+              setTelemetry(checked ? 'anonymous' : 'off');
+              void preferencesUpdate([
+                {
+                  op: 'replace',
+                  path: ['privacy', 'telemetryLevel'],
+                  value: checked ? 'anonymous' : 'off',
+                },
+              ]);
+            }}
+          />
+          <label
+            htmlFor="telemetry-anonymous-checkbox"
+            className="text-muted-foreground text-xs"
+          >
+            Help improve stagewise by sharing anonymized events.
+          </label>
+        </div>
+        <div
+          className={cn(
+            'app-no-drag flex items-center gap-2',
+            telemetry === 'off' && 'pointer-events-none opacity-50',
+          )}
+        >
+          <Checkbox
+            size="xs"
+            id="telemetry-full-checkbox"
+            checked={telemetry === 'full'}
+            disabled={telemetry === 'off'}
+            onCheckedChange={(checked: boolean) => {
+              setTelemetry(checked ? 'full' : 'anonymous');
               void preferencesUpdate([
                 {
                   op: 'replace',
@@ -242,10 +272,10 @@ export function StepAuth({
             }}
           />
           <label
-            htmlFor="telemetry-checkbox"
+            htmlFor="telemetry-full-checkbox"
             className="text-muted-foreground text-xs"
           >
-            I want to help improve stagewise by sharing usage data.
+            Share identifiable chat and usage data with stagewise.
           </label>
         </div>
       </div>

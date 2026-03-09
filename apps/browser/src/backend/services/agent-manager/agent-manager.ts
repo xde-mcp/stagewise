@@ -513,6 +513,13 @@ export class AgentManagerService extends DisposableService {
 
     this.activeAgents.set(agentInstanceId, agent);
 
+    this.telemetryService.capture('agent-created', {
+      agent_type: type,
+      model_id:
+        this.karton.state.agents.instances[agentInstanceId]?.state
+          .activeModelId ?? 'unknown',
+    });
+
     return agent as BaseAgent<
       (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema'] extends z.ZodType
         ? (typeof AgentsMap)[TAgentType]['config']['finishToolOutputSchema']
@@ -610,6 +617,10 @@ export class AgentManagerService extends DisposableService {
       }
     }
 
+    this.telemetryService.capture('agent-resumed', {
+      agent_type: agent.type,
+    });
+
     return createdAgent;
   }
 
@@ -657,6 +668,9 @@ export class AgentManagerService extends DisposableService {
   private async deleteAgent(instanceId: string) {
     this.logger.debug(`[AgentManager] Deleting agent. ID: ${instanceId}`);
 
+    const agentType =
+      this.karton.state.agents.instances[instanceId]?.type ?? 'unknown';
+
     // Recursively delete all child agents first
     const childAgentInstanceIds = Object.entries(
       this.karton.state.agents.instances,
@@ -676,6 +690,10 @@ export class AgentManagerService extends DisposableService {
 
     // Clear the agent from the persistence layer
     await this.agentPersistenceDB?.deleteAgentInstance(instanceId);
+
+    this.telemetryService.capture('agent-deleted', {
+      agent_type: agentType,
+    });
   }
 
   /**
@@ -751,6 +769,15 @@ export class AgentManagerService extends DisposableService {
       throw new Error(`Agent with instance id ${instanceId} not found`);
     }
 
+    const instance = this.karton.state.agents.instances[instanceId];
+    const attachmentParts = message.parts.filter((p) => p.type === 'file');
+    this.telemetryService.capture('agent-message-sent', {
+      agent_type: instance?.type ?? 'unknown',
+      model_id: instance?.state.activeModelId ?? 'unknown',
+      has_attachments: attachmentParts.length > 0,
+      attachment_count: attachmentParts.length,
+    });
+
     await agent.sendUserMessage(message);
   }
 
@@ -796,6 +823,10 @@ export class AgentManagerService extends DisposableService {
     }
 
     await agent.stop();
+
+    this.telemetryService.capture('agent-stopped', {
+      agent_type: agent.agentType,
+    });
   }
 
   /**
@@ -910,7 +941,15 @@ export class AgentManagerService extends DisposableService {
         `Cannot set model: "${modelId}" does not exist (it may have been deleted)`,
       );
     }
+    const fromModel =
+      this.karton.state.agents.instances[instanceId]?.state.activeModelId ??
+      'unknown';
     await agent.updateActiveModelId(modelId);
+    this.telemetryService.capture('agent-model-changed', {
+      agent_type: agent.agentType,
+      from_model: fromModel,
+      to_model: modelId,
+    });
   }
 
   /**

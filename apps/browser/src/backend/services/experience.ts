@@ -454,6 +454,12 @@ export class UserExperienceService extends DisposableService {
       this.logger.debug(
         `[UserExperienceService] Set hasSeenOnboardingFlow to: ${value}`,
       );
+      if (value) {
+        this.telemetryService.capture('onboarding-completed', {
+          skipped: !suggestion,
+          suggestion_id: suggestion?.id,
+        });
+      }
     } catch (error) {
       this.logger.error(
         `[UserExperienceService] Failed to save hasSeenOnboardingFlow. Error: ${error}`,
