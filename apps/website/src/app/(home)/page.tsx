@@ -20,6 +20,79 @@ import fullDemoLight from '../../../../browser/src/ui/assets/feature-images/full
 import bgDark from '../../../../browser/src/ui/assets/feature-images/bg-dark.jpg';
 import bgLight from '../../../../browser/src/ui/assets/feature-images/bg-light.jpg';
 import { IconArrowRightFill18 } from 'nucleo-ui-fill-18';
+import { IconCheckOutline18 } from 'nucleo-ui-outline-18';
+
+function WaitlistForm({ className }: { className?: string }) {
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `https://waitlister.me/s/${process.env.NEXT_PUBLIC_WAITLISTER_WAITLIST_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) setSuccess(true);
+      else
+        setError(
+          data.error?.message || 'Failed to join waitlist. Please try again.',
+        );
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className={`flex items-center gap-2 text-sm ${className ?? ''}`}>
+        <IconCheckOutline18 className="size-3.5 text-foreground" />
+        <span className="text-foreground">You're on the list!</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <form
+        className="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
+        onSubmit={handleSubmit}
+      >
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          className="h-12 w-full rounded-md border border-input bg-background px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-64"
+          required
+          disabled={submitting}
+        />
+        <Button type="submit" size="lg" variant="primary" disabled={submitting}>
+          {submitting ? 'Joining...' : 'Join waitlist'}
+          <IconArrowRightFill18 className="size-4" />
+        </Button>
+      </form>
+      {error && <p className="mt-2 text-error-foreground text-sm">{error}</p>}
+    </div>
+  );
+}
 
 function FeatureSection() {
   return (
@@ -294,23 +367,7 @@ export default function Home() {
                 </span>
 
                 <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                  <form
-                    className="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
-                    action="https://waitlister.me/s/w86M0gTkD2fq"
-                    method="POST"
-                  >
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Enter your email"
-                      className="h-12 w-full rounded-md border border-input bg-background px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-64"
-                      required
-                    />
-                    <Button type="submit" size="lg" variant="primary">
-                      Join waitlist
-                      <IconArrowRightFill18 className="size-4" />
-                    </Button>
-                  </form>
+                  <WaitlistForm />
                   <a
                     href="https://github.com/stagewise-io/stagewise"
                     onClick={() => posthog?.capture('hero_github_star_click')}
@@ -377,23 +434,7 @@ export default function Home() {
               </h2>
 
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <form
-                  className="flex flex-col items-center gap-3 sm:flex-row sm:items-center"
-                  action="https://waitlister.me/s/w86M0gTkD2fq"
-                  method="POST"
-                >
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Enter your email"
-                    className="h-12 w-full rounded-md border border-input bg-background px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-64"
-                    required
-                  />
-                  <Button type="submit" size="lg" variant="primary">
-                    Join waitlist
-                    <IconArrowRightFill18 className="size-4" />
-                  </Button>
-                </form>
+                <WaitlistForm />
               </div>
             </div>
           </ScrollReveal>
