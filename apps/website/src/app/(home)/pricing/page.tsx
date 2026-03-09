@@ -27,8 +27,11 @@ export default function PricingPage() {
       name: 'Free',
       price: '$0',
       period: 'per month',
-      description: 'Limited access to all models',
-      features: ['Limited access to all models'],
+      description: 'Access all models',
+      features: [
+        'Limited access to all models',
+        'Bring Your Own Key (BYOK) for unlimited access and custom models',
+      ],
       cta: 'Start now',
       popular: false,
     },
@@ -36,7 +39,7 @@ export default function PricingPage() {
       name: 'Pro',
       price: '$20',
       period: 'per month',
-      description: 'Full access with limited prompts',
+      description: 'Everything in Free, plus',
       features: ['6x higher limits for all models'],
       cta: 'Get Pro',
       popular: true,
@@ -45,7 +48,7 @@ export default function PricingPage() {
       name: 'Ultra',
       price: '$200',
       period: 'per month',
-      description: 'Maximum power for teams and heavy users',
+      description: 'Everything in Pro, plus',
       features: ['75x higher limits for all models'],
       cta: 'Get Ultra',
       popular: false,
@@ -61,7 +64,8 @@ export default function PricingPage() {
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground">
             Start for free, then upgrade to Pro or Ultra for significantly
-            higher limits across all models.
+            higher limits across all models - or bring your own key for
+            unlimited access.
           </p>
         </div>
       </ScrollReveal>
