@@ -1005,6 +1005,7 @@ export class WindowLayoutService extends DisposableService {
 
   private handleSwitchTab = async (tabId: string) => {
     if (!this.tabs[tabId]) return;
+    if (this.activeTabId === tabId) return;
 
     const previousTabId = this.activeTabId;
 
