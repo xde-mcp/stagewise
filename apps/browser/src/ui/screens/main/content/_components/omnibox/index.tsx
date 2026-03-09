@@ -43,6 +43,9 @@ export const Omnibox = ({
     tab?.url === 'stagewise://internal/home' ? '' : tab?.url;
 
   const goto = useKartonProcedure((p) => p.browser.goto);
+  const movePanelToForeground = useKartonProcedure(
+    (p) => p.browser.layout.movePanelToForeground,
+  );
   const defaultEngineId = useKartonState(
     (s) => s.preferences.search.defaultEngineId,
   );
@@ -106,6 +109,18 @@ export const Omnibox = ({
       setIsOmniboxOpen(false);
     }
   }, [tabId, isActive]);
+
+  // Sync Electron z-order with omnibox open state so the popover is visible
+  // above tab webcontents (on open) and webcontents become interactive again (on close).
+  // Skip the close-side flip when the tab deactivated — handleSwitchTab owns z-order then.
+  const wasOmniboxOpenRef = useRef(false);
+  useEffect(() => {
+    if (isOmniboxOpen) void movePanelToForeground('stagewise-ui');
+    else if (wasOmniboxOpenRef.current && isActive)
+      void movePanelToForeground('tab-content');
+
+    wasOmniboxOpenRef.current = isOmniboxOpen;
+  }, [isOmniboxOpen, isActive, movePanelToForeground]);
 
   const { groups: suggestionGroups, resetSuggestions } = useOmniboxSuggestions(
     displayedTabUrl,

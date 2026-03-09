@@ -1225,13 +1225,8 @@ export class WindowLayoutService extends DisposableService {
   private handleTogglePanelKeyboardFocus = async (
     panel: 'stagewise-ui' | 'tab-content',
   ) => {
-    if (panel === 'stagewise-ui') {
-      this.uiController?.focus();
-      this.isWebContentInteractive = false;
-      this.updateZOrder();
-    } else {
-      this.activeTab?.focus();
-    }
+    if (panel === 'stagewise-ui') this.uiController?.focus();
+    else this.activeTab?.focus();
   };
 
   private updateZOrder() {
