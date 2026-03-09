@@ -735,7 +735,7 @@ export const ChatHistory = () => {
             {...suggestion}
             onClick={async () => {
               if (!openAgent) return;
-              await createTab(suggestion.url);
+              await createTab(suggestion.origin.url);
               await sendUserMessage(openAgent, {
                 id: crypto.randomUUID(),
                 role: 'user',

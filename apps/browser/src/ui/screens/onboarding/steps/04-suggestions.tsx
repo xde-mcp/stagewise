@@ -58,7 +58,7 @@ export function StepSuggestions({
             onClick={() =>
               onSuggestionClick?.({
                 id: item.id,
-                url: item.url,
+                url: item.origin.url,
                 prompt: item.prompt,
               })
             }

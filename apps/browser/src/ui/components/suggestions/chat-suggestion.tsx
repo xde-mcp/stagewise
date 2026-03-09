@@ -11,8 +11,7 @@ export type ChatSuggestionProps = SuggestionItem & {
 
 export const ChatSuggestion: React.FC<ChatSuggestionProps> = ({
   suggestion,
-  faviconUrl,
-  url: _url,
+  origin,
   onClick,
   onRemove,
   className,
@@ -26,7 +25,11 @@ export const ChatSuggestion: React.FC<ChatSuggestionProps> = ({
       )}
     >
       <span className="flex shrink-0 items-center">
-        <img src={faviconUrl} className="size-3 rounded-sm" alt="Favicon" />
+        <img
+          src={origin.faviconUrl}
+          className="size-3 rounded-sm"
+          alt="Favicon"
+        />
       </span>
       <span className="group-hover/suggestion:mask-[linear-gradient(to_left,transparent_0px,transparent_24px,black_48px)] w-full overflow-hidden text-sm leading-tight transition-[mask-image] duration-200">
         {suggestion}

@@ -1,2 +1,6 @@
 export { ChatSuggestion, type ChatSuggestionProps } from './chat-suggestion';
-export { suggestions, type SuggestionItem } from './suggestions-data';
+export {
+  suggestions,
+  getFaviconUrl,
+  type SuggestionItem,
+} from './suggestions-data';
