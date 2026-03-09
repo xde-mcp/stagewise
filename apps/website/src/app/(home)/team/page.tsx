@@ -1,6 +1,4 @@
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
-import TeamPic from './team-pic.jpg';
-import Image from 'next/image';
 import { IconGithub } from 'nucleo-social-media';
 
 export default function TeamPage() {
@@ -48,15 +46,6 @@ export default function TeamPage() {
                 don't force users into a fixed way of working, but rather adapt
                 to their ways of thinking and doing.
               </p>
-
-              <div className="my-8 overflow-hidden rounded-xl border border-border shadow-[0_0_20px_rgba(0,0,0,0.15)] dark:shadow-[0_0_20px_rgba(255,255,255,0.05)]">
-                <Image
-                  src={TeamPic}
-                  alt="The stagewise founding team"
-                  quality={95}
-                  className="w-full"
-                />
-              </div>
 
               <p>
                 The company's early traction validates this vision. Within

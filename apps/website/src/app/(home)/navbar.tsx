@@ -77,7 +77,7 @@ export function Navbar() {
         </div>
         <div className="flex flex-col items-start justify-start sm:pointer-events-none sm:absolute sm:inset-x-0 sm:flex-row sm:items-center sm:justify-center">
           <NavbarButton href="/pricing">Pricing</NavbarButton>
-          <NavbarButton href="/docs">Docs</NavbarButton>
+          <NavbarButton href="https://docs.stagewise.io">Docs</NavbarButton>
           <NavbarButton href="/news">News</NavbarButton>
           <NavbarButton href="/team">Team</NavbarButton>
         </div>

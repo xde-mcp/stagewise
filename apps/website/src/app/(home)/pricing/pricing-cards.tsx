@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle } from 'lucide-react';
+import { IconCheckOutline18 } from 'nucleo-ui-outline-18';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@stagewise/stage-ui/lib/utils';
@@ -11,6 +11,7 @@ interface Plan {
   period: string;
   description: string;
   features: string[];
+  cta?: string;
   popular: boolean;
   vatNote?: string;
 }
@@ -21,8 +22,8 @@ interface PricingCardsProps {
 
 export function PricingCards({ plans }: PricingCardsProps) {
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="grid gap-8 md:grid-cols-2 md:items-stretch">
+    <div>
+      <div className="grid gap-8 md:grid-cols-3 md:items-stretch">
         {plans.map((plan) => (
           <ScrollReveal key={plan.name} delay={100}>
             <div className="relative flex h-full flex-col rounded-2xl bg-surface-1 p-8">
@@ -49,8 +50,12 @@ export function PricingCards({ plans }: PricingCardsProps) {
               <div className="mb-8 flex-1">
                 <ul className="space-y-4">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3">
-                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
+                    <li
+                      key={feature}
+                      className="flex items-start gap-3"
+                      style={{ listStyle: 'none' }}
+                    >
+                      <IconCheckOutline18 className="mt-0.5 h-[18px] w-[18px] shrink-0 text-foreground" />
                       <span className="text-foreground">{feature}</span>
                     </li>
                   ))}
@@ -65,7 +70,7 @@ export function PricingCards({ plans }: PricingCardsProps) {
                 variant={plan.popular ? 'primary' : 'secondary'}
                 size="lg"
               >
-                Get Started
+                {plan.cta ?? 'Get Started'}
               </Button>
             </div>
           </ScrollReveal>

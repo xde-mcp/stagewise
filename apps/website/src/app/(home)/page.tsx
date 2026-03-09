@@ -7,11 +7,18 @@ import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { usePostHog } from 'posthog-js/react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import agentInBrowserImage from './_components/feature-images/agent_in_browser.png';
-import agentIdeIntegrationDark from './_components/feature-images/agent-ide-integration-dark.png';
-import agentIdeIntegrationLight from './_components/feature-images/agent-ide-integration-light.png';
-import reverseEngineeringDark from './_components/feature-images/reverse-engineering-dark.png';
-import reverseEngineeringLight from './_components/feature-images/reverse-engineering-light.png';
+import experimentsImage from '../../../../browser/src/ui/assets/feature-images/experiments-light.png';
+import experimentsImageDark from '../../../../browser/src/ui/assets/feature-images/experiments-dark.png';
+import agentIdeIntegrationDark from '../../../../browser/src/ui/assets/feature-images/agent-ide-integration-dark.png';
+import agentIdeIntegrationLight from '../../../../browser/src/ui/assets/feature-images/agent-ide-integration-light.png';
+import reverseEngineeringDark from '../../../../browser/src/ui/assets/feature-images/reverse-engineering-dark.png';
+import reverseEngineeringLight from '../../../../browser/src/ui/assets/feature-images/reverse-engineering-light.png';
+import debuggerAccessDark from '../../../../browser/src/ui/assets/feature-images/debugger-access-dark.png';
+import debuggerAccessLight from '../../../../browser/src/ui/assets/feature-images/debugger-access-light.png';
+import fullDemoDark from '../../../../browser/src/ui/assets/feature-images/full-demo-dark.png';
+import fullDemoLight from '../../../../browser/src/ui/assets/feature-images/full-demo-light.png';
+import bgDark from '../../../../browser/src/ui/assets/feature-images/bg-dark.jpg';
+import bgLight from '../../../../browser/src/ui/assets/feature-images/bg-light.jpg';
 import { IconArrowRightFill18 } from 'nucleo-ui-fill-18';
 
 function FeatureSection() {
@@ -21,7 +28,7 @@ function FeatureSection() {
         <ScrollReveal>
           <div className="mb-20 max-w-3xl pt-8 text-center">
             <h2 className="mb-4 font-medium text-2xl tracking-tight md:text-3xl">
-              Built for web developers
+              Built for developers
             </h2>
             <p className="font-light text-base text-muted-foreground">
               stagewise delivers a browsing experience that prioritizes the
@@ -34,14 +41,12 @@ function FeatureSection() {
       <div className="flex flex-col items-stretch gap-10 md:gap-20">
         <ScrollReveal delay={100}>
           <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row md:items-center md:gap-12 md:p-6">
-            <div className="space-y-4">
-              <p className="text-foreground text-xl">
-                DevTools-enhanced coding agent
-                <br />
-                <span className="font-light text-base text-muted-foreground">
-                  stagewise integrates "stage", our agent with console and
-                  debugger access to all tabs
-                </span>
+            <div className="space-y-2">
+              <h3 className="text-foreground text-xl">
+                Full access to the devtools
+              </h3>
+              <p className="font-light text-base text-muted-foreground">
+                The stagewise agent has console and debugger access on all tabs.
               </p>
               {/* <Link
                 href="/features/stage"
@@ -52,8 +57,13 @@ function FeatureSection() {
               </Link> */}
             </div>
             <Image
-              src={agentInBrowserImage}
-              className="w-full max-w-[66.67%] shrink-0 rounded-md border border-border"
+              src={debuggerAccessLight}
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:hidden"
+              alt="Image showing a browser with an integrated coding agent"
+            />
+            <Image
+              src={debuggerAccessDark}
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:block"
               alt="Image showing a browser with an integrated coding agent"
             />
           </div>
@@ -61,14 +71,13 @@ function FeatureSection() {
 
         <ScrollReveal delay={200}>
           <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
-            <div className="space-y-4">
-              <p className="text-foreground text-xl">
+            <div className="space-y-2">
+              <h3 className="text-foreground text-xl">
                 Temporary or permanent changes
-                <br />
-                <span className="font-light text-base text-muted-foreground">
-                  Make quick test changes to any page, or connect a codebase for
-                  permanent edits.
-                </span>
+              </h3>
+              <p className="font-light text-base text-muted-foreground">
+                Make quick test changes to any page, or connect a codebase for
+                permanent edits.
               </p>
               {/* <Link
                 href="/features/code-changes"
@@ -79,8 +88,13 @@ function FeatureSection() {
               </Link> */}
             </div>
             <Image
-              src={agentInBrowserImage}
-              className="w-full max-w-[66.67%] shrink-0 rounded-md border border-border"
+              src={experimentsImage}
+              className="block w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:hidden"
+              alt="Image showing a browser with an integrated coding agent"
+            />
+            <Image
+              src={experimentsImageDark}
+              className="hidden w-full max-w-[66.67%] shrink-0 rounded-md border border-border dark:block"
               alt="Image showing a browser with an integrated coding agent"
             />
           </div>
@@ -88,14 +102,13 @@ function FeatureSection() {
 
         <ScrollReveal delay={300}>
           <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row md:items-center md:gap-12 md:p-6">
-            <div className="space-y-4">
-              <p className="text-foreground text-xl">
+            <div className="space-y-2">
+              <h3 className="text-foreground text-xl">
                 Powerful reverse engineering tools
-                <br />
-                <span className="font-light text-base text-muted-foreground">
-                  Understand and re-use components, style systems and color
-                  palettes from any website.
-                </span>
+              </h3>
+              <p className="font-light text-base text-muted-foreground">
+                Understand and re-use components, style systems and color
+                palettes from any website.
               </p>
               {/* <Link
                 href="/features/reverse-engineering"
@@ -122,14 +135,12 @@ function FeatureSection() {
 
         <ScrollReveal delay={400}>
           <div className="flex flex-col items-start justify-between gap-6 rounded-lg bg-surface-1 p-4 md:flex-row-reverse md:items-center md:gap-12 md:p-6">
-            <div className="space-y-4">
-              <p className="text-foreground text-xl">
+            <div className="space-y-2">
+              <h3 className="text-foreground text-xl">
                 Integrated with your setup
-                <br />
-                <span className="font-light text-base text-muted-foreground">
-                  Opt-in to view relevant and modified files in your favorite
-                  IDE
-                </span>
+              </h3>
+              <p className="font-light text-base text-muted-foreground">
+                Opt-in to view relevant and modified files in your favorite IDE
               </p>
               {/* <Link
                 href="/features/ide-integrations"
@@ -278,8 +289,8 @@ export default function Home() {
                   </span>
                 </h1>
                 <span className="mb-8 text-md text-muted-foreground">
-                  A purpose-built browser for developers. Iterate on your
-                  frontend with the best coding agent built right in.
+                  stagewise is a purpose-built browser for developers with a
+                  coding agent built right in.
                 </span>
 
                 <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
@@ -317,38 +328,31 @@ export default function Home() {
             </ScrollReveal>
 
             <ScrollReveal delay={300}>
-              <div className="w-full">
-                <div className="group relative mt-16 mb-16 transform rounded-xl border border-border md:mt-40">
-                  <video
-                    src="https://github.com/stagewise-io/assets/raw/refs/heads/main/edited/0-6-0-undo/landing-demo-undo.mp4"
-                    width={1200}
-                    height={675}
-                    className="w-full rounded-xl transition-all duration-300 group-hover:blur-[2px]"
-                    autoPlay
-                    muted
-                    loop
-                    preload="auto"
-                    playsInline
-                  />
-                  {/* Overlay with button */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <a
-                      href="https://www.youtube.com/watch?v=C1fWQl8r_zY"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-lg bg-surface-1/80 px-6 py-3 font-medium text-foreground shadow-lg transition-all duration-200 hover:bg-surface-1 hover:shadow-xl"
-                    >
-                      <svg
-                        className="h-4 w-4"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                      Watch full demo
-                    </a>
-                  </div>
-                </div>
+              <div className="relative mt-16 mb-16 flex w-full items-center justify-center overflow-hidden rounded-md p-0 md:mt-20">
+                <Image
+                  src={bgLight}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover dark:hidden"
+                  priority
+                />
+                <Image
+                  src={bgDark}
+                  alt=""
+                  className="absolute inset-0 hidden h-full w-full object-cover dark:block"
+                  priority
+                />
+                <Image
+                  src={fullDemoLight}
+                  alt="stagewise full product overview"
+                  className="relative z-10 block h-full dark:hidden"
+                  priority
+                />
+                <Image
+                  src={fullDemoDark}
+                  alt="stagewise full product overview"
+                  className="relative z-10 hidden h-full dark:block"
+                  priority
+                />
               </div>
             </ScrollReveal>
           </div>

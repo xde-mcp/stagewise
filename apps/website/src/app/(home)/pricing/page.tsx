@@ -24,27 +24,31 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   const plans = [
     {
-      name: 'Trial',
-      price: 'Free',
-      period: 'to start',
-      description: 'Perfect for getting started with stagewise',
-      features: ['~10 daily prompts', 'Community support'],
-
+      name: 'Free',
+      price: '$0',
+      period: 'per month',
+      description: 'Limited access to all models',
+      features: ['Limited access to all models'],
+      cta: 'Start now',
       popular: false,
     },
     {
       name: 'Pro',
-      price: '€20',
+      price: '$20',
       period: 'per month',
       description: 'Full access with limited prompts',
-      features: [
-        '~100 daily prompts',
-        'Full platform access',
-        'Priority support',
-      ],
-
+      features: ['6x higher limits for all models'],
+      cta: 'Get Pro',
       popular: true,
-      vatNote: 'excl. 19% German VAT',
+    },
+    {
+      name: 'Ultra',
+      price: '$200',
+      period: 'per month',
+      description: 'Maximum power for teams and heavy users',
+      features: ['75x higher limits for all models'],
+      cta: 'Get Ultra',
+      popular: false,
     },
   ];
 
@@ -56,8 +60,8 @@ export default function PricingPage() {
             Simple, transparent pricing
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground">
-            Start with a free trial, then upgrade to Pro for full access with
-            generous usage limits included.
+            Start for free, then upgrade to Pro or Ultra for significantly
+            higher limits across all models.
           </p>
         </div>
       </ScrollReveal>
