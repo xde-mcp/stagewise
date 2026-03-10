@@ -2,8 +2,6 @@ import { Loader2Icon, TerminalIcon, XIcon } from 'lucide-react';
 import { useCallback, useMemo, useRef } from 'react';
 import { ToolPartUI } from './shared/tool-part-ui';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
-import { CodeBlock } from '@/components/ui/code-block';
-import { StreamingCodeBlock } from '@/components/ui/streaming-code-block';
 import { useIsTruncated } from '@ui/hooks/use-is-truncated';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { useOpenAgent } from '@/hooks/use-open-chat';
@@ -74,6 +72,7 @@ export const ExecuteShellCommandToolPart = ({
   }, [part.state, pendingOutputs]);
 
   const command = part.input?.command ?? '';
+  const explanation = part.input?.explanation ?? '';
 
   const effectiveOutputText = useMemo(() => {
     if (output?.output) return output.output;
@@ -118,11 +117,9 @@ export const ExecuteShellCommandToolPart = ({
         <div className="flex flex-row items-center justify-start gap-1">
           <TerminalIcon className="size-3 shrink-0 text-warning" />
           <span className="flex min-w-0 gap-1 text-xs">
-            <span className="shrink-0 font-medium">Run command:</span>
-            <TruncatedCommandText
-              text={command || 'Shell command'}
-              className="font-normal opacity-75"
-            />
+            <span className="shrink-0 font-medium">
+              {explanation || 'Run command'}
+            </span>
           </span>
         </div>
       );
@@ -133,11 +130,10 @@ export const ExecuteShellCommandToolPart = ({
         <div className="flex flex-row items-center justify-start gap-1">
           <TerminalIcon className="size-3 shrink-0" />
           <span className="flex min-w-0 gap-1 text-xs">
-            <span className="shrink-0 font-medium">Skipped command:</span>
-            <TruncatedCommandText
-              text={command}
-              className="font-normal opacity-75"
-            />
+            <span className="shrink-0 font-medium">
+              {explanation || 'Skipped command'}
+            </span>
+            <span className="text-subtle-foreground">(skipped)</span>
           </span>
         </div>
       );
@@ -161,7 +157,7 @@ export const ExecuteShellCommandToolPart = ({
           <Loader2Icon className="size-3 shrink-0 animate-spin text-primary-foreground" />
           <span className="flex min-w-0 gap-1 text-xs">
             <TruncatedCommandText
-              text={`Running command: ${command}` || '...'}
+              text={explanation || `Running ${command}` || '...'}
               className="shimmer-text-primary"
             />
           </span>
@@ -191,16 +187,14 @@ export const ExecuteShellCommandToolPart = ({
           <TerminalIcon className="size-3 shrink-0" />
           <span className="flex min-w-0 gap-1 text-xs">
             {exitCode === 0 ? (
-              <span className="shrink-0 font-medium">Ran command:</span>
+              <span className="shrink-0 font-medium">
+                {explanation || 'Ran command'}
+              </span>
             ) : (
               <span className="shrink-0 font-medium">
-                Ran command ({exitCode}):
+                {explanation || 'Ran command'} ({exitCode})
               </span>
             )}
-            <TruncatedCommandText
-              text={command}
-              className="pointer-events-auto font-normal opacity-75"
-            />
           </span>
         </div>
       );
@@ -219,63 +213,63 @@ export const ExecuteShellCommandToolPart = ({
       <div className="pointer-events-none flex flex-row items-center justify-start gap-1">
         <TerminalIcon className="size-3 shrink-0" />
         <span className="flex min-w-0 gap-1 text-xs">
-          <span className="shrink-0 font-medium">Command {statusLabel}:</span>
-          <TruncatedCommandText
-            text={command}
-            className="pointer-events-auto font-normal opacity-75"
-          />
+          <span className="shrink-0 font-medium">
+            {explanation || `Command ${statusLabel}`}
+          </span>
         </span>
       </div>
     );
   }, [
     state,
+    explanation,
     part.errorText,
-    command,
     output?.exit_code,
     output?.aborted,
     output?.timed_out,
   ]);
 
   const content = useMemo(() => {
-    if (state === 'denied') return undefined;
     if (state === 'error') return undefined;
 
-    if (state === 'approval' || state === 'approval-responded') {
-      return (
-        <CodeBlock code={`${command}\n`} language="bash" hideActionButtons />
-      );
-    }
+    const outputText =
+      state === 'approval' ||
+      state === 'approval-responded' ||
+      state === 'denied'
+        ? null
+        : effectiveOutputText || output?.message || null;
 
-    if (state === 'streaming') {
-      const text = effectiveOutputText || command;
-      return <StreamingCodeBlock code={text} language="shellsession" />;
-    }
-
-    const displayText = effectiveOutputText || output?.message || command;
-    if (displayText) {
-      return (
-        <CodeBlock
-          code={displayText}
-          language="shellsession"
-          hideActionButtons
-        />
-      );
-    }
-
-    return undefined;
-  }, [state, part.errorText, effectiveOutputText, command, output?.message]);
+    return (
+      <div className="px-2 py-1">
+        <div
+          className={cn(
+            'whitespace-pre-wrap break-all pb-0.5 font-mono text-muted-foreground text-xs',
+            outputText && 'pb-4',
+          )}
+        >
+          <span className="select-none text-subtle-foreground">$ </span>
+          {command}
+        </div>
+        {outputText && (
+          <div className="mt-1 whitespace-pre-wrap break-all font-mono font-normal text-subtle-foreground text-xs">
+            {outputText}
+          </div>
+        )}
+      </div>
+    );
+  }, [state, effectiveOutputText, command, output?.message]);
 
   const contentFooter = useMemo(() => {
-    if (state === 'approval' || state === 'approval-responded')
+    if (
+      (state === 'approval' || state === 'approval-responded') &&
+      part.state !== 'input-streaming'
+    )
       return (
         <div className="flex w-full flex-row items-center justify-end gap-1.5">
           <Button
             variant="ghost"
             size="xs"
             onClick={handleDeny}
-            disabled={
-              state === 'approval-responded' || part.state === 'input-streaming'
-            }
+            disabled={state === 'approval-responded'}
           >
             Skip
           </Button>
@@ -283,9 +277,7 @@ export const ExecuteShellCommandToolPart = ({
             variant="primary"
             size="xs"
             onClick={handleApprove}
-            disabled={
-              state === 'approval-responded' || part.state === 'input-streaming'
-            }
+            disabled={state === 'approval-responded'}
           >
             {state === 'approval-responded' && (
               <Loader2Icon className="size-3 shrink-0 animate-spin" />
@@ -311,8 +303,8 @@ export const ExecuteShellCommandToolPart = ({
       contentFooterClassName="px-1 h-8 border-none"
       contentClassName={cn(
         state === 'approval' || state === 'approval-responded'
-          ? 'h-16 max-h-16 pb-0'
-          : 'h-22 max-h-22 pb-0',
+          ? 'max-h-32 pb-0'
+          : 'max-h-48 pb-0',
       )}
     />
   );

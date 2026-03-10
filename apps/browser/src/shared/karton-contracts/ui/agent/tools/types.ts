@@ -642,6 +642,11 @@ export const askUserQuestionsToolSchema = {
 } as const;
 
 export const executeShellCommandToolInputSchema = z.object({
+  explanation: z
+    .string()
+    .describe(
+      'Concise (max 5 words) explanation of what this command does. Examples: "Install dependencies", "Check git status", "List project files", "Run test suite", "Build the project"',
+    ),
   command: z.string().describe('Shell command to execute.'),
   mount_prefix: z
     .string()
