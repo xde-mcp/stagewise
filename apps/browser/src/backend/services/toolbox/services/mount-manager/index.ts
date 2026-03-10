@@ -282,14 +282,14 @@ export class MountManagerService extends DisposableService {
     if (!mounts || !mounts.has(mountPrefix)) return;
 
     const workspacePath = this.workspacePathsPerMount.get(mountPrefix);
-    mounts.delete(mountPrefix); // Map.delete works the same as Set.delete
-    this.workspacePathsPerMount.delete(mountPrefix);
+    mounts.delete(mountPrefix);
 
     if (workspacePath) {
-      const stillInUse = [...this.workspacePathsPerMount.values()].includes(
-        workspacePath,
+      const stillInUse = [...this.agentMounts.values()].some((m) =>
+        m.has(mountPrefix),
       );
       if (!stillInUse) {
+        this.workspacePathsPerMount.delete(mountPrefix);
         this.stopWorkspaceWatcher(workspacePath);
         const lspService = this.lspServicesPerPath.get(workspacePath);
         if (lspService) void lspService.teardown();
