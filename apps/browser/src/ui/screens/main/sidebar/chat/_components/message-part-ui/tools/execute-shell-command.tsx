@@ -273,7 +273,9 @@ export const ExecuteShellCommandToolPart = ({
             variant="ghost"
             size="xs"
             onClick={handleDeny}
-            disabled={state === 'approval-responded'}
+            disabled={
+              state === 'approval-responded' || part.state === 'input-streaming'
+            }
           >
             Skip
           </Button>
@@ -281,7 +283,9 @@ export const ExecuteShellCommandToolPart = ({
             variant="primary"
             size="xs"
             onClick={handleApprove}
-            disabled={state === 'approval-responded'}
+            disabled={
+              state === 'approval-responded' || part.state === 'input-streaming'
+            }
           >
             {state === 'approval-responded' && (
               <Loader2Icon className="size-3 shrink-0 animate-spin" />
