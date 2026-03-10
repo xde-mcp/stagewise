@@ -17,7 +17,7 @@ export const overwriteFileToolInputSchema = z.object({
   relative_path: z
     .string()
     .describe(
-      'Relative file path to overwrite or create. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+      'Relative file path to overwrite or create. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts" or "apps/my-app/index.html"',
     ),
   content: z
     .string()
@@ -49,7 +49,7 @@ export const readFileToolInputSchema = z.object({
   relative_path: z
     .string()
     .describe(
-      'Relative path of file to read. File must exist. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+      'Relative path of file to read. File must exist. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts" or "apps/my-app/index.html"',
     ),
   start_line: z
     .number()
@@ -251,7 +251,7 @@ export const multiEditToolInputSchema = z.object({
   relative_path: z
     .string()
     .describe(
-      'Relative file path to edit. File must exist. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+      'Relative file path to edit. File must exist. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts" or "apps/my-app/index.html"',
     ),
   edits: z
     .array(editSchema)
@@ -278,7 +278,7 @@ export const deleteFileToolInputSchema = z.object({
   relative_path: z
     .string()
     .describe(
-      'Relative file path to delete. Must be an existing file. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts"',
+      'Relative file path to delete. Must be an existing file. Must include a valid mount prefix. e.g. "ws1/path/to/file.ts" or "apps/my-app/index.html"',
     ),
 });
 

@@ -17,7 +17,7 @@ import { resolveMountedRelativePath } from '../../utils/path-mounting';
 export const DESCRIPTION = `Read file contents with optional line range control. Line numbers are 1-indexed (first line is 1, not 0).
 
 Parameters:
-- relative_path (string, REQUIRED): Relative path of file to read. File must exist.
+- relative_path (string, REQUIRED): Relative path of file to read. File must exist. Must include a mount prefix, e.g. "w1/src/app.ts" or "apps/my-app/index.html".
 - start_line (number, OPTIONAL): Starting line number (1-indexed, INCLUSIVE). Must be >= 1. Omit to read from beginning.
 - end_line (number, OPTIONAL): Ending line number (1-indexed, INCLUSIVE). Must be >= start_line. Omit to read to end.
 

@@ -15,7 +15,7 @@ import { resolveMountedRelativePath } from '../../utils/path-mounting';
 export const DESCRIPTION = `Delete a file from the file system with undo capability.
 
 Parameters:
-- relative_path (string, REQUIRED): Relative file path to delete. Must be an existing file.
+- relative_path (string, REQUIRED): Relative file path to delete. Must be an existing file. Must include a mount prefix, e.g. "w1/src/app.ts" or "apps/my-app/index.html".
 
 Behavior: Respects .gitignore. Throws error if file doesn't exist.`;
 

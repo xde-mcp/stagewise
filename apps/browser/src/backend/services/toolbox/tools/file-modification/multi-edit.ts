@@ -15,7 +15,7 @@ import { resolveMountedRelativePath } from '../../utils/path-mounting';
 export const DESCRIPTION = `Make multiple find-and-replace edits to a single file in one operation. CRITICAL: Edits are applied SEQUENTIALLY - each edit sees the results of previous edits.
 
 Parameters:
-- relative_path (string, REQUIRED): Relative file path to edit. File must exist.
+- relative_path (string, REQUIRED): Relative file path to edit. File must exist. Must include a mount prefix, e.g. "w1/src/app.ts" or "apps/my-app/index.html".
 - edits (array, REQUIRED): Array of edit objects (minimum 1 edit). Each edit contains:
   - old_string (string, REQUIRED): Text to find and replace.
   - new_string (string, REQUIRED): Text to replace it with.

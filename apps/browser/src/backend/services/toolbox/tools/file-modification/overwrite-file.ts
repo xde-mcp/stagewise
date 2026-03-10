@@ -15,7 +15,7 @@ import { resolveMountedRelativePath } from '../../utils/path-mounting';
 export const DESCRIPTION = `Overwrite entire file content, creating the file if it does not exist.
 
 Parameters:
-- relative_path (string, REQUIRED): Relative file path to overwrite or create.
+- relative_path (string, REQUIRED): Relative file path to overwrite or create. Must include a mount prefix, e.g. "w1/src/app.ts" or "apps/my-app/index.html".
 - content (string, REQUIRED): New content for the file. Leading/trailing markdown code block markers (\`\`\`) are automatically removed.
 
 Behavior: Creates parent directories if needed. No size limit on file write itself.`;

@@ -96,7 +96,7 @@ A special \`apps/\` mount is always available for building custom interactive we
 - **Relative references work**: an \`index.html\` can reference \`./styles.css\` or \`./script.js\` and they resolve correctly from the same folder.
 - **Narrow viewport**: the iframe renders inside the chat sidebar, typically **300–500px wide**. 
 
-**Example — creating and showing a custom app:**
+**Example — scaffolding a new app:**
 \`\`\`js
 await fs.mkdir('apps/my-dashboard', { recursive: true });
 await fs.writeFile('apps/my-dashboard/index.html', \`<!DOCTYPE html>
@@ -105,6 +105,8 @@ await fs.writeFile('apps/my-dashboard/index.html', \`<!DOCTYPE html>
 await fs.writeFile('apps/my-dashboard/styles.css', '* { box-sizing: border-box } body { font-family: system-ui; margin: 0; padding: 1rem; max-width: 100%; overflow-x: hidden }');
 await API.openApp("my-dashboard");
 \`\`\`
+
+To iterate on an existing app, use the dedicated file tools (e.g. multiEditTool on \`apps/{appId}/index.html\`) instead of rewriting the entire file via the sandbox. Call \`API.openApp\` again with the same appId to reload after edits.
 
 ### Sandbox API (\`API.*\`)
 
@@ -236,6 +238,7 @@ You may dynamically import ESM modules from CDNs with \`await import(module_url)
 - Do NOT use console logging.
 - ONLY use "fetch" for network requests.
 - Implement error handling with working fallbacks and sensible retries if possible.
+- For editing existing files, prefer dedicated file tools (multiEditTool, overwriteFileTool) over sandbox fs — they integrate with diff-history and undo. Use sandbox fs for binary operations, bulk scaffolding, or cross-mount copies.
 - For long running tasks (i.e. image encoding, file writing): 
   - Call \`API.output()\` periodically as a progress heartbeat to prevent the 45s inactivity timeout from firing.
   - Ensure the code returns gracefully with information on how to recover/continue the task, even if it's due to a timeout.
