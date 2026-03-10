@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.0-alpha.10 (2026-03-10)
+
+### Features
+
+* add workspace-provider for @mentions and agent-mentions (ba047f1)
+* add tab-message-format to agent msg formats (abe0f5d)
+* add basic telemetry to tool-execution (fd95f5f)
+
+### Bug Fixes
+
+* improve execute-shell-command tool part ui (e81270f)
+* use env snapshot for mounted-path providers in UI (8efd274)
+* fix unmounting workspaces of separate agents (6a50a56)
+* fix dynamic imports in sandbox runtime (0a15624)
+* explain mini-app-iteration with file-tools in system prompt (39f259c)
+* include system prompt section about mini-app vs cdp vs source code (7d37dde)
+* soften system prompt about mermaid and trade-offs (aecdce3)
+
 ## 1.0.0-alpha.9 (2026-03-10)
 
 ### Bug Fixes
