@@ -137,6 +137,25 @@ export class AgentManagerService extends DisposableService {
         if (workspacePaths) {
           for (const wp of workspacePaths)
             await this.toolbox.handleMountWorkspace(agent.instanceId, wp);
+        } else {
+          const lastWorkspaces =
+            await this.agentPersistenceDB?.getLastChatWorkspacePaths();
+          if (lastWorkspaces) {
+            for (const ws of lastWorkspaces) {
+              try {
+                await this.toolbox.handleMountWorkspace(
+                  agent.instanceId,
+                  ws.path,
+                  ws.permissions,
+                );
+              } catch (error) {
+                this.logger.warn(
+                  `[AgentManager] Failed to auto-mount workspace ${ws.path}`,
+                  { error },
+                );
+              }
+            }
+          }
         }
         return agent.instanceId;
       },

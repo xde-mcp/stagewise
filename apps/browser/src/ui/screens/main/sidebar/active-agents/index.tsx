@@ -6,6 +6,7 @@ import {
 } from '@/hooks/use-karton';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { Button } from '@stagewise/stage-ui/components/button';
 import {
   OverlayScrollbar,
@@ -123,6 +124,21 @@ export function ActiveAgentsGrid() {
 
   const [, emptyAgentIdRef] = useEmptyAgentId();
 
+  const openAgentModelId = useKartonState((s) =>
+    openAgent
+      ? (s.agents.instances[openAgent]?.state.activeModelId ?? null)
+      : null,
+  );
+  const currentMounts = useKartonState((s) =>
+    openAgent
+      ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
+      : EMPTY_MOUNTS,
+  );
+  const openAgentModelIdRef = useRef(openAgentModelId);
+  openAgentModelIdRef.current = openAgentModelId;
+  const currentMountPathsRef = useRef(currentMounts.map((m) => m.path));
+  currentMountPathsRef.current = currentMounts.map((m) => m.path);
+
   // Optimistic creation: show a skeleton card immediately while the backend
   // creates the agent. Cleared once the new agent appears in the real list.
   const [pendingCreate, setPendingCreate] = useState(false);
@@ -200,7 +216,13 @@ export function ActiveAgentsGrid() {
     agentCountAtCreateRef.current = agents.length;
     setPendingCreate(true);
     window.dispatchEvent(new Event('sidebar-chat-panel-opened'));
-    void createAgent().then((id) => {
+    const currentModelId = openAgentModelIdRef.current ?? undefined;
+    const paths = currentMountPathsRef.current;
+    void createAgent(
+      undefined,
+      currentModelId,
+      paths.length > 0 ? paths : undefined,
+    ).then((id) => {
       setOpenAgent(id);
       setPendingCreate(false);
     });
