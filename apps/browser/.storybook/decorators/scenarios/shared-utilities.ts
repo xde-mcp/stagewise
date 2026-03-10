@@ -940,7 +940,7 @@ export function createAgentInstance(
       isWorking: options?.isWorking ?? false,
       history: options?.initialHistory ?? [],
       queuedMessages: [],
-      activeModelId: options?.activeModelId ?? 'claude-sonnet-4-5',
+      activeModelId: options?.activeModelId ?? 'claude-sonnet-4-6',
       inputState: options?.inputState ?? '',
       usedTokens: 0,
     },
