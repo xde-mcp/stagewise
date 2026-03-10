@@ -28,6 +28,7 @@ import {
 } from '@ui/screens/main/sidebar/chat/_components/rich-text/attachments';
 import { MentionNodeView } from '@ui/screens/main/sidebar/chat/_components/rich-text/mentions';
 import { TabMentionBadge } from '@ui/screens/main/sidebar/chat/_components/rich-text/mentions/tab-mention-badge';
+import { WorkspaceMentionBadge } from '@ui/screens/main/sidebar/chat/_components/rich-text/mentions/workspace-mention-badge';
 import {
   getRenderer,
   type RendererProps,
@@ -109,6 +110,7 @@ export type AttachmentLinkData =
       incomplete?: boolean;
     }
   | { type: 'tab'; handle: string }
+  | { type: 'workspace'; prefix: string }
   | { type: 'mention'; providerType: string; id: string; label?: string };
 
 const ATTACHMENT_LINK_PATTERNS: Array<{
@@ -140,6 +142,10 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
   {
     prefix: 'tab:',
     parse: (rest) => ({ type: 'tab', handle: rest }),
+  },
+  {
+    prefix: 'workspace:',
+    parse: (rest) => ({ type: 'workspace', prefix: rest }),
   },
   {
     prefix: 'mention:',
@@ -258,6 +264,8 @@ export function getAttachmentKey(linkData: AttachmentLinkData): string {
       return `color-${linkData.color}`;
     case 'tab':
       return `tab-${linkData.handle}`;
+    case 'workspace':
+      return `workspace-${linkData.prefix}`;
     case 'mention':
       return `mention-${linkData.providerType}-${linkData.id}`;
   }
@@ -490,6 +498,8 @@ export const AttachmentLinkRouter = ({
       return <ColorBadge color={linkData.color} />;
     case 'tab':
       return <TabMentionBadge handle={linkData.handle} />;
+    case 'workspace':
+      return <WorkspaceMentionBadge prefix={linkData.prefix} />;
     case 'mention':
       return (
         <MentionNodeView

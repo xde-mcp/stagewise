@@ -1,6 +1,6 @@
 import type { MentionItem } from '../types';
 import type { MentionFileCandidate } from '@shared/karton-contracts/ui/agent/metadata';
-import type { TabState } from '@shared/karton-contracts/ui';
+import type { TabState, MountEntry } from '@shared/karton-contracts/ui';
 
 export interface MentionProviderIcon {
   id: string;
@@ -14,10 +14,11 @@ export interface MentionContext {
     | null;
   tabs: Record<string, TabState>;
   activeTabId: string | null;
+  mounts: MountEntry[];
 }
 
 export interface MentionProvider {
-  type: 'file' | 'tab';
+  type: 'file' | 'tab' | 'workspace';
   groupLabel: string;
   /** Global importance multiplier (e.g. 1.3 for files, 1.0 for tabs). */
   boost: number;

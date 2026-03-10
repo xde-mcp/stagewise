@@ -121,9 +121,22 @@ export const tabMentionMetaSchema = z.object({
 
 export type TabMentionMeta = z.infer<typeof tabMentionMetaSchema>;
 
+export const workspaceMentionMetaSchema = z.object({
+  providerType: z.literal('workspace'),
+  /** Mount prefix, e.g. "w1" — agent-facing workspace identifier */
+  prefix: z.string(),
+  /** Workspace display name (basename of the path) */
+  name: z.string(),
+  /** Absolute filesystem path */
+  path: z.string(),
+});
+
+export type WorkspaceMentionMeta = z.infer<typeof workspaceMentionMetaSchema>;
+
 export const mentionMetaSchema = z.discriminatedUnion('providerType', [
   fileMentionMetaSchema,
   tabMentionMetaSchema,
+  workspaceMentionMetaSchema,
 ]);
 
 export type MentionMeta = z.infer<typeof mentionMetaSchema>;

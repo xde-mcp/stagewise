@@ -198,14 +198,24 @@ export function ChatPanelFooter() {
   );
   const mentionTabs = useKartonState((s) => s.browser.tabs);
   const mentionActiveTabId = useKartonState((s) => s.browser.activeTabId);
+  const mentionMounts = useKartonState((s) =>
+    openAgent ? (s.toolbox[openAgent]?.workspace?.mounts ?? []) : [],
+  );
   const mentionContext = useMemo<MentionContext>(
     () => ({
       agentInstanceId: openAgent,
       searchFiles: searchMentionFiles,
       tabs: mentionTabs,
       activeTabId: mentionActiveTabId,
+      mounts: mentionMounts,
     }),
-    [openAgent, searchMentionFiles, mentionTabs, mentionActiveTabId],
+    [
+      openAgent,
+      searchMentionFiles,
+      mentionTabs,
+      mentionActiveTabId,
+      mentionMounts,
+    ],
   );
 
   const isConnected = useKartonConnected();

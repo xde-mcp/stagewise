@@ -7,6 +7,7 @@ import type {
 import { batchFuzzyScore } from './fuzzy-score';
 import { fileProvider } from './file-provider';
 import { tabProvider } from './tab-provider';
+import { workspaceProvider } from './workspace-provider';
 
 const FUZZY_WEIGHT = 10;
 const RELEVANCE_WEIGHT = 5;
@@ -14,6 +15,7 @@ const RELEVANCE_WEIGHT = 5;
 const providerMap = new Map<string, MentionProvider>([
   [fileProvider.type, fileProvider],
   [tabProvider.type, tabProvider],
+  [workspaceProvider.type, workspaceProvider],
 ]);
 
 type ScoredItem = ResolvedMentionItem & { _score: number };

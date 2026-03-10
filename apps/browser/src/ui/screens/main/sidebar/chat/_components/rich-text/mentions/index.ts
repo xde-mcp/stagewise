@@ -8,6 +8,7 @@ export type {
   MentionItemBase,
   FileMentionItem,
   TabMentionItem,
+  WorkspaceMentionItem,
   ResolvedMentionItem,
 } from './types';
 export { queryAllProviders, getProviderIcon } from './providers';

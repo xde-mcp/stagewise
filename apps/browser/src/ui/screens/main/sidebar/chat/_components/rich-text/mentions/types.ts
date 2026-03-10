@@ -2,11 +2,12 @@ import type { BaseNodeAttrs } from '../shared/types';
 import type {
   FileMentionMeta,
   TabMentionMeta,
+  WorkspaceMentionMeta,
   MentionMeta,
 } from '@shared/karton-contracts/ui/agent/metadata';
 
 export interface MentionAttrs extends BaseNodeAttrs {
-  providerType: 'file' | 'tab';
+  providerType: 'file' | 'tab' | 'workspace';
   meta: MentionMeta | null;
 }
 
@@ -35,7 +36,15 @@ export type TabMentionItem = MentionItemBase & {
   meta: TabMentionMeta;
 };
 
-export type MentionItem = FileMentionItem | TabMentionItem;
+export type WorkspaceMentionItem = MentionItemBase & {
+  providerType: 'workspace';
+  meta: WorkspaceMentionMeta;
+};
+
+export type MentionItem =
+  | FileMentionItem
+  | TabMentionItem
+  | WorkspaceMentionItem;
 
 /** MentionItem after queryAllProviders has injected group. */
 export type ResolvedMentionItem = MentionItem & { group: string };

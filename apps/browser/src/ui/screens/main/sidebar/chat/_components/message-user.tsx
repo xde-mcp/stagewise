@@ -506,14 +506,19 @@ export const MessageUser = memo(
       return activeTab?.url?.startsWith('stagewise://internal/') ?? false;
     }, [activeTab?.url]);
 
+    const mentionMounts = useKartonState((s) =>
+      openAgent ? (s.toolbox[openAgent]?.workspace?.mounts ?? []) : [],
+    );
+
     const mentionContext = useMemo<MentionContext>(
       () => ({
         agentInstanceId: openAgent,
         searchFiles: searchMentionFiles,
         tabs,
         activeTabId,
+        mounts: mentionMounts,
       }),
-      [openAgent, searchMentionFiles, tabs, activeTabId],
+      [openAgent, searchMentionFiles, tabs, activeTabId, mentionMounts],
     );
 
     // Count total attachments for display

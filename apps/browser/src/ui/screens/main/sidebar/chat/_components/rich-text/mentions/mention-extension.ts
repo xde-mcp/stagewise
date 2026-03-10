@@ -20,6 +20,7 @@ export const mentionContextRef: { current: MentionContext } = {
     searchFiles: null,
     tabs: {},
     activeTabId: null,
+    mounts: [],
   },
 };
 

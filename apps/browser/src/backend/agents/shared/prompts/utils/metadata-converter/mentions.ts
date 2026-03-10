@@ -17,13 +17,26 @@ export function mentionToContextSnippet(mention: MentionMeta): string {
     });
   }
 
+  if (mention.providerType === 'tab') {
+    return xml({
+      [specialTokens.userMsgAttachmentXmlTag]: {
+        _attr: {
+          type: 'tab-mention',
+          'tab-handle': mention.tabHandle,
+          url: mention.url,
+          title: mention.title,
+        },
+      },
+    });
+  }
+
   return xml({
     [specialTokens.userMsgAttachmentXmlTag]: {
       _attr: {
-        type: 'tab-mention',
-        'tab-handle': mention.tabHandle,
-        url: mention.url,
-        title: mention.title,
+        type: 'workspace-mention',
+        prefix: mention.prefix,
+        name: mention.name,
+        path: mention.path,
       },
     },
   });

@@ -7,7 +7,7 @@ import {
 /**
  * Extracts self-contained mention metadata from TipTap editor content.
  * Each mention node carries a `meta` attribute populated by the provider,
- * which is a discriminated union (FileMentionMeta | TabMentionMeta).
+ * which is a discriminated union (FileMentionMeta | TabMentionMeta | WorkspaceMentionMeta).
  * Results are deduplicated by providerType + canonical ID.
  */
 export function extractMentionsFromTiptapContent(
@@ -20,7 +20,8 @@ export function extractMentionsFromTiptapContent(
 
   const dedupeKey = (meta: MentionMeta): string => {
     if (meta.providerType === 'file') return `file:${meta.mountedPath}`;
-    return `tab:${meta.tabId}`;
+    if (meta.providerType === 'tab') return `tab:${meta.tabId}`;
+    return `workspace:${meta.prefix}`;
   };
 
   const traverse = (node: JSONContent) => {

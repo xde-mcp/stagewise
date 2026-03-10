@@ -150,7 +150,9 @@ export const convertAgentMessagesToCompactMessageHistoryString = (
       const serializedMentionParts = message.metadata?.mentions?.map((m) => {
         if (m.providerType === 'file')
           return `[MENTIONED FILE: Path:'${m.relativePath}'${m.isDirectory ? ', Directory' : ''}]`;
-        return `[MENTIONED TAB: Handle:'${m.tabHandle}', URL:'${m.url}']`;
+        if (m.providerType === 'tab')
+          return `[MENTIONED TAB: Handle:'${m.tabHandle}', URL:'${m.url}']`;
+        return `[MENTIONED WORKSPACE: Prefix:'${m.prefix}', Path:'${m.path}']`;
       });
 
       revertedCompactedHistoryStringParts.push(
