@@ -48,6 +48,16 @@ export type EventProperties = {
   // Tools
   'tool-approved': { tool_name: string };
   'tool-denied': { tool_name: string; reason?: string };
+  'tool-call-executed': {
+    tool_name: string;
+    agent_type: string;
+    model_id: string;
+    success: boolean;
+    error_message?: string;
+    input_keys?: string[];
+    input_summary?: string;
+    duration_ms?: number;
+  };
 
   // Edits
   'edits-accepted': { hunk_count: number };
@@ -115,8 +125,12 @@ export class TelemetryService extends DisposableService {
   /**
    * Get the current telemetry level from preferences.
    */
-  private getTelemetryLevel(): TelemetryLevel {
+  public get telemetryLevel(): TelemetryLevel {
     return this.preferencesService.get().privacy.telemetryLevel;
+  }
+
+  private getTelemetryLevel(): TelemetryLevel {
+    return this.telemetryLevel;
   }
 
   private syncTelemetryOptIn(): void {

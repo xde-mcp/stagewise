@@ -343,6 +343,7 @@ export abstract class BaseAgent<
   private _stepGeneration = 0;
   private _stepStartTime = 0;
   private _stepProviderMode = '';
+  private _toolCallDurations = new Map<string, number>();
 
   // Handler that get's called when the agent wants to spawn a child agent.
   private readonly spawnChildAgentHandler: <
@@ -1288,6 +1289,8 @@ export abstract class BaseAgent<
         queueFlushIndex >= 0 ? queueFlushIndex : undefined,
       );
       tools = await this.getToolsForStep();
+      this._toolCallDurations.clear();
+      tools = this.wrapToolsWithTiming(tools);
       resolvedConfig = {
         ...this.config,
         ...(await this.getModelSettings(this.messages)),
@@ -1716,6 +1719,8 @@ export abstract class BaseAgent<
       finish_reason: result.finishReason ?? 'unknown',
       duration_ms: Date.now() - this._stepStartTime,
     });
+
+    this.emitToolCallEvents(result);
 
     // Check the current token usage. If necessary, summarize the chat history.
     // We always check the token usage in relation to the currently selected model.
@@ -2233,6 +2238,83 @@ export abstract class BaseAgent<
       ...BaseAgent.extractApiErrorContext(error),
       ...extra,
     });
+  }
+
+  private wrapToolsWithTiming(
+    tools: Partial<StagewiseToolSet>,
+  ): Partial<StagewiseToolSet> {
+    const wrapped: Partial<StagewiseToolSet> = {};
+    for (const [name, t] of Object.entries(tools)) {
+      if (!t || typeof t !== 'object' || !('execute' in t) || !t.execute) {
+        (wrapped as Record<string, unknown>)[name] = t;
+        continue;
+      }
+      const originalExecute = t.execute;
+      (wrapped as Record<string, unknown>)[name] = {
+        ...t,
+        execute: async (input: unknown, options: { toolCallId: string }) => {
+          const start = Date.now();
+          try {
+            return await (
+              originalExecute as (
+                input: unknown,
+                options: { toolCallId: string },
+              ) => Promise<unknown>
+            )(input, options);
+          } finally {
+            this._toolCallDurations.set(options.toolCallId, Date.now() - start);
+          }
+        },
+      };
+    }
+    return wrapped;
+  }
+
+  private emitToolCallEvents(result: StepResult<StagewiseToolSet>): void {
+    const modelId = this.state.get().activeModelId;
+    const isFull = this.telemetryService.telemetryLevel === 'full';
+
+    for (const part of result.content) {
+      if (part.type !== 'tool-result' && part.type !== 'tool-error') continue;
+      if (part.toolName === 'finish') continue;
+
+      const inputObj =
+        typeof part.input === 'object' && part.input !== null ? part.input : {};
+      const inputKeys = Object.keys(inputObj as Record<string, unknown>);
+      let inputSummary: string | undefined;
+      if (isFull) {
+        try {
+          inputSummary = JSON.stringify(part.input).slice(0, 2048);
+        } catch {}
+      }
+
+      const durationMs = this._toolCallDurations.get(part.toolCallId);
+
+      if (part.type === 'tool-result') {
+        this.telemetryService.capture('tool-call-executed', {
+          tool_name: part.toolName,
+          agent_type: this.agentType,
+          model_id: modelId,
+          success: true,
+          input_keys: inputKeys,
+          input_summary: inputSummary,
+          duration_ms: durationMs,
+        });
+      } else {
+        this.telemetryService.capture('tool-call-executed', {
+          tool_name: part.toolName,
+          agent_type: this.agentType,
+          model_id: modelId,
+          success: false,
+          error_message: String(part.error).slice(0, 500),
+          input_keys: inputKeys,
+          input_summary: inputSummary,
+          duration_ms: durationMs,
+        });
+      }
+    }
+
+    this._toolCallDurations.clear();
   }
 
   /**
