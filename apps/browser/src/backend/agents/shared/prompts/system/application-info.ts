@@ -56,12 +56,16 @@ Domains that do NOT have an \`enable\` method (use their methods directly, never
 
 For event-based domains not listed above (e.g. \`Network\`, \`Overlay\`, \`Debugger\`, \`Fetch\`, \`DOMStorage\`, \`Performance\`, \`Profiler\`), call \`<Domain>.enable\` via sendCDP before using their methods or receiving their events.
 
-### Filesystem Access (\`node:fs\` / \`node:fs/promises\`)
+### Filesystem Access (\`fs\` / \`fsPromises\`)
 
-The sandbox provides a **sandboxed \`fs\` module** scoped to mounted workspaces. Import it via:
+The sandbox provides **sandboxed filesystem globals** scoped to mounted workspaces. Available directly as globals:
 \`\`\`js
-const fs = await import('node:fs');
-const fsp = await import('node:fs/promises');
+// Both are available as top-level globals — no import needed
+fs.readFileSync('w1/src/index.ts', 'utf-8');
+await fsPromises.readFile('w1/src/index.ts', 'utf-8');
+// Also available via require():
+const fs = require('fs');
+const fsp = require('fs/promises');
 \`\`\`
 
 - All standard \`fs\` methods are available: \`readFile\`, \`writeFile\`, \`readdir\`, \`stat\`, \`mkdir\`, \`unlink\`, \`rename\`, \`copyFile\`, \`rm\`, \`createReadStream\`, \`createWriteStream\`, etc.
@@ -98,11 +102,11 @@ A special \`apps/\` mount is always available for building custom interactive we
 
 **Example — scaffolding a new app:**
 \`\`\`js
-await fs.mkdir('apps/my-dashboard', { recursive: true });
-await fs.writeFile('apps/my-dashboard/index.html', \`<!DOCTYPE html>
+await fsPromises.mkdir('apps/my-dashboard', { recursive: true });
+await fsPromises.writeFile('apps/my-dashboard/index.html', \`<!DOCTYPE html>
 <html><head><link rel="stylesheet" href="styles.css"></head>
 <body><h1>Dashboard</h1></body></html>\`);
-await fs.writeFile('apps/my-dashboard/styles.css', '* { box-sizing: border-box } body { font-family: system-ui; margin: 0; padding: 1rem; max-width: 100%; overflow-x: hidden }');
+await fsPromises.writeFile('apps/my-dashboard/styles.css', '* { box-sizing: border-box } body { font-family: system-ui; margin: 0; padding: 1rem; max-width: 100%; overflow-x: hidden }');
 await API.openApp("my-dashboard");
 \`\`\`
 
@@ -125,12 +129,12 @@ Append data to the tool result. \`data\` is stringified (JSON if not already a s
 
 #### \`API.outputAttachment(attachment)\`
 Register a file attachment so the LLM can **see** it as multimodal input on the next turn.
-The binary data must already be written to disk via \`fs.writeFile('att/{id}', buffer)\` before calling this.
+The binary data must already be written to disk via \`fsPromises.writeFile('att/{id}', buffer)\` before calling this.
 The script's text output (\`API.output\` / \`return\`) is unaffected — the attachment is delivered separately.
 **Also resets the inactivity timeout**, same as \`API.output()\`.
 
 **Two-step pattern:**
-1. Write the binary content: \`await fs.writeFile('att/' + id, buffer)\`
+1. Write the binary content: \`await fsPromises.writeFile('att/' + id, buffer)\`
 2. Register metadata: \`API.outputAttachment({ id, mediaType, sizeBytes, fileName })\`
 
 **Attachment schema:**
@@ -160,7 +164,7 @@ Open a plugin app or agent-built app in an iframe within the chat sidebar.
 **Example (agent-built app):**
 \`\`\`js
 // Write app files to apps/{appId}/ then open it
-await fs.writeFile('apps/my-dashboard/index.html', htmlContent);
+await fsPromises.writeFile('apps/my-dashboard/index.html', htmlContent);
 await API.openApp("my-dashboard");
 \`\`\`
 
@@ -210,25 +214,42 @@ Standard V8 globals:
 \`crypto.randomUUID()\`, \`self\`, \`global\`,  
 \`process\` (minimal shim: \`env.NODE_ENV\`, \`nextTick\`)
 
+Module system:
+\`require(specifier)\` — synchronous, for Node.js built-ins (e.g. \`require('path')\`)  
+\`importModule(url)\` — async, for CDN packages (e.g. \`await importModule('https://esm.sh/lodash-es')\`)  
+\`fs\` — sandboxed filesystem (callback + sync APIs)  
+\`fsPromises\` — sandboxed filesystem (promise APIs)
+
 - NO access to DOM or Navigator APIs. Use CDP to interact with the DOM of tabs.
 
-#### Node.js Built-ins (via \`await import('node:*')\`)
+#### Node.js Built-ins (via \`require()\`)
+
+Use the synchronous \`require()\` function to load Node.js built-in modules:
+\`\`\`js
+const path = require('path');      // or require('node:path')
+const crypto = require('crypto');
+\`\`\`
 
 Allowed: buffer, crypto, events, path, querystring, stream, string_decoder, url, util, zlib, assert
 
-Sandboxed (scoped to mounted workspaces): **fs**, **fs/promises** — full filesystem API, restricted to workspace paths.
+Sandboxed (scoped to mounted workspaces): **fs**, **fs/promises** — full filesystem API, restricted to workspace paths. Also available directly as \`fs\` and \`fsPromises\` globals.
 
 Blocked (security): net, http, https, child_process, worker_threads, vm, and other I/O modules — these throw an error.
 
-### Dynamic imports
+### Dynamic imports (via \`importModule()\`)
 
-You may dynamically import ESM modules from CDNs with \`await import(module_url)\`.
+Use \`await importModule(url)\` to load ESM modules from CDNs:
+\`\`\`js
+const { chunk, map } = await importModule('https://esm.sh/lodash-es?target=node');
+const lib = (await importModule('https://esm.sh/some-lib?target=node')).default;
+\`\`\`
 
 - URL must be HTTPS only
 - Prefer **esm.sh** as CDN: \`https://esm.sh/{package}?target=node\`
 - Modules cached per session
 - Avoid explicitly stating versions (only as specific as needed - i.e. major only)
 - Only import Node.js compatible libraries. No web APIs are available in the sandbox.
+- Do NOT use \`await import()\` — use \`await importModule()\` instead.
 
 ### Best practices
 
@@ -249,7 +270,7 @@ You may dynamically import ESM modules from CDNs with \`await import(module_url)
 
 #### Compress data with zlib
 \`\`\`js
-const zlib = await import('node:zlib');
+const zlib = require('zlib');
 const input = Buffer.from('hello world — repeated many times '.repeat(100));
 const compressed = zlib.deflateSync(input);
 return { original: input.length, compressed: compressed.length };
@@ -258,43 +279,39 @@ return { original: input.length, compressed: compressed.length };
 #### Import external packages via esm.sh
 \`\`\`js
 // Named exports
-const { chunk, map } = await import('https://esm.sh/lodash-es?target=node');
+const { chunk, map } = await importModule('https://esm.sh/lodash-es?target=node');
 // Default export
-const lib = (await import('https://esm.sh/some-lib?target=node')).default;
+const lib = (await importModule('https://esm.sh/some-lib?target=node')).default;
 \`\`\`
 
 #### Read a file from the workspace
 \`\`\`js
-const fs = await import('node:fs/promises');
-const content = await fs.readFile('w1/src/index.ts', 'utf-8');
+const content = await fsPromises.readFile('w1/src/index.ts', 'utf-8');
 API.output(\`File has \${content.split('\\n').length} lines\`);
 return content.slice(0, 500);
 \`\`\`
 
 #### Read a user-uploaded attachment
 \`\`\`js
-const fs = await import('node:fs/promises');
-const content = await fs.readFile('att/abc123');
+const content = await fsPromises.readFile('att/abc123');
 API.output(\`Attachment size: \${content.length} bytes\`);
-await fs.writeFile('w1/assets/uploaded-image.png', content);
+await fsPromises.writeFile('w1/assets/uploaded-image.png', content);
 return "Copied attachment to workspace.";
 \`\`\`
 
 #### List files in a directory
 \`\`\`js
-const fs = await import('node:fs/promises');
-const files = await fs.readdir('w1/src', { recursive: true });
+const files = await fsPromises.readdir('w1/src', { recursive: true });
 return files.filter(f => f.endsWith('.ts'));
 \`\`\`
 
 #### Take a screenshot and inspect it as multimodal input
 \`\`\`js
-const fs = await import('node:fs/promises');
 const tabId = "<active-tab-id>";
 const { data } = await API.sendCDP(tabId, "Page.captureScreenshot", { format: "png" });
 const buf = Buffer.from(data, "base64");
 const id = crypto.randomUUID();
-await fs.writeFile('att/' + id, buf);
+await fsPromises.writeFile('att/' + id, buf);
 API.outputAttachment({
   id,
   mediaType: "image/png",

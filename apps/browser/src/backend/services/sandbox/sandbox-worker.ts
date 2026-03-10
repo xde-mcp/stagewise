@@ -8,8 +8,8 @@ import {
 } from './utils/credential-fetch';
 
 const contexts = new Map<string, vm.Context>();
-/** Per-agent cache of fetched ESM modules for dynamic import() resolution. */
-const moduleCaches = new Map<string, Map<string, vm.Module>>();
+/** Per-agent cache of URL-imported modules (resolved via data: URL imports). */
+const urlModuleCaches = new Map<string, Map<string, any>>();
 const pendingCdp = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
@@ -85,7 +85,7 @@ const ALLOWED_NODE_MODULES = new Set([
 
 /**
  * Modules that are provided as sandboxed/isolated versions rather than
- * the real Node.js built-in. Resolved via `resolveIsolatedModule`.
+ * the real Node.js built-in. Resolved via the `require()` shim.
  */
 const SANDBOXED_NODE_MODULES = new Set(['fs', 'fs/promises']);
 
@@ -110,6 +110,107 @@ const BLOCKED_NODE_MODULES = new Set([
   'repl',
   'tty',
 ]);
+
+/**
+ * Pre-imported Node.js built-in modules. Populated once at worker startup
+ * so that the synchronous `require()` shim can return them instantly.
+ */
+const preloadedModules = new Map<string, any>();
+
+async function preloadAllowedModules() {
+  for (const name of ALLOWED_NODE_MODULES)
+    preloadedModules.set(name, await import(`node:${name}`));
+}
+
+/**
+ * Fetch an ESM module from a URL (e.g. esm.sh), evaluate it in the worker
+ * process via a data: URL import, and return the module namespace object.
+ *
+ * esm.sh entry points are thin wrappers that re-export from a versioned
+ * bundle path (e.g. `export * from "/pkg@1.0.0/node/pkg.bundle.mjs"`).
+ * We detect these wrappers, resolve the target URL, and fetch the actual
+ * self-contained bundle before importing via data: URL.
+ */
+async function importFromUrl(
+  url: string,
+  cache: Map<string, any>,
+): Promise<any> {
+  const cached = cache.get(url);
+  if (cached) return cached;
+
+  const source = await fetchResolvedSource(url);
+  const dataUrl = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
+  const mod = await import(dataUrl);
+  cache.set(url, mod);
+  return mod;
+}
+
+/**
+ * Fetch ESM source from a URL, following esm.sh redirect wrappers.
+ * esm.sh entry points are typically 1-3 lines of re-exports pointing to
+ * the actual bundle. We detect these, resolve the paths against the
+ * original URL, and fetch the real bundle instead.
+ */
+async function fetchResolvedSource(url: string, depth = 0): Promise<string> {
+  if (depth > 5) throw new Error(`Too many redirects resolving module: ${url}`);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch module: ${url} (HTTP ${response.status})`);
+  }
+
+  const source = await response.text();
+
+  // Strip comments, then check if all remaining lines are just re-exports.
+  // esm.sh wrappers look like:
+  //   export * from "/pkg@1.0.0/node/pkg.bundle.mjs";
+  //   export { default } from "/pkg@1.0.0/node/pkg.bundle.mjs";
+  const codeLines = source
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(
+      (l) =>
+        l && !l.startsWith('/*') && !l.startsWith('*') && !l.startsWith('//'),
+    );
+
+  if (codeLines.length > 0 && codeLines.length <= 5) {
+    const reExportPattern =
+      /^export\s+(?:\*|{[^}]*})\s+from\s+["']([^"']+)["']\s*;?\s*$/;
+    const targets = codeLines.map((l) => reExportPattern.exec(l));
+
+    if (targets.every((m) => m !== null)) {
+      // All code lines are re-exports — follow the first target
+      // (they typically all point to the same base module)
+      const targetPath = targets[0]![1];
+      const resolvedUrl = new URL(targetPath, url).href;
+      return fetchResolvedSource(resolvedUrl, depth + 1);
+    }
+  }
+
+  return source;
+}
+
+/**
+ * Ensure esm.sh URLs include `?bundle` so sub-modules are inlined,
+ * and add `?target=node` if no target is specified.
+ */
+function ensureBundleParam(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'esm.sh') {
+      if (
+        !u.searchParams.has('bundle') &&
+        !u.searchParams.has('raw') &&
+        !u.searchParams.has('standalone')
+      ) {
+        u.searchParams.set('bundle', '');
+      }
+    }
+    return u.href;
+  } catch {
+    return url;
+  }
+}
 
 let cdpReqId = 0;
 let credReqId = 0;
@@ -149,8 +250,7 @@ function messageListenerKey(appId: string, pluginId?: string): string {
 
 /**
  * Create or update the isolated fs instances for an agent based on its
- * current mounts. Also invalidates the module cache entries for `node:fs`
- * and `node:fs/promises` so the next import picks up the new mounts.
+ * current mounts.
  */
 function refreshIsolatedFs(agentId: string) {
   const mounts = agentMounts.get(agentId) ?? [];
@@ -186,13 +286,6 @@ function refreshIsolatedFs(agentId: string) {
     fs: isolatedFs,
     fsPromises: isolatedFsPromises,
   });
-
-  // Invalidate cached synthetic modules so re-import picks up new mounts
-  const cache = moduleCaches.get(agentId);
-  if (cache) {
-    cache.delete('node:fs');
-    cache.delete('node:fs/promises');
-  }
 }
 
 function getSandboxAPI(agentId: string) {
@@ -422,6 +515,50 @@ function getContextGlobals(agentId: string) {
       nextTick: (fn: (...args: unknown[]) => void, ...args: unknown[]) =>
         queueMicrotask(() => fn(...args)),
     },
+
+    // --- Module system shims (no --experimental-vm-modules needed) ---
+
+    require(specifier: string) {
+      const name = specifier.replace(/^node:/, '');
+      if (SANDBOXED_NODE_MODULES.has(name)) {
+        const isolated = agentIsolatedFs.get(agentId);
+        if (!isolated) {
+          throw new Error(
+            'No workspaces mounted. Mount a workspace before using fs.',
+          );
+        }
+        return name === 'fs/promises' ? isolated.fsPromises : isolated.fs;
+      }
+      if (BLOCKED_NODE_MODULES.has(name)) {
+        throw new Error(
+          `"${specifier}" is not available in the sandbox for security reasons.`,
+        );
+      }
+      const mod = preloadedModules.get(name);
+      if (!mod) {
+        const allowed = [
+          ...ALLOWED_NODE_MODULES,
+          ...SANDBOXED_NODE_MODULES,
+        ].join(', ');
+        throw new Error(
+          `"${specifier}" is not a recognised allowed module. Allowed: ${allowed}`,
+        );
+      }
+      return mod;
+    },
+
+    async importModule(url: string) {
+      if (typeof url !== 'string' || !url.startsWith('https://')) {
+        throw new Error(
+          'importModule() only supports https:// URLs. ' +
+            'For Node.js built-ins, use require() instead.',
+        );
+      }
+      const resolved = ensureBundleParam(url);
+      const cache = urlModuleCaches.get(agentId) ?? new Map();
+      if (!urlModuleCaches.has(agentId)) urlModuleCaches.set(agentId, cache);
+      return importFromUrl(resolved, cache);
+    },
   };
 
   // self and global are circular references back to globalThis.
@@ -434,197 +571,50 @@ function getContextGlobals(agentId: string) {
   return globals;
 }
 
-/**
- * Resolve a sandboxed `node:fs` or `node:fs/promises` module by wrapping
- * the agent's isolated fs instance as a vm.SyntheticModule.
- */
-async function resolveIsolatedModule(
-  specifier: string,
-  agentId: string,
-  ctx: vm.Context,
-  cache: Map<string, vm.Module>,
-): Promise<vm.Module> {
-  const cached = cache.get(specifier);
-  if (cached) return cached;
-
-  const name = specifier.replace(/^node:/, '');
-  const isolated = agentIsolatedFs.get(agentId);
-
-  if (!isolated) {
-    throw new Error(
-      'No workspaces mounted. Mount a workspace before using fs.',
-    );
-  }
-
-  const moduleMap: Record<string, Record<string, any>> = {
-    fs: isolated.fs,
-    'fs/promises': isolated.fsPromises,
-  };
-  const moduleObj = moduleMap[name];
-  if (!moduleObj) {
-    throw new Error(
-      `No isolated implementation for "${specifier}". ` +
-        `Add it to the moduleMap in resolveIsolatedModule.`,
-    );
-  }
-
-  // Get the real module's export names so the synthetic module matches the
-  // expected shape (some packages check for specific named exports).
-  const realModule = await import(specifier);
-  const exportNames = Object.keys(realModule);
-
-  const synth = new vm.SyntheticModule(
-    exportNames,
-    function () {
-      for (const key of exportNames) {
-        this.setExport(
-          key,
-          key in moduleObj ? moduleObj[key] : realModule[key],
-        );
-      }
-    },
-    {
-      context: ctx,
-      identifier: specifier,
-    },
-  );
-
-  await synth.link(() => {
-    throw new Error('node: built-in modules should not have dependencies');
-  });
-  await synth.evaluate();
-
-  cache.set(specifier, synth);
-  return synth;
-}
-
-/**
- * Resolve a `node:` built-in module and wrap it as a vm.SyntheticModule
- * so it can be returned from the `importModuleDynamically` callback.
- *
- * Allowed modules are imported from the host process (the utility worker
- * has full Node.js available) and their exports are re-exposed into the
- * sandboxed VM context. Blocked modules throw a clear error.
- */
-async function resolveNodeModule(
-  specifier: string,
-  agentId: string,
-  ctx: vm.Context,
-  cache: Map<string, vm.Module>,
-): Promise<vm.Module> {
-  const cached = cache.get(specifier);
-  if (cached) return cached;
-
-  const name = specifier.replace(/^node:/, '');
-
-  if (SANDBOXED_NODE_MODULES.has(name)) {
-    return resolveIsolatedModule(specifier, agentId, ctx, cache);
-  }
-
-  if (BLOCKED_NODE_MODULES.has(name))
-    throw new Error(
-      `"${specifier}" is not available in the sandbox for security reasons.`,
-    );
-
-  if (!ALLOWED_NODE_MODULES.has(name))
-    throw new Error(
-      `"${specifier}" is not a recognised allowed Node.js module. ` +
-        `Allowed: ${[...ALLOWED_NODE_MODULES, ...SANDBOXED_NODE_MODULES].map((m) => `node:${m}`).join(', ')}`,
-    );
-
-  const hostModule = await import(specifier);
-  const exportNames = Object.keys(hostModule);
-
-  const synth = new vm.SyntheticModule(
-    exportNames,
-    function () {
-      for (const key of exportNames) this.setExport(key, hostModule[key]);
-    },
-    {
-      context: ctx,
-      identifier: specifier,
-    },
-  );
-
-  await synth.link(() => {
-    throw new Error('node: built-in modules should not have dependencies');
-  });
-  await synth.evaluate();
-
-  cache.set(specifier, synth);
-  return synth;
-}
-
-/**
- * Resolve, link, and evaluate an ESM module fetched from a URL.
- * Used as the `importModuleDynamically` handler for vm.Script,
- * enabling `await import('https://esm.sh/...')` inside sandbox scripts.
- *
- * Modules are cached per-agent so repeated imports are instant.
- */
-async function resolveModule(
-  specifier: string,
-  referencingIdentifier: string | undefined,
-  agentId: string,
-  ctx: vm.Context,
-  cache: Map<string, vm.Module>,
-): Promise<vm.Module> {
-  // Handle node: built-in imports before URL resolution
-  if (specifier.startsWith('node:')) {
-    return resolveNodeModule(specifier, agentId, ctx, cache);
-  }
-
-  const resolved = referencingIdentifier
-    ? new URL(specifier, referencingIdentifier).href
-    : specifier;
-
-  if (!resolved.startsWith('https://')) {
-    throw new Error(
-      `Dynamic import only supports node: built-ins and https:// URLs. Got: ${resolved}`,
-    );
-  }
-
-  const cached = cache.get(resolved);
-  if (cached) return cached;
-
-  const response = await fetch(resolved);
-  if (!response.ok)
-    throw new Error(
-      `Failed to fetch module: ${resolved} (HTTP ${response.status})`,
-    );
-
-  const source = await response.text();
-
-  const mod = new vm.SourceTextModule(source, {
-    context: ctx,
-    identifier: resolved,
-    importModuleDynamically: (spec: string) =>
-      resolveModule(spec, resolved, agentId, ctx, cache),
-  });
-
-  await mod.link((importSpec: string) =>
-    resolveModule(importSpec, resolved, agentId, ctx, cache),
-  );
-  await mod.evaluate();
-
-  cache.set(resolved, mod);
-  return mod;
-}
-
 ipc.onMessage(async (msg) => {
   switch (msg.type) {
     case 'create-context': {
+      await preloadAllowedModules();
       const ctx = vm.createContext({
         API: getSandboxAPI(msg.agentId),
         ...getContextGlobals(msg.agentId),
       });
+
+      const agentId = msg.agentId;
+      Object.defineProperty(ctx, 'fs', {
+        get() {
+          const isolated = agentIsolatedFs.get(agentId);
+          if (!isolated) {
+            throw new Error(
+              'No workspaces mounted. Mount a workspace before using fs.',
+            );
+          }
+          return isolated.fs;
+        },
+        enumerable: true,
+        configurable: true,
+      });
+      Object.defineProperty(ctx, 'fsPromises', {
+        get() {
+          const isolated = agentIsolatedFs.get(agentId);
+          if (!isolated) {
+            throw new Error(
+              'No workspaces mounted. Mount a workspace before using fs.',
+            );
+          }
+          return isolated.fsPromises;
+        },
+        enumerable: true,
+        configurable: true,
+      });
+
       contexts.set(msg.agentId, ctx);
-      moduleCaches.set(msg.agentId, new Map());
+      urlModuleCaches.set(msg.agentId, new Map());
       break;
     }
     case 'destroy-context': {
       contexts.delete(msg.agentId);
-      moduleCaches.delete(msg.agentId);
+      urlModuleCaches.delete(msg.agentId);
       agentMounts.delete(msg.agentId);
       agentIsolatedFs.delete(msg.agentId);
       agentSecretMaps.delete(msg.agentId);
@@ -658,11 +648,7 @@ ipc.onMessage(async (msg) => {
 
       try {
         const wrapped = `(async () => { ${msg.code} })()`;
-        const cache = moduleCaches.get(msg.agentId) ?? new Map();
-        const script = new vm.Script(wrapped, {
-          importModuleDynamically: (specifier: string) =>
-            resolveModule(specifier, undefined, msg.agentId, ctx, cache),
-        });
+        const script = new vm.Script(wrapped);
         // Sync timeout (30s) catches infinite synchronous loops (e.g. while(true){}).
         scriptPromise = script.runInContext(ctx, { timeout: 30_000 });
 
