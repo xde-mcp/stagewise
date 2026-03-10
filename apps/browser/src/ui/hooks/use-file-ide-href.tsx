@@ -44,7 +44,8 @@ export function useFileIDEHref() {
     openAgentId ? (s.toolbox[openAgentId]?.workspace?.mounts ?? null) : null,
   );
   const mounts = useMemo(
-    () => historicalMounts ?? liveMounts ?? [],
+    () =>
+      (historicalMounts?.length ? historicalMounts : null) ?? liveMounts ?? [],
     [historicalMounts, liveMounts],
   );
   const globalConfig = useKartonState((s) => s.globalConfig);

@@ -6,7 +6,6 @@ import { extractMentionsFromTiptapContent } from '@ui/screens/main/sidebar/chat/
 
 import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
-import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import type { Content } from '@tiptap/core';
 
 const customTwMerge = extendTailwindMerge({
@@ -54,14 +53,12 @@ export async function fileToDataUrl(file: File): Promise<string> {
 export const collectUserMessageMetadata = (
   selectedElements: SelectedElement[],
   tiptapContent?: Content,
-  mountedPaths?: Mount[],
 ): UserMessageMetadata => {
   const textClipAttachments = extractTextClipsFromTiptapContent(tiptapContent);
   const mentions = extractMentionsFromTiptapContent(tiptapContent);
 
   return {
     createdAt: new Date(),
-    mountedPaths: mountedPaths ?? undefined,
     partsMetadata: [],
     selectedPreviewElements: selectedElements,
     textClipAttachments:

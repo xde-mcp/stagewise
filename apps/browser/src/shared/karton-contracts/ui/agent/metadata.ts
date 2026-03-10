@@ -214,8 +214,6 @@ export type StagewiseProviderMeta = z.infer<typeof stagewiseProviderSchema>;
 
 const metadataSchema = z.object({
   createdAt: z.date(),
-  /** Mounted workspace paths captured at message creation time for persistent file links. */
-  mountedPaths: z.array(mountSchema).optional(),
   partsMetadata: z.array(
     z
       .object({ startedAt: z.date().optional(), endedAt: z.date().optional() })

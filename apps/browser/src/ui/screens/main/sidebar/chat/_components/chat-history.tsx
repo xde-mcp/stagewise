@@ -20,6 +20,8 @@ import { ChatSuggestion, suggestions } from '@/components/suggestions';
 import { useMessageEditState } from '@/hooks/use-message-edit-state';
 import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
 import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
+import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
+import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import { isEmptyAssistantMessage, areAllPartsSettled } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { calculateChatItemHeights } from '@/utils/calculate-chat-item-height';
@@ -382,6 +384,20 @@ export const ChatHistory = () => {
 
     return displayMessages;
   }, [serverMessages, optimisticMessages, replacedMessageId]);
+
+  const resolvedMounts = useMemo<Mount[]>(() => {
+    const mountsByPrefix = new Map<string, Mount>();
+    for (const msg of filteredMessages) {
+      const mounts = msg?.metadata?.environmentSnapshot?.workspace?.mounts;
+      if (!mounts) continue;
+      for (const mount of mounts) {
+        if (!mountsByPrefix.has(mount.prefix)) {
+          mountsByPrefix.set(mount.prefix, mount);
+        }
+      }
+    }
+    return Array.from(mountsByPrefix.values());
+  }, [filteredMessages]);
 
   // Cache for height calculations - keyed by message ID + parts length + width
   // This prevents recalculating heights for stable messages during streaming
@@ -763,35 +779,39 @@ export const ChatHistory = () => {
   // If no messages, show empty state directly
   if (filteredMessages.length === 0) {
     return (
-      <AttachmentMetadataProvider messages={filteredMessages}>
-        <section
-          aria-label="Agent message display"
-          className={cn(
-            'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
-          )}
-        >
-          {EmptyPlaceholder()}
-        </section>
-      </AttachmentMetadataProvider>
+      <MountedPathsProvider value={resolvedMounts}>
+        <AttachmentMetadataProvider messages={filteredMessages}>
+          <section
+            aria-label="Agent message display"
+            className={cn(
+              'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
+            )}
+          >
+            {EmptyPlaceholder()}
+          </section>
+        </AttachmentMetadataProvider>
+      </MountedPathsProvider>
     );
   }
 
   return (
-    <AttachmentMetadataProvider messages={filteredMessages}>
-      <Virtuoso
-        initialTopMostItemIndex={Math.max(0, filteredMessages.length - 2)}
-        style={{ scrollbarGutter: 'stable' }}
-        key={openAgent ?? 'no-chat'}
-        data={filteredMessages}
-        className="scrollbar-hover-only virtuoso-contain -mr-[2px]"
-        scrollerRef={scrollerRef}
-        increaseViewportBy={{ top: 400, bottom: 400 }} // Render items above and below viewport
-        heightEstimates={estimatedHeights}
-        itemContent={itemContent}
-        followOutput={false} // We use our own auto-scroll logic
-        computeItemKey={(_, message) => message.id}
-        totalCount={filteredMessages.length}
-      />
-    </AttachmentMetadataProvider>
+    <MountedPathsProvider value={resolvedMounts}>
+      <AttachmentMetadataProvider messages={filteredMessages}>
+        <Virtuoso
+          initialTopMostItemIndex={Math.max(0, filteredMessages.length - 2)}
+          style={{ scrollbarGutter: 'stable' }}
+          key={openAgent ?? 'no-chat'}
+          data={filteredMessages}
+          className="scrollbar-hover-only virtuoso-contain -mr-[2px]"
+          scrollerRef={scrollerRef}
+          increaseViewportBy={{ top: 400, bottom: 400 }} // Render items above and below viewport
+          heightEstimates={estimatedHeights}
+          itemContent={itemContent}
+          followOutput={false} // We use our own auto-scroll logic
+          computeItemKey={(_, message) => message.id}
+          totalCount={filteredMessages.length}
+        />
+      </AttachmentMetadataProvider>
+    </MountedPathsProvider>
   );
 };

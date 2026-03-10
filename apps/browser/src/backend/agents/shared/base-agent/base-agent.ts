@@ -1803,7 +1803,6 @@ export abstract class BaseAgent<
         createdAt: new Date(),
         partsMetadata: [],
       };
-      target.metadata.mountedPaths = fullSnapshot.workspace.mounts;
       target.metadata.environmentSnapshot = sparsifySnapshot(
         fullSnapshot,
         previousEffective,
@@ -1934,7 +1933,6 @@ export abstract class BaseAgent<
 
         existingMessage.metadata ??= {
           createdAt: new Date(),
-          mountedPaths: [],
           partsMetadata: [],
         };
 

@@ -14,7 +14,6 @@ import type {
 } from '@shared/karton-contracts/ui/agent';
 import type { UIAgentTools } from '@shared/karton-contracts/ui/agent/tools/types';
 import { useMemo, memo } from 'react';
-import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
 import { ThinkingPart } from './message-part-ui/thinking';
 import { FilePart } from './message-part-ui/file';
 import { TextPart } from './message-part-ui/text';
@@ -83,198 +82,184 @@ export const MessageAssistant = memo(
     if (isEmptyMessage && !isLastMessage) return null;
 
     return (
-      <MountedPathsProvider value={msg.metadata?.mountedPaths ?? null}>
-        <div className={cn('flex w-full flex-col gap-1')}>
-          {msg.metadata?.compressedHistory && (
-            <div
-              key={`compact-${msg.id}`}
-              className="mt-2 flex w-full flex-row items-center gap-2 text-xs"
-            >
-              <IconMagicWandSparkle className="size-3 text-muted-foreground" />
-              <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
-                Compressed previous conversation
-              </span>
-            </div>
-          )}
-          <div className="w-full">
+      <div className={cn('flex w-full flex-col gap-1')}>
+        {msg.metadata?.compressedHistory && (
+          <div
+            key={`compact-${msg.id}`}
+            className="mt-2 flex w-full flex-row items-center gap-2 text-xs"
+          >
+            <IconMagicWandSparkle className="size-3 text-muted-foreground" />
+            <span className="shimmer-duration-1500 shimmer-from-muted-foreground shimmer-text-once shimmer-to-foreground font-normal">
+              Compressed previous conversation
+            </span>
+          </div>
+        )}
+        <div className="w-full">
+          <div
+            className={cn(
+              'mt-2 flex w-full shrink-0 flex-row items-center justify-start gap-2',
+              isEmptyMessage ? 'hidden' : '',
+            )}
+          >
             <div
               className={cn(
-                'mt-2 flex w-full shrink-0 flex-row items-center justify-start gap-2',
-                isEmptyMessage ? 'hidden' : '',
+                'group group/chat-message-assistant wrap-break-word relative min-h-8 w-full min-w-1/3 max-w-xl origin-bottom-left select-text space-y-2 rounded-bl-sm py-1.5 font-normal text-foreground text-sm last:mb-0.5',
               )}
             >
-              <div
-                className={cn(
-                  'group group/chat-message-assistant wrap-break-word relative min-h-8 w-full min-w-1/3 max-w-xl origin-bottom-left select-text space-y-2 rounded-bl-sm py-1.5 font-normal text-foreground text-sm last:mb-0.5',
-                )}
-              >
-                {(() => {
-                  // Merge read-only tools into groups, preserving original indices for metadata lookup
-                  const partsWithIndices = msg.parts.reduce(
-                    (acc, part, originalIndex) => {
-                      // Skip step-start parts, they don't contain information we need to render
-                      if (part.type === 'step-start') return acc;
+              {(() => {
+                // Merge read-only tools into groups, preserving original indices for metadata lookup
+                const partsWithIndices = msg.parts.reduce(
+                  (acc, part, originalIndex) => {
+                    // Skip step-start parts, they don't contain information we need to render
+                    if (part.type === 'step-start') return acc;
 
-                      // Check if this is a read-only tool or reasoning part
-                      if (
-                        isToolOrReasoningPart(part) &&
-                        isReadOnlyToolPart(part)
-                      ) {
-                        const previousItem = acc[acc.length - 1];
-                        // Merge into previous group if one exists
-                        if (previousItem && 'parts' in previousItem)
-                          previousItem.parts.push({ part, originalIndex });
-                        // Create a new group
-                        else acc.push({ parts: [{ part, originalIndex }] });
-                        // Non-grouped part
-                      } else acc.push({ part, originalIndex });
+                    // Check if this is a read-only tool or reasoning part
+                    if (
+                      isToolOrReasoningPart(part) &&
+                      isReadOnlyToolPart(part)
+                    ) {
+                      const previousItem = acc[acc.length - 1];
+                      // Merge into previous group if one exists
+                      if (previousItem && 'parts' in previousItem)
+                        previousItem.parts.push({ part, originalIndex });
+                      // Create a new group
+                      else acc.push({ parts: [{ part, originalIndex }] });
+                      // Non-grouped part
+                    } else acc.push({ part, originalIndex });
 
-                      return acc;
-                    },
-                    [] as PartWithOriginalIndex[],
-                  );
+                    return acc;
+                  },
+                  [] as PartWithOriginalIndex[],
+                );
 
-                  const typeCounters: Record<string, number> = {};
-                  let exploringGroupIndex = 0;
+                const typeCounters: Record<string, number> = {};
+                let exploringGroupIndex = 0;
 
-                  return partsWithIndices.map((item, index) => {
-                    const isLastPart = index === partsWithIndices.length - 1;
+                return partsWithIndices.map((item, index) => {
+                  const isLastPart = index === partsWithIndices.length - 1;
 
-                    // Handle grouped read-only parts (exploring tools + reasoning)
-                    if ('parts' in item) {
-                      const stableKey = `${msg.id}:exploring:${exploringGroupIndex}`;
-                      exploringGroupIndex++;
+                  // Handle grouped read-only parts (exploring tools + reasoning)
+                  if ('parts' in item) {
+                    const stableKey = `${msg.id}:exploring:${exploringGroupIndex}`;
+                    exploringGroupIndex++;
+                    return (
+                      <ExploringToolParts
+                        key={stableKey}
+                        parts={item.parts.map((p) => p.part)}
+                        partsMetadata={msg.metadata?.partsMetadata ?? []}
+                        originalIndices={item.parts.map((p) => p.originalIndex)}
+                        isAutoExpanded={isLastPart}
+                        isShimmering={isWorking && isLastPart && isLastMessage}
+                      />
+                    );
+                  }
+
+                  // Handle single parts
+                  const { part, originalIndex } = item;
+                  const currentTypeIndex = typeCounters[part.type] ?? 0;
+                  typeCounters[part.type] = currentTypeIndex + 1;
+                  const stableKey = `${msg.id}:${part.type}:${currentTypeIndex}`;
+
+                  switch (part.type) {
+                    case 'text':
+                      if ((part as TextUIPart).text.trim() === '') return null;
                       return (
-                        <ExploringToolParts
+                        <TextPart
                           key={stableKey}
-                          parts={item.parts.map((p) => p.part)}
-                          partsMetadata={msg.metadata?.partsMetadata ?? []}
-                          originalIndices={item.parts.map(
-                            (p) => p.originalIndex,
-                          )}
-                          isAutoExpanded={isLastPart}
+                          part={part as TextUIPart}
+                          messageRole="assistant"
+                        />
+                      );
+                    case 'reasoning':
+                      if (part.text.trim() === '') return null;
+                      return (
+                        <ThinkingPart
+                          key={stableKey}
+                          thinkingDuration={
+                            (msg.metadata?.partsMetadata?.[
+                              originalIndex
+                            ]?.endedAt?.getTime() ?? 0) -
+                            (msg.metadata?.partsMetadata?.[
+                              originalIndex
+                            ]?.startedAt?.getTime() ?? 0)
+                          }
+                          part={part as ReasoningUIPart}
+                          isLastPart={isLastPart}
                           isShimmering={
-                            isWorking && isLastPart && isLastMessage
+                            isWorking &&
+                            part.state === 'streaming' &&
+                            isLastPart &&
+                            isLastMessage
                           }
                         />
                       );
-                    }
-
-                    // Handle single parts
-                    const { part, originalIndex } = item;
-                    const currentTypeIndex = typeCounters[part.type] ?? 0;
-                    typeCounters[part.type] = currentTypeIndex + 1;
-                    const stableKey = `${msg.id}:${part.type}:${currentTypeIndex}`;
-
-                    switch (part.type) {
-                      case 'text':
-                        if ((part as TextUIPart).text.trim() === '')
-                          return null;
-                        return (
-                          <TextPart
-                            key={stableKey}
-                            part={part as TextUIPart}
-                            messageRole="assistant"
-                          />
-                        );
-                      case 'reasoning':
-                        if (part.text.trim() === '') return null;
-                        return (
-                          <ThinkingPart
-                            key={stableKey}
-                            thinkingDuration={
-                              (msg.metadata?.partsMetadata?.[
-                                originalIndex
-                              ]?.endedAt?.getTime() ?? 0) -
-                              (msg.metadata?.partsMetadata?.[
-                                originalIndex
-                              ]?.startedAt?.getTime() ?? 0)
-                            }
-                            part={part as ReasoningUIPart}
-                            isLastPart={isLastPart}
-                            isShimmering={
-                              isWorking &&
-                              part.state === 'streaming' &&
-                              isLastPart &&
-                              isLastMessage
-                            }
-                          />
-                        );
-                      case 'file':
-                        return (
-                          <FilePart key={stableKey} part={part as FileUIPart} />
-                        );
-                      case 'tool-deleteFileTool':
-                        return (
-                          <DeleteFileToolPart key={stableKey} part={part} />
-                        );
-                      case 'tool-updateWorkspaceMdTool':
-                        return (
-                          <UpdateWorkspaceMdToolPart
-                            key={stableKey}
-                            part={part}
-                          />
-                        );
-                      case 'tool-multiEditTool':
-                        return (
-                          <MultiEditToolPart key={stableKey} part={part} />
-                        );
-                      case 'tool-executeSandboxJsTool':
-                        return (
-                          <ExecuteSandboxJsToolPart
-                            key={stableKey}
-                            part={part}
-                            isLastPart={isLastPart}
-                          />
-                        );
-                      case 'tool-readConsoleLogsTool':
-                        return (
-                          <ReadConsoleLogsToolPart
-                            key={stableKey}
-                            part={part}
-                            isLastPart={isLastPart}
-                          />
-                        );
-                      case 'tool-overwriteFileTool':
-                        return (
-                          <OverwriteFileToolPart key={stableKey} part={part} />
-                        );
-                      case 'tool-askUserQuestionsTool':
-                        return (
-                          <AskUserQuestionsToolPart
-                            key={stableKey}
-                            part={part}
-                          />
-                        );
-                      case 'tool-executeShellCommandTool':
-                        return (
-                          <ExecuteShellCommandToolPart
-                            key={stableKey}
-                            part={part}
-                            isLastPart={isLastPart}
-                          />
-                        );
-                      default:
-                        return (
-                          <UnknownToolPart
-                            shimmer={
-                              isWorking &&
-                              index === partsWithIndices.length - 1 &&
-                              isLastMessage
-                            }
-                            key={stableKey}
-                            part={part as AgentToolUIPart | DynamicToolUIPart}
-                          />
-                        );
-                    }
-                  });
-                })()}
-                {showBetweenStepsIndicator && <MessageBetweenSteps />}
-              </div>
+                    case 'file':
+                      return (
+                        <FilePart key={stableKey} part={part as FileUIPart} />
+                      );
+                    case 'tool-deleteFileTool':
+                      return <DeleteFileToolPart key={stableKey} part={part} />;
+                    case 'tool-updateWorkspaceMdTool':
+                      return (
+                        <UpdateWorkspaceMdToolPart
+                          key={stableKey}
+                          part={part}
+                        />
+                      );
+                    case 'tool-multiEditTool':
+                      return <MultiEditToolPart key={stableKey} part={part} />;
+                    case 'tool-executeSandboxJsTool':
+                      return (
+                        <ExecuteSandboxJsToolPart
+                          key={stableKey}
+                          part={part}
+                          isLastPart={isLastPart}
+                        />
+                      );
+                    case 'tool-readConsoleLogsTool':
+                      return (
+                        <ReadConsoleLogsToolPart
+                          key={stableKey}
+                          part={part}
+                          isLastPart={isLastPart}
+                        />
+                      );
+                    case 'tool-overwriteFileTool':
+                      return (
+                        <OverwriteFileToolPart key={stableKey} part={part} />
+                      );
+                    case 'tool-askUserQuestionsTool':
+                      return (
+                        <AskUserQuestionsToolPart key={stableKey} part={part} />
+                      );
+                    case 'tool-executeShellCommandTool':
+                      return (
+                        <ExecuteShellCommandToolPart
+                          key={stableKey}
+                          part={part}
+                          isLastPart={isLastPart}
+                        />
+                      );
+                    default:
+                      return (
+                        <UnknownToolPart
+                          shimmer={
+                            isWorking &&
+                            index === partsWithIndices.length - 1 &&
+                            isLastMessage
+                          }
+                          key={stableKey}
+                          part={part as AgentToolUIPart | DynamicToolUIPart}
+                        />
+                      );
+                  }
+                });
+              })()}
+              {showBetweenStepsIndicator && <MessageBetweenSteps />}
             </div>
           </div>
         </div>
-      </MountedPathsProvider>
+      </div>
     );
   },
   // Custom comparison to prevent re-renders when message object references change

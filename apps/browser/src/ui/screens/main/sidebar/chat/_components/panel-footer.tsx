@@ -32,7 +32,6 @@ import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/ric
 import type { MentionContext } from '@/screens/main/sidebar/chat/_components/rich-text/mentions';
 import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
-import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { useChatDraft } from '@/hooks/use-chat-draft';
 import type { Content } from '@tiptap/core';
@@ -209,12 +208,6 @@ export function ChatPanelFooter() {
     [openAgent, searchMentionFiles, mentionTabs, mentionActiveTabId],
   );
 
-  const mountedPaths = useKartonState((s) =>
-    openAgent
-      ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
-      : EMPTY_MOUNTS,
-  );
-
   const isConnected = useKartonConnected();
   const reconnectState = useKartonReconnectState();
 
@@ -380,9 +373,6 @@ export function ChatPanelFooter() {
   const canSendMessageRef = useRef(effectiveCanSendMessage);
   canSendMessageRef.current = effectiveCanSendMessage;
 
-  const mountedPathsRef = useRef(mountedPaths);
-  mountedPathsRef.current = mountedPaths;
-
   const pendingQuestionId = useKartonState((s) =>
     openAgent ? (s.toolbox[openAgent]?.pendingUserQuestion?.id ?? null) : null,
   );
@@ -400,7 +390,6 @@ export function ChatPanelFooter() {
     const currentLocalInputState = localInputStateRef.current;
     const currentFileAttachments = fileAttachmentsRef.current;
     const currentSelectedElements = localSelectedElementsRef.current;
-    const currentMountedPaths = mountedPathsRef.current;
 
     // Snapshot pending question ID — used for the atomic interrupt call below.
     const currentPendingQuestionId = pendingQuestionIdRef.current;
@@ -409,7 +398,6 @@ export function ChatPanelFooter() {
     const metadata = collectUserMessageMetadata(
       currentSelectedElements,
       currentLocalInputState,
-      currentMountedPaths,
     );
 
     const markdownText = chatInputRef.current!.getTextContent();

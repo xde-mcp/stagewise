@@ -35,7 +35,6 @@ function makeSnapshot(
 function makeMetadata(snapshot?: EnvironmentSnapshot): UserMessageMetadata {
   return {
     createdAt: new Date(),
-    mountedPaths: [{ prefix: 'w1', path: '/project' }],
     partsMetadata: [],
     environmentSnapshot: snapshot,
   };
