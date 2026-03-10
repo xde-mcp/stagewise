@@ -22,7 +22,7 @@ export const tabProvider: MentionProvider = {
     const entries = Object.entries(ctx.tabs).sort(([a], [b]) =>
       a.localeCompare(b),
     );
-    return entries.map(([tabId, tab], idx) => ({
+    return entries.map(([tabId, tab]) => ({
       id: tabId,
       label: safeHost(tab.url),
       description: tab.title,
@@ -31,9 +31,10 @@ export const tabProvider: MentionProvider = {
       meta: {
         providerType: 'tab' as const,
         tabId,
-        tabHandle: `t_${idx + 1}`,
+        tabHandle: tab.handle,
         url: tab.url,
         title: tab.title,
+        faviconUrl: tab.faviconUrls?.[0],
       },
     }));
   },

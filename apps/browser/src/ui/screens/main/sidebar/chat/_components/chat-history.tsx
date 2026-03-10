@@ -21,7 +21,11 @@ import { useMessageEditState } from '@/hooks/use-message-edit-state';
 import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
 import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
 import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
-import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
+import { TabSnapshotsProvider } from '@/hooks/use-tab-snapshots';
+import type {
+  Mount,
+  BrowserTabSnapshot,
+} from '@shared/karton-contracts/ui/agent/metadata';
 import { isEmptyAssistantMessage, areAllPartsSettled } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { calculateChatItemHeights } from '@/utils/calculate-chat-item-height';
@@ -397,6 +401,40 @@ export const ChatHistory = () => {
       }
     }
     return Array.from(mountsByPrefix.values());
+  }, [filteredMessages]);
+
+  const resolvedTabs = useMemo(() => {
+    const tabsByKey = new Map<string, BrowserTabSnapshot>();
+    for (const msg of filteredMessages) {
+      const tabs = msg?.metadata?.environmentSnapshot?.browser?.tabs;
+      if (tabs) for (const tab of tabs) tabsByKey.set(tab.handle, tab);
+
+      const mentions = msg?.metadata?.mentions;
+      if (mentions) {
+        for (const m of mentions) {
+          if (m.providerType !== 'tab') continue;
+          const snapshot: BrowserTabSnapshot = {
+            handle: m.tabHandle,
+            url: m.url,
+            title: m.title,
+            faviconUrl: m.faviconUrl,
+          };
+          const existing = tabsByKey.get(m.tabHandle);
+          if (existing) {
+            if (m.faviconUrl && !existing.faviconUrl)
+              tabsByKey.set(m.tabHandle, {
+                ...existing,
+                faviconUrl: m.faviconUrl,
+              });
+          } else tabsByKey.set(m.tabHandle, snapshot);
+
+          // Also index by tabId (UUID) so user-mentions that lost
+          // their handle during markdown round-trip can still resolve.
+          tabsByKey.set(m.tabId, tabsByKey.get(m.tabHandle) ?? snapshot);
+        }
+      }
+    }
+    return tabsByKey;
   }, [filteredMessages]);
 
   // Cache for height calculations - keyed by message ID + parts length + width
@@ -780,38 +818,42 @@ export const ChatHistory = () => {
   if (filteredMessages.length === 0) {
     return (
       <MountedPathsProvider value={resolvedMounts}>
-        <AttachmentMetadataProvider messages={filteredMessages}>
-          <section
-            aria-label="Agent message display"
-            className={cn(
-              'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
-            )}
-          >
-            {EmptyPlaceholder()}
-          </section>
-        </AttachmentMetadataProvider>
+        <TabSnapshotsProvider value={resolvedTabs}>
+          <AttachmentMetadataProvider messages={filteredMessages}>
+            <section
+              aria-label="Agent message display"
+              className={cn(
+                'pointer-events-auto mb-1 block h-max min-h-[inherit] text-foreground text-sm focus-within:outline-none focus:outline-none',
+              )}
+            >
+              {EmptyPlaceholder()}
+            </section>
+          </AttachmentMetadataProvider>
+        </TabSnapshotsProvider>
       </MountedPathsProvider>
     );
   }
 
   return (
     <MountedPathsProvider value={resolvedMounts}>
-      <AttachmentMetadataProvider messages={filteredMessages}>
-        <Virtuoso
-          initialTopMostItemIndex={Math.max(0, filteredMessages.length - 2)}
-          style={{ scrollbarGutter: 'stable' }}
-          key={openAgent ?? 'no-chat'}
-          data={filteredMessages}
-          className="scrollbar-hover-only virtuoso-contain -mr-[2px]"
-          scrollerRef={scrollerRef}
-          increaseViewportBy={{ top: 400, bottom: 400 }} // Render items above and below viewport
-          heightEstimates={estimatedHeights}
-          itemContent={itemContent}
-          followOutput={false} // We use our own auto-scroll logic
-          computeItemKey={(_, message) => message.id}
-          totalCount={filteredMessages.length}
-        />
-      </AttachmentMetadataProvider>
+      <TabSnapshotsProvider value={resolvedTabs}>
+        <AttachmentMetadataProvider messages={filteredMessages}>
+          <Virtuoso
+            initialTopMostItemIndex={Math.max(0, filteredMessages.length - 2)}
+            style={{ scrollbarGutter: 'stable' }}
+            key={openAgent ?? 'no-chat'}
+            data={filteredMessages}
+            className="scrollbar-hover-only virtuoso-contain -mr-[2px]"
+            scrollerRef={scrollerRef}
+            increaseViewportBy={{ top: 400, bottom: 400 }} // Render items above and below viewport
+            heightEstimates={estimatedHeights}
+            itemContent={itemContent}
+            followOutput={false} // We use our own auto-scroll logic
+            computeItemKey={(_, message) => message.id}
+            totalCount={filteredMessages.length}
+          />
+        </AttachmentMetadataProvider>
+      </TabSnapshotsProvider>
     </MountedPathsProvider>
   );
 };

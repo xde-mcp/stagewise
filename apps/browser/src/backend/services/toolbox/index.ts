@@ -573,6 +573,7 @@ export class ToolboxService extends DisposableService {
         consoleLogCount: tab.consoleLogCount,
         consoleErrorCount: tab.consoleErrorCount,
         handle: tab.handle,
+        faviconUrl: tab.faviconUrls?.[0],
         lastFocusedAt: tab.lastFocusedAt,
       }));
 

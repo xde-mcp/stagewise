@@ -38,6 +38,7 @@ export const browserTabSnapshotSchema = z.object({
   handle: z.string(),
   url: z.string(),
   title: z.string(),
+  faviconUrl: z.string().optional(),
   consoleErrorCount: z.number().optional(),
   consoleLogCount: z.number().optional(),
   error: z
@@ -114,6 +115,8 @@ export const tabMentionMetaSchema = z.object({
   url: z.string(),
   /** Tab title at mention time */
   title: z.string(),
+  /** First favicon URL at mention time */
+  faviconUrl: z.string().optional(),
 });
 
 export type TabMentionMeta = z.infer<typeof tabMentionMetaSchema>;

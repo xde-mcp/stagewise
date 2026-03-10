@@ -6,11 +6,13 @@ import { MentionIcon } from './mention-icon';
 import { stripMountPrefix } from '@ui/utils';
 import { FileContextMenu } from '@ui/components/file-context-menu';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
+import { TabMentionBadge } from './tab-mention-badge';
 
 export function MentionNodeView(props: InlineNodeViewProps) {
   const attrs = props.node.attrs as MentionAttrs;
   const isEditable = !('viewOnly' in props);
   const isFile = attrs.providerType === 'file';
+  const isTab = attrs.providerType === 'tab';
   const { resolvePath } = useFileIDEHref();
 
   const displayLabel = useMemo(
@@ -22,6 +24,25 @@ export function MentionNodeView(props: InlineNodeViewProps) {
     () => (isFile ? stripMountPrefix(attrs.id) : attrs.id),
     [attrs.id, isFile],
   );
+
+  if (isTab) {
+    const tabHandle =
+      attrs.meta?.providerType === 'tab' ? attrs.meta.tabHandle : null;
+    const tabMeta = attrs.meta?.providerType === 'tab' ? attrs.meta : null;
+    return (
+      <TabMentionBadge
+        handle={tabHandle}
+        tabId={attrs.id}
+        meta={tabMeta}
+        selected={props.selected}
+        isEditable={isEditable}
+        onDelete={() =>
+          'deleteNode' in props ? props.deleteNode() : undefined
+        }
+        viewOnly={!isEditable}
+      />
+    );
+  }
 
   const badge = (
     <InlineBadgeWrapper viewOnly={!isEditable} tooltipContent={tooltipContent}>

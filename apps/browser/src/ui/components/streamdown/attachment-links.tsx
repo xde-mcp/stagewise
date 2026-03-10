@@ -27,6 +27,7 @@ import {
   TextClipAttachmentView,
 } from '@ui/screens/main/sidebar/chat/_components/rich-text/attachments';
 import { MentionNodeView } from '@ui/screens/main/sidebar/chat/_components/rich-text/mentions';
+import { TabMentionBadge } from '@ui/screens/main/sidebar/chat/_components/rich-text/mentions/tab-mention-badge';
 import {
   getRenderer,
   type RendererProps,
@@ -107,6 +108,7 @@ export type AttachmentLinkData =
       lineNumber?: string;
       incomplete?: boolean;
     }
+  | { type: 'tab'; handle: string }
   | { type: 'mention'; providerType: string; id: string; label?: string };
 
 const ATTACHMENT_LINK_PATTERNS: Array<{
@@ -134,6 +136,10 @@ const ATTACHMENT_LINK_PATTERNS: Array<{
   {
     prefix: 'color:',
     parse: (rest) => ({ type: 'color', color: decodeURIComponent(rest) }),
+  },
+  {
+    prefix: 'tab:',
+    parse: (rest) => ({ type: 'tab', handle: rest }),
   },
   {
     prefix: 'mention:',
@@ -250,6 +256,8 @@ export function getAttachmentKey(linkData: AttachmentLinkData): string {
       return `wsfile-${linkData.filePath}`;
     case 'color':
       return `color-${linkData.color}`;
+    case 'tab':
+      return `tab-${linkData.handle}`;
     case 'mention':
       return `mention-${linkData.providerType}-${linkData.id}`;
   }
@@ -480,6 +488,8 @@ export const AttachmentLinkRouter = ({
       );
     case 'color':
       return <ColorBadge color={linkData.color} />;
+    case 'tab':
+      return <TabMentionBadge handle={linkData.handle} />;
     case 'mention':
       return (
         <MentionNodeView
