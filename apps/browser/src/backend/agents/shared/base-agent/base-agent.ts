@@ -1308,6 +1308,9 @@ export abstract class BaseAgent<
       return;
     }
 
+    if (isApprovalContinuation)
+      modelMessages = this.ensureToolApprovalResponseIsLast(modelMessages);
+
     this.logger.debug(`[BaseAgent:${this.instanceId}] Running step`);
 
     const resolvedProviderOptions =
@@ -2028,6 +2031,53 @@ export abstract class BaseAgent<
         draft.history.pop();
       }
     });
+  }
+
+  /**
+   * Ensures the last model message is the `tool`-role message containing
+   * `tool-approval-response` parts. The AI SDK's `collectToolApprovals`
+   * only inspects the **last** message; if synthetic user messages
+   * (env-changes, sandbox attachments) follow the tool message, the SDK
+   * silently skips tool execution and the provider rejects the request.
+   *
+   * When trailing messages exist after the last tool message that carries
+   * an approval response, they are relocated to just before the
+   * corresponding assistant message so the tool message becomes last
+   * while all context is preserved.
+   *
+   * No-op when the tool message is already last or has no approval
+   * response parts.
+   */
+  private ensureToolApprovalResponseIsLast(
+    messages: ModelMessage[],
+  ): ModelMessage[] {
+    let lastToolIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'tool') {
+        lastToolIdx = i;
+        break;
+      }
+    }
+    if (lastToolIdx === -1 || lastToolIdx === messages.length - 1)
+      return messages;
+
+    const toolMsg = messages[lastToolIdx];
+    const hasApprovalResponse =
+      Array.isArray(toolMsg.content) &&
+      (toolMsg.content as Array<{ type: string }>).some(
+        (p) => p.type === 'tool-approval-response',
+      );
+    if (!hasApprovalResponse) return messages;
+
+    let assistantIdx = lastToolIdx - 1;
+    while (assistantIdx >= 0 && messages[assistantIdx].role !== 'assistant')
+      assistantIdx--;
+
+    if (assistantIdx < 0) return messages;
+
+    const trailing = messages.splice(lastToolIdx + 1);
+    messages.splice(assistantIdx, 0, ...trailing);
+    return messages;
   }
 
   /**
