@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.11 (2026-03-11)
+
+### Bug Fixes
+
+* fix ui-import for pages app (84f2474)
+
 ## 1.0.0-alpha.10 (2026-03-10)
 
 ### Features
