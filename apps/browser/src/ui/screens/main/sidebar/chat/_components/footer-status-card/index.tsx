@@ -71,6 +71,9 @@ export function StatusCard() {
     (p) => p.toolbox.acceptHunks,
   );
   const createTab = useKartonProcedure((p) => p.browser.createTab);
+  const switchTab = useKartonProcedure((p) => p.browser.switchTab);
+  const goToUrl = useKartonProcedure((p) => p.browser.goto);
+  const tabs = useKartonState((s) => s.browser.tabs);
 
   const messageQueue = useKartonState((s) =>
     openAgentId
@@ -218,13 +221,23 @@ export function StatusCard() {
   const openDiffReviewPage = useCallback(
     (fileId: string) => {
       if (!openAgentId) return;
+      const baseUrl = `stagewise://internal/diff-review/${openAgentId}`;
       const fragment = fileId ? `#${encodeURIComponent(fileId)}` : '';
-      void createTab(
-        `stagewise://internal/diff-review/${openAgentId}${fragment}`,
-        true,
+      const fullUrl = `${baseUrl}${fragment}`;
+
+      // Reuse existing diff-review tab for this agent if one is already open
+      const existingTab = Object.values(tabs).find((tab) =>
+        tab.url.startsWith(baseUrl),
       );
+
+      if (existingTab) {
+        void switchTab(existingTab.id);
+        // Navigate to updated URL (with new fragment) so the page
+        // reloads and scrolls to the clicked file
+        void goToUrl(fullUrl, existingTab.id);
+      } else void createTab(fullUrl, true);
     },
-    [openAgentId, createTab],
+    [openAgentId, createTab, switchTab, goToUrl, tabs],
   );
 
   const formattedPendingDiffs = useMemo(() => {
