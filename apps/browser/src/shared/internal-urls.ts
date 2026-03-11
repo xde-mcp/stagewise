@@ -10,7 +10,8 @@ export const HOME_PAGE_URL = 'stagewise://internal/home';
 export const ABOUT_PAGE_URL = 'stagewise://internal/about';
 
 /** The settings page URL */
-export const SETTINGS_PAGE_URL = 'stagewise://internal/browsing-settings';
+export const SETTINGS_PAGE_URL =
+  'stagewise://internal/agent-settings/models-providers';
 
 /** The history page URL */
 export const HISTORY_PAGE_URL = 'stagewise://internal/history';
