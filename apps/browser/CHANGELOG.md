@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.16 (2026-03-11)
+
+### Bug Fixes
+
+* bump api-client and fix library-tool signature (8adc977)
+
 ## 1.0.0-alpha.15 (2026-03-11)
 
 ### Bug Fixes
