@@ -471,11 +471,6 @@ export const readConsoleLogsToolSchema = {
 export const searchInLibraryDocsToolInputSchema = z.object({
   libraryId: z.string().describe('ID for which docs should be searched'),
   topic: z.string().describe('Topic to search for in the docs'),
-  mode: z
-    .enum(['code', 'info'])
-    .describe('Whether to search for code examples or information text')
-    .default('code'),
-  page: z.number().describe('Pagination cursor for results.').default(1),
 });
 
 export const searchInLibraryDocsToolOutputSchema = z.object({

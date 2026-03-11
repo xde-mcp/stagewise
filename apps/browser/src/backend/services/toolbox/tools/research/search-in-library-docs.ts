@@ -13,23 +13,19 @@ export const DESCRIPTION = `Get up to date documentation for a given library id 
 
 Parameters:
 - packageId (string, REQUIRED): Package ID for which docs should be searched
-- topic (string, REQUIRED): Topic to search for in the docs
-- mode (enum, OPTIONAL): Mode to get the documentation for. Defaults to 'code'.
-- page (number, OPTIONAL): Page to get the documentation for. Defaults to 1.`;
+- topic (string, REQUIRED): Topic to search for in the docs`;
 
 export async function searchInLibraryDocsToolExecute(
   params: SearchInLibraryDocsToolInput,
   apiClient: ApiClient,
 ) {
-  const { libraryId, topic, mode, page } = params;
+  const { libraryId, topic } = params;
 
   try {
     const { data: response, error } = await apiClient.v1.context7.docs.get({
       query: {
         libraryId,
-        topic,
-        mode: mode as 'code' | 'info',
-        page,
+        query: topic,
         type: 'txt',
       },
     });

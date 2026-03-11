@@ -66,7 +66,7 @@
     "@react-three/fiber": "^9.3.0",
     "@shikijs/colorized-brackets": "3.21.0",
     "@stagewise/agent-runtime-node": "workspace:*",
-    "@stagewise/api-client": "3.2.0",
+    "@stagewise/api-client": "4.0.0",
     "@stagewise/karton": "workspace:*",
     "@stagewise/stage-ui": "workspace:*",
     "@stagewise/tailwindcss-color-modifiers": "workspace:*",

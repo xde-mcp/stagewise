@@ -22,7 +22,7 @@ export async function listPackageDocsToolExecute(
 
   try {
     const { data: response, error } = await apiClient.v1.context7.search.get({
-      query: { query: name },
+      query: { libraryName: name, query: name },
     });
     if (error) throw new Error(String(error));
     const results = response.results.map((r) => ({
