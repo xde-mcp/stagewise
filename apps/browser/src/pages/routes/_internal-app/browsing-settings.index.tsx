@@ -1,12 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { cn } from '@/utils';
 import {
   RadioGroup,
   Radio,
   RadioLabel,
 } from '@stagewise/stage-ui/components/radio';
-import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
@@ -32,7 +30,6 @@ enablePatches();
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { Select } from '@stagewise/stage-ui/components/select';
 import type {
-  TelemetryLevel,
   PageSetting,
   ConfigurablePermissionType,
 } from '@shared/karton-contracts/ui/shared-types';
@@ -646,74 +643,6 @@ function WebsitePermissionOverrides() {
 }
 
 // =============================================================================
-// Telemetry Setting Component
-// =============================================================================
-
-function TelemetrySetting() {
-  const preferences = useKartonState((s) => s.preferences);
-  const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
-
-  const telemetryMode = preferences.privacy.telemetryLevel;
-
-  const handleTelemetryChange = async (value: TelemetryLevel) => {
-    const [, patches] = produceWithPatches(preferences, (draft) => {
-      draft.privacy.telemetryLevel = value;
-    });
-    await updatePreferences(patches);
-  };
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <h3 className="font-medium text-base text-foreground">Telemetry</h3>
-        <p className="text-muted-foreground text-sm">
-          Control what usage data is collected to help improve stagewise.
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Checkbox
-          size="xs"
-          id="telemetry-anonymous-checkbox"
-          checked={telemetryMode === 'anonymous' || telemetryMode === 'full'}
-          onCheckedChange={(checked: boolean) => {
-            void handleTelemetryChange(checked ? 'anonymous' : 'off');
-          }}
-        />
-        <label
-          htmlFor="telemetry-anonymous-checkbox"
-          className="text-muted-foreground text-xs"
-        >
-          Help improve stagewise by sharing anonymized events.
-        </label>
-      </div>
-      <div
-        className={cn(
-          'flex items-center gap-2',
-          telemetryMode === 'off' && 'pointer-events-none opacity-50',
-        )}
-      >
-        <Checkbox
-          size="xs"
-          id="telemetry-full-checkbox"
-          checked={telemetryMode === 'full'}
-          disabled={telemetryMode === 'off'}
-          onCheckedChange={(checked: boolean) => {
-            void handleTelemetryChange(checked ? 'full' : 'anonymous');
-          }}
-        />
-        <label
-          htmlFor="telemetry-full-checkbox"
-          className="text-muted-foreground text-xs"
-        >
-          Share identifiable chat and usage data with stagewise.
-        </label>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
 // Main Page Component
 // =============================================================================
 
@@ -758,11 +687,7 @@ function Page() {
               </p>
             </div>
 
-            <TelemetrySetting />
-
-            <div className="pt-2">
-              <PermissionDefaultsSetting />
-            </div>
+            <PermissionDefaultsSetting />
 
             <div className="pt-2">
               <WebsitePermissionOverrides />

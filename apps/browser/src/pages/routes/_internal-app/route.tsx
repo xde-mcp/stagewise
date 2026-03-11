@@ -49,7 +49,7 @@ function RouteComponent() {
 
 function Sidebar() {
   return (
-    <div className="flex h-full min-w-fit max-w-56 basis-1/4 flex-col items-start justify-between gap-2 py-2 pl-2">
+    <div className="flex h-full min-w-fit max-w-56 basis-1/4 flex-col items-start justify-between gap-2 pt-2 pb-0 pl-2">
       <div className="flex flex-row items-center justify-start gap-4 dark:drop-shadow-md">
         <img
           src={LogoImage}
@@ -129,7 +129,7 @@ function Sidebar() {
           </div>
         </SidebarNav>
       </div>
-      <div className="mb-4 flex w-full flex-row items-center justify-start gap-3">
+      <div className="flex w-full flex-row items-center justify-start gap-3">
         <Tooltip>
           <TooltipTrigger>
             <a

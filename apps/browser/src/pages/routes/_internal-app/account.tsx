@@ -1,9 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Button } from '@stagewise/stage-ui/components/button';
+import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { InputOtp } from '@stagewise/stage-ui/components/input-otp';
 import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { cn } from '@/utils';
+import { produceWithPatches } from 'immer';
+import type { TelemetryLevel } from '@shared/karton-contracts/ui/shared-types';
 import type { CurrentUsageResponse } from '@shared/karton-contracts/pages-api/types';
 
 const CONSOLE_URL =
@@ -141,6 +145,10 @@ function AuthenticatedView({
 
       <hr className="border-border-subtle" />
 
+      <TelemetrySetting />
+
+      <hr className="border-border-subtle" />
+
       <UsageSection />
 
       <hr className="border-border-subtle" />
@@ -273,6 +281,68 @@ function UsageSection() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TelemetrySetting() {
+  const preferences = useKartonState((s) => s.preferences);
+  const updatePreferences = useKartonProcedure((s) => s.updatePreferences);
+
+  const telemetryMode = preferences.privacy.telemetryLevel;
+
+  const handleTelemetryChange = async (value: TelemetryLevel) => {
+    const [, patches] = produceWithPatches(preferences, (draft) => {
+      draft.privacy.telemetryLevel = value;
+    });
+    await updatePreferences(patches);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h3 className="font-medium text-foreground">Telemetry</h3>
+      <p className="text-muted-foreground text-sm">
+        Control what usage data is collected to help improve stagewise.
+      </p>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          size="xs"
+          id="telemetry-anonymous-checkbox"
+          checked={telemetryMode === 'anonymous' || telemetryMode === 'full'}
+          onCheckedChange={(checked: boolean) => {
+            void handleTelemetryChange(checked ? 'anonymous' : 'off');
+          }}
+        />
+        <label
+          htmlFor="telemetry-anonymous-checkbox"
+          className="text-muted-foreground text-xs"
+        >
+          Help improve stagewise by sharing anonymized events.
+        </label>
+      </div>
+      <div
+        className={cn(
+          'flex items-center gap-2',
+          telemetryMode === 'off' && 'pointer-events-none opacity-50',
+        )}
+      >
+        <Checkbox
+          size="xs"
+          id="telemetry-full-checkbox"
+          checked={telemetryMode === 'full'}
+          disabled={telemetryMode === 'off'}
+          onCheckedChange={(checked: boolean) => {
+            void handleTelemetryChange(checked ? 'full' : 'anonymous');
+          }}
+        />
+        <label
+          htmlFor="telemetry-full-checkbox"
+          className="text-muted-foreground text-xs"
+        >
+          Share identifiable chat and usage data with stagewise.
+        </label>
+      </div>
     </div>
   );
 }
