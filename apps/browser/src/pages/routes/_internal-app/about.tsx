@@ -138,7 +138,7 @@ function LicenseTextDialog({
             )}
           </div>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-lg bg-surface-1 p-4">
+        <div className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto rounded-lg bg-surface-1 p-4">
           {entry.licenseText ? (
             <pre className="whitespace-pre-wrap font-mono text-foreground text-xs leading-relaxed">
               {entry.licenseText}
@@ -267,7 +267,7 @@ function OpenSourceLicenses() {
             />
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto rounded-lg border border-border-subtle">
+          <div className="scrollbar-subtle max-h-[400px] overflow-y-auto rounded-lg border border-border-subtle">
             {filteredLicenses.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground text-sm">
                 No packages found matching &ldquo;{search}&rdquo;
@@ -348,7 +348,7 @@ function Page() {
       </div>
 
       {/* Content */}
-      <div className="flex w-full flex-1 flex-col items-center overflow-y-auto p-6">
+      <div className="scrollbar-subtle flex w-full flex-1 flex-col items-center overflow-y-auto p-6">
         <div className="flex w-full max-w-3xl shrink-0 flex-col gap-8">
           {/* App Name Section */}
           <div className="flex flex-col gap-2">
