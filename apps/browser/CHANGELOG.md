@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.17 (2026-03-11)
+
+### Bug Fixes
+
+* catch lsp-client errors on startup (0769679)
+
 ## 1.0.0-alpha.16 (2026-03-11)
 
 ### Bug Fixes
