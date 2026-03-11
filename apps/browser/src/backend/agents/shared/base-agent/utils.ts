@@ -642,20 +642,40 @@ async function convertAssistantMessage(
   const cleanedMessage = {
     ...message,
     parts: message.parts.map((part) => {
+      const isToolPart =
+        part.type.startsWith('tool-') || part.type === 'dynamic-tool';
+      if (!isToolPart) return part;
+
+      let cleaned = { ...part };
+
+      // Sanitize tool input: providers reject non-object input in
+      // tool-call content blocks (e.g. raw strings from failed
+      // repair). Replace with empty object so the conversation
+      // stays recoverable — the tool result/error already carries
+      // enough context for the LLM.
       if (
-        (part.type.startsWith('tool-') || part.type === 'dynamic-tool') &&
-        'output' in part &&
-        part.output &&
-        typeof part.output === 'object'
+        'input' in cleaned &&
+        (typeof cleaned.input !== 'object' ||
+          cleaned.input === null ||
+          Array.isArray(cleaned.input))
+      )
+        cleaned = { ...cleaned, input: {} } as typeof cleaned;
+
+      // Strip internal underscore properties from tool output.
+      if (
+        'output' in cleaned &&
+        cleaned.output &&
+        typeof cleaned.output === 'object'
       ) {
-        return {
-          ...part,
+        cleaned = {
+          ...cleaned,
           output: stripUnderscoreProperties(
-            part.output as Record<string, unknown>,
+            cleaned.output as Record<string, unknown>,
           ),
-        };
+        } as typeof cleaned;
       }
-      return part;
+
+      return cleaned;
     }),
   };
 
