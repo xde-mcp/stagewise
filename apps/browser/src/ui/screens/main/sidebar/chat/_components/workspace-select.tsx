@@ -428,7 +428,7 @@ function MdSidePanelContent({
             href={ideHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute right-0 bottom-0 flex h-6 items-center gap-1 rounded-tl-lg border-derived border-t border-l px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground dark:bg-surface-1"
+            className="absolute right-0 bottom-0 flex h-6 items-center gap-1 rounded-tl-lg border-derived border-t border-l bg-background px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground dark:bg-surface-1"
           >
             <IdeLogo ide={openInIdeSelection} className="size-3" />
             <span>Open in {ideName}</span>
