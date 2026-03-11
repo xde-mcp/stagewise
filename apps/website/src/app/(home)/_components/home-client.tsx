@@ -1,6 +1,7 @@
 'use client';
 import { IconGithub } from 'nucleo-social-media';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
+import { Input } from '@stagewise/stage-ui/components/input';
 import { ScrollReveal } from '@/components/landing/scroll-reveal';
 import { usePostHog } from 'posthog-js/react';
 import { useState, useEffect } from 'react';
@@ -90,12 +91,13 @@ function WaitlistForm({
         )}
         onSubmit={handleSubmit}
       >
-        <input
+        <Input
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onValueChange={(value) => setEmail(value as string)}
           placeholder="Enter your email"
-          className="h-12 w-full rounded-md border border-input bg-background px-4 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-64"
+          size="md"
+          className="h-12 w-full sm:w-64"
           required
           disabled={submitting}
         />
