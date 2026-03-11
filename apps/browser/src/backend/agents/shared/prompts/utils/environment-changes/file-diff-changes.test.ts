@@ -361,7 +361,7 @@ describe('computeFileDiffChanges', () => {
     expect(result).toEqual([]);
   });
 
-  it('detects partial removal (hunks reduced, baseline unchanged)', () => {
+  it('does not report partial removal when only self reduced hunks', () => {
     const previous = makeEnv(
       [
         makeSnapshot({
@@ -386,10 +386,41 @@ describe('computeFileDiffChanges', () => {
       ],
       [],
     );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toEqual([]);
+  });
+
+  it('detects partial removal when external contributor reduced hunks', () => {
+    const previous = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          baselineOid: 'base',
+          currentOid: 'old-curr',
+          hunkIds: ['h1', 'h2'],
+          contributors: ['agent-1'],
+        }),
+      ],
+      [],
+    );
+    const current = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          baselineOid: 'base',
+          currentOid: 'new-curr',
+          hunkIds: ['h2'],
+          contributors: ['agent-1', 'agent-42'],
+        }),
+      ],
+      [],
+    );
     const result = summaries(
       computeFileDiffChanges(previous, current, AGENT_ID),
     );
-    expect(result).toContain(`${ABS}: some of your edits were removed`);
+    expect(result).toContain(
+      `${ABS} modified by: [agent-42] (some of your edits were removed)`,
+    );
   });
 
   it('combines modifier and editsGone when file disappears with modifier context', () => {
@@ -464,5 +495,86 @@ describe('computeFileDiffChanges', () => {
     const current = makeEnv([snap], []);
     const result = computeFileDiffChanges(previous, current, AGENT_ID);
     expect(result).toEqual([]);
+  });
+
+  it('does not report self-edit when agent modifies its own file again', () => {
+    const previous = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'first-edit',
+          contributors: ['agent-1'],
+        }),
+      ],
+      [],
+    );
+    const current = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'second-edit',
+          contributors: ['agent-1'],
+        }),
+      ],
+      [],
+    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toEqual([]);
+  });
+
+  it('does not report self-edit even when hunks are reduced by self', () => {
+    const previous = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          baselineOid: 'base',
+          currentOid: 'first-edit',
+          hunkIds: ['h1', 'h2'],
+          contributors: ['agent-1'],
+        }),
+      ],
+      [],
+    );
+    const current = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          baselineOid: 'base',
+          currentOid: 'second-edit',
+          hunkIds: ['h2'],
+          contributors: ['agent-1'],
+        }),
+      ],
+      [],
+    );
+    const result = computeFileDiffChanges(previous, current, AGENT_ID);
+    expect(result).toEqual([]);
+  });
+
+  it('still reports when another agent modifies a file the agent also edited', () => {
+    const previous = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'first-edit',
+          contributors: ['agent-1'],
+        }),
+      ],
+      [],
+    );
+    const current = makeEnv(
+      [
+        makeSnapshot({
+          path: ABS,
+          currentOid: 'mixed-edit',
+          contributors: ['agent-1', 'agent-42'],
+        }),
+      ],
+      [],
+    );
+    const result = summaries(
+      computeFileDiffChanges(previous, current, AGENT_ID),
+    );
+    expect(result).toContain(`${ABS} modified by: [agent-42]`);
   });
 });

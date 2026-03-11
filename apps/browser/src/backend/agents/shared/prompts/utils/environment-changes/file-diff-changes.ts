@@ -151,19 +151,24 @@ export function computeFileDiffChanges(
     const currentChanged = prev.currentOid !== curr.currentOid;
     if (!currentChanged) continue;
 
-    const entry = getOrCreate(fileChanges, path);
-    const baselineChanged = prev.baselineOid !== curr.baselineOid;
-    const hunksReduced = curr.hunkIds.length < prev.hunkIds.length;
-
     const newModifiers = newContributorsExcludingSelf(
       prev.contributors,
       curr.contributors,
       selfKey,
     );
+
+    // If no external contributors changed and self is still present,
+    // this was a self-edit — skip entirely.
+    const selfInCurr = curr.contributors.includes(selfKey);
+    if (newModifiers.length === 0 && selfInCurr) continue;
+
+    const entry = getOrCreate(fileChanges, path);
+    const baselineChanged = prev.baselineOid !== curr.baselineOid;
+    const hunksReduced = curr.hunkIds.length < prev.hunkIds.length;
+
     entry.modifiers.push(...newModifiers);
 
     const selfWasPrev = prev.contributors.includes(selfKey);
-    const selfInCurr = curr.contributors.includes(selfKey);
     if (selfWasPrev && !selfInCurr) {
       const summarySnap = currSummary.get(path);
       const editsStillReflected =
