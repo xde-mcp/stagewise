@@ -79,9 +79,9 @@ export const ToolPartUI = ({
     return (
       <div
         className={cn(
-          '-mx-1 flex h-6 w-full items-center gap-1 truncate font-normal text-muted-foreground',
+          'flex h-6 w-full items-center gap-1 truncate font-normal text-muted-foreground',
           showBorder &&
-            'rounded-lg border border-border bg-background px-2.5 dark:bg-surface-1',
+            'rounded-lg border border-border-subtle bg-background px-2.5 shadow-xs dark:border-border dark:bg-surface-1',
         )}
       >
         {trigger}
