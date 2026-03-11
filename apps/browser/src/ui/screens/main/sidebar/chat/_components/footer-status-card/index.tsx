@@ -8,6 +8,7 @@ import {
   AgentTypes,
   type AgentMessage,
 } from '@shared/karton-contracts/ui/agent';
+import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
@@ -25,9 +26,11 @@ import {
 import { UserQuestionSection } from './user-question-section';
 import { getBaseName } from '@shared/path-utils';
 
-// Stable empty arrays to avoid infinite loop with useSyncExternalStore
+// Stable empty arrays/sets to avoid infinite loop with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];
 const EMPTY_QUEUE: (AgentMessage & { role: 'user' })[] = [];
+const EMPTY_MOUNTS_SNAPSHOT: Mount[] = [];
+const EMPTY_SET = new Set<string>();
 
 type WorkspaceMdAgentEntry = {
   agentId: string;
@@ -86,6 +89,36 @@ export function StatusCard() {
       ? (s.toolbox[openAgentId]?.workspace?.mounts ?? EMPTY_MOUNTS)
       : EMPTY_MOUNTS,
   );
+
+  // Message history for the open agent (used to resolve all-time mounts from env snapshots)
+  const agentHistory = useKartonState((s) =>
+    openAgentId
+      ? (s.agents.instances[openAgentId]?.state.history ?? EMPTY_HISTORY)
+      : EMPTY_HISTORY,
+  );
+
+  // All mounts ever seen in env snapshots (survives workspace disconnects)
+  const resolvedMounts = useMemo<Mount[]>(() => {
+    const mountsByPrefix = new Map<string, Mount>();
+    for (const msg of agentHistory) {
+      const mounts = msg?.metadata?.environmentSnapshot?.workspace?.mounts;
+      if (!mounts) continue;
+      for (const mount of mounts) {
+        if (!mountsByPrefix.has(mount.prefix)) {
+          mountsByPrefix.set(mount.prefix, mount);
+        }
+      }
+    }
+    return mountsByPrefix.size > 0
+      ? Array.from(mountsByPrefix.values())
+      : EMPTY_MOUNTS_SNAPSHOT;
+  }, [agentHistory]);
+
+  // Set of currently connected mount paths
+  const activeMountPaths = useMemo(() => {
+    if (workspaceMounts.length === 0) return EMPTY_SET;
+    return new Set(workspaceMounts.map((m) => m.path));
+  }, [workspaceMounts]);
 
   const generateWorkspaceMd = useKartonProcedure(
     (p) => p.toolbox.generateWorkspaceMd,
@@ -382,6 +415,8 @@ export function StatusCard() {
     const fileDiffSection = FileDiffSection({
       pendingDiffs: formattedPendingDiffs,
       diffSummary: formattedDiffSummary,
+      resolvedMounts,
+      activeMountPaths,
       onRejectAll: (hunkIds: string[]) => void rejectAllPendingEdits(hunkIds),
       onAcceptAll: (hunkIds: string[]) => void acceptAllPendingEdits(hunkIds),
       onOpenDiffReview: openDiffReviewPage,
@@ -414,6 +449,8 @@ export function StatusCard() {
     flushQueue,
     formattedPendingDiffs,
     formattedDiffSummary,
+    resolvedMounts,
+    activeMountPaths,
     rejectAllPendingEdits,
     acceptAllPendingEdits,
     openDiffReviewPage,
