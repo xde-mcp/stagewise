@@ -192,7 +192,25 @@ export class LspClient extends EventEmitter {
     this.setupHandlers();
     this.connection.listen();
 
-    await this.initialize(this.initializationOptions);
+    try {
+      await this.initialize(this.initializationOptions);
+    } catch (error) {
+      // Process may have died (ENOENT, crash) before initialize completed.
+      // setupHandlers already marked us as disposed — just bail out.
+      this.logger.warn(
+        `[LspClient:${this.serverID}] Initialize failed (process likely dead):`,
+        error,
+      );
+      this.disposed = true;
+      this.connection?.dispose();
+      this.connection = null;
+      if (this.process) {
+        this.process.kill();
+        this.process = null;
+      }
+      return false;
+    }
+
     this.logger.debug(
       `[LspClient:${this.serverID}] Server started for root: ${this.root}`,
     );
@@ -252,16 +270,22 @@ export class LspClient extends EventEmitter {
     // Handle progress creation (acknowledge but don't track)
     this.connection.onRequest('window/workDoneProgress/create', () => null);
 
-    // Handle process exit
+    // Handle process exit — mark as disposed so pending/delayed calls bail out
     this.process.on('exit', (code) => {
       this.logger.debug(
         `[LspClient:${this.serverID}] Process exited with code: ${code}`,
       );
+      this.disposed = true;
+      this.connection?.dispose();
+      this.connection = null;
       this.emit('close');
     });
 
     this.process.on('error', (error) => {
       this.logger.error(`[LspClient:${this.serverID}] Process error:`, error);
+      this.disposed = true;
+      this.connection?.dispose();
+      this.connection = null;
       this.emit('error', error);
     });
 
