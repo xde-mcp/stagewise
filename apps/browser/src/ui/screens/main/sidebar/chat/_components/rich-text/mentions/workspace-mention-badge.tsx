@@ -7,7 +7,7 @@ import { cn } from '@/utils';
 import { InlineBadge, InlineBadgeWrapper } from '../shared';
 import { useMountedPaths } from '@ui/hooks/use-mounted-paths';
 import { useKartonState } from '@/hooks/use-karton';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { getBaseName } from '@shared/path-utils';
 import type { WorkspaceMentionMeta } from '@shared/karton-contracts/ui/agent/metadata';
 
