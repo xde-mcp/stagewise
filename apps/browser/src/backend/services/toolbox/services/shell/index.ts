@@ -48,8 +48,6 @@ export class ShellService extends DisposableService {
       this.logger.info(
         `[ShellService] Detected shell: ${this.shell.type} at ${this.shell.path}`,
       );
-      this.processManager = new ProcessManager(this.shell);
-
       try {
         this.resolvedEnv = await resolveShellEnv(this.shell);
         if (this.resolvedEnv) {
@@ -67,6 +65,11 @@ export class ShellService extends DisposableService {
           err,
         );
       }
+
+      // When env resolution failed, use login shell (-lc) as fallback so
+      // commands still get a usable PATH from the user's shell profiles.
+      const loginFallback = this.resolvedEnv === null;
+      this.processManager = new ProcessManager(this.shell, loginFallback);
     } else {
       this.logger.warn(
         '[ShellService] No usable shell detected — shell tool will be unavailable',

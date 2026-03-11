@@ -32,8 +32,11 @@ export class ProcessManager {
   private readonly shell: DetectedShell;
   private readonly processes = new Map<string, TrackedProcess>();
 
-  constructor(shell: DetectedShell) {
+  private readonly loginFallback: boolean;
+
+  constructor(shell: DetectedShell, loginFallback = false) {
     this.shell = shell;
+    this.loginFallback = loginFallback;
   }
 
   spawn(
@@ -44,7 +47,9 @@ export class ProcessManager {
     toolCallId?: string,
   ): { executionId: string; result: Promise<ShellExecutionResult> } {
     const executionId = randomUUID();
-    const [cmd, args] = getShellArgs(this.shell, request.command);
+    const [cmd, args] = getShellArgs(this.shell, request.command, {
+      loginFallback: this.loginFallback,
+    });
     const isWin = process.platform === 'win32';
 
     const child = cpSpawn(cmd, args, {

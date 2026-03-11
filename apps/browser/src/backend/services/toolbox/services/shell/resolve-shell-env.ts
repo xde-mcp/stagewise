@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
 import { homedir, userInfo } from 'node:os';
 import type { DetectedShell } from './types';
 
@@ -13,16 +12,42 @@ function safeUsername(): string {
   }
 }
 
+/**
+ * Parse null-delimited `env -0` output into a key-value record.
+ * Each entry is `KEY=VALUE` separated by `\0`. Values may contain
+ * newlines, equals signs, or any other character — the null delimiter
+ * makes parsing unambiguous.
+ */
+function parseEnv0(raw: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const entries = raw.split('\0').filter(Boolean);
+  for (const entry of entries) {
+    const eqIdx = entry.indexOf('=');
+    if (eqIdx === -1) continue;
+    const key = entry.slice(0, eqIdx);
+    const value = entry.slice(eqIdx + 1);
+    result[key] = value;
+  }
+  return result;
+}
+
+/**
+ * Resolve the user's full shell environment by spawning a login shell
+ * and capturing its environment via `env -0`.
+ *
+ * Uses `env -0` (null-delimited output) instead of running the Electron
+ * binary with `ELECTRON_RUN_AS_NODE=1`, because the `RunAsNode` fuse is
+ * disabled in packaged builds.
+ */
 export async function resolveShellEnv(
   shell: DetectedShell,
   timeoutMs = DEFAULT_RESOLVE_TIMEOUT_MS,
 ): Promise<Record<string, string> | null> {
   if (process.platform === 'win32') return null;
 
-  const mark = randomUUID().replace(/-/g, '').slice(0, 12);
-  const regex = new RegExp(`${mark}({.*})${mark}`);
-
-  const command = `'${process.execPath}' -p '"${mark}" + JSON.stringify(process.env) + "${mark}"'`;
+  // `env -0` prints all environment variables null-delimited.
+  // Supported natively on macOS (/usr/bin/env) and Linux (GNU coreutils).
+  const command = 'env -0';
 
   let shellArgs: string[];
   switch (shell.type) {
@@ -37,16 +62,16 @@ export async function resolveShellEnv(
       return null;
   }
 
-  // On Linux, desktop-launched Electron apps may inherit a nearly empty
-  // process.env (no HOME, USER, PATH, etc.). Ensure essential vars are
-  // present so the login shell can locate ~/.profile and ~/.bashrc.
+  // On macOS/Linux, desktop-launched Electron apps may inherit a nearly
+  // empty process.env (no HOME, USER, PATH, etc.). Seed essential vars so
+  // the login shell can bootstrap, locate ~/.profile / ~/.zprofile, and
+  // produce a fully populated environment.
   const env: Record<string, string> = {
+    PATH: '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin',
     HOME: homedir(),
     USER: safeUsername(),
     SHELL: shell.path,
     ...process.env,
-    ELECTRON_RUN_AS_NODE: '1',
-    ELECTRON_NO_ATTACH_CONSOLE: '1',
     STAGEWISE_RESOLVING_ENVIRONMENT: '1',
   } as Record<string, string>;
 
@@ -81,19 +106,14 @@ export async function resolveShellEnv(
       }
 
       const raw = Buffer.concat(stdoutChunks).toString('utf-8');
-      const match = regex.exec(raw);
-      if (!match?.[1]) {
+      if (!raw.length) {
         resolve(null);
         return;
       }
 
       try {
-        const parsed = JSON.parse(match[1]) as Record<string, string>;
-
-        delete parsed.ELECTRON_RUN_AS_NODE;
-        delete parsed.ELECTRON_NO_ATTACH_CONSOLE;
+        const parsed = parseEnv0(raw);
         delete parsed.STAGEWISE_RESOLVING_ENVIRONMENT;
-
         resolve(parsed);
       } catch {
         resolve(null);

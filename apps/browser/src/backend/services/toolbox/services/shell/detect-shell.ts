@@ -148,6 +148,7 @@ export function detectShell(): DetectedShell | null {
 export function getShellArgs(
   shell: DetectedShell,
   command: string,
+  options?: { loginFallback?: boolean },
 ): [string, string[]] {
   switch (shell.type) {
     case 'bash':
@@ -156,7 +157,9 @@ export function getShellArgs(
       // Use `-c` (not `-lc`): resolveShellEnv already captured the full
       // login+interactive env at startup. A login shell here would re-source
       // /etc/profile which can overwrite PATH (e.g. stripping nvm paths on Linux).
-      return [shell.path, ['-c', command]];
+      // However, if env resolution failed, fall back to `-lc` so the shell
+      // sources login profiles and gets a usable PATH.
+      return [shell.path, [options?.loginFallback ? '-lc' : '-c', command]];
     case 'powershell':
       return [shell.path, ['-NoProfile', '-Command', command]];
     case 'cmd':
