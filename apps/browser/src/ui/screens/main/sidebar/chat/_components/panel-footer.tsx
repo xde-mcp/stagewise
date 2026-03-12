@@ -32,6 +32,7 @@ import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/ric
 import type { MentionContext } from '@/screens/main/sidebar/chat/_components/rich-text/mentions';
 import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { useChatDraft } from '@/hooks/use-chat-draft';
 import type { Content } from '@tiptap/core';
@@ -199,7 +200,9 @@ export function ChatPanelFooter() {
   const mentionTabs = useKartonState((s) => s.browser.tabs);
   const mentionActiveTabId = useKartonState((s) => s.browser.activeTabId);
   const mentionMounts = useKartonState((s) =>
-    openAgent ? (s.toolbox[openAgent]?.workspace?.mounts ?? []) : [],
+    openAgent
+      ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
+      : EMPTY_MOUNTS,
   );
   const mentionContext = useMemo<MentionContext>(
     () => ({

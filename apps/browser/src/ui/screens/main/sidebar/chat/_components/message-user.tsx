@@ -6,6 +6,7 @@ import {
 } from '@/utils/tiptap-content-utils';
 import { cn, collectUserMessageMetadata } from '@/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 
 import {
   useMemo,
@@ -507,7 +508,9 @@ export const MessageUser = memo(
     }, [activeTab?.url]);
 
     const mentionMounts = useKartonState((s) =>
-      openAgent ? (s.toolbox[openAgent]?.workspace?.mounts ?? []) : [],
+      openAgent
+        ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
+        : EMPTY_MOUNTS,
     );
 
     const mentionContext = useMemo<MentionContext>(

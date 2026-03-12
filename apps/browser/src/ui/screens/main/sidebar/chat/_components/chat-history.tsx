@@ -30,6 +30,9 @@ import { isEmptyAssistantMessage, areAllPartsSettled } from './message-utils';
 import { useOpenAgent } from '@/hooks/use-open-chat';
 import { calculateChatItemHeights } from '@/utils/calculate-chat-item-height';
 
+// Stable empty array to avoid infinite re-renders with useSyncExternalStore
+const EMPTY_HISTORY: AgentMessage[] = [];
+
 // Extended type for optimistic messages (includes flag for UI distinction)
 type OptimisticMessage = AgentMessage & {
   _optimistic?: boolean;
@@ -168,7 +171,9 @@ export const ChatHistory = () => {
     openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
   );
   const history = useKartonState((s) =>
-    openAgent ? s.agents.instances[openAgent]?.state.history : [],
+    openAgent
+      ? (s.agents.instances[openAgent]?.state.history ?? EMPTY_HISTORY)
+      : EMPTY_HISTORY,
   );
   const error = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.error : undefined,
