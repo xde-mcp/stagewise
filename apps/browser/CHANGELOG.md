@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.23 (2026-03-12)
+
+### Bug Fixes
+
+* fix unchecked array-access in diff-history (73fb2dc)
+
 ## 1.0.0-alpha.22 (2026-03-12)
 
 ### Bug Fixes
