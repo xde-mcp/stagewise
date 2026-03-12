@@ -833,6 +833,17 @@ export class WindowLayoutService extends DisposableService {
     });
 
     tab.on('tabFocused', (id) => {
+      // FIX: On Win32, webContents may auto-focus multiple times during page load
+      // (wc.on('focus') fires on visibility, DOM load, script execution, etc.).
+      // When isWebContentInteractive is false, the UI should have focus priority.
+      // Reclaim it immediately to prevent the tab from stealing keyboard input.
+      if (
+        process.platform === 'win32' &&
+        !this.isWebContentInteractive &&
+        id === this.activeTabId
+      ) {
+        this.uiController?.focus();
+      }
       this.uiController?.forwardFocusEvent(id);
     });
 
@@ -1142,7 +1153,14 @@ export class WindowLayoutService extends DisposableService {
     // event from pushing webcontents on top at startup, which would hide popups.
     if (panel === 'tab-content' && this.currentWebContentBounds === null)
       return;
-    this.isWebContentInteractive = panel === 'tab-content';
+    // FIX 1: Short-circuit when z-order already matches — prevents the continuous
+    // updateZOrder() calls from WebContentsBoundsSyncer (mousemove) from
+    // destroying native HWND keyboard focus via the Win32 removeChildView/addChildView dance.
+    const newValue = panel === 'tab-content';
+    if (this.isWebContentInteractive === newValue) {
+      return;
+    }
+    this.isWebContentInteractive = newValue;
     this.updateZOrder();
   };
 
@@ -1231,8 +1249,27 @@ export class WindowLayoutService extends DisposableService {
   private handleTogglePanelKeyboardFocus = async (
     panel: 'stagewise-ui' | 'tab-content',
   ) => {
-    if (panel === 'stagewise-ui') this.uiController?.focus();
-    else this.activeTab?.focus();
+    if (panel === 'stagewise-ui') {
+      // FIX 3 (Win32): On Windows, the tab's Win32 child window intercepts keyboard
+      // events when it is topmost. We must put the UI on top BEFORE calling focus().
+      // See focus-handling.md Invariant #3 and Bug 9.5.
+      if (process.platform === 'win32' && this.isWebContentInteractive) {
+        this.isWebContentInteractive = false;
+        this.updateZOrder();
+      }
+      this.uiController?.focus();
+    } else {
+      // FIX (Win32): Symmetric with the stagewise-ui path above.
+      // The tab must be topmost to receive keyboard events on Win32.
+      // Also required so the tabFocused auto-focus guard (which reclaims UI
+      // focus when isWebContentInteractive === false) doesn't interfere with
+      // intentional tab focus requests.
+      if (process.platform === 'win32' && !this.isWebContentInteractive) {
+        this.isWebContentInteractive = true;
+        this.updateZOrder();
+      }
+      this.activeTab?.focus();
+    }
   };
 
   private updateZOrder() {
@@ -1255,6 +1292,10 @@ export class WindowLayoutService extends DisposableService {
         this.baseWindow!.contentView.addChildView(this.uiController!.getView());
       }
     } else {
+      const uiFocusedBeforeZOrder =
+        this.uiController?.getView().webContents.isFocused() ?? false;
+      const tabFocusedBeforeZOrder =
+        this.activeTab?.getViewContainer().webContents.isFocused() ?? false;
       // On windows, we ne explicit re-adding to prevent bugy in hitbox testing
       if (this.isWebContentInteractive && this.activeTab) {
         this.baseWindow!.contentView.removeChildView(
@@ -1283,6 +1324,20 @@ export class WindowLayoutService extends DisposableService {
           );
         }
         this.baseWindow!.contentView.addChildView(this.uiController!.getView());
+      }
+      // FIX 2: Restore native focus after the Win32 remove/add dance.
+      // The removeChildView/addChildView cycle destroys ALL native HWND keyboard
+      // focus — even for the view that keeps its z-position. If ANY view had focus
+      // before, we must give focus to the TOPMOST view (the one that can actually
+      // receive keyboard events on Win32, since the topmost child HWND intercepts
+      // all keyboard input). This prevents the "dead zone" where neither view has
+      // focus and all hotkeys stop working (see focus-handling.md Bug 9.10).
+      if (uiFocusedBeforeZOrder || tabFocusedBeforeZOrder) {
+        if (!this.isWebContentInteractive) {
+          this.uiController!.getView().webContents.focus();
+        } else if (this.activeTab) {
+          this.activeTab.getViewContainer().webContents.focus();
+        }
       }
     }
   }

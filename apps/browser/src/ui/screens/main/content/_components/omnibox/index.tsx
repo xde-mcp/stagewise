@@ -261,8 +261,12 @@ export const Omnibox = ({
             placeholder="Search or type a URL"
             onFocus={onInputFocus}
             onKeyDown={onInputKeyDown}
+            // Windows: body { user-select: none } suppresses the mousedown
+            // default action that normally triggers focus on <input> elements.
+            // Explicitly calling focus() bypasses this platform-specific behavior.
+            onMouseDown={() => inputRef.current?.focus()}
             className={cn(
-              'h-8 w-full flex-1 rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong focus-visible:outline-none',
+              'h-8 w-full flex-1 select-text rounded-full pr-5 pl-3 text-muted-foreground text-sm ring-1 ring-transparent hover:ring-derived-subtle focus:bg-surface-1 focus:text-foreground focus:outline-none focus:ring-derived-strong focus-visible:outline-none',
               // Only apply transitions for mouse interactions, instant for keyboard
               isKeyboardInteraction
                 ? 'transition-none'

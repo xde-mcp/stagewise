@@ -53,6 +53,9 @@ export function MainSection({
   const activeTabId = useKartonState((s) => s.browser.activeTabId);
   const createTab = useKartonProcedure((p) => p.browser.createTab);
   const closeTab = useKartonProcedure((p) => p.browser.closeTab);
+  const togglePanelKeyboardFocus = useKartonProcedure(
+    (p) => p.browser.layout.togglePanelKeyboardFocus,
+  );
 
   const { setTabUiState } = useTabUIState();
 
@@ -99,6 +102,12 @@ export function MainSection({
         const ref = tabContentRefs.current[activeTabId];
         if (!ref) return false;
 
+        // FIX: On Win32, the new tab's webContents auto-focuses ~30-50ms after
+        // handleSwitchTab completes (Electron fires wc.on('focus') on page load).
+        // By the time this useEffect runs (~1-2s later), native HWND focus is on
+        // the tab, not the UI. Reclaim it before focusing the omnibox input.
+        // This mirrors what Ctrl+L does: togglePanelKeyboardFocus first, then focus.
+        void togglePanelKeyboardFocus('stagewise-ui');
         ref.focusOmnibox();
         pendingOmniboxFocusFromTabIdRef.current = null;
         return true;
@@ -113,7 +122,7 @@ export function MainSection({
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [activeTabId, tabs]);
+  }, [activeTabId, tabs, togglePanelKeyboardFocus]);
 
   const handleCreateTab = useCallback(() => {
     // Store the current activeTabId - we'll focus when it changes to a new tab
