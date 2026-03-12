@@ -309,6 +309,32 @@ export function formatTruncationMessage(
   return lines.join('\n');
 }
 
+/**
+ * Extracts a human-readable error message from an Eden Treaty error object.
+ * Eden errors have the shape `{ status: number, value: { error: string, message: string } }`.
+ * Falls back to JSON.stringify, then String().
+ */
+export function extractEdenErrorMessage(
+  error: { status?: number; value?: unknown } | unknown,
+): string {
+  if (typeof error === 'object' && error !== null) {
+    const obj = error as Record<string, unknown>;
+    const value = obj.value;
+    if (typeof value === 'object' && value !== null) {
+      const v = value as Record<string, unknown>;
+      if (typeof v.message === 'string') {
+        return v.message;
+      }
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      // fall through
+    }
+  }
+  return String(error);
+}
+
 export function rethrowCappedToolOutputError(error: unknown): never {
   if (error instanceof Error)
     throw new Error(

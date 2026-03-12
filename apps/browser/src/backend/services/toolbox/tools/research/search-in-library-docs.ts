@@ -4,7 +4,11 @@ import {
 } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { ApiClient } from '@stagewise/api-client';
 import { tool } from 'ai';
-import { rethrowCappedToolOutputError, capToolOutput } from '../../utils';
+import {
+  rethrowCappedToolOutputError,
+  capToolOutput,
+  extractEdenErrorMessage,
+} from '../../utils';
 
 /* Due to an issue in zod schema conversion in the ai sdk,
    the schema descriptions are not properly used for the prompts -
@@ -30,7 +34,7 @@ export async function searchInLibraryDocsToolExecute(
       },
     });
 
-    if (error) throw new Error(String(error));
+    if (error) throw new Error(extractEdenErrorMessage(error));
 
     // The `type: 'txt'` query param makes the server return plain text at
     // runtime, but the Eden Treaty type always reflects the JSON shape.
