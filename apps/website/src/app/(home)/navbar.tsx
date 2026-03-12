@@ -67,7 +67,7 @@ export function Navbar() {
               <NavbarButton href="/pricing">Pricing</NavbarButton>
               <NavbarButton href="https://docs.stagewise.io">Docs</NavbarButton>
               <NavbarButton href="/news">News</NavbarButton>
-              <NavbarButton href="/team">Team</NavbarButton>
+              <NavbarButton href="/mission">Mission</NavbarButton>
             </div>
           </div>
 
@@ -95,7 +95,7 @@ export function Navbar() {
             <NavbarButton href="/pricing">Pricing</NavbarButton>
             <NavbarButton href="https://docs.stagewise.io">Docs</NavbarButton>
             <NavbarButton href="/news">News</NavbarButton>
-            <NavbarButton href="/team">Team</NavbarButton>
+            <NavbarButton href="/mission">Mission</NavbarButton>
           </div>
         )}
       </div>
