@@ -25,7 +25,7 @@
 
   --color-solid-foreground: var(--color-base-50);
 
-  --color-surface-tinted: color-mix(in oklch, var(--color-primary-50) 50%, var(--color-base-50)); 
+  --color-surface-tinted: color-mix(in oklch, var(--color-primary-50) 50%, oklch(0.992 0 none)); 
 
   --color-success-background: var(--color-success-background-light); 
   --color-success-foreground: var(--color-success-foreground-light);  
@@ -65,7 +65,7 @@
 
     --color-solid-foreground: var(--color-base-50);
 
-    --color-surface-tinted: color-mix(in oklch, var(--color-primary-700) 30%, var(--color-base-700));
+    --color-surface-tinted: color-mix(in oklch, var(--color-primary-700) 30%, oklch(0.295 0 none));
 
     --color-border: var(--color-base-600);
     --color-border-subtle: var(--color-base-700);
