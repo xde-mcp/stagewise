@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.20 (2026-03-12)
+
+### Bug Fixes
+
+* fix error on app-start due to unstable arrays (29eb8f0)
+
 ## 1.0.0-alpha.19 (2026-03-12)
 
 ### Bug Fixes
