@@ -61,6 +61,12 @@ export const Omnibox = ({
   // while keeping animations for mouse interactions
   const [isKeyboardInteraction, setIsKeyboardInteraction] = useState(false);
 
+  // Track whether the omnibox is closing because a navigation was triggered
+  // (Enter / suggestion click). When true:
+  //   data-omnibox-modal-active stays set so the WebContentsBoundsSyncer
+  //   keeps UI in foreground until the URL actually changes
+  const [navigationPending, setNavigationPending] = useState(false);
+
   // Expose focus method via ref (called by hotkey CMD+L)
   useImperativeHandle(
     ref,
@@ -93,6 +99,20 @@ export const Omnibox = ({
     [],
   );
 
+  // Clear navigation-pending state when the page finishes loading (isLoading: true→false).
+  // We can’t use displayedTabUrl as the signal because updateState({ url }) fires
+  // immediately in loadURL — before the page loads — which would clear the guard
+  // too early and let WebContentsBoundsSyncer switch to tab-content mid-navigation.
+  const wasLoadingRef = useRef(false);
+  useEffect(() => {
+    if (tab?.isLoading) {
+      wasLoadingRef.current = true;
+    } else if (wasLoadingRef.current && navigationPending) {
+      wasLoadingRef.current = false;
+      setNavigationPending(false);
+    }
+  }, [tab?.isLoading, navigationPending]);
+
   const shouldShowBreadcrumbs = displayedTabUrl?.startsWith(
     'stagewise://internal/',
   );
@@ -111,16 +131,15 @@ export const Omnibox = ({
   }, [tabId, isActive]);
 
   // Sync Electron z-order with omnibox open state so the popover is visible
-  // above tab webcontents (on open) and webcontents become interactive again (on close).
-  // Skip the close-side flip when the tab deactivated — handleSwitchTab owns z-order then.
-  const wasOmniboxOpenRef = useRef(false);
+  // above tab webcontents. Only force stagewise-ui to foreground on open.
+  // On close, WebContentsBoundsSyncer handles restoring tab-content z-order
+  // based on mouse position — this avoids a race where the popover closes
+  // before onSubmit runs, causing a premature tab-content switch.
   useEffect(() => {
-    if (isOmniboxOpen) void movePanelToForeground('stagewise-ui');
-    else if (wasOmniboxOpenRef.current && isActive)
-      void movePanelToForeground('tab-content');
-
-    wasOmniboxOpenRef.current = isOmniboxOpen;
-  }, [isOmniboxOpen, isActive, movePanelToForeground]);
+    if (isOmniboxOpen) {
+      void movePanelToForeground('stagewise-ui');
+    }
+  }, [isOmniboxOpen, movePanelToForeground]);
 
   const { groups: suggestionGroups, resetSuggestions } = useOmniboxSuggestions(
     displayedTabUrl,
@@ -165,6 +184,12 @@ export const Omnibox = ({
         searchEngines,
         defaultEngineId,
       );
+      // Keep omnibox-modal-active attribute set so WebContentsBoundsSyncer
+      // doesn't switch to tab-content while the navigation is in progress.
+      setNavigationPending(true);
+      // Close the omnibox immediately so the popover disappears.
+      setIsOmniboxOpen(false);
+      inputRef.current?.blur();
       // Navigate with TYPED transition to indicate user typed in omnibox
       goto(url, tabId, PageTransition.TYPED);
     },
@@ -209,9 +234,12 @@ export const Omnibox = ({
     <form
       onSubmit={onSubmit}
       className="flex-1"
-      // When omnibox is open, mark it so WebContentsBoundsSyncer keeps UI in foreground
-      // This prevents the web content from stealing focus when hovering near the popup
-      data-omnibox-modal-active={isOmniboxOpen || undefined}
+      // When omnibox is open OR a navigation is pending (omnibox just submitted),
+      // mark it so WebContentsBoundsSyncer keeps UI in foreground.
+      // This prevents web content from stealing focus during/after omnibox interaction.
+      data-omnibox-modal-active={
+        isOmniboxOpen || navigationPending || undefined
+      }
     >
       <Autocomplete.Root
         items={suggestionGroups}

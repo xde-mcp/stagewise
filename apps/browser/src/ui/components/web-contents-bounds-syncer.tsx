@@ -158,14 +158,37 @@ export const WebContentsBoundsSyncer = () => {
     // Initial lookup
     attachContainer(document.getElementById(containerId));
 
-    // --- MutationObserver: detect container appearing/disappearing (tab switch) ---
-    const mutationObserver = new MutationObserver(() => {
-      const newEl = document.getElementById(containerId);
-      attachContainer(newEl);
+    // --- MutationObserver: detect container appearing/disappearing (tab switch)
+    // and re-evaluate hover state when exclusion attributes change. ---
+    const exclusionAttributes = [
+      'data-omnibox-modal-active',
+      'data-notification-toast-active',
+      'data-element-selector-overlay',
+    ];
+    const mutationObserver = new MutationObserver((mutations) => {
+      let containerChanged = false;
+      let exclusionChanged = false;
+      for (const m of mutations) {
+        if (m.type === 'childList') containerChanged = true;
+        if (
+          m.type === 'attributes' &&
+          exclusionAttributes.includes(m.attributeName!)
+        ) {
+          exclusionChanged = true;
+        }
+      }
+      if (containerChanged) {
+        attachContainer(document.getElementById(containerId));
+      }
+      if (exclusionChanged) {
+        checkHoverState();
+      }
     });
     mutationObserver.observe(document.body, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: exclusionAttributes,
     });
 
     // --- Window resize: catches panel resizes and actual window resizes ---

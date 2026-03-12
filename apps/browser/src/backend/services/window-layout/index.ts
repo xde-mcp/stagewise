@@ -1137,6 +1137,11 @@ export class WindowLayoutService extends DisposableService {
   private handleMovePanelToForeground = async (
     panel: 'stagewise-ui' | 'tab-content',
   ) => {
+    // Ignore tab-content requests before the UI has sent its first layout update
+    // (i.e. bounds are not yet set). This prevents the initial webcontents focus
+    // event from pushing webcontents on top at startup, which would hide popups.
+    if (panel === 'tab-content' && this.currentWebContentBounds === null)
+      return;
     this.isWebContentInteractive = panel === 'tab-content';
     this.updateZOrder();
   };
