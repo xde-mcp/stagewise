@@ -1,6 +1,9 @@
-# <img src="https://github.com/stagewise-io/assets/blob/main/media/logo.png?raw=true" alt="stagewise logo" width="48" height="48" style="border-radius: 50%; vertical-align: middle; margin-right: 8px;" /> stagewise
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./logo-combo-dark.svg">
+  <img src="./logo-combo.svg" alt="stagewise" height="60" />
+</picture>
 
-# The coding agent built for the web
+### The coding agent built for the web
 
  ![NPM License](https://img.shields.io/npm/l/stagewise) [![GitHub Repo stars](https://img.shields.io/github/stars/stagewise-io/stagewise)](https://github.com/stagewise-io/stagewise)
 
