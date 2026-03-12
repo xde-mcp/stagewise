@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.21 (2026-03-12)
+
+### Bug Fixes
+
+* fix stale z-index/ focus handling on omnibox (0d997ab)
+
 ## 1.0.0-alpha.20 (2026-03-12)
 
 ### Bug Fixes
