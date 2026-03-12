@@ -242,7 +242,7 @@ export const ExecuteShellCommandToolPart = ({
       <div className="px-2 py-1">
         <div
           className={cn(
-            'whitespace-pre-wrap break-all pb-0.5 font-mono text-muted-foreground text-xs',
+            'whitespace-pre-wrap break-all pb-1 font-mono text-muted-foreground text-xs',
             outputText && 'pb-4',
           )}
         >
