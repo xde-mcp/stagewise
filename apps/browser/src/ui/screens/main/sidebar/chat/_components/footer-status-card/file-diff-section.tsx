@@ -209,6 +209,8 @@ function FileDiffList({
   // Show group labels when the agent ever had more than one workspace connected
   const hideLabels = resolvedMounts.length <= 1;
 
+  if (groups.length === 0) return null;
+
   if (hideLabels) {
     return (
       <div className="pt-1">
