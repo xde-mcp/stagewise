@@ -458,6 +458,7 @@ export class UserExperienceService extends DisposableService {
         this.telemetryService.capture('onboarding-completed', {
           skipped: !suggestion,
           suggestion_id: suggestion?.id,
+          telemetry_level: this.telemetryService.telemetryLevel,
         });
       }
     } catch (error) {

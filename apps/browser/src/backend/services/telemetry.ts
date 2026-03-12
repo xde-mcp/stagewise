@@ -12,7 +12,11 @@ export type EventProperties = {
   'app-launched': { cold_start: boolean };
   'app-closed': undefined;
   'telemetry-level-changed': { from: TelemetryLevel; to: TelemetryLevel };
-  'onboarding-completed': { skipped: boolean; suggestion_id?: string };
+  'onboarding-completed': {
+    skipped: boolean;
+    suggestion_id?: string;
+    telemetry_level: TelemetryLevel;
+  };
 
   // Workspace
   'workspace-mounted': { agent_type: string };
@@ -135,8 +139,13 @@ export class TelemetryService extends DisposableService {
 
   private syncTelemetryOptIn(): void {
     const level = this.getTelemetryLevel();
-    if (level === 'off') this.posthogClient.disable();
-    else this.posthogClient.enable();
+    if (level === 'off') {
+      // Flush any pending events (e.g. telemetry-level-changed) before
+      // disabling the client so they are not silently dropped.
+      this.posthogClient.flush().finally(() => {
+        this.posthogClient.disable();
+      });
+    } else this.posthogClient.enable();
 
     this.logger.debug(
       `[TelemetryService] Telemetry opt-in synced: level=${level}`,
@@ -225,7 +234,15 @@ export class TelemetryService extends DisposableService {
       );
       const telemetryLevel = this.getTelemetryLevel();
 
-      if (telemetryLevel === 'off' || !this.posthogClient) return;
+      // Always allow critical lifecycle events through so we can measure
+      // opt-out rates and keep funnels intact even when telemetry is off.
+      const bypassOptOut: Array<keyof EventProperties> = [
+        'telemetry-level-changed',
+        'onboarding-completed',
+      ];
+      if (telemetryLevel === 'off' && !bypassOptOut.includes(eventName)) return;
+
+      if (!this.posthogClient) return;
 
       const distinctId = this.getDistinctId();
 
