@@ -1245,8 +1245,11 @@ export abstract class BaseAgent<
     this.state.set((draft) => {
       draft.isWorking = true;
       draft.error = undefined; // Reset error at the start of each step
-      // Flush the queue into the history (single broadcast)
-      if (draft.queuedMessages.length > 0) {
+      // Flush the queue into the history (single broadcast).
+      // Skip flush on approval continuations — the approval step must
+      // complete in isolation first. Queued messages will be picked up
+      // by the follow-up runStep() triggered via shouldRunNewStep().
+      if (!isApprovalContinuation && draft.queuedMessages.length > 0) {
         queueFlushIndex = draft.history.length;
         draft.history.push(...draft.queuedMessages);
         draft.queuedMessages = [];
