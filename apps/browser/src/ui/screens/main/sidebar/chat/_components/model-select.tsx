@@ -71,8 +71,6 @@ function ModelTooltipContent({
   );
 }
 
-const EMPTY_STRING_ARRAY: string[] = [];
-
 interface ModelSelectProps {
   onModelChange?: () => void;
 }
@@ -85,9 +83,9 @@ export const ModelSelect = memo(function ModelSelect({
     openAgent ? s.agents.instances[openAgent]?.state.activeModelId : null,
   );
   const setSelectedModel = useKartonProcedure((p) => p.agents.setActiveModelId);
-  const customModels = useKartonState((s) => s.preferences?.customModels ?? []);
+  const customModels = useKartonState((s) => s.preferences.customModels);
   const disabledModelIds = useKartonState(
-    (s) => s.preferences?.agent?.disabledModelIds ?? EMPTY_STRING_ARRAY,
+    (s) => s.preferences.agent.disabledModelIds,
   );
 
   // Build flat model options list

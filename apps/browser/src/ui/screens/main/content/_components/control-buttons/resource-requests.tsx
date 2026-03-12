@@ -41,6 +41,9 @@ import type {
   USBSelectionRequest,
   BluetoothPairingRequest,
 } from '@shared/karton-contracts/ui';
+
+const EMPTY_PERMISSION_REQUESTS: PermissionRequest[] = [];
+
 import {
   IconCheckFill18,
   IconBanFill18,
@@ -422,7 +425,8 @@ export function ResourceRequestsControlButton({
   isActive: boolean;
 }) {
   const permissionRequests = useKartonState(
-    (s) => s.browser.tabs[tabId]?.permissionRequests ?? [],
+    (s) =>
+      s.browser.tabs[tabId]?.permissionRequests ?? EMPTY_PERMISSION_REQUESTS,
   );
 
   const acceptPermission = useKartonProcedure(
