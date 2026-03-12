@@ -5,11 +5,11 @@ import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { MenuIcon, XIcon } from 'lucide-react';
-import { IconUserUpdateFillDuo18 } from 'nucleo-ui-fill-duo-18';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useSession } from '@/lib/auth-client';
 
 function NavbarButton({
   children,
@@ -30,6 +30,19 @@ function NavbarButton({
       )}
     >
       {children}
+    </Link>
+  );
+}
+
+function NavbarAuthLink() {
+  const { data: session } = useSession();
+
+  return (
+    <Link
+      href="https://console.stagewise.io"
+      className={buttonVariants({ size: 'sm', variant: 'ghost' })}
+    >
+      {session?.user ? 'Account' : 'Sign in'}
     </Link>
   );
 }
@@ -58,15 +71,9 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Right side: Account + hamburger */}
+          {/* Right side: Auth + hamburger */}
           <div className="flex items-center gap-2">
-            <Link
-              href="https://console.stagewise.io"
-              className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-            >
-              Account
-              <IconUserUpdateFillDuo18 className="size-4" />
-            </Link>
+            <NavbarAuthLink />
             <Button
               variant="secondary"
               size="icon-md"
