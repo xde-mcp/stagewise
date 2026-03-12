@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./logo-combo-dark.svg">
-  <img src="./logo-combo.svg" alt="stagewise" height="60" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/stagewise-io/stagewise/refs/heads/main/logo-combo-dark.svg">
+  <img src="https://raw.githubusercontent.com/stagewise-io/stagewise/refs/heads/main/logo-combo.svg" alt="stagewise" height="60" />
 </picture>
 
 ### The coding agent built for the web
@@ -44,10 +44,9 @@ For more information on the license model, visit the [FAQ about the GNU Licenses
 
 For use cases that fall outside the scope permitted by the AGPLv3 license, feel free to [contact us](mailto:sales@stagewise.io).
 
-## Issues 
+## Issues
 
 Feel free to [open an issue](https://github.com/stagewise-io/stagewise/issues/new) if you found a bug or have a fresh idea.
-
 
 ## Community & Support
 
