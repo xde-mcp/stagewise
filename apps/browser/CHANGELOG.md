@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0-alpha.19 (2026-03-12)
+
+### Bug Fixes
+
+* fix olive surface-tinted color (294f525)
+* use release_pat to trigger ci on release-pr's (b0703a9)
+
 ## 1.0.0-alpha.18 (2026-03-12)
 
 ### Bug Fixes
