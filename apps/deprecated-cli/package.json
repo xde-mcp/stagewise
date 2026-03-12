@@ -1,0 +1,24 @@
+{
+  "name": "stagewise-cli",
+  "version": "0.12.0",
+  "description": "stagewise is now a desktop app. This CLI is deprecated.",
+  "license": "AGPL-3.0-only",
+  "author": {
+    "name": "stagewise Inc.",
+    "email": "support@stagewise.io"
+  },
+  "type": "module",
+  "bin": {
+    "stagewise": "dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "deprecated": "stagewise CLI has been deprecated. Download the desktop app at https://stagewise.io/download",
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
