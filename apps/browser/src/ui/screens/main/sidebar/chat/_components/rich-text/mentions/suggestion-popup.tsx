@@ -7,7 +7,7 @@ import {
   useState,
   type FC,
 } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import type { TabState } from '@shared/karton-contracts/ui';
 import { inferMimeType } from '@shared/mime-utils';

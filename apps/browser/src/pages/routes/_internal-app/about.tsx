@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import {
   RadioGroup,
   Radio,
@@ -170,7 +170,7 @@ function OpenSourceLicenses() {
     }
     setLoading(true);
     try {
-      const data = await import('@/generated/licenses.json');
+      const data = await import('@pages/generated/licenses.json');
       setLicenses(data.default as LicenseEntry[]);
       setExpanded(true);
     } catch {

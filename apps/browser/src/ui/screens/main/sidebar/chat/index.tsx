@@ -1,7 +1,7 @@
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import { ChatPanel } from './_components/index';
 import { NotSignedIn } from './_components/not-signed-in';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 export function SidebarChatSection() {
   const signedIn = useKartonState(

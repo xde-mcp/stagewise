@@ -1,4 +1,4 @@
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { IconSunFill18, IconMoonFill18 } from 'nucleo-ui-fill-18';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { ToggleButton } from '../primitives';

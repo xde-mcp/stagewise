@@ -1,4 +1,4 @@
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import type { UserMessageMetadata } from '@shared/karton-contracts/ui/agent/metadata';
 import {
   useMemo,
@@ -19,7 +19,7 @@ import { ReadFileToolPart } from './read-file';
 import { UpdateWorkspaceMdToolPart } from './update-workspace-md';
 import { SearchInLibraryDocsToolPart } from './search-in-library-docs';
 import { ListLibraryDocsToolPart } from './list-library-docs';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { useIsTruncated } from '@ui/hooks/use-is-truncated';
 import {
   Tooltip,

@@ -7,15 +7,15 @@ import {
   CollapsibleContent,
 } from '@stagewise/stage-ui/components/collapsible';
 import { ToolPartUI } from './shared/tool-part-ui';
-import { CodeBlock } from '@/components/ui/code-block';
-import { StreamingCodeBlock } from '@/components/ui/streaming-code-block';
-import { cn } from '@/utils';
+import { CodeBlock } from '@ui/components/ui/code-block';
+import { StreamingCodeBlock } from '@ui/components/ui/streaming-code-block';
+import { cn } from '@ui/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 
 import { getSandboxLabel } from './utils/sandbox-label-utils';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import {
   getRenderer,
   type RendererProps,

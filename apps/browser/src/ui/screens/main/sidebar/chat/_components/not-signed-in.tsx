@@ -1,10 +1,10 @@
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { InputOtp } from '@stagewise/stage-ui/components/input-otp';
-import { useKartonProcedure } from '@/hooks/use-karton';
-import { Logo } from '@/components/ui/logo';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
+import { Logo } from '@ui/components/ui/logo';
 import { useState, useCallback } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 type OtpPhase = 'email' | 'code';
 

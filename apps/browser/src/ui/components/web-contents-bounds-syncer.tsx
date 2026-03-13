@@ -1,4 +1,4 @@
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { useLayoutEffect } from 'react';
 
 type Bounds = { x: number; y: number; width: number; height: number };

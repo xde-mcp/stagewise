@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import { Music2Icon } from 'lucide-react';
 import type { FilePreviewEntry, FilePreviewProps } from '../types';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 function AudioCompact({ fileName, className }: FilePreviewProps) {
   return (

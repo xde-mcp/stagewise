@@ -20,7 +20,7 @@ import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollb
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { CheckIcon, XIcon, Loader2Icon } from 'lucide-react';
 
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { IdeLogo } from '@ui/components/ide-logo';
 import { getIDEFileUrl, IDE_SELECTION_ITEMS } from '@ui/utils';
@@ -29,7 +29,7 @@ import { FileContextMenu } from '@ui/components/file-context-menu';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
 import { type MountEntry, EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import {
   memo,
   useCallback,

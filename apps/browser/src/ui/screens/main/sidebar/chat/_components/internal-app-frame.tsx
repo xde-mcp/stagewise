@@ -1,5 +1,5 @@
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { XIcon } from 'lucide-react';

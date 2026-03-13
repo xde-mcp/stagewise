@@ -4,7 +4,7 @@ import {
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
 import { useMemo } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 interface ContextUsageRingProps {
   percentage: number;

@@ -5,7 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import type {
   CustomEndpoint,
   CustomModel,
@@ -19,7 +19,7 @@ import {
 } from '@shared/karton-contracts/ui/shared-types';
 import { availableModels } from '@shared/available-models';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@pages/utils';
 import { useIsTruncated } from '@ui/hooks/use-is-truncated';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import {

@@ -6,7 +6,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useMemo, useCallback, useState, useRef } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { buttonVariants } from '@stagewise/stage-ui/components/button';
 import {
   Tooltip,

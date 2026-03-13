@@ -5,10 +5,10 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { ChevronDownIcon } from 'lucide-react';
-import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
-import { useAutoScroll } from '@/hooks/use-auto-scroll';
+import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
+import { useAutoScroll } from '@ui/hooks/use-auto-scroll';
 
 export const ToolPartUI = ({
   trigger,

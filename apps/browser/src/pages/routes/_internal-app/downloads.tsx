@@ -26,7 +26,7 @@ import {
   useKartonProcedure,
   useKartonState,
   useKartonConnected,
-} from '@/hooks/use-karton';
+} from '@pages/hooks/use-karton';
 import {
   DownloadState,
   type DownloadsFilter,

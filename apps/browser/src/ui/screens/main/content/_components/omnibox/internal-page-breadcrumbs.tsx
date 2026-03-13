@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { IconChevronRight } from 'nucleo-micro-bold';
-import { Logo } from '@/components/ui/logo';
+import { Logo } from '@ui/components/ui/logo';
 
 interface InternalPageBreadcrumbsProps {
   url: string;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { useOverlayAccess, type AccessHandle } from '@/contexts';
-import { useEventListener } from '@/hooks/use-event-listener';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
+import { useOverlayAccess, type AccessHandle } from '@ui/contexts';
+import { useEventListener } from '@ui/hooks/use-event-listener';
 
 /**
  * DOMContextSelector uses the unified overlay system to capture mouse events

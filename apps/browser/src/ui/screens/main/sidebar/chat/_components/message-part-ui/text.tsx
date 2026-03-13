@@ -1,6 +1,6 @@
 import type { TextUIPart } from '@shared/karton-contracts/ui';
 import { memo } from 'react';
-import { Streamdown } from '@/components/streamdown';
+import { Streamdown } from '@ui/components/streamdown';
 
 interface TextPartProps {
   part: TextUIPart;

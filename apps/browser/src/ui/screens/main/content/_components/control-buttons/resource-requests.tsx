@@ -26,7 +26,7 @@ import {
   PopoverContent,
   PopoverTitle,
 } from '@stagewise/stage-ui/components/popover';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import {
   Collapsible,
   CollapsibleContent,

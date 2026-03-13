@@ -19,7 +19,7 @@ import {
   useKartonProcedure,
   useKartonConnected,
   useKartonState,
-} from '@/hooks/use-karton';
+} from '@pages/hooks/use-karton';
 import { DiffPreview } from '@ui/screens/main/sidebar/chat/_components/message-part-ui/tools/shared/diff-preview';
 import { FileIcon } from '@ui/components/file-icon';
 import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
@@ -41,7 +41,7 @@ import {
 } from '@stagewise/stage-ui/components/collapsible';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { useFileIDEHref } from '@/hooks/use-file-ide-href';
+import { useFileIDEHref } from '@pages/hooks/use-file-ide-href';
 import { IdePickerPopover } from '@ui/components/ide-picker-popover';
 import { FileContextMenu } from '@ui/components/file-context-menu';
 import { IdeLogo } from '@ui/components/ide-logo';

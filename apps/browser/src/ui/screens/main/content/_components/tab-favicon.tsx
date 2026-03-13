@@ -1,6 +1,6 @@
 import type { TabState } from '@shared/karton-contracts/ui';
 import { IconGlobe2Fill18 } from 'nucleo-ui-fill-18';
-import { Logo } from '@/components/ui/logo';
+import { Logo } from '@ui/components/ui/logo';
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2Icon } from 'lucide-react';
 

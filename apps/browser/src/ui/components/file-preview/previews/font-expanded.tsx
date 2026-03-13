@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Loader2Icon } from 'lucide-react';
 import type { FilePreviewProps } from '../types';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 const PANGRAM = 'The quick brown fox jumps over the lazy dog';
 const ALPHABET = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz';

@@ -1,4 +1,4 @@
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import {
   IconXmark,
   IconChevronLeft,
@@ -19,7 +19,7 @@ import {
   CollapsibleContent,
 } from '@stagewise/stage-ui/components/collapsible';
 import { cn } from '@stagewise/stage-ui/lib/utils';
-import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
+import { useHotKeyListener } from '@ui/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
 
 export interface SearchBarRef {

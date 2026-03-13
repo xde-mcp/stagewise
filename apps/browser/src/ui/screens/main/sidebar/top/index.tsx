@@ -1,5 +1,5 @@
 import posthog from 'posthog-js';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { IconDotsFill18, IconPlusFill18 } from 'nucleo-ui-fill-18';
 import { IconGear2Outline24 } from 'nucleo-core-outline-24';
 import { IconSidebarLeftHideOutline18 } from 'nucleo-ui-outline-18';
@@ -14,21 +14,21 @@ import {
   useComparingSelector,
   useKartonProcedure,
   useKartonState,
-} from '@/hooks/use-karton';
+} from '@ui/hooks/use-karton';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
+import { useHotKeyListener } from '@ui/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
-import { HotkeyComboText } from '@/components/hotkey-combo-text';
+import { HotkeyComboText } from '@ui/components/hotkey-combo-text';
 import { SETTINGS_PAGE_URL } from '@shared/internal-urls';
-import { useChatDraft } from '@/hooks/use-chat-draft';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useChatDraft } from '@ui/hooks/use-chat-draft';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import {
   AgentTypes,
   type AgentHistoryEntry,
 } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
-import { useEmptyAgentId } from '@/hooks/use-empty-agent';
+import { useEmptyAgentId } from '@ui/hooks/use-empty-agent';
 import { AgentsSelector, type AgentGroup } from './_components/agents-selector';
 
 // Static menu items — no component state captured, safe at module scope.

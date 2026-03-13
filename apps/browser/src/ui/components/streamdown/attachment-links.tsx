@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { usePostHog } from 'posthog-js/react';

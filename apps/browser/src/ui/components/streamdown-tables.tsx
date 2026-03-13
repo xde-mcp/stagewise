@@ -11,7 +11,7 @@ import {
   type TdHTMLAttributes,
 } from 'react';
 import type { ExtraProps } from 'react-markdown';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { CopyIcon, CopyCheckIcon, DownloadIcon } from 'lucide-react';
 

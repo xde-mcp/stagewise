@@ -2,13 +2,13 @@ import { IconMinus, IconPlus } from 'nucleo-micro-bold';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { IconMagnifierOutline18 } from 'nucleo-ui-outline-18';
-import { HotkeyComboText } from '@/components/hotkey-combo-text';
+import { HotkeyComboText } from '@ui/components/hotkey-combo-text';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import {
   Collapsible,
   CollapsibleContent,

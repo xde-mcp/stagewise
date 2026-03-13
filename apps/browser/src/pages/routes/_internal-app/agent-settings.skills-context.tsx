@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Switch } from '@stagewise/stage-ui/components/switch';
 import { IconPenDrawSparkleFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import {
   useEffect,
   useState,
@@ -11,7 +11,7 @@ import {
   useRef,
   useLayoutEffect,
 } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@pages/utils';
 import type { ContextFilesResult } from '@shared/karton-contracts/pages-api/types';
 import type { Patch } from '@shared/karton-contracts/ui/shared-types';
 import { Button } from '@stagewise/stage-ui/components/button';

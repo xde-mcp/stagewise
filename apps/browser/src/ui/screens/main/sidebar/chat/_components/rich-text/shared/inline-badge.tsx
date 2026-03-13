@@ -2,7 +2,7 @@ import { NodeViewWrapper } from '@tiptap/react';
 import { PreviewCard as PreviewCardBase } from '@base-ui/react/preview-card';
 import { XIcon } from 'lucide-react';
 import { useCallback, forwardRef } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { PreviewCard } from '@stagewise/stage-ui/components/preview-card';
 import { buttonVariants } from '@stagewise/stage-ui/components/button';
 import {

@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { Select } from '@stagewise/stage-ui/components/select';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import { produceWithPatches, enablePatches } from 'immer';
 import { ChevronLeftIcon } from 'lucide-react';
 import type { ConfigurablePermissionType } from '@shared/karton-contracts/ui/shared-types';

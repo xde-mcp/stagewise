@@ -8,7 +8,7 @@ import {
   ListChevronsDownUpIcon,
   ListChevronsUpDownIcon,
 } from 'lucide-react';
-import { FileIcon } from '@/components/file-icon';
+import { FileIcon } from '@ui/components/file-icon';
 import { useMemo, useState, useEffect } from 'react';
 import { Skeleton } from '@stagewise/stage-ui/components/skeleton';
 import {
@@ -17,10 +17,10 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { diffLines } from 'diff';
-import { cn, stripMountPrefix } from '@/utils';
+import { cn, stripMountPrefix } from '@ui/utils';
 import { Button } from '@stagewise/stage-ui/components/button';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
-import { useFileIDEHref } from '@/hooks/use-file-ide-href';
+import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { FileContextMenu } from '@ui/components/file-context-menu';
 
 export const DeleteFileToolPart = ({

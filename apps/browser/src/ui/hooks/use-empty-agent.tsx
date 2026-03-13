@@ -1,7 +1,7 @@
 import { useRef } from 'react';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
-import { extractTipTapText } from '@/utils/text-utils';
+import { extractTipTapText } from '@ui/utils/text-utils';
 
 /**
  * Returns the ID of an existing empty CHAT agent (no history + no meaningful

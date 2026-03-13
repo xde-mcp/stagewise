@@ -5,7 +5,7 @@ import {
 } from 'nucleo-core-outline-24';
 import { ChevronDownIcon } from 'lucide-react';
 import { useState } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import {
   Tooltip,
@@ -16,8 +16,8 @@ import {
   AttachmentLinkRouter,
   parseMessageSegments,
   getAttachmentKey,
-} from '@/components/streamdown/attachment-links';
-import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
+} from '@ui/components/streamdown/attachment-links';
+import { AttachmentMetadataProvider } from '@ui/hooks/use-attachment-metadata';
 import type { StatusCardSection } from './shared';
 import { getMessageText } from './shared';
 

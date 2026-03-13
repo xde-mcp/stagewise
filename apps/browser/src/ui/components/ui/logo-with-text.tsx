@@ -1,5 +1,5 @@
 import type { FC, HTMLAttributes } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { Logo } from '@stagewise/stage-ui/components/logo';
 import { LogoText } from '@stagewise/stage-ui/components/logo-text';
 

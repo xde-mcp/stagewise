@@ -1,9 +1,9 @@
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { InputOtp } from '@stagewise/stage-ui/components/input-otp';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Tooltip,

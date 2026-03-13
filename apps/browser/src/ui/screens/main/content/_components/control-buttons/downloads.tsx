@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTitle,
 } from '@stagewise/stage-ui/components/popover';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import { DownloadState } from '@shared/karton-contracts/pages-api/types';
 import type {
   DownloadSummary,
@@ -28,7 +28,7 @@ import {
   TrashIcon,
   DownloadIcon,
 } from 'lucide-react';
-import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
+import { useHotKeyListener } from '@ui/hooks/use-hotkey-listener';
 import { DOWNLOADS_PAGE_URL } from '@shared/internal-urls';
 import { HotkeyActions } from '@shared/hotkeys';
 import { AreaChart, Area, ResponsiveContainer, XAxis } from 'recharts';

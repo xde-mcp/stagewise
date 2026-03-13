@@ -1,8 +1,8 @@
-import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
+import { useHotKeyListener } from '@ui/hooks/use-hotkey-listener';
 import { HotkeyActions } from '@shared/hotkeys';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import { useCallback, useMemo } from 'react';
-import { useTabUIState } from '@/hooks/use-tab-ui-state';
+import { useTabUIState } from '@ui/hooks/use-tab-ui-state';
 import { HOME_PAGE_URL } from '@shared/internal-urls';
 
 export function CoreHotkeyBindings({

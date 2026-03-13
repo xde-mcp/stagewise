@@ -2,7 +2,7 @@ import {
   ChatSuggestion,
   type SuggestionItem,
   suggestions,
-} from '@/components/suggestions';
+} from '@ui/components/suggestions';
 import { useMemo, useRef, useState } from 'react';
 
 const VISIBLE_COUNT = 3;

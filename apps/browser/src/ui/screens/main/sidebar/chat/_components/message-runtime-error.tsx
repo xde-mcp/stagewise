@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { IconTriangleWarning } from 'nucleo-micro-bold';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import {
@@ -14,8 +14,8 @@ import {
   CollapsibleTrigger,
 } from '@stagewise/stage-ui/components/collapsible';
 import { ChevronDownIcon } from 'lucide-react';
-import { useKartonState } from '@/hooks/use-karton';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useKartonState } from '@ui/hooks/use-karton';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { availableModels } from '@shared/available-models';
 import type { ModelProvider } from '@shared/karton-contracts/ui/shared-types';
 import type { AgentRuntimeError } from '@shared/karton-contracts/ui/agent';

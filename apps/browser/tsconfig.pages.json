@@ -8,7 +8,7 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./src/pages/*"],
+      "@pages/*": ["./src/pages/*"],
       "@shared/*": ["./src/shared/*"],
       "@ui/*": ["./src/ui/*"],
       "@assets/*": ["./assets/pages/*"]

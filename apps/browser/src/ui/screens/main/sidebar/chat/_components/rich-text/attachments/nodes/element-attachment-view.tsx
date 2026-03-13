@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { getTruncatedFileUrl } from '@ui/utils';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import { IdePickerPopover } from '@ui/components/ide-picker-popover';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import { useMessageAttachments } from '@ui/hooks/use-message-elements';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';

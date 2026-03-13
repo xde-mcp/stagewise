@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { SidebarNav } from '@/components/sidebar-nav';
+import { SidebarNav } from '@pages/components/sidebar-nav';
 import {
   IconHistoryFillDuo18,
   IconBroomFillDuo18,

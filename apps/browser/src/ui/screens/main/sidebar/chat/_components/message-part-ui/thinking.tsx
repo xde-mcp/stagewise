@@ -1,8 +1,8 @@
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import type { ReasoningUIPart } from '@shared/karton-contracts/ui';
 import { useMemo } from 'react';
 import { BrainIcon } from 'lucide-react';
-import { Streamdown } from '@/components/streamdown';
+import { Streamdown } from '@ui/components/streamdown';
 import { ToolPartUI } from './tools/shared/tool-part-ui';
 import { useToolAutoExpand } from './tools/shared/use-tool-auto-expand';
 

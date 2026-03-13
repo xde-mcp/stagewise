@@ -1,6 +1,6 @@
 import { ResizablePanel } from '@stagewise/stage-ui/components/resizable';
-import { useTabUIState } from '@/hooks/use-tab-ui-state';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useTabUIState } from '@ui/hooks/use-tab-ui-state';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import {
   useCallback,
   useEffect,
@@ -14,7 +14,7 @@ import {
   TabsContainer,
   DND_DROP_ANIMATION_DURATION,
 } from './_components/tabs-container';
-import { useEventListener } from '@/hooks/use-event-listener';
+import { useEventListener } from '@ui/hooks/use-event-listener';
 import { BackgroundWithCutout } from './_components/background-with-cutout';
 import { CoreHotkeyBindings } from './_components/core-hotkey-bindings';
 import {

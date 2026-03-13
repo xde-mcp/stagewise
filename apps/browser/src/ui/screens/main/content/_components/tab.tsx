@@ -12,10 +12,10 @@ import { WithTabPreviewCard } from './with-tab-preview-card';
 import { TabFavicon } from './tab-favicon';
 import { IconVolumeUpFill18, IconVolumeXmarkFill18 } from 'nucleo-ui-fill-18';
 import { IconXmark } from 'nucleo-micro-bold';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { useTabUIState } from '@/hooks/use-tab-ui-state';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
+import { useTabUIState } from '@ui/hooks/use-tab-ui-state';
 import { HotkeyActions } from '@shared/hotkeys';
-import { HotkeyComboText } from '@/components/hotkey-combo-text';
+import { HotkeyComboText } from '@ui/components/hotkey-combo-text';
 
 const CUBIC_BEZIER_CONTROL_POINT_FACTOR = 0.5522847498;
 

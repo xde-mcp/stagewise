@@ -13,7 +13,7 @@ import {
   type AutocompleteRootProps,
 } from '@base-ui/react/autocomplete';
 import { PageTransition } from '@shared/karton-contracts/pages-api/types';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import {
   type OmniboxSuggestionItem,
   useOmniboxSuggestions,

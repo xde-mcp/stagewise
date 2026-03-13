@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@pages/utils';
 import { Switch } from '@stagewise/stage-ui/components/switch';
 import { Input } from '@stagewise/stage-ui/components/input';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';

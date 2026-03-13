@@ -1,10 +1,10 @@
 import { useCallback, type MouseEvent, type WheelEvent } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import {
   useWebContentsOverlay,
   dispatchOverlayEvent,
   type WebContentsOverlayEventType,
-} from '@/contexts/web-contents-overlay';
+} from '@ui/contexts/web-contents-overlay';
 
 /**
  * The interaction layer captures all mouse/pointer/wheel events

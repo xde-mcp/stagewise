@@ -13,8 +13,8 @@ import {
   IconGlobe3Outline18,
   IconWindowCodeOutline18,
 } from 'nucleo-ui-outline-18';
-import { useKartonProcedure } from '@/hooks/use-karton';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
+import { useDebouncedValue } from '@ui/hooks/use-debounced-value';
 
 /**
  * Determines if the input is a URL or search query, and returns the appropriate URL.

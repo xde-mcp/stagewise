@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import {
   Collapsible,
   CollapsibleContent,

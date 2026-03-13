@@ -16,7 +16,10 @@ import React, {
 } from 'react';
 import { Loader2Icon, LinkIcon } from 'lucide-react';
 import { IconChevronRightOutline18 } from 'nucleo-ui-outline-18';
-import { useKartonProcedure, useKartonConnected } from '@/hooks/use-karton';
+import {
+  useKartonProcedure,
+  useKartonConnected,
+} from '@pages/hooks/use-karton';
 import type {
   HistoryFilter,
   HistoryResult,

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import { stripMountPrefix } from '@ui/utils';
 import { normalizePath } from '@shared/path-utils';
 import type { WorkspaceMountInfo } from '@shared/karton-contracts/pages-api';

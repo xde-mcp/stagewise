@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useKartonState } from '@/hooks/use-karton';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useKartonState } from '@ui/hooks/use-karton';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { XIcon, TriangleAlertIcon } from 'lucide-react';

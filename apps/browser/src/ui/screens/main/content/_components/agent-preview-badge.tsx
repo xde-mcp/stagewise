@@ -6,10 +6,10 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { HotkeyActions } from '@shared/hotkeys';
-import { HotkeyComboText } from '@/components/hotkey-combo-text';
-import { useKartonState } from '@/hooks/use-karton';
-import { cn } from '@/utils';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { HotkeyComboText } from '@ui/components/hotkey-combo-text';
+import { useKartonState } from '@ui/hooks/use-karton';
+import { cn } from '@ui/utils';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 
 type AgentPreviewBadgeProps = {
   onClick: () => void;

@@ -1,9 +1,9 @@
 import { useMemo, useState, useCallback } from 'react';
 import { IconGlobe2Fill18 } from 'nucleo-ui-fill-18';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { InlineBadge, InlineBadgeWrapper } from '../shared';
 import { useTabSnapshots } from '@ui/hooks/use-tab-snapshots';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import type { TabMentionMeta } from '@shared/karton-contracts/ui/agent/metadata';
 
 interface TabMentionBadgeProps {

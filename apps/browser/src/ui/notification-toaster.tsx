@@ -1,4 +1,4 @@
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { useState, useEffect, useRef } from 'react';
 import {
   toast,

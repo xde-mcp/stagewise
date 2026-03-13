@@ -1,13 +1,13 @@
 import { Button } from '@stagewise/stage-ui/components/button';
 import { IconMediaStopFill18 } from 'nucleo-ui-fill-18';
 import { IconMagicWandSparkleFill18 } from 'nucleo-ui-fill-18';
-import { stripMountPrefix } from '@/utils';
+import { stripMountPrefix } from '@ui/utils';
 import { getBaseName } from '@shared/path-utils';
 import { Loader2Icon, XIcon } from 'lucide-react';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import type { StatusCardSection } from './shared';
 import type { MouseEvent } from 'react';
-import { FileIcon } from '@/components/file-icon';
+import { FileIcon } from '@ui/components/file-icon';
 import {
   Tooltip,
   TooltipTrigger,

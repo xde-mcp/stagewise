@@ -4,7 +4,7 @@ import {
   useKartonProcedure,
   useKartonState,
   useKartonConnected,
-} from '@/hooks/use-karton';
+} from '@pages/hooks/use-karton';
 import type {
   MostVisitedOriginEntry,
   OriginThumbnailResult,
@@ -17,7 +17,7 @@ import {
   IconChevronDownOutline18,
 } from 'nucleo-ui-outline-18';
 import { IconEarthFillDuo18 } from 'nucleo-ui-fill-duo-18';
-import { cn } from '@/utils';
+import { cn } from '@pages/utils';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { LogoCombo } from '@stagewise/stage-ui/components/logo-combo';
 

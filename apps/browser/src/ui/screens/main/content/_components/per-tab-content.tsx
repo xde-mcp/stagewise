@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@stagewise/stage-ui/lib/utils';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import type { TabState } from '@shared/karton-contracts/ui';
 //import { Button } from '@stagewise/stage-ui/components/button';
 //import {
@@ -28,12 +28,12 @@ import { ZoomBar } from './control-buttons/zoom-bar';
 import { SearchBar, type SearchBarRef } from './control-buttons/search-bar';
 import { ResourceRequestsControlButton } from './control-buttons/resource-requests';
 import { DownloadsControlButton } from './control-buttons/downloads';
-import { DOMContextSelector } from '@/components/dom-context-selector/selector-canvas';
-import { WebContentsOverlay } from '@/components/web-contents-overlay';
-import { WebContentsOverlayProvider } from '@/contexts';
+import { DOMContextSelector } from '@ui/components/dom-context-selector/selector-canvas';
+import { WebContentsOverlay } from '@ui/components/web-contents-overlay';
+import { WebContentsOverlayProvider } from '@ui/contexts';
 import { BasicAuthDialog } from './basic-auth-dialog';
 //import { DevToolbar, useHasOpenPanel, useToolbarWidth } from './dev-toolbar';
-//import { HotkeyComboText } from '@/components/hotkey-combo-text';
+//import { HotkeyComboText } from '@ui/components/hotkey-combo-text';
 //import { HotkeyActions } from '@shared/hotkeys';
 import { ColorSchemeWidget } from './dev-toolbar/widgets/color-scheme';
 import { ChromeDevToolsWidget } from './dev-toolbar/widgets/chrome-devtools';

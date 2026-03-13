@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 const textSlideshowVariants = cva('relative block h-[1.2em] overflow-hidden');
 
