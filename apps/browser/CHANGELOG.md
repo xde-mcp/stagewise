@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0-alpha.24 (2026-03-13)
+
+### Bug Fixes
+
+* fix windows-focus bugs on omnibox (055ebd2)
+* add strict type checking and noUncheckedIndexedAccess (5d6624e)
+
+### Other Changes
+
+* enforce explicit aliases for pages- and ui-imports (2378337)
+
 ## 1.0.0-alpha.23 (2026-03-12)
 
 ### Bug Fixes
