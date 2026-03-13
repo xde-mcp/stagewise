@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.27 (2026-03-13)
+
+### Bug Fixes
+
+* revert to base64 for file parts (fa852f0)
+
 ## 1.0.0-alpha.26 (2026-03-13)
 
 ### Bug Fixes
