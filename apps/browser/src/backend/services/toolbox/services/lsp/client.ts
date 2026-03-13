@@ -108,14 +108,18 @@ export class LspClient extends EventEmitter {
     }
   }
 
+  private readonly resolvedEnv: Record<string, string> | null;
+
   private constructor(
     private readonly serverInfo: LspServerInfo,
     private readonly logger: Logger,
     root: string,
+    resolvedEnv?: Record<string, string> | null,
   ) {
     super();
     this.serverID = serverInfo.id;
     this.root = root;
+    this.resolvedEnv = resolvedEnv ?? null;
   }
 
   /**
@@ -125,8 +129,9 @@ export class LspClient extends EventEmitter {
     serverInfo: LspServerInfo,
     logger: Logger,
     root: string,
+    resolvedEnv?: Record<string, string> | null,
   ): Promise<LspClient | undefined> {
-    const client = new LspClient(serverInfo, logger, root);
+    const client = new LspClient(serverInfo, logger, root, resolvedEnv);
     const success = await client.start();
     if (!success) {
       return undefined;
@@ -174,7 +179,7 @@ export class LspClient extends EventEmitter {
   }
 
   private async startInternal(): Promise<boolean> {
-    const handle = await this.serverInfo.spawn(this.root);
+    const handle = await this.serverInfo.spawn(this.root, this.resolvedEnv);
     if (!handle) {
       this.logger.debug(
         `[LspClient:${this.serverID}] Failed to spawn server for root: ${this.root}`,

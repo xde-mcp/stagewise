@@ -48,7 +48,10 @@ export const eslintServer: LspServerInfo = {
     return hasConfig && hasEslint;
   },
 
-  async spawn(projectRoot: string): Promise<LspServerHandle | undefined> {
+  async spawn(
+    projectRoot: string,
+    resolvedEnv?: Record<string, string> | null,
+  ): Promise<LspServerHandle | undefined> {
     try {
       const serverPath = await findBundledEslintServer();
 
@@ -59,7 +62,11 @@ export const eslintServer: LspServerInfo = {
         return undefined;
       }
 
-      return spawnEslintServer(serverPath, projectRoot);
+      return spawnEslintServer(
+        serverPath,
+        projectRoot,
+        resolvedEnv ?? globalThis.process.env,
+      );
     } catch (error) {
       console.error('[ESLint Server] Failed to spawn:', error);
       return undefined;
@@ -96,12 +103,16 @@ async function findBundledEslintServer(): Promise<string | undefined> {
   return undefined;
 }
 
-function spawnEslintServer(serverPath: string, root: string): LspServerHandle {
+function spawnEslintServer(
+  serverPath: string,
+  root: string,
+  env: Record<string, string> | NodeJS.ProcessEnv,
+): LspServerHandle {
   const process = spawn('node', [serverPath, '--stdio'], {
     stdio: ['pipe', 'pipe', 'pipe'],
     cwd: root,
     env: {
-      ...globalThis.process.env,
+      ...env,
       ESLINT_WORKSPACE_FOLDER: root,
     },
   });

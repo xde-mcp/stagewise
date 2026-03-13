@@ -30,7 +30,12 @@ export const typescriptServer: LspServerInfo = {
     ]);
   },
 
-  async spawn(projectRoot: string): Promise<LspServerHandle | undefined> {
+  async spawn(
+    projectRoot: string,
+    resolvedEnv?: Record<string, string> | null,
+  ): Promise<LspServerHandle | undefined> {
+    const env = resolvedEnv ?? globalThis.process.env;
+
     // Try project's typescript-language-server first
     const localBin = await findNodeModulesBin(
       projectRoot,
@@ -39,11 +44,11 @@ export const typescriptServer: LspServerInfo = {
 
     if (localBin) {
       const tsLib = await findTypeScriptLib(projectRoot);
-      return spawnTsServer(localBin, [], tsLib);
+      return spawnTsServer(localBin, [], tsLib, env);
     }
 
     // Try npx fallback
-    return spawnViaNpx(projectRoot);
+    return spawnViaNpx(projectRoot, env);
   },
 };
 
@@ -60,13 +65,14 @@ function spawnTsServer(
   binary: string,
   args: string[],
   tsLibPath?: string,
+  env?: Record<string, string> | NodeJS.ProcessEnv,
 ): LspServerHandle {
   const spawnArgs = ['--stdio', ...args];
 
   const process = spawn(binary, spawnArgs, {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: {
-      ...globalThis.process.env,
+      ...(env ?? globalThis.process.env),
       NODE_OPTIONS: '--max-old-space-size=4096',
     },
   });
@@ -79,13 +85,16 @@ function spawnTsServer(
   };
 }
 
-async function spawnViaNpx(root: string): Promise<LspServerHandle | undefined> {
+async function spawnViaNpx(
+  root: string,
+  env?: Record<string, string> | NodeJS.ProcessEnv,
+): Promise<LspServerHandle | undefined> {
   try {
     const process = spawn('npx', ['typescript-language-server', '--stdio'], {
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: root,
       env: {
-        ...globalThis.process.env,
+        ...(env ?? globalThis.process.env),
         NODE_OPTIONS: '--max-old-space-size=4096',
       },
     });

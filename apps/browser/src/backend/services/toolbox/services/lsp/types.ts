@@ -86,8 +86,16 @@ export interface LspServerInfo {
   /**
    * Spawn the LSP server process for a given project root.
    * Returns undefined if the server binary is not available.
+   *
+   * @param resolvedEnv - Pre-resolved user shell environment (from resolveShellEnv).
+   *   When provided, used as the `env` for child_process.spawn() so that LSP
+   *   binaries can find `node`, `npx`, etc. on the user's real PATH.
+   *   Falls back to `process.env` when null/undefined.
    */
-  spawn: (projectRoot: string) => Promise<LspServerHandle | undefined>;
+  spawn: (
+    projectRoot: string,
+    resolvedEnv?: Record<string, string> | null,
+  ) => Promise<LspServerHandle | undefined>;
 }
 
 /**
