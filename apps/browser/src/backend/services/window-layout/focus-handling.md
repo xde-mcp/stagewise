@@ -280,6 +280,16 @@ Chronological record of z-order/focus bugs and their fixes. Read these to unders
 - **Root cause:** The omnibox's combobox/popover component closes itself (`isOmniboxOpen = false`) on Enter **before** the `onSubmit` handler runs. The z-order `useEffect` observed the close, saw `didNavigateRef.current === false` (not yet set by `onSubmit`), and eagerly called `movePanelToForeground('tab-content')`. By the time `onSubmit` set `didNavigateRef.current = true`, the damage was done.
 - **Fix:** Removed the `'tab-content'` call from the omnibox close effect entirely. The omnibox now **only** fires `movePanelToForeground('stagewise-ui')` on open. On close, `WebContentsBoundsSyncer` handles restoring `'tab-content'` naturally via hover detection + `data-omnibox-modal-active` (which stays set via `navigationPending` during page load). This eliminates the race and aligns with invariant 6 — the syncer is the sole continuous z-order driver.
 
+### 9.9 Win32: Redundant `updateZOrder()` destroys native HWND keyboard focus
+
+- **Symptom:** On Windows, clicking the omnibox or pressing Ctrl+L appeared to give DOM focus (`document.activeElement === INPUT`), but the cursor didn't appear and keyboard input was silently dropped. The omnibox was completely non-functional.
+- **Root cause:** `handleMovePanelToForeground` had no short-circuit — it always called `updateZOrder()` even when `isWebContentInteractive` was already in the desired state. On Win32, `updateZOrder()` must `removeChildView`/`addChildView` all views to work around a hit-testing bug, and this remove/add cycle **destroys native HWND keyboard focus** every time it runs. The `WebContentsBoundsSyncer` fires `movePanelToForeground('stagewise-ui')` on every `mousemove` while the cursor is over the UI area (~every 100-200ms). Each redundant call triggered the destructive remove/add dance, immediately killing whatever native focus the omnibox had just acquired. The DOM layer (`document.activeElement`) was unaware of the native focus loss, creating a confusing disconnect between what the code reported and what the user experienced.
+- **Fix (three parts):**
+  1. **Short-circuit in `handleMovePanelToForeground`:** If `isWebContentInteractive` already equals the target value, return immediately without calling `updateZOrder()`. This is the primary fix — it eliminates the continuous focus destruction from `WebContentsBoundsSyncer` on mouse move.
+  2. **Focus restore in `updateZOrder()` Win32 path:** After the remove/add dance, check which view had native focus before and restore it (via `webContents.focus()`) if that view is the one ending up topmost. This preserves focus during *legitimate* z-order transitions.
+  3. **Win32 z-order in `handleTogglePanelKeyboardFocus`:** When `panel === 'stagewise-ui'` and `isWebContentInteractive` is `true` on Win32, set `isWebContentInteractive = false` and call `updateZOrder()` *before* `uiController.focus()`. This was documented in Invariant 3 and Bug 9.5 but had been lost during a code reset.
+- **Key insight:** On Win32, `removeChildView`/`addChildView` is not idempotent for keyboard focus. The operation is cheap for z-order but destructive for focus. Any call to `updateZOrder()` must be guarded against redundancy.
+
 ---
 
 ## 10. Invariants
@@ -301,3 +311,5 @@ Rules that must always hold. Violating any of these will cause regressions:
 7. **UI-forcing callers (`NotificationToaster`, `BasicAuthDialog`) only ever fire `'stagewise-ui'`** — they never fire `'tab-content'`. This ensures overlays are always visible.
 
 8. **The omnibox only fires `'stagewise-ui'` (on open) — never `'tab-content'`.** On close, `WebContentsBoundsSyncer` restores `'tab-content'` naturally via hover detection. This avoids race conditions between the popover closing and submit handlers running (see bug 9.8).
+
+9. **`handleMovePanelToForeground` must short-circuit when `isWebContentInteractive` already matches the target value.** On Win32, every `updateZOrder()` call destroys native HWND keyboard focus via the `removeChildView`/`addChildView` dance. The `WebContentsBoundsSyncer` fires `movePanelToForeground` on every mouse move, so without the short-circuit, any UI element with focus will lose it within ~100-200ms. See bug 9.9.
