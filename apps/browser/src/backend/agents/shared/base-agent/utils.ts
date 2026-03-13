@@ -32,8 +32,6 @@ import xml from 'xml';
 import specialTokens from '../prompts/utils/special-tokens';
 import type { ModelCapabilities } from '@shared/karton-contracts/ui/shared-types';
 import { findModelsAcceptingMime } from '@shared/available-models';
-import type { AssetCacheService } from '@/services/asset-cache';
-import { getBlobPath } from '@/utils/attachment-blobs';
 
 export type BlobReader = (
   agentId: string,
@@ -241,7 +239,6 @@ async function buildSyntheticUserMessageForAttachments(
   capabilities?: ModelCapabilities,
   onBlobError?: BlobErrorReporter,
   currentModelId?: string,
-  assetCacheService?: AssetCacheService,
 ): Promise<UserModelMessage> {
   const content: UserContent = [];
 
@@ -270,46 +267,27 @@ async function buildSyntheticUserMessageForAttachments(
       }),
     });
 
+    // NOTE: Attachments are always sent as inline data (Uint8Array), never
+    // as URLs. The Vercel AI gateway may route requests to upstream providers
+    // (AWS Bedrock, Vertex AI, etc.) that reject URL-based image/file parts.
+    // AssetCacheService exists for future per-provider URL support but is
+    // intentionally not used here.
     if (check.canConsume) {
       try {
-        const filePath = getBlobPath(agentInstanceId, f.id);
-        const result = await assetCacheService?.resolve(
-          filePath,
-          f.mediaType,
-          f.fileName,
-        );
-        if (result?.type === 'url') {
-          if (isImageMime(f.mediaType)) {
-            content.push({
-              type: 'image',
-              image: new URL(result.url),
-              mediaType: f.mediaType,
-            } satisfies ImagePart);
-          } else {
-            content.push({
-              type: 'file',
-              data: new URL(result.url),
-              mediaType: f.mediaType,
-              filename: f.fileName,
-            } satisfies FilePart);
-          }
+        const buf = await blobReader(agentInstanceId, f.id);
+        if (isImageMime(f.mediaType)) {
+          content.push({
+            type: 'image',
+            image: new Uint8Array(buf),
+            mediaType: f.mediaType,
+          } satisfies ImagePart);
         } else {
-          const buf =
-            result?.buffer ?? (await blobReader(agentInstanceId, f.id));
-          if (isImageMime(f.mediaType)) {
-            content.push({
-              type: 'image',
-              image: new Uint8Array(buf),
-              mediaType: f.mediaType,
-            } satisfies ImagePart);
-          } else {
-            content.push({
-              type: 'file',
-              data: new Uint8Array(buf),
-              mediaType: f.mediaType,
-              filename: f.fileName,
-            } satisfies FilePart);
-          }
+          content.push({
+            type: 'file',
+            data: new Uint8Array(buf),
+            mediaType: f.mediaType,
+            filename: f.fileName,
+          } satisfies FilePart);
         }
       } catch (err) {
         onBlobError?.(err, {
@@ -399,7 +377,6 @@ export const convertAgentMessagesToModelMessages = async (
   currentModelId?: string,
   shellInfo?: ShellInfo | null,
   skillDetails?: Map<string, SkillInfo>,
-  assetCacheService?: AssetCacheService,
 ): Promise<ModelMessage[]> => {
   // ─── Step 1: Find compression boundary ──────────────────────────────
 
@@ -451,7 +428,6 @@ export const convertAgentMessagesToModelMessages = async (
         modelCapabilities,
         onBlobError,
         currentModelId,
-        assetCacheService,
       );
       // convertUserMessage always returns content as an array of parts
       const content = userMsg.content as (TextPart | ImagePart | FilePart)[];
@@ -499,7 +475,6 @@ export const convertAgentMessagesToModelMessages = async (
             modelCapabilities,
             onBlobError,
             currentModelId,
-            assetCacheService,
           );
           const attachContent = Array.isArray(attachmentMsg.content)
             ? attachmentMsg.content
@@ -694,7 +669,6 @@ async function convertUserMessage(
   modelCapabilities?: ModelCapabilities,
   onBlobError?: BlobErrorReporter,
   currentModelId?: string,
-  assetCacheService?: AssetCacheService,
 ): Promise<UserModelMessage> {
   const parts = message.parts.map((part) => {
     if (part.type === 'text')
@@ -736,50 +710,27 @@ async function convertUserMessage(
         }),
       });
 
+      // NOTE: Attachments are always sent as inline data (Uint8Array), never
+      // as URLs. The Vercel AI gateway may route requests to upstream providers
+      // (AWS Bedrock, Vertex AI, etc.) that reject URL-based image/file parts.
+      // AssetCacheService exists for future per-provider URL support but is
+      // intentionally not used here.
       if (check.canConsume) {
         try {
-          const filePath = getBlobPath(agentInstanceId, f.id);
-          const result = await assetCacheService?.resolve(
-            filePath,
-            f.mediaType,
-            f.fileName,
-          );
-          if (result?.type === 'url') {
-            if (isImageMime(f.mediaType)) {
-              // Images with URLs bypass convertToModelMessages entirely
-              // so the SDK passes the URL through to the provider as-is
-              // instead of downloading and base64-encoding the content.
-              directParts.push({
-                type: 'image',
-                image: new URL(result.url),
-                mediaType: f.mediaType,
-              } satisfies ImagePart);
-            } else {
-              // Non-image presigned URL: FileUIPart goes through convertToModelMessages.
-              parts.push({
-                type: 'file',
-                url: result.url,
-                mediaType: f.mediaType,
-                filename: f.fileName,
-              } as unknown as (typeof parts)[number]);
-            }
+          const buf = await blobReader(agentInstanceId, f.id);
+          if (isImageMime(f.mediaType)) {
+            directParts.push({
+              type: 'image',
+              image: new Uint8Array(buf),
+              mediaType: f.mediaType,
+            } satisfies ImagePart);
           } else {
-            const buf =
-              result?.buffer ?? (await blobReader(agentInstanceId, f.id));
-            if (isImageMime(f.mediaType)) {
-              directParts.push({
-                type: 'image',
-                image: new Uint8Array(buf),
-                mediaType: f.mediaType,
-              } satisfies ImagePart);
-            } else {
-              directParts.push({
-                type: 'file',
-                data: new Uint8Array(buf),
-                mediaType: f.mediaType,
-                filename: f.fileName,
-              });
-            }
+            directParts.push({
+              type: 'file',
+              data: new Uint8Array(buf),
+              mediaType: f.mediaType,
+              filename: f.fileName,
+            } satisfies FilePart);
           }
         } catch (err) {
           onBlobError?.(err, {

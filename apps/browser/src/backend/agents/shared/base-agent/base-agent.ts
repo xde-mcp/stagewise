@@ -330,6 +330,17 @@ export abstract class BaseAgent<
   protected readonly telemetryService: TelemetryService;
   protected readonly logger: Logger;
   protected readonly modelProviderService: ModelProviderService;
+
+  /**
+   * Asset cache for uploading attachment blobs to S3 and returning presigned
+   * read URLs. Currently unused: all attachment data is sent inline (base64)
+   * because the Vercel AI gateway may route to upstream providers that do
+   * not support URL-based image/file inputs. The service and its wiring are
+   * kept intact so URL-based delivery can be re-enabled per-provider once
+   * we can determine the final routing target before building the request.
+   *
+   * See also: AssetCacheService in services/asset-cache/index.ts
+   */
   protected readonly assetCacheService?: AssetCacheService;
 
   // Internal state
@@ -1008,7 +1019,6 @@ export abstract class BaseAgent<
       activeModelId,
       shellInfo,
       skillDetails,
-      this.assetCacheService,
     );
   }
 
