@@ -153,7 +153,7 @@ export class TabController extends EventEmitter<TabControllerEventMap> {
   private static activeHandles = new Set<string>();
   private static retiredHandles: { handle: string; retiredAt: number }[] = [];
   private static generationCounter = 0;
-  private static readonly MIN_REUSE_DISTANCE = 10;
+  private static readonly MIN_REUSE_DISTANCE = 100;
 
   public readonly id: string;
   public readonly handle: string;
