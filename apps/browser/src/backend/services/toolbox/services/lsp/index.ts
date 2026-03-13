@@ -42,6 +42,7 @@ export interface LspServiceEvents {
 export class LspService extends DisposableService {
   private readonly logger: Logger;
   private readonly clientRuntime: ClientRuntimeNode;
+  private readonly resolvedEnv: Record<string, string> | null;
   private readonly emitter = new EventEmitter();
 
   /** Active LSP client instances: serverID -> LspClient */
@@ -56,10 +57,15 @@ export class LspService extends DisposableService {
   /** Cache of server activation checks */
   private activationCache = new Map<string, boolean>();
 
-  private constructor(logger: Logger, clientRuntime: ClientRuntimeNode) {
+  private constructor(
+    logger: Logger,
+    clientRuntime: ClientRuntimeNode,
+    resolvedEnv?: Record<string, string> | null,
+  ) {
     super();
     this.logger = logger;
     this.clientRuntime = clientRuntime;
+    this.resolvedEnv = resolvedEnv ?? null;
   }
 
   /**
@@ -68,8 +74,9 @@ export class LspService extends DisposableService {
   public static async create(
     logger: Logger,
     clientRuntime: ClientRuntimeNode,
+    resolvedEnv?: Record<string, string> | null,
   ): Promise<LspService> {
-    const instance = new LspService(logger, clientRuntime);
+    const instance = new LspService(logger, clientRuntime, resolvedEnv);
     logger.debug(
       `[LspService] Created service for project: ${clientRuntime.fileSystem.getCurrentWorkingDirectory()}`,
     );
@@ -518,6 +525,7 @@ export class LspService extends DisposableService {
       serverInfo,
       this.logger,
       this.clientRuntime.fileSystem.getCurrentWorkingDirectory(),
+      this.resolvedEnv,
     );
 
     if (!client) {

@@ -22,31 +22,43 @@ export const biomeServer: LspServerInfo = {
     return hasAnyFile(projectRoot, ['biome.json', 'biome.jsonc']);
   },
 
-  async spawn(projectRoot: string): Promise<LspServerHandle | undefined> {
+  async spawn(
+    projectRoot: string,
+    resolvedEnv?: Record<string, string> | null,
+  ): Promise<LspServerHandle | undefined> {
+    const env = resolvedEnv ?? globalThis.process.env;
+
     // Try project's biome first
     const localBin = await findNodeModulesBin(projectRoot, 'biome');
-    if (localBin) return spawnBiomeServer(localBin, projectRoot);
+    if (localBin) return spawnBiomeServer(localBin, projectRoot, env);
     // Try npx fallback
-    return spawnViaNpx(projectRoot);
+    return spawnViaNpx(projectRoot, env);
   },
 };
 
-function spawnBiomeServer(binary: string, root: string): LspServerHandle {
+function spawnBiomeServer(
+  binary: string,
+  root: string,
+  env: Record<string, string> | NodeJS.ProcessEnv,
+): LspServerHandle {
   const process = spawn(binary, ['lsp-proxy'], {
     stdio: ['pipe', 'pipe', 'pipe'],
     cwd: root,
-    env: globalThis.process.env,
+    env,
   });
 
   return { process };
 }
 
-async function spawnViaNpx(root: string): Promise<LspServerHandle | undefined> {
+async function spawnViaNpx(
+  root: string,
+  env: Record<string, string> | NodeJS.ProcessEnv,
+): Promise<LspServerHandle | undefined> {
   try {
     const process = spawn('npx', ['@biomejs/biome', 'lsp-proxy'], {
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: root,
-      env: globalThis.process.env,
+      env,
     });
 
     return new Promise((resolve) => {

@@ -46,6 +46,7 @@ export class MountManagerService extends DisposableService {
   private readonly uiKarton: KartonService;
   private readonly telemetryService: TelemetryService;
   private readonly mentionSearch: MentionSearchService;
+  private readonly resolvedEnvPromise: Promise<Record<string, string> | null>;
   private onMountsChanged?: (agentInstanceId: string) => void;
 
   private agentMounts: Map<
@@ -73,6 +74,7 @@ export class MountManagerService extends DisposableService {
     userExperienceService: UserExperienceService,
     uiKarton: KartonService,
     telemetryService: TelemetryService,
+    resolvedEnvPromise?: Promise<Record<string, string> | null>,
   ) {
     super();
     this.logger = logger;
@@ -80,6 +82,7 @@ export class MountManagerService extends DisposableService {
     this.userExperienceService = userExperienceService;
     this.uiKarton = uiKarton;
     this.telemetryService = telemetryService;
+    this.resolvedEnvPromise = resolvedEnvPromise ?? Promise.resolve(null);
 
     const searchCtx: MentionSearchContext = {
       getWorkspacePathForPrefix: (prefix) =>
@@ -104,6 +107,7 @@ export class MountManagerService extends DisposableService {
     userExperienceService: UserExperienceService,
     uiKarton: KartonService,
     telemetryService: TelemetryService,
+    resolvedEnvPromise?: Promise<Record<string, string> | null>,
   ): Promise<MountManagerService> {
     const instance = new MountManagerService(
       logger,
@@ -111,6 +115,7 @@ export class MountManagerService extends DisposableService {
       userExperienceService,
       uiKarton,
       telemetryService,
+      resolvedEnvPromise,
     );
     await instance.initialize();
     return instance;
@@ -191,9 +196,11 @@ export class MountManagerService extends DisposableService {
           rgBinaryBasePath: getRipgrepBasePath(),
         }),
       );
+      const resolvedEnv = await this.resolvedEnvPromise;
       const lspPromise = LspService.create(
         this.logger,
         this.clientRuntimesPerPath.get(resolvedWorkspacePath)!,
+        resolvedEnv,
       );
       this.lspReady.set(resolvedWorkspacePath, lspPromise);
       const lspService = await lspPromise;

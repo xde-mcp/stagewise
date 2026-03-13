@@ -8,7 +8,7 @@ import { MountManagerService } from './services/mount-manager';
 import type { FilePickerService } from '@/services/file-picker';
 import type { UserExperienceService } from '@/services/experience';
 import { SandboxService } from '../sandbox';
-import { ShellService } from './services/shell';
+import { ShellService, detectShell, resolveShellEnv } from './services/shell';
 import {
   APPEND_ONLY_PERMISSIONS,
   FULL_PERMISSIONS,
@@ -952,12 +952,30 @@ export class ToolboxService extends DisposableService {
     // Eagerly initialize the API client if auth is already available
     this.apiClient = this.getOrCreateApiClient();
 
+    // Resolve the user's shell environment once, shared by both ShellService
+    // and LSP servers so they can find node/npx/etc. on the real PATH.
+    // Kicked off eagerly but NOT awaited here — MountManagerService receives
+    // the promise and only awaits it inside handleMountWorkspace() (user-
+    // initiated), so env resolution never blocks app startup.
+    const detectedShell = detectShell();
+    const resolvedEnvPromise: Promise<Record<string, string> | null> =
+      detectedShell
+        ? resolveShellEnv(detectedShell).catch((err) => {
+            this.logger.warn(
+              '[ToolboxService] Error resolving shell environment — falling back to process.env',
+              err,
+            );
+            return null;
+          })
+        : Promise.resolve(null);
+
     this.mountManagerService = await MountManagerService.create(
       this.logger,
       this.filePickerService,
       this.userExperienceService,
       this.uiKarton,
       this.telemetryService,
+      resolvedEnvPromise,
     );
 
     this.mountManagerService.setOnMountsChanged((agentInstanceId) => {
@@ -996,7 +1014,16 @@ export class ToolboxService extends DisposableService {
       this.uiKarton,
     );
 
-    this.shellService = await ShellService.create(this.logger, this.uiKarton);
+    // ShellService needs the resolved value eagerly (configures loginFallback).
+    // By this point the promise has likely already settled (SandboxService
+    // creation above takes non-trivial time), so the await is ~instant.
+    const resolvedEnv = await resolvedEnvPromise;
+    this.shellService = await ShellService.create(
+      this.logger,
+      this.uiKarton,
+      detectedShell,
+      resolvedEnv,
+    );
 
     // Use arrow function to preserve `this` binding when called as callback
     this.authService.registerAuthStateChangeCallback(() =>

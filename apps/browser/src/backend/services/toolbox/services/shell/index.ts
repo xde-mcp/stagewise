@@ -19,6 +19,9 @@ export class ShellService extends DisposableService {
   private processManager: ProcessManager | null = null;
   private resolvedEnv: Record<string, string> | null = null;
 
+  private readonly preDetectedShell: DetectedShell | null;
+  private readonly preResolvedEnv: Record<string, string> | null;
+
   private readonly outputBuffers = new Map<string, string[]>();
   private readonly outputFlushTimers = new Map<string, NodeJS.Timeout>();
   private readonly outputMaxIntervalTimers = new Map<string, NodeJS.Timeout>();
@@ -27,43 +30,64 @@ export class ShellService extends DisposableService {
   private static readonly FLUSH_MAX_INTERVAL_MS = 300;
   private static readonly MAX_STREAMING_BYTES = 51_200;
 
-  constructor(logger: Logger, kartonService?: KartonService) {
+  constructor(
+    logger: Logger,
+    kartonService?: KartonService,
+    preDetectedShell?: DetectedShell | null,
+    preResolvedEnv?: Record<string, string> | null,
+  ) {
     super();
     this.logger = logger;
     this.kartonService = kartonService;
+    this.preDetectedShell = preDetectedShell ?? null;
+    this.preResolvedEnv = preResolvedEnv ?? null;
   }
 
   public static async create(
     logger: Logger,
     kartonService?: KartonService,
+    preDetectedShell?: DetectedShell | null,
+    preResolvedEnv?: Record<string, string> | null,
   ): Promise<ShellService> {
-    const instance = new ShellService(logger, kartonService);
+    const instance = new ShellService(
+      logger,
+      kartonService,
+      preDetectedShell,
+      preResolvedEnv,
+    );
     await instance.initialize();
     return instance;
   }
 
   async initialize() {
-    this.shell = detectShell();
+    this.shell = this.preDetectedShell ?? detectShell();
     if (this.shell) {
       this.logger.info(
         `[ShellService] Detected shell: ${this.shell.type} at ${this.shell.path}`,
       );
-      try {
-        this.resolvedEnv = await resolveShellEnv(this.shell);
-        if (this.resolvedEnv) {
-          this.logger.info(
-            '[ShellService] Resolved shell environment successfully',
-          );
-        } else {
+
+      // Use pre-resolved env if provided, otherwise resolve it now
+      if (this.preResolvedEnv) {
+        this.resolvedEnv = this.preResolvedEnv;
+        this.logger.info('[ShellService] Using pre-resolved shell environment');
+      } else {
+        try {
+          this.resolvedEnv = await resolveShellEnv(this.shell);
+          if (this.resolvedEnv) {
+            this.logger.info(
+              '[ShellService] Resolved shell environment successfully',
+            );
+          } else {
+            this.logger.warn(
+              '[ShellService] Could not resolve shell environment — falling back to process.env',
+            );
+          }
+        } catch (err) {
           this.logger.warn(
-            '[ShellService] Could not resolve shell environment — falling back to process.env',
+            '[ShellService] Error resolving shell environment — falling back to process.env',
+            err,
           );
         }
-      } catch (err) {
-        this.logger.warn(
-          '[ShellService] Error resolving shell environment — falling back to process.env',
-          err,
-        );
       }
 
       // When env resolution failed, use login shell (-lc) as fallback so
@@ -240,3 +264,8 @@ export class ShellService extends DisposableService {
     this.outputBuffers.clear();
   }
 }
+
+// Re-export for use by other services (e.g. LSP env resolution)
+export { detectShell } from './detect-shell';
+export { resolveShellEnv } from './resolve-shell-env';
+export type { DetectedShell } from './types';
