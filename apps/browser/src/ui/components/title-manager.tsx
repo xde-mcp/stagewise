@@ -1,4 +1,4 @@
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import { useEffect } from 'react';
 
 export function TitleManager() {

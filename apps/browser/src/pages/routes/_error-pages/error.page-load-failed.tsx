@@ -2,12 +2,12 @@ import { createFileRoute, useSearch } from '@tanstack/react-router';
 import {
   ErrorDisplay,
   type ErrorDisplayProps,
-} from '@/components/error-display';
+} from '@pages/components/error-display';
 import {
   classifyError,
   getErrorName,
 } from '@shared/chromium-errors/error-classification';
-import { useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonProcedure } from '@pages/hooks/use-karton';
 
 import StagemanAskingForInput from '@assets/stageman/asking-for-input.png';
 import StagemanCertError from '@assets/stageman/cert-error.png';

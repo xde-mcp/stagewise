@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import { useMountedPaths } from '@ui/hooks/use-mounted-paths';
 import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';

@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import type { ToolUIPart } from '@shared/karton-contracts/ui';
 import type { DynamicToolUIPart } from '@shared/karton-contracts/ui';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { XIcon } from 'lucide-react';
 import {
   Tooltip,

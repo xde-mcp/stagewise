@@ -17,8 +17,8 @@ import type { ModelId } from '@shared/available-models';
 import { IconBrainOutline18 } from 'nucleo-ui-outline-18';
 import { IconChevronDownFill18 } from 'nucleo-ui-fill-18';
 import { availableModels } from '@shared/available-models';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import {
   memo,
   useCallback,
@@ -27,7 +27,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 
 interface ModelOption {

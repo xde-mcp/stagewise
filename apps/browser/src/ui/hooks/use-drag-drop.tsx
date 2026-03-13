@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { extractImageUrlFromDragData, imageUrlToFile } from '@/utils';
+import { extractImageUrlFromDragData, imageUrlToFile } from '@ui/utils';
 
 export interface UseDragDropOptions {
   /** Callback when a file is dropped */

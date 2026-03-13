@@ -5,7 +5,7 @@ import {
 import { useMemo } from 'react';
 import { Loader2Icon, XCircleIcon } from 'lucide-react';
 import { ToolPartUI } from './shared/tool-part-ui';
-import { cn, stripMountPrefix } from '@/utils';
+import { cn, stripMountPrefix } from '@ui/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
 import type { LintingDiagnostic } from '@shared/karton-contracts/ui/agent/tools/types';
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';

@@ -48,7 +48,13 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src/pages'),
+      // Redirect @ui/hooks/use-karton to pages version (pages renderer
+      // uses window.stagewisePagesApi, not window.electron.karton)
+      '@ui/hooks/use-karton': path.resolve(
+        __dirname,
+        './src/pages/hooks/use-karton',
+      ),
+      '@pages': path.resolve(__dirname, './src/pages'),
       '@shared': path.resolve(__dirname, './src/shared'),
       '@ui': path.resolve(__dirname, './src/ui'),
       '@assets': path.resolve(__dirname, './assets/pages'),

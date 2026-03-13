@@ -7,10 +7,10 @@ import {
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
 import { ToolPartUI } from './shared/tool-part-ui';
-import { CodeBlock } from '@/components/ui/code-block';
-import { cn } from '@/utils';
+import { CodeBlock } from '@ui/components/ui/code-block';
+import { cn } from '@ui/utils';
 import { useToolAutoExpand } from './shared/use-tool-auto-expand';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 
 export const ReadConsoleLogsToolPart = ({
   part,

@@ -6,9 +6,9 @@ import {
 import { SidebarTopSection } from './top';
 import { ActiveAgentsGrid } from './active-agents';
 import { useRef, useCallback, useState } from 'react';
-import { useEventListener } from '@/hooks/use-event-listener';
-import { ChatDraftProvider } from '@/hooks/use-chat-draft';
-import { OpenAgentProvider } from '@/hooks/use-open-chat';
+import { useEventListener } from '@ui/hooks/use-event-listener';
+import { ChatDraftProvider } from '@ui/hooks/use-chat-draft';
+import { OpenAgentProvider } from '@ui/hooks/use-open-chat';
 
 export function Sidebar() {
   const panelRef = useRef<ImperativePanelHandle>(null);

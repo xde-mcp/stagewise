@@ -5,11 +5,11 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
-import { generateId } from '@/utils';
-import { fileAttachmentToAttachmentAttributes } from '@/utils/attachment-conversions';
+import { generateId } from '@ui/utils';
+import { fileAttachmentToAttachmentAttributes } from '@ui/utils/attachment-conversions';
 import type { FileAttachment } from '@shared/karton-contracts/ui/agent/metadata';
-import type { ChatInputHandle } from '@/screens/main/sidebar/chat/_components/chat-input';
-import { useKartonProcedure } from '@/hooks/use-karton';
+import type { ChatInputHandle } from '@ui/screens/main/sidebar/chat/_components/chat-input';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
 import posthog from 'posthog-js';
 
 const MAX_BASE64_FILE_SIZE = 100 * 1024 * 1024; // 100 MB

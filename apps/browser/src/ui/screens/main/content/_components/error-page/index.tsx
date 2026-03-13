@@ -1,4 +1,4 @@
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 
 export function ErrorPage() {
   const activeTab = useKartonState((s) => s.browser.tabs.activeTab);

@@ -1,7 +1,7 @@
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import { ToolPartUINotCollapsible } from './shared/tool-part-ui-not-collapsible';
 import { EyeIcon } from 'lucide-react';
-import { stripMountPrefix } from '@/utils';
+import { stripMountPrefix } from '@ui/utils';
 
 export const ReadFileToolPart = ({
   part,

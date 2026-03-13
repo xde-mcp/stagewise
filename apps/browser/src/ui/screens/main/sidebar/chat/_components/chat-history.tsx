@@ -11,24 +11,24 @@ import { MessageUser } from './message-user';
 import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
 import { MessageRuntimeError } from './message-runtime-error';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
-import { useTrack } from '@/hooks/use-track';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
+import { useTrack } from '@ui/hooks/use-track';
 import { cn } from '@ui/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
-import { useAutoScroll } from '@/hooks/use-auto-scroll';
-import { ChatSuggestion, suggestions } from '@/components/suggestions';
-import { useMessageEditState } from '@/hooks/use-message-edit-state';
-import { useScrollbarWidth } from '@/hooks/use-scrollbar-width';
-import { AttachmentMetadataProvider } from '@/hooks/use-attachment-metadata';
-import { MountedPathsProvider } from '@/hooks/use-mounted-paths';
-import { TabSnapshotsProvider } from '@/hooks/use-tab-snapshots';
+import { useAutoScroll } from '@ui/hooks/use-auto-scroll';
+import { ChatSuggestion, suggestions } from '@ui/components/suggestions';
+import { useMessageEditState } from '@ui/hooks/use-message-edit-state';
+import { useScrollbarWidth } from '@ui/hooks/use-scrollbar-width';
+import { AttachmentMetadataProvider } from '@ui/hooks/use-attachment-metadata';
+import { MountedPathsProvider } from '@ui/hooks/use-mounted-paths';
+import { TabSnapshotsProvider } from '@ui/hooks/use-tab-snapshots';
 import type {
   Mount,
   BrowserTabSnapshot,
 } from '@shared/karton-contracts/ui/agent/metadata';
 import { isEmptyAssistantMessage, areAllPartsSettled } from './message-utils';
-import { useOpenAgent } from '@/hooks/use-open-chat';
-import { calculateChatItemHeights } from '@/utils/calculate-chat-item-height';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
+import { calculateChatItemHeights } from '@ui/utils/calculate-chat-item-height';
 
 // Stable empty array to avoid infinite re-renders with useSyncExternalStore
 const EMPTY_HISTORY: AgentMessage[] = [];

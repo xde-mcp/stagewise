@@ -6,9 +6,9 @@ import {
 } from '@stagewise/stage-ui/components/resizable';
 import { Sidebar } from './sidebar';
 import { MainSection } from './content';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { useCallback, useState } from 'react';
-import { useEventListener } from '@/hooks/use-event-listener';
+import { useEventListener } from '@ui/hooks/use-event-listener';
 
 const layoutStorageKey = 'stagewise-panel-layout';
 

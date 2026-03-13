@@ -3,14 +3,14 @@ import {
   useKartonState,
   useKartonProcedure,
   useComparingSelector,
-} from '@/hooks/use-karton';
+} from '@ui/hooks/use-karton';
 import {
   AgentTypes,
   type AgentMessage,
 } from '@shared/karton-contracts/ui/agent';
 import type { Mount } from '@shared/karton-contracts/ui/agent/metadata';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
 import {
   type StatusCardSection,

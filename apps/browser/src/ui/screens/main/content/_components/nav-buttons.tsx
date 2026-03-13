@@ -1,4 +1,4 @@
-import { useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
 import { Button } from '@stagewise/stage-ui/components/button';
 import {
   IconArrowLeft,

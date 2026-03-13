@@ -1,4 +1,4 @@
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { IconMagicWandSparkle } from 'nucleo-glass';
 import type {
   ReasoningUIPart,

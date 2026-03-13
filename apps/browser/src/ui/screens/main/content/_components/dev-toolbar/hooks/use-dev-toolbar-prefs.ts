@@ -1,7 +1,7 @@
 import posthog from 'posthog-js';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import {
   DEFAULT_WIDGET_ORDER,
   type WidgetId,

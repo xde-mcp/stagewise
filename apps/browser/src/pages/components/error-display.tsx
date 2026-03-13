@@ -1,6 +1,6 @@
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
 import { IconTriangleWarningFillDuo18 } from 'nucleo-ui-fill-duo-18';
-import { cn } from '@/utils';
+import { cn } from '@pages/utils';
 
 export interface ErrorDisplayProps {
   // A image or icon that is shown in the upper right corner of the error display

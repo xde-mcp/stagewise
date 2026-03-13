@@ -1,11 +1,11 @@
 import { Button } from '@stagewise/stage-ui/components/button';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { IconPlus } from 'nucleo-micro-bold';
-import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
+import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AgentPreviewBadge } from './agent-preview-badge';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { IconBrush2Outline18 } from 'nucleo-ui-outline-18';
 import {
   Tooltip,

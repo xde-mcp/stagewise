@@ -28,9 +28,9 @@
 import { createElement, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import posthog from 'posthog-js';
-import '@/app.css';
-import { App } from '@/app';
-import { initThemeColorSync } from '@/utils/theme-color-sync';
+import '@ui/app.css';
+import { App } from '@ui/app';
+import { initThemeColorSync } from '@ui/utils/theme-color-sync';
 
 // Global safety net: capture unhandled errors and rejections to PostHog
 window.addEventListener('error', (event) => {

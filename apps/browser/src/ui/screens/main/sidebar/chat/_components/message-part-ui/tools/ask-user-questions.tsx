@@ -9,7 +9,7 @@ import type {
   AskUserQuestionsToolOutput,
   QuestionField,
 } from '@shared/karton-contracts/ui/agent/tools/types';
-import { InlineMarkdown } from '@/components/streamdown';
+import { InlineMarkdown } from '@ui/components/streamdown';
 
 type AskUserQuestionsPart = Extract<
   AgentToolUIPart,

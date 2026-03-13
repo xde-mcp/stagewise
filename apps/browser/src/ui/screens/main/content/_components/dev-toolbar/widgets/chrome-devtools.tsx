@@ -1,4 +1,4 @@
-import { useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
 // import { IconGoogleChrome } from 'nucleo-social-media';
 import { ToggleButton } from '../primitives';
 import type { WidgetProps } from './types';

@@ -8,8 +8,8 @@ import {
   ExperimentsLight,
   ReverseEngineeringDark,
   ReverseEngineeringLight,
-} from '@/assets/feature-images';
-import { cn } from '@/utils';
+} from '@ui/assets/feature-images';
+import { cn } from '@ui/utils';
 import { IconArrowLeftFill18, IconArrowRightFill18 } from 'nucleo-ui-fill-18';
 
 interface Slide {

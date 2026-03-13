@@ -2,11 +2,11 @@ import {
   useKartonConnected,
   useKartonReconnectState,
   useKartonState,
-} from '@/hooks/use-karton';
+} from '@ui/hooks/use-karton';
 import { DefaultLayout } from './main';
 import { OnboardingWizard } from './onboarding';
-import { Logo } from '@/components/ui/logo';
-import { WebContentsBoundsSyncer } from '@/components/web-contents-bounds-syncer';
+import { Logo } from '@ui/components/ui/logo';
+import { WebContentsBoundsSyncer } from '@ui/components/web-contents-bounds-syncer';
 
 export function ScreenRouter() {
   // We render different screens based on the app state.

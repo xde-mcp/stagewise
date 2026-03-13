@@ -1,11 +1,11 @@
 import posthog from 'posthog-js';
 import { StatusCard } from './footer-status-card';
 import type { SelectedElement } from '@shared/selected-elements';
-import { useMessageEditState } from '@/hooks/use-message-edit-state';
-import { useFileAttachments } from '@/hooks/use-file-attachments';
-import { useDragDrop } from '@/hooks/use-drag-drop';
-import { useElementSelectionWatcher } from '@/hooks/use-element-selection-watcher';
-import { cn, generateId, collectUserMessageMetadata } from '@/utils';
+import { useMessageEditState } from '@ui/hooks/use-message-edit-state';
+import { useFileAttachments } from '@ui/hooks/use-file-attachments';
+import { useDragDrop } from '@ui/hooks/use-drag-drop';
+import { useElementSelectionWatcher } from '@ui/hooks/use-element-selection-watcher';
+import { cn, generateId, collectUserMessageMetadata } from '@ui/utils';
 import { HotkeyActions } from '@shared/hotkeys';
 import {
   useCallback,
@@ -20,26 +20,26 @@ import {
   useKartonProcedure,
   useKartonConnected,
   useKartonReconnectState,
-} from '@/hooks/use-karton';
-import { useHotKeyListener } from '@/hooks/use-hotkey-listener';
-import { useEventListener } from '@/hooks/use-event-listener';
+} from '@ui/hooks/use-karton';
+import { useHotKeyListener } from '@ui/hooks/use-hotkey-listener';
+import { useEventListener } from '@ui/hooks/use-event-listener';
 import {
   ChatInput,
   ChatInputActions,
   type ChatInputHandle,
 } from './chat-input';
-import type { AttachmentType } from '@/screens/main/sidebar/chat/_components/rich-text/attachments';
-import type { MentionContext } from '@/screens/main/sidebar/chat/_components/rich-text/mentions';
-import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
+import type { AttachmentType } from '@ui/screens/main/sidebar/chat/_components/rich-text/attachments';
+import type { MentionContext } from '@ui/screens/main/sidebar/chat/_components/rich-text/mentions';
+import { selectedElementToAttachmentAttributes } from '@ui/utils/attachment-conversions';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
-import { useOpenAgent } from '@/hooks/use-open-chat';
-import { useChatDraft } from '@/hooks/use-chat-draft';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
+import { useChatDraft } from '@ui/hooks/use-chat-draft';
 import type { Content } from '@tiptap/core';
 import {
   markdownToTipTapContent,
   enrichTipTapContent,
-} from '@/utils/tiptap-content-utils';
+} from '@ui/utils/tiptap-content-utils';
 import { getCurrentDraftAnswers } from './footer-status-card/user-question-section';
 
 // Stable empty arrays to avoid new-reference re-renders

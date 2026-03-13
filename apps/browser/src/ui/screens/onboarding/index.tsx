@@ -6,9 +6,9 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { IconArrowLeftFill18, IconArrowRightFill18 } from 'nucleo-ui-fill-18';
-import { useKartonProcedure } from '@/hooks/use-karton';
-import { useTrack } from '@/hooks/use-track';
-import { cn } from '@/utils';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
+import { useTrack } from '@ui/hooks/use-track';
+import { cn } from '@ui/utils';
 import { StepWelcome } from './steps/01-welcome';
 import { StepAuth } from './steps/02-auth';
 import { StepDemo } from './steps/03-demo';

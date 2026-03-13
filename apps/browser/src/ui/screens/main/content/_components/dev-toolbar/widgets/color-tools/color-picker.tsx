@@ -10,7 +10,7 @@ import {
 } from '@stagewise/stage-ui/components/collapsible';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { ChevronDownIcon } from 'lucide-react';
-import { useEventListener } from '@/hooks/use-event-listener';
+import { useEventListener } from '@ui/hooks/use-event-listener';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Input } from '@stagewise/stage-ui/components/input';
 import {
@@ -18,7 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { useOverlayAccess, type AccessHandle } from '@/contexts';
+import { useOverlayAccess, type AccessHandle } from '@ui/contexts';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { usePanelControl } from '../../primitives';
 import {

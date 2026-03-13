@@ -16,8 +16,8 @@ import {
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import { ChevronDownIcon, CornerDownLeftIcon, XIcon } from 'lucide-react';
-import { cn } from '@/utils';
-import { Streamdown, InlineMarkdown } from '@/components/streamdown';
+import { cn } from '@ui/utils';
+import { Streamdown, InlineMarkdown } from '@ui/components/streamdown';
 import type { StatusCardSection } from './shared';
 import type {
   QuestionField,

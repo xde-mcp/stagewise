@@ -1,10 +1,10 @@
 import posthog from 'posthog-js';
-import { selectedElementToAttachmentAttributes } from '@/utils/attachment-conversions';
+import { selectedElementToAttachmentAttributes } from '@ui/utils/attachment-conversions';
 import {
   enrichTipTapContent,
   markdownToTipTapContent,
-} from '@/utils/tiptap-content-utils';
-import { cn, collectUserMessageMetadata } from '@/utils';
+} from '@ui/utils/tiptap-content-utils';
+import { cn, collectUserMessageMetadata } from '@ui/utils';
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 
@@ -17,13 +17,13 @@ import {
   useEffect,
   type RefObject,
 } from 'react';
-import { useKartonProcedure, useKartonState } from '@/hooks/use-karton';
-import { useEventListener } from '@/hooks/use-event-listener';
-import { useMessageEditState } from '@/hooks/use-message-edit-state';
-import { MessageAttachmentsProvider } from '@/hooks/use-message-elements';
-import { useFileAttachments } from '@/hooks/use-file-attachments';
-import { useDragDrop } from '@/hooks/use-drag-drop';
-import { useElementSelectionWatcher } from '@/hooks/use-element-selection-watcher';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
+import { useEventListener } from '@ui/hooks/use-event-listener';
+import { useMessageEditState } from '@ui/hooks/use-message-edit-state';
+import { MessageAttachmentsProvider } from '@ui/hooks/use-message-elements';
+import { useFileAttachments } from '@ui/hooks/use-file-attachments';
+import { useDragDrop } from '@ui/hooks/use-drag-drop';
+import { useElementSelectionWatcher } from '@ui/hooks/use-element-selection-watcher';
 import {
   Popover,
   PopoverTrigger,
@@ -44,7 +44,7 @@ import { ChatInputViewOnly } from './chat-input-view-only';
 import { generateId } from 'ai';
 import type { AttachmentType } from './rich-text/attachments';
 import type { MentionContext } from './rich-text/mentions';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import type { Content } from '@tiptap/core';
 import { IconMagicWandSparkle } from 'nucleo-micro-bold';
 

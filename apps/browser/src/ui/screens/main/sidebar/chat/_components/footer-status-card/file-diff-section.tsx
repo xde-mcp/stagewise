@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import type { FileDiff } from '@shared/karton-contracts/ui/shared-types';
 import { ChevronDownIcon } from 'lucide-react';
-import { FileIcon } from '@/components/file-icon';
-import { cn } from '@/utils';
+import { FileIcon } from '@ui/components/file-icon';
+import { cn } from '@ui/utils';
 import {
   Tooltip,
   TooltipContent,

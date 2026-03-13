@@ -12,7 +12,7 @@ import {
   FormField,
   FormFieldLabel,
 } from '@stagewise/stage-ui/components/form';
-import { useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
 import type { AuthenticationRequest } from '@shared/karton-contracts/ui';
 import { IconLockKeyFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import {

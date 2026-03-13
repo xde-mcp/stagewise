@@ -5,7 +5,7 @@ import { ModelSelect } from './model-select';
 import { WorkspaceSelect } from './workspace-select';
 import { ContextUsageRing } from './context-usage-ring';
 import { Button } from '@stagewise/stage-ui/components/button';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { HotkeyActions } from '@shared/hotkeys';
 import {
   ArrowUpIcon,
@@ -26,7 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@stagewise/stage-ui/components/tooltip';
-import { HotkeyComboText } from '@/components/hotkey-combo-text';
+import { HotkeyComboText } from '@ui/components/hotkey-combo-text';
 import {
   configureAttachmentExtensions,
   ALL_ATTACHMENT_NODE_NAMES,

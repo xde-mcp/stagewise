@@ -1,7 +1,7 @@
 import { IconPalette2FillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { PanelContainer } from '../../primitives';
 import type { WidgetProps } from '../types';
-import { useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonProcedure } from '@ui/hooks/use-karton';
 
 import { ColorPicker } from './color-picker';
 import { ColorHistogram } from './histogram';

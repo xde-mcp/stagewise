@@ -3,10 +3,10 @@ import {
   IconFolder5Outline18,
   IconCodeBranchOutline18,
 } from 'nucleo-ui-outline-18';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 import { InlineBadge, InlineBadgeWrapper } from '../shared';
 import { useMountedPaths } from '@ui/hooks/use-mounted-paths';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { getBaseName } from '@shared/path-utils';
 import type { WorkspaceMentionMeta } from '@shared/karton-contracts/ui/agent/metadata';

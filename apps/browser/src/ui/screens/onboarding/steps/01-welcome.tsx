@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Logo } from '@/components/ui/logo';
-import { useWindowFocused } from '@/hooks/use-window-focused';
-import { cn } from '@/utils';
+import { Logo } from '@ui/components/ui/logo';
+import { useWindowFocused } from '@ui/hooks/use-window-focused';
+import { cn } from '@ui/utils';
 import { SplitText } from '@stagewise/stage-ui/components/split-text';
 import type { StepValidityCallback } from '..';
 

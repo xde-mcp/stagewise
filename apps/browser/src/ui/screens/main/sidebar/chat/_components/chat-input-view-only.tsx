@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { cn } from '@/utils';
-import { useScrollFadeMask } from '@/hooks/use-scroll-fade-mask';
+import { cn } from '@ui/utils';
+import { useScrollFadeMask } from '@ui/hooks/use-scroll-fade-mask';
 import {
   AttachmentRegistryNodeView,
   ElementAttachmentView,

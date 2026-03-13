@@ -3,8 +3,8 @@ import {
   useComparingSelector,
   useKartonProcedure,
   useKartonState,
-} from '@/hooks/use-karton';
-import { useOpenAgent } from '@/hooks/use-open-chat';
+} from '@ui/hooks/use-karton';
+import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import { EMPTY_MOUNTS } from '@shared/karton-contracts/ui';
 import { Button } from '@stagewise/stage-ui/components/button';
@@ -13,8 +13,8 @@ import {
   type OverlayScrollbarRef,
 } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { IconPlusFill18 } from 'nucleo-ui-fill-18';
-import { extractTipTapText, firstWords } from '@/utils/text-utils';
-import { useEmptyAgentId } from '@/hooks/use-empty-agent';
+import { extractTipTapText, firstWords } from '@ui/utils/text-utils';
+import { useEmptyAgentId } from '@ui/hooks/use-empty-agent';
 import { AgentCard, AgentCardSkeleton } from './_components/agent-card';
 import { getToolActivityLabel } from './_utils/tool-label';
 

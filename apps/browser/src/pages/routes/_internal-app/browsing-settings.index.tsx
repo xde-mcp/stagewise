@@ -27,7 +27,7 @@ import {
 
 enablePatches();
 
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import { Select } from '@stagewise/stage-ui/components/select';
 import type {
   PageSetting,

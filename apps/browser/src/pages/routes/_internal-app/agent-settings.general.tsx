@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { SearchableSelect } from '@stagewise/stage-ui/components/searchable-select';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { useKartonState, useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonState, useKartonProcedure } from '@pages/hooks/use-karton';
 import { IdeLogo } from '@ui/components/ide-logo';
 import type { OpenFilesInIde } from '@shared/karton-contracts/ui/shared-types';
 import { IDE_SELECTION_ITEMS } from '@ui/utils';

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ContextMenu } from '@base-ui/react/context-menu';
 import { Menu as MenuBase } from '@base-ui/react/menu';
 import { cn } from '@stagewise/stage-ui/lib/utils';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import { IdeLogo } from '@ui/components/ide-logo';
 import { getIDEFileUrl, IDE_SELECTION_ITEMS } from '@shared/ide-url';
 

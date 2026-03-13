@@ -1,7 +1,7 @@
 import type { AgentToolUIPart } from '@shared/karton-contracts/ui/agent';
 import type { WithDiff } from '@shared/karton-contracts/ui/agent/tools/types';
 import { DiffPreview } from './shared/diff-preview';
-import { FileIcon } from '@/components/file-icon';
+import { FileIcon } from '@ui/components/file-icon';
 import { getBaseName } from '@shared/path-utils';
 import {
   Loader2Icon,
@@ -9,14 +9,14 @@ import {
   ListChevronsDownUpIcon,
   ListChevronsUpDownIcon,
 } from 'lucide-react';
-import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@/utils';
-import { useFileIDEHref } from '@/hooks/use-file-ide-href';
-import { IdePickerPopover } from '@/components/ide-picker-popover';
+import { cn, IDE_SELECTION_ITEMS, stripMountPrefix } from '@ui/utils';
+import { useFileIDEHref } from '@ui/hooks/use-file-ide-href';
+import { IdePickerPopover } from '@ui/components/ide-picker-popover';
 import { FileContextMenu } from '@ui/components/file-context-menu';
 import { diffLines } from 'diff';
 import { useMemo, useState } from 'react';
 import { Button, buttonVariants } from '@stagewise/stage-ui/components/button';
-import { useKartonState } from '@/hooks/use-karton';
+import { useKartonState } from '@ui/hooks/use-karton';
 import {
   Tooltip,
   TooltipContent,
@@ -24,7 +24,7 @@ import {
 } from '@stagewise/stage-ui/components/tooltip';
 import { Skeleton } from '@stagewise/stage-ui/components/skeleton';
 import { ToolPartUI } from './shared/tool-part-ui';
-import { IdeLogo } from '@/components/ide-logo';
+import { IdeLogo } from '@ui/components/ide-logo';
 import {
   StreamingCodeBlock,
   getLanguageFromPath,

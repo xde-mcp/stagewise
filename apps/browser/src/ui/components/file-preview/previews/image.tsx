@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import type { FilePreviewEntry, FilePreviewProps } from '../types';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 function ImageCompact({ src, fileName, className }: FilePreviewProps) {
   return (

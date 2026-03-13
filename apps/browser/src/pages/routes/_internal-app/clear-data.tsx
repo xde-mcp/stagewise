@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
-import { useKartonProcedure } from '@/hooks/use-karton';
+import { useKartonProcedure } from '@pages/hooks/use-karton';
 import { Loader2Icon } from 'lucide-react';
 
 export const Route = createFileRoute('/_internal-app/clear-data')({

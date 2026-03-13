@@ -1,7 +1,7 @@
 import { Button } from '@stagewise/stage-ui/components/button';
 import { IconXmark } from 'nucleo-micro-bold';
 import type { SuggestionItem } from './suggestions-data';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 export type ChatSuggestionProps = SuggestionItem & {
   onClick?: () => void;

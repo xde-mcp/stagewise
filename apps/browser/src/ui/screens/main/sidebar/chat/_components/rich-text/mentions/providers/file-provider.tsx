@@ -3,7 +3,7 @@ import { IconFolder5Outline18 } from 'nucleo-ui-outline-18';
 import type { MentionProvider, MentionContext } from './types';
 import type { FileMentionItem } from '../types';
 import type { MentionFileCandidate } from '@shared/karton-contracts/ui/agent/metadata';
-import { cn } from '@/utils';
+import { cn } from '@ui/utils';
 
 function relevanceFromReason(
   reason: MentionFileCandidate['relevanceReason'],
