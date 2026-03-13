@@ -234,7 +234,7 @@ export const ChatHistory = () => {
     const shuffled = [...suggestions];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      [shuffled[i], shuffled[j]!] = [shuffled[j]!, shuffled[i]!];
     }
     return shuffled;
   });
@@ -268,7 +268,7 @@ export const ChatHistory = () => {
           if (incoming?.length) {
             const merged = [...(lastMessage.metadata?.partsMetadata ?? [])];
             for (let i = 0; i < incoming.length; i++)
-              merged[prevPartsLength + i] = incoming[i];
+              merged[prevPartsLength + i] = incoming[i]!;
             lastMessage.metadata = {
               ...lastMessage.metadata!,
               partsMetadata: merged,
@@ -290,6 +290,7 @@ export const ChatHistory = () => {
     let suffixHasFileMods = false;
     for (let i = serverMessages.length - 1; i >= 0; i--) {
       const msg = serverMessages[i];
+      if (!msg) continue;
       if (msg.role === 'user') result.set(msg.id, suffixHasFileMods);
       else if (msg.role === 'assistant') {
         if (
@@ -456,7 +457,7 @@ export const ChatHistory = () => {
     // Find the last user message index to calculate spacer height
     let lastUserMsgIdx = -1;
     for (let i = filteredMessages.length - 1; i >= 0; i--) {
-      if (filteredMessages[i].role === 'user') {
+      if (filteredMessages[i]?.role === 'user') {
         lastUserMsgIdx = i;
         break;
       }
@@ -465,7 +466,7 @@ export const ChatHistory = () => {
     // Estimate the last user message height for spacer calculation
     let estimatedLastUserMsgHeight = 50;
     if (lastUserMsgIdx >= 0) {
-      const userMsg = filteredMessages[lastUserMsgIdx];
+      const userMsg = filteredMessages[lastUserMsgIdx]!;
       const userCacheKey = `${userMsg.id}:${userMsg.parts.length}:${containerWidth}`;
       if (cache.has(userCacheKey))
         estimatedLastUserMsgHeight = cache.get(userCacheKey)!;
@@ -642,7 +643,7 @@ export const ChatHistory = () => {
   // Find the index of the last user message (for attaching measurement ref)
   const lastUserMsgIndex = useMemo(() => {
     for (let i = filteredMessages.length - 1; i >= 0; i--)
-      if (filteredMessages[i].role === 'user') return i;
+      if (filteredMessages[i]?.role === 'user') return i;
 
     return -1;
   }, [filteredMessages]);

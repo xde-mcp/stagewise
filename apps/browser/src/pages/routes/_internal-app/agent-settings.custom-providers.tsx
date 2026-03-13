@@ -552,7 +552,7 @@ function CustomEndpointsSection() {
         const idx = endpoints.findIndex((ep) => ep.id === editingEndpoint.id);
         if (idx === -1) return;
         const [, patches] = produceWithPatches(preferences, (draft) => {
-          const ep = draft.customEndpoints[idx];
+          const ep = draft.customEndpoints[idx]!;
           ep.name = data.name;
           ep.apiSpec = data.apiSpec;
           ep.baseUrl = data.baseUrl;

@@ -86,7 +86,7 @@ function flattenScript(script: ScriptLine[], defaultSpeed: number): FlatStep[] {
   const steps: FlatStep[] = [];
 
   for (let li = 0; li < script.length; li++) {
-    const line = script[li];
+    const line = script[li]!;
     let charOffset = 0;
     let runningText = '';
 
@@ -103,7 +103,7 @@ function flattenScript(script: ScriptLine[], defaultSpeed: number): FlatStep[] {
     }
 
     for (let si = 0; si < line.segments.length; si++) {
-      const seg = line.segments[si];
+      const seg = line.segments[si]!;
       const mode = seg.mode ?? 'char';
 
       // Segment-level pause
@@ -287,7 +287,7 @@ export function useScriptedTyping({
     if (idx >= steps.length) {
       return scriptRef.current.length - 1;
     }
-    return steps[idx].lineIndex;
+    return steps[idx]!.lineIndex;
   }, []);
 
   const commitState = useCallback(() => {
@@ -351,6 +351,7 @@ export function useScriptedTyping({
       }
 
       // ── Enter pause / untype / type ─────────────────────────────
+      if (!step) continue;
       if (step.kind === 'pause') {
         engineStateRef.current = 'pausing';
         pauseRemainingRef.current = step.pauseMs ?? 0;
@@ -504,9 +505,9 @@ export function useScriptedTyping({
     }
 
     const firstStep = stepsRef.current[0];
-    if (firstStep.kind === 'pause') {
+    if (firstStep?.kind === 'pause') {
       engineStateRef.current = 'pausing';
-      pauseRemainingRef.current = firstStep.pauseMs ?? 0;
+      pauseRemainingRef.current = firstStep?.pauseMs ?? 0;
     } else {
       engineStateRef.current = 'typing';
     }

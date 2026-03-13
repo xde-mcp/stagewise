@@ -56,7 +56,7 @@ export async function queryAllProviders(
   const scored: ScoredItem[] = [];
 
   for (let i = 0; i < allEntries.length; i++) {
-    const { provider, item } = allEntries[i];
+    const { provider, item } = allEntries[i]!;
     const fuzzy = fuzzyScores.get(i) ?? 0;
     const relevance = item.relevance ?? 0;
     const score =

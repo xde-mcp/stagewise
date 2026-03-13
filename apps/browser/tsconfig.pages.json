@@ -15,8 +15,10 @@
     },
     "types": ["vite/client"],
     "skipLibCheck": true,
+    "strict": true,
     "strictNullChecks": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noUncheckedIndexedAccess": true
   },
   "include": ["src/pages", "forge.env.d.ts", "src/shared", "src/ui"],
   "exclude": [

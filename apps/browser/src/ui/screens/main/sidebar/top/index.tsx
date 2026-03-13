@@ -91,8 +91,8 @@ function activeAgentListEqual(
 ): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    const ai = a[i];
-    const bi = b[i];
+    const ai = a[i]!;
+    const bi = b[i]!;
     if (
       ai.id !== bi.id ||
       ai.title !== bi.title ||
@@ -236,7 +236,7 @@ export function SidebarTopSection({ isCollapsed }: { isCollapsed: boolean }) {
     if (openAgent && !activeAgentIdSet.has(openAgent)) {
       removeFromHistory(openAgent, activeAgentIds[0] ?? null);
     } else if (!openAgent && activeAgentIds.length > 0) {
-      setOpenAgent(activeAgentIds[0]);
+      setOpenAgent(activeAgentIds[0]!);
     }
   }, [
     openAgent,

@@ -21,7 +21,7 @@ interface ZoomBarProps {
 
 export function ZoomBar({ tabId }: ZoomBarProps) {
   const zoomPercentage = useKartonState(
-    (s) => s.browser.tabs[tabId]?.zoomPercentage,
+    (s) => s.browser.tabs[tabId]?.zoomPercentage ?? 100,
   );
   const setZoomPercentage = useKartonProcedure(
     (p) => p.browser.setZoomPercentage,
@@ -105,7 +105,7 @@ export function ZoomBar({ tabId }: ZoomBarProps) {
     setIsHovered(false);
   }, []);
 
-  if (!zoomPercentage) {
+  if (zoomPercentage === 100 && !shouldShow) {
     return null;
   }
 

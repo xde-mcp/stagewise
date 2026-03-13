@@ -171,8 +171,8 @@ export function parseCDPCalls(script: string): ParsedCDPCall[] {
   let match = regex.exec(script);
   while (match !== null) {
     calls.push({
-      tabHandle: match[1],
-      method: match[2],
+      tabHandle: match[1]!,
+      method: match[2]!,
     });
     match = regex.exec(script);
   }
@@ -192,7 +192,7 @@ export function parseWriteFileCalls(script: string): ParsedWriteFileCall[] {
   let match = regex.exec(script);
   while (match !== null) {
     calls.push({
-      relativePath: match[1],
+      relativePath: match[1]!,
     });
     match = regex.exec(script);
   }
@@ -212,7 +212,7 @@ export function parseReadAttachmentCalls(
 
   let match = regex.exec(script);
   while (match !== null) {
-    calls.push({ attachmentId: match[1] });
+    calls.push({ attachmentId: match[1]! });
     match = regex.exec(script);
   }
 
@@ -368,9 +368,9 @@ export function getSandboxLabel(
 
   // 1. API.outputAttachment always wins (user sees visual output)
   if (multimodalAttachmentCalls.length > 0) {
-    const label = getAttachmentLabel(multimodalAttachmentCalls[0].mediaType);
+    const label = getAttachmentLabel(multimodalAttachmentCalls[0]!.mediaType);
     const allSameType = multimodalAttachmentCalls.every(
-      (c) => getAttachmentLabel(c.mediaType) === label,
+      (c) => getAttachmentLabel(c?.mediaType) === label,
     );
 
     if (multimodalAttachmentCalls.length === 1)
@@ -420,7 +420,7 @@ export function getSandboxLabel(
         : '';
 
     if (realWriteCalls.length === 1) {
-      const fileName = getFileName(realWriteCalls[0].relativePath);
+      const fileName = getFileName(realWriteCalls[0]!.relativePath);
       return isInProgress
         ? `Writing ${fileName}${attachmentSuffix}...`
         : `Wrote ${fileName}${attachmentSuffix}`;
@@ -440,15 +440,15 @@ export function getSandboxLabel(
       ? `Running a script on ${uniqueTabHandles.length} tabs...`
       : `Ran a script on ${uniqueTabHandles.length} tabs`;
 
-  const hostname = resolveTabHostname(uniqueTabHandles[0], activeTabs);
-  const latestMethod = cdpCalls[cdpCalls.length - 1].method;
+  const hostname = resolveTabHostname(uniqueTabHandles[0]!, activeTabs);
+  const latestMethod = cdpCalls[cdpCalls.length - 1]!.method;
   const { label, preposition } = getMethodLabel(latestMethod, isInProgress);
   const suffix = hostname ? ` ${preposition} ${hostname}` : '';
 
   if (realWriteCalls.length > 0) {
     const fileInfo =
       realWriteCalls.length === 1
-        ? getFileName(realWriteCalls[0].relativePath)
+        ? getFileName(realWriteCalls[0]!.relativePath)
         : `${realWriteCalls.length} files`;
     if (isInProgress) return `${label}${suffix}, writing ${fileInfo}...`;
     return `${label}${suffix}, wrote ${fileInfo}`;

@@ -100,7 +100,10 @@ function groupDiffsByMount(
     }
     // Fallback: assign to first mount if no match
     if (!matched && mounts.length > 0) {
-      groups.get(mounts[0].path)!.diffs.push(diff);
+      const firstMount = mounts[0];
+      if (firstMount) {
+        groups.get(firstMount.path)?.diffs.push(diff);
+      }
     }
   }
 
@@ -214,7 +217,7 @@ function FileDiffList({
   if (hideLabels) {
     return (
       <div className="pt-1">
-        {groups[0].diffs.map((edit) => (
+        {groups[0]?.diffs.map((edit) => (
           <FileDiffFileItem
             key={edit.path}
             fileDiff={edit}

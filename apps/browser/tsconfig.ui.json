@@ -8,6 +8,7 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "noUncheckedIndexedAccess": true,
     "paths": {
       "@shared/*": ["./src/shared/*"],
       "@ui/*": ["./src/ui/*"]

@@ -309,9 +309,9 @@ export function ColorPicker({ tabId, getScreenshot }: ColorPickerProps) {
 
       try {
         const pixel = ctx.getImageData(x, y, 1, 1).data;
-        const r = pixel[0];
-        const g = pixel[1];
-        const b = pixel[2];
+        const r = pixel[0]!;
+        const g = pixel[1]!;
+        const b = pixel[2]!;
 
         // Return as hex color
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;

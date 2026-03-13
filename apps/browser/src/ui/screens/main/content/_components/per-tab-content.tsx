@@ -96,7 +96,7 @@ export const PerTabContent = forwardRef<PerTabContentRef, PerTabContentProps>(
       // Update local state optimistically during drag
       // sizes[1] is the toolbar panel size (order={2})
       if (sizes.length > 1) {
-        const toolbarSize = sizes[1];
+        const toolbarSize = sizes[1]!;
         setLocalToolbarSize(toolbarSize);
         // Always track the latest size - will be persisted on drag end
         pendingWidthRef.current = toolbarSize;

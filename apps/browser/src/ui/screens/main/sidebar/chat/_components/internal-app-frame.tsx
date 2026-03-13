@@ -13,7 +13,7 @@ function collectThemeVariables(): Record<string, string> {
     const computed = getComputedStyle(document.documentElement);
     for (let i = 0; i < computed.length; i++) {
       const prop = computed[i];
-      if (prop.startsWith('--')) cachedVarNames.add(prop);
+      if (prop?.startsWith('--')) cachedVarNames.add(prop);
     }
   }
 

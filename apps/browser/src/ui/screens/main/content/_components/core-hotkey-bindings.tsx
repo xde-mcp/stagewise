@@ -84,7 +84,7 @@ export function CoreHotkeyBindings({
 
   // Switch to next tab (aliases handled in definition: Ctrl+Tab, Mod+PageDown, Mod+Alt+Arrow on Mac)
   const handleNextTab = useCallback(async () => {
-    if (!tabNeighborsToActiveTab) return;
+    if (!tabNeighborsToActiveTab || !tabNeighborsToActiveTab.next) return;
     await handleSwitchTab(tabNeighborsToActiveTab.next);
   }, [tabNeighborsToActiveTab, handleSwitchTab]);
 
@@ -92,7 +92,7 @@ export function CoreHotkeyBindings({
 
   // Switch to previous tab (aliases handled in definition)
   const handlePreviousTab = useCallback(() => {
-    if (!tabNeighborsToActiveTab) return;
+    if (!tabNeighborsToActiveTab || !tabNeighborsToActiveTab.previous) return;
     handleSwitchTab(tabNeighborsToActiveTab.previous);
   }, [tabNeighborsToActiveTab, handleSwitchTab]);
 
@@ -105,12 +105,12 @@ export function CoreHotkeyBindings({
         if (index === 9) {
           // Mod+9 focuses last tab
           if (tabCount === 0) return;
-          const lastTabId = tabIds[tabCount - 1];
+          const lastTabId = tabIds[tabCount - 1]!;
           handleSwitchTab(lastTabId);
         } else {
           // Mod+1-8 focus tabs by index (0-based)
           if (index >= tabCount) return;
-          handleSwitchTab(tabIds[index]);
+          handleSwitchTab(tabIds[index]!);
         }
       };
     },

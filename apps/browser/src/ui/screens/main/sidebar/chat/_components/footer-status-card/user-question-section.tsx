@@ -101,7 +101,7 @@ function getDefaultValues(
   for (const field of fields) {
     // Prefill from existing answers (e.g. when navigating back)
     if (existingAnswers && field.questionId in existingAnswers) {
-      values[field.questionId] = existingAnswers[field.questionId];
+      values[field.questionId] = existingAnswers[field.questionId]!;
       continue;
     }
     switch (field.type) {
@@ -566,8 +566,8 @@ function FieldRenderer({
                       if (opts.length === 0) return;
                       onChange(
                         e.key === 'ArrowUp'
-                          ? opts[opts.length - 1].value
-                          : opts[0].value,
+                          ? opts[opts.length - 1]!.value
+                          : opts[0]!.value,
                       );
                       scheduleRaf(() => {
                         containerRef.current

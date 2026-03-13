@@ -27,7 +27,7 @@ export function ChatPanel() {
 
   useEffect(() => {
     if (openAgent === null && Object.keys(agents).length > 0) {
-      const firstAgent = Object.keys(agents)[0];
+      const firstAgent = Object.keys(agents)[0]!;
       setOpenAgent(firstAgent);
     }
   }, [agents, openAgent]);

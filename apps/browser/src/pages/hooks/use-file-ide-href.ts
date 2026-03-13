@@ -14,7 +14,7 @@ function resolveAbsolutePath(
   if (!relativePath) return null;
   const normalized = normalizePath(relativePath);
   if (normalized.startsWith('/')) return normalized;
-  const basePath = normalizePath(workspaceMounts[0].path);
+  const basePath = normalizePath(workspaceMounts[0]!.path);
   return `${basePath}/${normalized}`;
 }
 
