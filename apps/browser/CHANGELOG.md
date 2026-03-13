@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.26 (2026-03-13)
+
+### Bug Fixes
+
+* increase tab-handle recycle limit to 100 (8e4d4b1)
+
 ## 1.0.0-alpha.25 (2026-03-13)
 
 ### Bug Fixes
