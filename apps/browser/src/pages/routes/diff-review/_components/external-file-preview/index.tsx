@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from 'react';
+import { useState, useEffect, useRef, type FC } from 'react';
 import { IconDatabaseFillDuo18 } from 'nucleo-ui-fill-duo-18';
 import { IconArrowRightFill18 } from 'nucleo-ui-fill-18';
 import { useKartonProcedure } from '@pages/hooks/use-karton';
@@ -17,12 +17,16 @@ function useFileContent(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getContentRef = useRef(getContent);
+  getContentRef.current = getContent;
+
   useEffect(() => {
     if (!oid) return;
     let cancelled = false;
     setIsLoading(true);
     setError(null);
-    getContent(oid)
+    getContentRef
+      .current(oid)
       .then((result) => {
         if (cancelled) return;
         if (result) {
@@ -42,7 +46,7 @@ function useFileContent(
     return () => {
       cancelled = true;
     };
-  }, [oid, getContent]);
+  }, [oid]);
 
   return { base64Content, mimeType, isLoading, error };
 }
