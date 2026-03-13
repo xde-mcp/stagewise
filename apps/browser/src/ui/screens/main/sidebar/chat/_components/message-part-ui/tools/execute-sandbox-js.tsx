@@ -80,14 +80,18 @@ export const ExecuteSandboxJsToolPart = ({
     return 'success';
   }, [part.state, streaming]);
 
+  const explanation = part.input?.explanation ?? '';
+
   // Generate contextual labels based on CDP calls in the script
   const inProgressLabel = useMemo(() => {
-    return getSandboxLabel(part.input?.script, activeTabs, true);
-  }, [part.input?.script, activeTabs]);
+    return explanation || getSandboxLabel(part.input?.script, activeTabs, true);
+  }, [explanation, part.input?.script, activeTabs]);
 
   const completedLabel = useMemo(() => {
-    return getSandboxLabel(part.input?.script, activeTabs, false);
-  }, [part.input?.script, activeTabs]);
+    return (
+      explanation || getSandboxLabel(part.input?.script, activeTabs, false)
+    );
+  }, [explanation, part.input?.script, activeTabs]);
 
   // Use the unified auto-expand hook
   const { expanded, handleUserSetExpanded } = useToolAutoExpand({
@@ -197,7 +201,9 @@ export const ExecuteSandboxJsToolPart = ({
             <XIcon className="size-3 shrink-0" />
             <div className="flex min-w-0 flex-col items-start">
               <span className="truncate text-start font-medium text-xs">
-                Error while running a script
+                {explanation
+                  ? `Error: ${explanation}`
+                  : 'Error while running a script'}
               </span>
             </div>
           </>

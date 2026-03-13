@@ -380,6 +380,11 @@ export const updateWorkspaceMdToolSchema = {
 } as const;
 
 export const executeSandboxJsToolInputSchema = z.object({
+  explanation: z
+    .string()
+    .describe(
+      'Concise (max 5 words) human-readable description of what this script does. Examples: "Take a screenshot", "Read workspace files", "Query DOM elements", "Process API response", "Generate image thumbnail"',
+    ),
   script: z.string().describe('JavaScript code to execute'),
 });
 
