@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0-alpha.25 (2026-03-13)
+
+### Bug Fixes
+
+* add explanation-string to sandbox-tool (1ecd95d)
+* use theme tokens for logo colors (2210c27)
+* fix logo-colors in sign-in and onboarding (037706f)
+
 ## 1.0.0-alpha.24 (2026-03-13)
 
 ### Bug Fixes
