@@ -73,6 +73,24 @@ export type EventProperties = {
     context: 'onboarding' | 'empty-chat';
   };
 
+  // Usage limits
+  'usage-limit-reached': {
+    agent_type: string;
+    model_id: string;
+    provider_mode: string;
+    window_types: string[];
+    first_window_resets_at: string;
+    exceeded_window_count: number;
+  };
+  'usage-warning-shown': {
+    agent_type: string;
+    model_id: string;
+    provider_mode: string;
+    window_type: string;
+    used_percent: number;
+    resets_at: string;
+  };
+
   // UI (routed via karton RPC)
   'ui-interaction': { action: string; target: string; detail?: string };
 };

@@ -1427,6 +1427,20 @@ export abstract class BaseAgent<
         this.report(error, 'streamText');
 
         const parsedError = this.parsePlanLimitError(error);
+        if (parsedError?.kind === 'plan-limit-exceeded') {
+          const sortedWindows = [...parsedError.exceededWindows].sort(
+            (a, b) =>
+              new Date(a.resetsAt).getTime() - new Date(b.resetsAt).getTime(),
+          );
+          this.telemetryService.capture('usage-limit-reached', {
+            agent_type: this.agentType,
+            model_id: this.state.get().activeModelId,
+            provider_mode: this._stepProviderMode,
+            window_types: sortedWindows.map((w) => w.type),
+            first_window_resets_at: sortedWindows[0]?.resetsAt ?? '',
+            exceeded_window_count: sortedWindows.length,
+          });
+        }
         this.state.set((draft) => {
           draft.isWorking = false;
           draft.unread = true;
@@ -2219,6 +2233,24 @@ export abstract class BaseAgent<
     const warned = limits.find(
       (w) => typeof w.usedPercent === 'number' && w.usedPercent >= 80,
     );
+
+    // Emit telemetry only when the warning is newly surfaced or changed
+    const current = this.state.get().usageWarning;
+    if (
+      warned &&
+      (current?.windowType !== warned.type ||
+        current?.usedPercent !== warned.usedPercent)
+    ) {
+      this.telemetryService.capture('usage-warning-shown', {
+        agent_type: this.agentType,
+        model_id: this.state.get().activeModelId,
+        provider_mode: this._stepProviderMode,
+        window_type: warned.type,
+        used_percent: warned.usedPercent,
+        resets_at: warned.resetsAt,
+      });
+    }
+
     this.state.set((draft) => {
       draft.usageWarning = warned
         ? {
