@@ -50,7 +50,7 @@ export function NotSignedIn() {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-4 p-6 text-center">
       <div className="flex flex-col items-center justify-center gap-2">
-        <Logo className="size-12" />
+        <Logo className="mb-2 size-12" />
         <span className="font-medium text-foreground text-xl">
           Authenticate
         </span>

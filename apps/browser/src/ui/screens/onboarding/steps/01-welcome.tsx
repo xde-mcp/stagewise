@@ -47,7 +47,7 @@ export function StepWelcome({
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2">
-      <Logo className="mb-2 size-16" />
+      <Logo className="mb-4 size-16" />
       <div className="relative w-full text-center">
         <span className="invisible font-normal text-foreground text-lg">
           Welcome to a new way to interact with the internet.
