@@ -17,7 +17,7 @@ export function batchFuzzyScore(
   let maxScore = SCORE_MIN;
 
   for (let i = 0; i < haystack.length; i++) {
-    const entry = haystack[i];
+    const entry = haystack[i]!;
     if (!hasMatch(lowerQuery, entry.toLowerCase())) continue;
 
     const s = score(lowerQuery, entry.toLowerCase());

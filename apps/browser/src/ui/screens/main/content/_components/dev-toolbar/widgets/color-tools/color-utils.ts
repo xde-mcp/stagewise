@@ -6,15 +6,16 @@
  * Parse a hex color string to RGB values.
  */
 export function hexToRgb(
-  hex: string,
+  hex: string | undefined,
 ): { r: number; g: number; b: number } | null {
+  if (!hex) return null;
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return null;
 
   return {
-    r: Number.parseInt(result[1], 16),
-    g: Number.parseInt(result[2], 16),
-    b: Number.parseInt(result[3], 16),
+    r: Number.parseInt(result[1]!, 16),
+    g: Number.parseInt(result[2]!, 16),
+    b: Number.parseInt(result[3]!, 16),
   };
 }
 
@@ -214,7 +215,7 @@ export function parseHex(input: string): string | null {
 /**
  * Format color as RGB string.
  */
-export function formatRgb(hex: string): string {
+export function formatRgb(hex: string | undefined): string {
   const rgb = hexToRgb(hex);
   if (!rgb) return '';
   return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
@@ -223,7 +224,7 @@ export function formatRgb(hex: string): string {
 /**
  * Format color as HSL string.
  */
-export function formatHsl(hex: string): string {
+export function formatHsl(hex: string | undefined): string {
   const rgb = hexToRgb(hex);
   if (!rgb) return '';
 
@@ -238,7 +239,7 @@ export function formatHsl(hex: string): string {
 /**
  * Format color as OKLCH string.
  */
-export function formatOklch(hex: string): string {
+export function formatOklch(hex: string | undefined): string {
   const rgb = hexToRgb(hex);
   if (!rgb) return '';
 

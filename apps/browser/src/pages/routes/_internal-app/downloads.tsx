@@ -191,7 +191,7 @@ function SpeedGraph({
     // Add current time point with last known speed
     const lastSpeed =
       speedHistory && speedHistory.length > 0
-        ? speedHistory[speedHistory.length - 1].speedKBps
+        ? speedHistory[speedHistory.length - 1]!.speedKBps
         : 0;
     data.push({ timestamp: now, speed: lastSpeed });
 
@@ -329,7 +329,7 @@ function RowComponent({
     role: 'listitem';
   };
 } & RowProps) {
-  const row = rows[index];
+  const row = rows[index]!;
 
   if (row.type === 'date-header') {
     return (
@@ -832,7 +832,7 @@ function Page() {
       if (index >= rows.length) {
         return ENTRY_ROW_HEIGHT;
       }
-      const row = rows[index];
+      const row = rows[index]!;
       return row.type === 'date-header' ? DATE_HEADER_HEIGHT : ENTRY_ROW_HEIGHT;
     },
     [rows],

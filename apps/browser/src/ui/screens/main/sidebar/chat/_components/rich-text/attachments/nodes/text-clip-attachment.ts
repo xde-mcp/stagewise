@@ -269,7 +269,7 @@ export const TextClipAttachment = Node.create<AttachmentNodeOptions>({
             // Create text clip node
             event.preventDefault();
             const { state, dispatch } = view;
-            const node = state.schema.nodes[nodeName].create({
+            const node = state.schema.nodes[nodeName]!.create({
               id: generateId(),
               label: `${text.substring(0, 20).trim()}...`,
               content: text,

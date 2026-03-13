@@ -14,7 +14,7 @@ function formatSegmentText(segment: string): string {
   let currentWord = '';
 
   for (let i = 0; i < segment.length; i++) {
-    const char = segment[i];
+    const char = segment[i]!;
     const isUpperCase = char >= 'A' && char <= 'Z';
     const isHyphen = char === '-';
 
@@ -47,7 +47,8 @@ export function InternalPageBreadcrumbs({ url }: InternalPageBreadcrumbsProps) {
   const pathnameSegments = useMemo(() => {
     try {
       // Extract pathname from stagewise://internal/path/to/resource
-      const pathname = url.replace('stagewise://internal', '').split('?')[0];
+      const pathname =
+        url.replace('stagewise://internal', '').split('?')[0] ?? '';
       // Split by '/' and filter out empty segments
       return pathname.split('/').filter((segment) => segment.length > 0);
     } catch {

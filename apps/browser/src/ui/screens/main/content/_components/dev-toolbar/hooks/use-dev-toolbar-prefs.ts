@@ -28,12 +28,12 @@ function mergeWidgetOrder(storedOrder: WidgetId[]): WidgetId[] {
 
   // Add new widgets at their default position
   for (let i = 0; i < DEFAULT_WIDGET_ORDER.length; i++) {
-    const id = DEFAULT_WIDGET_ORDER[i];
+    const id = DEFAULT_WIDGET_ORDER[i]!;
     if (!storedSet.has(id)) {
       // Find the position to insert: after the last existing item that comes before it in defaults
       let insertIndex = result.length;
       for (let j = i - 1; j >= 0; j--) {
-        const prevInDefault = DEFAULT_WIDGET_ORDER[j];
+        const prevInDefault = DEFAULT_WIDGET_ORDER[j]!;
         const prevIndex = result.indexOf(prevInDefault);
         if (prevIndex !== -1) {
           insertIndex = prevIndex + 1;
@@ -78,7 +78,10 @@ export function useWidgetOrder() {
   );
 
   // Merge stored order with defaults to handle new/removed widgets
-  const order = useMemo(() => mergeWidgetOrder(storedOrder), [storedOrder]);
+  const order = useMemo(
+    () => mergeWidgetOrder(storedOrder ?? DEFAULT_WIDGET_ORDER),
+    [storedOrder],
+  );
 
   const reorderWidgets = useCallback(
     (fromIndex: number, toIndex: number) => {
@@ -157,16 +160,18 @@ export function useOriginSettings(tabUrl: string | undefined) {
  * Hook for managing a specific panel's open state and height.
  */
 export function usePanelSettings(
-  widgetId: WidgetId,
+  widgetId: WidgetId | undefined,
   tabUrl: string | undefined,
 ) {
   const { origin, settings, updateSettings } = useOriginSettings(tabUrl);
 
-  const isOpen = settings?.panelOpenStates?.[widgetId] ?? false;
+  const isOpen = widgetId
+    ? (settings?.panelOpenStates?.[widgetId] ?? false)
+    : false;
 
   const setOpen = useCallback(
     (open: boolean) => {
-      if (!origin) return;
+      if (!origin || !widgetId) return;
       updateSettings({
         panelOpenStates: { [widgetId]: open },
       });
@@ -184,7 +189,11 @@ export function usePanelSettings(
 /**
  * Hook for managing toolbar width per origin.
  */
-export function useToolbarWidth(tabUrl: string | undefined) {
+export function useToolbarWidth(tabUrl: string | undefined): {
+  width: number | null;
+  setWidth: (w: number | null) => void;
+  hasOrigin: boolean;
+} {
   const { origin, settings, updateSettings } = useOriginSettings(tabUrl);
 
   const width = settings?.toolbarWidth ?? null;

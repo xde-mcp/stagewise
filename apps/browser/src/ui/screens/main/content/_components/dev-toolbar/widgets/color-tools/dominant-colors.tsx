@@ -144,12 +144,12 @@ async function downsample(
       for (let dy = 0; dy < factor; dy++) {
         for (let dx = 0; dx < factor; dx++) {
           const srcI = ((newY * factor + dy) * width + newX * factor + dx) * 4;
-          const r = data[srcI];
-          const g = data[srcI + 1];
-          const b = data[srcI + 2];
-          const a = data[srcI + 3];
+          const r = data[srcI]!;
+          const g = data[srcI + 1]!;
+          const b = data[srcI + 2]!;
+          const a = data[srcI + 3]!;
 
-          if (a < 128) continue;
+          if ((a ?? 0) < 128) continue;
           if (dx === centerOffset && dy === centerOffset)
             centerColor = { r, g, b };
 
@@ -217,9 +217,9 @@ function floodFillRegion(
   tolerance: number,
 ): FloodFillResult {
   const startIdx = (startY * imgWidth + startX) * 4;
-  const targetR = data[startIdx];
-  const targetG = data[startIdx + 1];
-  const targetB = data[startIdx + 2];
+  const targetR = data[startIdx] ?? 0;
+  const targetG = data[startIdx + 1] ?? 0;
+  const targetB = data[startIdx + 2] ?? 0;
 
   const pixels: number[] = [];
   const queue: Array<{ x: number; y: number }> = [{ x: startX, y: startY }];
@@ -262,23 +262,19 @@ function floodFillRegion(
       if (visited[neighborLinearIdx]) continue;
 
       const neighborIdx = neighborLinearIdx * 4;
-      const a = data[neighborIdx + 3];
+      const a = data[neighborIdx + 3]!;
 
       // Skip transparent pixels
-      if (a < 128) {
+      if ((a ?? 0) < 128) {
         visited[neighborLinearIdx] = 1;
         continue;
       }
 
       // Check if same color (within tolerance)
-      const dist = simpleColorDistance(
-        targetR,
-        targetG,
-        targetB,
-        data[neighborIdx],
-        data[neighborIdx + 1],
-        data[neighborIdx + 2],
-      );
+      const r = data[neighborIdx] ?? 0;
+      const g = data[neighborIdx + 1] ?? 0;
+      const b = data[neighborIdx + 2] ?? 0;
+      const dist = simpleColorDistance(targetR, targetG, targetB, r, g, b);
 
       if (dist <= tolerance) {
         visited[neighborLinearIdx] = 1;
@@ -339,10 +335,10 @@ async function extractConnectedRegions(
       if (visited[linearIdx]) continue;
 
       const idx = linearIdx * 4;
-      const a = data[idx + 3];
+      const a = data[idx + 3]!;
 
       // Skip transparent pixels
-      if (a < 128) {
+      if ((a ?? 0) < 128) {
         visited[linearIdx] = 1;
         continue;
       }
@@ -364,9 +360,9 @@ async function extractConnectedRegions(
       const meetsHeight = region.height >= minHeight;
 
       if (meetsSize && meetsWidth && meetsHeight) {
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
+        const r = data[idx]!;
+        const g = data[idx + 1]!;
+        const b = data[idx + 2]!;
         const key = `${r},${g},${b}`;
 
         const existing = colorCounts.get(key);

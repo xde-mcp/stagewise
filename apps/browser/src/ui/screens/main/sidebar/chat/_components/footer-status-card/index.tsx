@@ -46,10 +46,10 @@ function compareAgentEntries(
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     if (
-      a[i].agentId !== b[i].agentId ||
-      a[i].workspacePath !== b[i].workspacePath ||
-      a[i].isWorking !== b[i].isWorking ||
-      a[i].error !== b[i].error
+      a[i]?.agentId !== b[i]?.agentId ||
+      a[i]?.workspacePath !== b[i]?.workspacePath ||
+      a[i]?.isWorking !== b[i]?.isWorking ||
+      a[i]?.error !== b[i]?.error
     )
       return false;
   }
@@ -131,7 +131,7 @@ export function StatusCard() {
       const entries: WorkspaceMdAgentEntry[] = [];
       for (const agentId in s.agents.instances) {
         const inst = s.agents.instances[agentId];
-        if (inst.type !== AgentTypes.WORKSPACE_MD) continue;
+        if (!inst || inst.type !== AgentTypes.WORKSPACE_MD) continue;
         const path = s.toolbox[agentId]?.workspace?.mounts?.[0]?.path;
         if (!path) continue;
         entries.push({
@@ -151,7 +151,7 @@ export function StatusCard() {
       const map: Record<string, AgentMessage[]> = {};
       for (const agentId in s.agents.instances) {
         const inst = s.agents.instances[agentId];
-        if (inst.type !== AgentTypes.WORKSPACE_MD) continue;
+        if (!inst || inst.type !== AgentTypes.WORKSPACE_MD) continue;
         map[agentId] = inst.state.history;
       }
       return map;

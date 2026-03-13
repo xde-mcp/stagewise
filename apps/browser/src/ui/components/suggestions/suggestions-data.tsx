@@ -442,6 +442,7 @@ function generateSuggestions(): SuggestionItem[] {
         category.variations[
           Math.floor(Math.random() * category.variations.length)
         ];
+      if (!variation) continue;
 
       const prompt = variation.prompt.replace('{origin}', displayHost);
       const placeholderIdx = variation.display.indexOf('{origin}');

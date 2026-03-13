@@ -65,10 +65,10 @@ export function TabMentionBadge({
     const tabs = s.browser.tabs;
     if (handle) {
       for (const id in tabs) {
-        if (tabs[id].handle === handle) return tabs[id];
+        if (tabs[id]?.handle === handle) return tabs[id];
       }
     }
-    if (tabId && tabs[tabId]) return tabs[tabId];
+    if (tabId && tabs[tabId]) return tabs[tabId]!;
     return null;
   });
 

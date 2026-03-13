@@ -115,7 +115,7 @@ function historyToRows(history: HistoryResult[]): Row[] {
       currentDate = dateKey;
       dateGroups.push({ date: dateKey, entries: [] });
     }
-    dateGroups[dateGroups.length - 1].entries.push(entry);
+    dateGroups[dateGroups.length - 1]!.entries.push(entry);
   }
 
   for (const dateGroup of dateGroups) {
@@ -124,13 +124,13 @@ function historyToRows(history: HistoryResult[]): Row[] {
     // Find consecutive runs of same origin within this date
     let i = 0;
     while (i < dateGroup.entries.length) {
-      const origin = getUrlOrigin(dateGroup.entries[i].url);
+      const origin = getUrlOrigin(dateGroup.entries[i]!.url);
 
       // Find the end of this consecutive run
       let j = i + 1;
       while (
         j < dateGroup.entries.length &&
-        getUrlOrigin(dateGroup.entries[j].url) === origin
+        getUrlOrigin(dateGroup.entries[j]!.url) === origin
       ) {
         j++;
       }
@@ -139,16 +139,16 @@ function historyToRows(history: HistoryResult[]): Row[] {
 
       if (runLength >= 2) {
         // Multi-entry group — add group header + grouped entries
-        const groupId = `group-${dateGroup.entries[i].visitId}`;
+        const groupId = `group-${dateGroup.entries[i]!.visitId}`;
         rows.push({
           type: 'origin-group-header',
           groupId,
           origin,
-          faviconUrl: dateGroup.entries[i].faviconUrl,
+          faviconUrl: dateGroup.entries[i]!.faviconUrl,
           entryCount: runLength,
         });
         for (let k = i; k < j; k++) {
-          const e = dateGroup.entries[k];
+          const e = dateGroup.entries[k]!;
           rows.push({
             type: 'entry',
             id: e.visitId,
@@ -161,7 +161,7 @@ function historyToRows(history: HistoryResult[]): Row[] {
         }
       } else {
         // Single entry — no group
-        const e = dateGroup.entries[i];
+        const e = dateGroup.entries[i]!;
         rows.push({
           type: 'entry',
           id: e.visitId,
@@ -261,7 +261,7 @@ function RowComponent({
     role: 'listitem';
   };
 } & RowProps) {
-  const row = rows[index];
+  const row = rows[index]!;
   const [copyTooltipText, setCopyTooltipText] = useState('Copy link');
 
   if (row.type === 'date-header') {
@@ -542,7 +542,7 @@ function Page() {
       if (index >= rows.length) {
         return ENTRY_ROW_HEIGHT;
       }
-      const row = rows[index];
+      const row = rows[index]!;
       if (row.type === 'date-header') return DATE_HEADER_HEIGHT;
       if (row.type === 'origin-group-header') return ORIGIN_GROUP_HEADER_HEIGHT;
       return ENTRY_ROW_HEIGHT;

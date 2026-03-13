@@ -199,7 +199,7 @@ function estimateExploringGroupHeight(parts: MessagePart[]): number {
   // Single part renders inline without collapsible wrapper
   if (parts.length === 1) {
     return (
-      estimateSingleReadOnlyToolHeight(parts[0]) + HEIGHTS.TOOL_BORDER_OVERHEAD
+      estimateSingleReadOnlyToolHeight(parts[0]!) + HEIGHTS.TOOL_BORDER_OVERHEAD
     );
   }
 

@@ -37,8 +37,8 @@ function activeAgentCardsEqual(
 ): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    const ai = a[i];
-    const bi = b[i];
+    const ai = a[i]!;
+    const bi = b[i]!;
     if (
       ai.id !== bi.id ||
       ai.title !== bi.title ||
@@ -67,11 +67,11 @@ function deriveActivityText(
   inputState: string,
 ): { text: string; isUserInput: boolean } {
   for (let i = history.length - 1; i >= 0; i--) {
-    const msg = history[i];
+    const msg = history[i]!;
     if (msg.role !== 'assistant') continue;
     const parts = msg.parts;
     for (let j = parts.length - 1; j >= 0; j--) {
-      const part = parts[j];
+      const part = parts[j]!;
       if (part.type === 'reasoning')
         return { text: 'Thinking…', isUserInput: false };
       if (part.type === 'text') {
@@ -97,10 +97,10 @@ function deriveActivityText(
 
   // Fall back to last user message preview
   for (let i = history.length - 1; i >= 0; i--) {
-    const msg = history[i];
+    const msg = history[i]!;
     if (msg.role !== 'user') continue;
     for (let j = msg.parts.length - 1; j >= 0; j--) {
-      const part = msg.parts[j];
+      const part = msg.parts[j]!;
       if (part.type === 'text') {
         const snippet = firstWords(part.text ?? '', 10);
         if (snippet) return { text: snippet, isUserInput: true };
@@ -151,7 +151,7 @@ export function ActiveAgentsGrid() {
           .filter(([_, agent]) => agent.type === AgentTypes.CHAT)
           .map(([id, agent]) => {
             const history = agent.state.history;
-            const lastMsg = history[history.length - 1];
+            const lastMsg = history[history.length - 1]!;
             const hasPendingQuestion = !!s.toolbox[id]?.pendingUserQuestion;
             const isWorking = agent.state.isWorking;
             const rawActivity = hasPendingQuestion
@@ -337,8 +337,8 @@ export function ActiveAgentsGrid() {
     const nowWorking = new Set<string>();
 
     for (const agent of agents) {
-      if (agent.isWorking) nowWorking.add(agent.id);
-      if (!agent.isWorking && prevWorking.has(agent.id)) {
+      if (agent?.isWorking) nowWorking.add(agent.id);
+      if (!agent?.isWorking && prevWorking.has(agent.id)) {
         scrollCardIntoView(agent.id);
       }
     }

@@ -250,14 +250,14 @@ function ElementPreviewContent({
               className="flex flex-col items-stretch justify-start"
             >
               <p className="font-medium text-foreground text-xs">{attribute}</p>
-              {isUrl(selectedElement.attributes[attribute]) ? (
+              {isUrl(selectedElement.attributes[attribute]!) ? (
                 <a
-                  href={selectedElement.attributes[attribute]}
+                  href={selectedElement.attributes[attribute]!}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full break-all font-mono text-2xs text-primary-foreground leading-tight hover:text-hover-derived"
                 >
-                  {selectedElement.attributes[attribute]}{' '}
+                  {selectedElement.attributes[attribute]!}{' '}
                   <IconOpenExternalOutline18 className="mb-0.5 ml-0.5 inline size-3.5" />
                 </a>
               ) : (

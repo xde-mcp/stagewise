@@ -96,6 +96,8 @@ export function StepDemo() {
 
   const slide = slides[activeIndex];
 
+  if (!slide) return null;
+
   return (
     <div className="flex flex-1 items-center justify-center gap-0">
       <div

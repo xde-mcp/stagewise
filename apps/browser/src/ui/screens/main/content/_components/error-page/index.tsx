@@ -2,7 +2,10 @@ import { useKartonState } from '@ui/hooks/use-karton';
 
 export function ErrorPage() {
   const activeTab = useKartonState((s) => s.browser.tabs.activeTab);
-  const error = useKartonState((s) => s.browser.tabs[activeTab.id].error);
+  const error = useKartonState((s) => {
+    const id = activeTab?.id;
+    return id ? s.browser.tabs[id]?.error : undefined;
+  });
 
   if (!error) {
     return null;

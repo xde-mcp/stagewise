@@ -62,9 +62,9 @@ function analyzeImageData(imageData: ImageData): HistogramData[] {
   const sampleRate = totalPixels > 100000 ? Math.ceil(totalPixels / 100000) : 1;
 
   for (let i = 0; i < data.length; i += 4 * sampleRate) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
+    const r = data[i]!;
+    const g = data[i + 1]!;
+    const b = data[i + 2]!;
     // Alpha channel at data[i + 3] - we ignore it
 
     // Calculate bin index (0-255 -> 0-(NUM_BINS-1))

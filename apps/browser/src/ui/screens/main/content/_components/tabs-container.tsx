@@ -334,6 +334,7 @@ export function TabsContainer({
             strategy={horizontalListSortingStrategy}
           >
             {orderedTabs.map((tab) => {
+              if (!tab) return null;
               return (
                 <SortableTab
                   key={tab.id}
@@ -341,7 +342,7 @@ export function TabsContainer({
                   activateBottomLeftCornerRadius={
                     activateBottomLeftCornerRadius
                   }
-                  isActive={tab.id === activeTabId}
+                  isActive={tab?.id === activeTabId}
                 />
               );
             })}

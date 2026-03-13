@@ -297,7 +297,7 @@ export function ChatPanelFooter() {
     const currentHistory = historyRef.current ?? [];
     let lastUserMsgIndex = -1;
     for (let i = currentHistory.length - 1; i >= 0; i--) {
-      if (currentHistory[i].role === 'user') {
+      if (currentHistory[i]?.role === 'user') {
         lastUserMsgIndex = i;
         break;
       }
@@ -305,7 +305,7 @@ export function ChatPanelFooter() {
     if (lastUserMsgIndex === -1) return false;
     const assistantParts = currentHistory
       .slice(lastUserMsgIndex + 1)
-      .flatMap((m) => m.parts);
+      .flatMap((m) => m?.parts ?? []);
     const hasToolCall = assistantParts.some(
       (p) => p.type.startsWith('tool-') || p.type === 'dynamic-tool',
     );
@@ -319,8 +319,8 @@ export function ChatPanelFooter() {
     if (isEarlyAbortEligible()) {
       const currentHistory = historyRef.current ?? [];
       for (let i = currentHistory.length - 1; i >= 0; i--) {
-        if (currentHistory[i].role === 'user') {
-          const userMessage = currentHistory[i];
+        if (currentHistory[i]?.role === 'user') {
+          const userMessage = currentHistory[i]!;
           setPendingRevert({
             messageId: userMessage.id,
             message: userMessage,

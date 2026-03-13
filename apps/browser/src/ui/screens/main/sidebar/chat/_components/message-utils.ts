@@ -81,7 +81,7 @@ export function areAllPartsSettled(msg: AgentMessage): boolean {
   // Find the last non-step-start part to check its type
   let lastVisiblePart: UIMessagePart<UIDataTypes, UIAgentTools> | undefined;
   for (let i = msg.parts.length - 1; i >= 0; i--) {
-    if (msg.parts[i].type !== 'step-start') {
+    if (msg.parts[i]?.type !== 'step-start') {
       lastVisiblePart = msg.parts[i];
       break;
     }
@@ -99,7 +99,7 @@ export function areAllPartsSettled(msg: AgentMessage): boolean {
   let trailingReadOnlyCount = 0;
   for (let i = msg.parts.length - 1; i >= 0; i--) {
     const part = msg.parts[i];
-    if (part.type === 'step-start') continue;
+    if (!part || part.type === 'step-start') continue;
     if (
       isToolOrReasoningPart(part) &&
       isReadOnlyToolPart(part as AgentToolUIPart | ReasoningUIPart)

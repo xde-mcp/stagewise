@@ -69,7 +69,7 @@ function IdeSelectionSetting() {
 
       <SearchableSelect
         value={currentIde}
-        onValueChange={handleIdeChange}
+        onValueChange={(value) => handleIdeChange(value as OpenFilesInIde)}
         items={selectItems}
         triggerVariant="secondary"
         size="xs"

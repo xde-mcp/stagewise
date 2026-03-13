@@ -145,7 +145,9 @@ function CredentialFieldCard({
           key={field}
           typeId={typeId}
           field={field}
-          metadata={typeDef.fieldMetadata[field]}
+          metadata={
+            typeDef.fieldMetadata[field as keyof typeof typeDef.fieldMetadata]
+          }
           isConfigured={isConfigured}
           onSave={onSave}
           onDelete={onDelete}

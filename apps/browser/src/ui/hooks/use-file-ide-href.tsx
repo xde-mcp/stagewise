@@ -18,7 +18,7 @@ function resolveAbsolutePath(
     return `${normalizePath(mount.path)}/${stripped}`;
   }
   if (mounts.length === 1)
-    return `${normalizePath(mounts[0].path)}/${normalized}`;
+    return `${normalizePath(mounts[0]?.path ?? '')}/${normalized}`;
 
   return null;
 }

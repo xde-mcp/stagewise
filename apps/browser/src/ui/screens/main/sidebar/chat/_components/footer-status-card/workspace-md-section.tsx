@@ -59,7 +59,7 @@ function getStatusText(history: AgentMessage[]): string {
     i >= 0 && !lastToolPart;
     i--
   ) {
-    const msg = assistantMessages![i];
+    const msg = assistantMessages![i]!;
     const toolParts = msg.parts.filter((p) =>
       p.type.startsWith('tool-'),
     ) as AgentToolUIPart[];

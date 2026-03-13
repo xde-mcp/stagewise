@@ -306,11 +306,11 @@ export function extractImageUrlFromDragData(
   if (htmlData) {
     // Check for data URL in img src (e.g., from Google Images)
     const dataUrlMatch = htmlData.match(/src=["'](data:image\/[^"']+)["']/i);
-    if (dataUrlMatch) imageUrl = dataUrlMatch[1];
+    if (dataUrlMatch?.[1]) imageUrl = dataUrlMatch[1];
     // Check for regular img src URL
     else {
       const imgSrcMatch = htmlData.match(/<img[^>]+src=["']([^"']+)["']/i);
-      if (imgSrcMatch) imageUrl = imgSrcMatch[1];
+      if (imgSrcMatch?.[1]) imageUrl = imgSrcMatch[1];
     }
   }
 
@@ -335,7 +335,7 @@ export async function imageUrlToFile(imageUrl: string): Promise<File | null> {
       // Convert data URL to File
       const arr = imageUrl.split(',');
       const mimeMatch = arr[0]?.match(/:(.*?);/);
-      const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+      const mime = mimeMatch?.[1] ?? 'image/png';
       const bstr = atob(arr[1] ?? '');
       let n = bstr.length;
       const u8arr = new Uint8Array(n);

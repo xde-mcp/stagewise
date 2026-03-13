@@ -70,6 +70,7 @@ const WorkspaceBadge = memo(function WorkspaceBadge({
   const isGeneratingWorkspaceMd = useKartonState((s) => {
     for (const id in s.agents.instances) {
       const inst = s.agents.instances[id];
+      if (!inst) continue;
       if (inst.type !== AgentTypes.WORKSPACE_MD) continue;
       if (!inst.state.isWorking) continue;
       const agentPath = s.toolbox[id]?.workspace?.mounts?.[0]?.path;
